@@ -1,0 +1,37 @@
+package dev.onepieceapi.contentservice.web;
+
+import dev.onepieceapi.contentservice.service.DevilFruitTypeService;
+import dev.onepieceapi.contentservice.web.dto.WorkingRevisionSummaryResponse;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+import java.util.UUID;
+
+/**
+ * A personal, cross-entity-shaped list (docs/implementation-plan-content.md 2): every
+ * working revision the caller authored that is still {@code DRAFT}/{@code IN_REVIEW} -
+ * once one reaches {@code REVIEWED} it is already visible via the (future) Enciclopedia's
+ * {@code content:read}, so it drops out of this list at that point (Step 3+).
+ */
+@RestController
+@RequiredArgsConstructor(onConstructor_ = { @Autowired })
+class MyDraftsController {
+
+	private final DevilFruitTypeService service;
+
+	@GetMapping(ApiPaths.MY_DRAFTS)
+	List<WorkingRevisionSummaryResponse> list(@AuthenticationPrincipal Jwt jwt) {
+		var authorId = UUID.fromString(jwt.getSubject());
+		return this.service.listOwnDrafts(authorId)
+			.stream()
+			.map(revision -> DevilFruitTypeResponseMapper.toSummary(revision,
+					this.service.translationsOf(revision.getId())))
+			.toList();
+	}
+
+}

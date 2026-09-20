@@ -14,7 +14,7 @@ import java.util.UUID;
 
 /**
  * The JPA row behind one audit record - see {@code db/migration/V1__create_audit_log.sql}
- * and {@code docs/user-flows/authentication-and-user-management.md} §6. Package-private:
+ * and {@code docs/user-flows/authentication-and-user-management.md} 6. Package-private:
  * nothing outside {@code service.AuditLogService} touches this class.
  */
 @Entity

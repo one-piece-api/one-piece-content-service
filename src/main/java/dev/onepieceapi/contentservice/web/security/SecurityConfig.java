@@ -14,7 +14,7 @@ import org.springframework.security.web.SecurityFilterChain;
  * Every request is authenticated against Keycloak (realm "onepiece") as a JWT-based
  * OAuth2 resource server, except the Kubernetes health probes - same token, same realm
  * {@code one-piece-user-service} already validates, no new Keycloak client (see
- * {@code docs/implementation-plan-content.md} §2 Working Assumptions). Endpoint-level
+ * {@code docs/implementation-plan-content.md} 2 Working Assumptions). Endpoint-level
  * authorization is driven entirely by {@link SecuredEndpoint}.
  */
 @Configuration

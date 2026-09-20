@@ -13,14 +13,16 @@ public final class ApiPaths {
 
 	public static final String HEALTH = "/actuator/health/**";
 
+	public static final String DEVIL_FRUIT_TYPES = "/devil-fruit-types";
+
+	public static final String DEVIL_FRUIT_TYPE_BY_ID = "/devil-fruit-types/{workingRevisionId}";
+
 	/**
-	 * Placeholder-only, added in Phase 0 solely to prove the permission-gated security
-	 * chain end-to-end before any real domain endpoint exists - see
-	 * {@code docs/implementation-plan-content.md} Phase 0's Definition of Done. Removed
-	 * once Step 1's real endpoints ({@code POST /devil-fruit-types},
-	 * {@code GET /my-drafts}, ...) land.
+	 * Deliberately not under {@code /devil-fruit-types}: a personal, cross-entity list in
+	 * shape (docs/implementation-plan-content.md 2) even though it only queries this one
+	 * entity's table today.
 	 */
-	public static final String INTERNAL_STATUS = "/_internal/status";
+	public static final String MY_DRAFTS = "/my-drafts";
 
 	private ApiPaths() {
 	}

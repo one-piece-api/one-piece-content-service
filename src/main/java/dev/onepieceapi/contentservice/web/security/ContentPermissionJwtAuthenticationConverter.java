@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
  * Resolves a validated JWT's permission authorities only - unlike
  * {@code one-piece-user-service}'s {@code ApplicationUserJwtAuthenticationConverter},
  * this service has no local/resolved domain user to carry (no local persistence of
- * identity, per the identity-management document's §2 stance, which this service also
+ * identity, per the identity-management document's 2 stance, which this service also
  * follows) and never checks a role name directly, only permissions (see
  * {@code SecuredEndpoint}) - so the standard {@link JwtAuthenticationToken} (holding the
  * {@link Jwt} itself as principal) is enough; a caller's id/email, when needed for
