@@ -1,0 +1,264 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  lint:
+    name: Lint & format
+    runs-on: ubuntu-latest
+    # checkstyleMain/Test depend on compileJava (needs one-piece-exception resolved from
+    # GitHub Packages), even though checkFormat itself doesn't - set at job level so both
+    # steps have it rather than guessing per-task which one actually needs it.
+    env:
+      GITHUB_ACTOR: ${{ github.actor }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Check formatting (spring-javaformat)
+        run: ./gradlew checkFormat --no-daemon
+
+      - name: Run Checkstyle
+        run: ./gradlew checkstyleMain checkstyleTest --no-daemon
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Run tests
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./gradlew test --no-daemon
+
+  build-jar:
+    name: Build jar
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    if: github.event_name == 'push'
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Read version
+        id: version
+        run: echo "version=$(./gradlew properties -q | grep '^version:' | cut -d' ' -f2)" >> "$GITHUB_OUTPUT"
+
+      # Builds the jar here, not inside the Dockerfile: the credentials one-piece-exception
+      # needs (GitHub Packages) then only ever need to exist in this job's own environment,
+      # not passed into the Docker build via ARG/BuildKit secrets - see Dockerfile. Un solo
+      # job per il jar (bytecode JVM, indipendente dall'architettura): i job della matrice
+      # sotto lo scaricano invece di ricompilare due volte. Same pattern as
+      # one-piece-user-service's ci.yml.
+      - name: Build jar
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./gradlew bootJar --no-daemon
+
+      - name: Upload jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: jar
+          path: build/libs/*.jar
+          retention-days: 1
+
+  build-and-push:
+    name: Build & push (${{ matrix.platform }})
+    runs-on: ${{ matrix.runs-on }}
+    needs: build-jar
+    if: github.event_name == 'push'
+    strategy:
+      matrix:
+        include:
+          - platform: linux/amd64
+            runs-on: ubuntu-latest
+          # Runner nativo arm64 (gratuito sui repo pubblici) invece di QEMU: build
+          # nativa, niente rallentamento da emulazione - il nodo Ampere A1
+          # dell'ambiente remoto (ADR-0005 in onepiece-infrastructure) è arm64,
+          # senza questo l'immagine dà "exec format error" lì. Stesso pattern di
+          # one-piece-user-service.
+          - platform: linux/arm64
+            runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Download jar
+        uses: actions/download-artifact@v5
+        with:
+          name: jar
+          path: build/libs
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Push solo per digest, senza tag finale: il tag multi-arch viene creato dal
+      # job "merge-manifest" combinando i digest di ogni piattaforma - pattern
+      # raccomandato da Docker per build distribuite su runner separati
+      # (docs.docker.com/build/ci/github-actions/multi-platform).
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: ${{ matrix.platform }}
+          push: true
+          provenance: false
+          outputs: type=image,name=ghcr.io/one-piece-api/content-service,push-by-digest=true,name-canonical=true,push=true
+
+      - name: Export digest
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ matrix.platform == 'linux/amd64' && 'amd64' || 'arm64' }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge-manifest:
+    name: Merge multi-arch manifest & push tags
+    runs-on: ubuntu-latest
+    needs: [build-jar, build-and-push]
+    if: github.event_name == 'push'
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v5
+        with:
+          path: /tmp/digests
+          pattern: digests-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Combina i digest per-piattaforma caricati dai job della matrice in un
+      # unico manifest multi-arch, sotto entrambi i tag finali.
+      - name: Create manifest list and push
+        working-directory: /tmp/digests
+        run: |
+          docker buildx imagetools create \
+            -t ghcr.io/one-piece-api/content-service:${{ needs.build-jar.outputs.version }} \
+            -t ghcr.io/one-piece-api/content-service:latest \
+            $(printf 'ghcr.io/one-piece-api/content-service@sha256:%s ' *)
+
+      - name: Inspect image
+        run: docker buildx imagetools inspect ghcr.io/one-piece-api/content-service:${{ needs.build-jar.outputs.version }}
+
+  trigger-remote-deploy:
+    name: Trigger remote environment deploy
+    runs-on: ubuntu-latest
+    needs: merge-manifest
+    if: github.event_name == 'push'
+    steps:
+      # onepiece-infrastructure possiede l'unico workflow che sa come aggiornare
+      # l'ambiente remoto (ADR-0005) - niente logica di deploy duplicata qui, solo
+      # la notifica che una nuova immagine è pronta. Stesso pattern di
+      # one-piece-user-service.
+      - name: Notifica onepiece-infrastructure
+        run: |
+          curl -sf -L --post301 -X POST \
+            -H "Authorization: Bearer ${{ secrets.INFRA_DISPATCH_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/one-piece-api/onepiece-infrastructure/dispatches \
+            -d '{"event_type":"deploy-remote"}'
+
+  cleanup-untagged:
+    name: Delete untagged package versions
+    runs-on: ubuntu-latest
+    needs: merge-manifest
+    if: github.event_name == 'push'
+    continue-on-error: true
+    env:
+      GH_TOKEN: ${{ secrets.GHCR_CLEANUP_TOKEN }}
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # I sotto-manifest per piattaforma (amd64/arm64) pushati per digest da "Build
+      # and push by digest" non hanno mai un tag proprio - solo l'indice
+      # multi-arch creato da "merge-manifest" li referenzia. GHCR li riporta
+      # quindi come "untagged" esattamente come una versione davvero orfana:
+      # cancellarli tutti rompe il tag che li referenzia ("manifest unknown" al
+      # pull). Si esclude dalla cancellazione ogni digest ancora referenziato come
+      # sotto-manifest da un tag corrente. Stesso pattern di one-piece-user-service.
+      - name: Delete dangling (untagged) versions from GHCR
+        run: |
+          set -euo pipefail
+          referenced="$(
+            gh api --paginate "orgs/one-piece-api/packages/container/content-service/versions" \
+              --jq '.[] | select(.metadata.container.tags != []) | .metadata.container.tags[0]' \
+            | while read -r tag; do
+                docker buildx imagetools inspect "ghcr.io/one-piece-api/content-service:$tag" --raw
+              done \
+            | jq -r '.manifests[]?.digest // empty'
+          )"
+          gh api --paginate "orgs/one-piece-api/packages/container/content-service/versions" \
+            --jq '.[] | select(.metadata.container.tags == []) | [.id, .name] | @tsv' \
+          | while IFS=$'\t' read -r id digest; do
+              grep -qxF "$digest" <<< "$referenced" || gh api --method DELETE "orgs/one-piece-api/packages/container/content-service/versions/$id"
+            done
