@@ -3,6 +3,8 @@ package dev.onepieceapi.contentservice.web;
 import dev.onepieceapi.contentservice.persistence.WorkingRevisionEntity;
 import dev.onepieceapi.contentservice.persistence.WorkingRevisionStatus;
 import dev.onepieceapi.contentservice.service.DevilFruitTypeService;
+import dev.onepieceapi.contentservice.web.security.AuthenticatedCaller;
+import dev.onepieceapi.contentservice.web.security.ContentAuthenticationToken;
 import dev.onepieceapi.contentservice.web.security.SecurityConfig;
 import dev.onepieceapi.exception.web.ApplicationExceptionHandler;
 import org.junit.jupiter.api.Test;
@@ -11,7 +13,6 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
@@ -74,11 +75,12 @@ class DevilFruitTypeControllerTest {
 			.issuedAt(Instant.EPOCH)
 			.expiresAt(Instant.EPOCH.plusSeconds(300))
 			.build();
+		var caller = new AuthenticatedCaller(UUID.fromString(jwt.getSubject()), jwt.getClaimAsString("email"));
 		Set<SimpleGrantedAuthority> grantedAuthorities = Set.of(authorities)
 			.stream()
 			.map(SimpleGrantedAuthority::new)
 			.collect(Collectors.toSet());
-		return authentication(new JwtAuthenticationToken(jwt, grantedAuthorities));
+		return authentication(new ContentAuthenticationToken(jwt, caller, grantedAuthorities));
 	}
 
 }
