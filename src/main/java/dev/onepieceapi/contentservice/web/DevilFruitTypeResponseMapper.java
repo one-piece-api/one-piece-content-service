@@ -71,14 +71,14 @@ public class DevilFruitTypeResponseMapper {
 	/** "Enciclopedia" (Step 5): a `REVIEWED` working revision awaiting publish. */
 	public EncyclopediaItemResponse toEncyclopediaItem(WorkingRevisionEntity revision,
 			List<TranslationEntity> translations) {
-		return new EncyclopediaItemResponse(revision.getItemId(), ENTITY_TYPE, revision.getRomaji(),
+		return new EncyclopediaItemResponse(revision.getItemId(), revision.getId(), ENTITY_TYPE, revision.getRomaji(),
 				displayNameOf(translations), "REVIEWED", revision.getUpdatedAt());
 	}
 
 	/** "Enciclopedia" (Step 5): an item's live published version. */
 	public EncyclopediaItemResponse toEncyclopediaItem(ContentVersionEntity version,
 			List<ContentVersionTranslationEntity> translations) {
-		return new EncyclopediaItemResponse(version.getItemId(), ENTITY_TYPE, version.getRomaji(),
+		return new EncyclopediaItemResponse(version.getItemId(), null, ENTITY_TYPE, version.getRomaji(),
 				displayNameOfVersion(translations), "PUBLISHED", version.getPublishedAt());
 	}
 
@@ -87,8 +87,8 @@ public class DevilFruitTypeResponseMapper {
 		Map<String, TranslationResponse> byLanguage = translations.stream()
 			.collect(Collectors.toMap(t -> t.getId().getLanguageCode(),
 					t -> new TranslationResponse(t.getName(), t.getDescription())));
-		return new EncyclopediaItemDetailResponse(revision.getItemId(), revision.getRomaji(), "REVIEWED", byLanguage,
-				revision.getUpdatedAt(), null, null);
+		return new EncyclopediaItemDetailResponse(revision.getItemId(), revision.getId(), revision.getRomaji(),
+				"REVIEWED", byLanguage, revision.getUpdatedAt(), null, null);
 	}
 
 	public EncyclopediaItemDetailResponse toEncyclopediaDetail(ContentVersionEntity version,
@@ -96,8 +96,8 @@ public class DevilFruitTypeResponseMapper {
 		Map<String, TranslationResponse> byLanguage = translations.stream()
 			.collect(Collectors.toMap(t -> t.getId().getLanguageCode(),
 					t -> new TranslationResponse(t.getName(), t.getDescription())));
-		return new EncyclopediaItemDetailResponse(version.getItemId(), version.getRomaji(), "PUBLISHED", byLanguage,
-				version.getPublishedAt(), version.getSequenceNumber(), version.getPublisherEmail());
+		return new EncyclopediaItemDetailResponse(version.getItemId(), null, version.getRomaji(), "PUBLISHED",
+				byLanguage, version.getPublishedAt(), version.getSequenceNumber(), version.getPublisherEmail());
 	}
 
 	private String displayNameOfVersion(List<ContentVersionTranslationEntity> translations) {
