@@ -12,6 +12,7 @@ import dev.onepieceapi.contentservice.persistence.TranslationRepository;
 import dev.onepieceapi.contentservice.persistence.WorkingRevisionEntity;
 import dev.onepieceapi.contentservice.persistence.WorkingRevisionRepository;
 import dev.onepieceapi.contentservice.persistence.WorkingRevisionStatus;
+import dev.onepieceapi.contentservice.service.exception.ContentVersionNotFoundException;
 import dev.onepieceapi.contentservice.service.exception.EncyclopediaItemNotFoundException;
 import dev.onepieceapi.contentservice.service.exception.InvalidStatusTransitionException;
 import dev.onepieceapi.contentservice.service.exception.NotClaimantException;
@@ -70,6 +71,8 @@ public class DevilFruitTypeService {
 	private static final String AUDIT_ACTION_SUPERSEDE = "DEVIL_FRUIT_TYPE_SUPERSEDED";
 
 	private static final String AUDIT_ACTION_PUBLISH = "DEVIL_FRUIT_TYPE_PUBLISHED";
+
+	private static final String AUDIT_ACTION_ROLLBACK = "DEVIL_FRUIT_TYPE_ROLLED_BACK";
 
 	private final DevilFruitTypeItemRepository itemRepository;
 
@@ -286,6 +289,38 @@ public class DevilFruitTypeService {
 		this.auditLogService.record(AUDIT_ACTION_PUBLISH, publisherId, publisherEmail, revision.getItemId(),
 				revision.getRomaji(), "v" + sequenceNumber);
 		return revision;
+	}
+
+	/**
+	 * Step 7's "Storico versioni": every snapshot ever published for the item, most
+	 * recent first - {@code content:publish} only (flows document 7.7), unlike every
+	 * `content:read` view this service otherwise exposes.
+	 */
+	public List<ContentVersionEntity> listVersions(UUID itemId) {
+		return this.contentVersionRepository.findByItemIdOrderBySequenceNumberDesc(itemId);
+	}
+
+	/** The item's current live version id, or {@code null} if it was never published. */
+	public UUID getLiveVersionId(UUID itemId) {
+		return this.itemRepository.findById(itemId).map(DevilFruitTypeItemEntity::getLiveVersionId).orElse(null);
+	}
+
+	/**
+	 * Step 7: repoints the item's live pointer straight at an older snapshot - no new
+	 * {@link ContentVersionEntity} row (the plan is explicit: "no new version row, no new
+	 * review") and no working revision involved at all.
+	 */
+	@Transactional
+	public ContentVersionEntity restore(UUID itemId, UUID versionId, UUID publisherId, String publisherEmail) {
+		var item = this.itemRepository.findById(itemId)
+			.orElseThrow(() -> new ContentVersionNotFoundException(itemId, versionId));
+		var version = this.contentVersionRepository.findByIdAndItemId(versionId, itemId)
+			.orElseThrow(() -> new ContentVersionNotFoundException(itemId, versionId));
+
+		item.setLiveVersionId(version.getId());
+		this.auditLogService.record(AUDIT_ACTION_ROLLBACK, publisherId, publisherEmail, itemId, version.getRomaji(),
+				"Rolled back to v" + version.getSequenceNumber());
+		return version;
 	}
 
 	/**

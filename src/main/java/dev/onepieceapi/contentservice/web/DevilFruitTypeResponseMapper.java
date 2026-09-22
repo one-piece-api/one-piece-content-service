@@ -4,6 +4,7 @@ import dev.onepieceapi.contentservice.persistence.ContentVersionEntity;
 import dev.onepieceapi.contentservice.persistence.ContentVersionTranslationEntity;
 import dev.onepieceapi.contentservice.persistence.TranslationEntity;
 import dev.onepieceapi.contentservice.persistence.WorkingRevisionEntity;
+import dev.onepieceapi.contentservice.web.dto.ContentVersionResponse;
 import dev.onepieceapi.contentservice.web.dto.EncyclopediaItemDetailResponse;
 import dev.onepieceapi.contentservice.web.dto.EncyclopediaItemResponse;
 import dev.onepieceapi.contentservice.web.dto.ReviewQueueItemResponse;
@@ -98,6 +99,12 @@ public class DevilFruitTypeResponseMapper {
 					t -> new TranslationResponse(t.getName(), t.getDescription())));
 		return new EncyclopediaItemDetailResponse(version.getItemId(), null, version.getRomaji(), "PUBLISHED",
 				byLanguage, version.getPublishedAt(), version.getSequenceNumber(), version.getPublisherEmail());
+	}
+
+	/** One row of Step 7's "Storico versioni" - see {@link ContentVersionResponse}. */
+	public ContentVersionResponse toVersion(ContentVersionEntity version, boolean live) {
+		return new ContentVersionResponse(version.getId(), version.getSequenceNumber(), version.getPublisherEmail(),
+				version.getPublishedAt(), live);
 	}
 
 	private String displayNameOfVersion(List<ContentVersionTranslationEntity> translations) {

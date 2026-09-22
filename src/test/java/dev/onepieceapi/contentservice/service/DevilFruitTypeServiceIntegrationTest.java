@@ -9,6 +9,7 @@ import dev.onepieceapi.contentservice.persistence.TranslationRepository;
 import dev.onepieceapi.contentservice.persistence.WorkingRevisionEntity;
 import dev.onepieceapi.contentservice.persistence.WorkingRevisionRepository;
 import dev.onepieceapi.contentservice.persistence.WorkingRevisionStatus;
+import dev.onepieceapi.contentservice.service.exception.ContentVersionNotFoundException;
 import dev.onepieceapi.contentservice.service.exception.EncyclopediaItemNotFoundException;
 import dev.onepieceapi.contentservice.service.exception.IncompleteContentException;
 import dev.onepieceapi.contentservice.service.exception.InvalidStatusTransitionException;
@@ -523,6 +524,69 @@ class DevilFruitTypeServiceIntegrationTest {
 		assertThatThrownBy(
 				() -> this.service.editPublishedItem(UUID.randomUUID(), this.editorA, "editor-a@onepiece.local"))
 			.isInstanceOf(EncyclopediaItemNotFoundException.class);
+	}
+
+	@Test
+	void listVersionsReturnsEveryPublishedSnapshotMostRecentFirstWithTheLiveOneFlagged() {
+		var approvedA = approvedCandidate(this.editorA, "editor-a@onepiece.local");
+		var v1 = this.service.publish(approvedA.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+		var revisionB = independentReviewedSibling(approvedA.getItemId(), this.editorB, "editor-b@onepiece.local");
+		var v2 = this.service.publish(revisionB.getId(), this.reviewerB, "reviewer-b@onepiece.local");
+
+		var versions = this.service.listVersions(v2.getItemId());
+
+		assertThat(versions).hasSize(2);
+		var item = this.itemRepository.findById(v2.getItemId()).orElseThrow();
+		assertThat(versions.get(0).getSequenceNumber()).isEqualTo(2);
+		assertThat(versions.get(0).getId()).isEqualTo(item.getLiveVersionId());
+		assertThat(versions.get(1).getSequenceNumber()).isEqualTo(1);
+	}
+
+	@Test
+	void restoringRepointsTheLivePointerWithoutCreatingANewVersionRow() {
+		var approvedA = approvedCandidate(this.editorA, "editor-a@onepiece.local");
+		this.service.publish(approvedA.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+		var revisionB = independentReviewedSibling(approvedA.getItemId(), this.editorB, "editor-b@onepiece.local");
+		var v2 = this.service.publish(revisionB.getId(), this.reviewerB, "reviewer-b@onepiece.local");
+		var itemId = v2.getItemId();
+		var v1Id = this.contentVersionRepository.findByItemIdOrderBySequenceNumberDesc(itemId)
+			.stream()
+			.filter(v -> v.getSequenceNumber() == 1)
+			.findFirst()
+			.orElseThrow()
+			.getId();
+
+		var restored = this.service.restore(itemId, v1Id, this.reviewerA, "reviewer-a@onepiece.local");
+
+		assertThat(restored.getId()).isEqualTo(v1Id);
+		var item = this.itemRepository.findById(itemId).orElseThrow();
+		assertThat(item.getLiveVersionId()).isEqualTo(v1Id);
+		assertThat(this.contentVersionRepository.findByItemIdOrderBySequenceNumberDesc(itemId)).hasSize(2);
+	}
+
+	@Test
+	void restoringAVersionThatDoesNotBelongToTheItemFails() {
+		var approvedA = approvedCandidate(this.editorA, "editor-a@onepiece.local");
+		var published = this.service.publish(approvedA.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+		var itemAVersionId = this.itemRepository.findById(published.getItemId()).orElseThrow().getLiveVersionId();
+		var otherItemApproved = approvedCandidate(this.editorB, "editor-b@onepiece.local");
+		var otherItemPublished = this.service.publish(otherItemApproved.getId(), this.reviewerB,
+				"reviewer-b@onepiece.local");
+		var otherItemId = otherItemPublished.getItemId();
+
+		assertThatThrownBy(
+				() -> this.service.restore(otherItemId, itemAVersionId, this.reviewerA, "reviewer-a@onepiece.local"))
+			.isInstanceOf(ContentVersionNotFoundException.class);
+	}
+
+	@Test
+	void restoringAnUnknownVersionFails() {
+		var approved = approvedCandidate(this.editorA, "editor-a@onepiece.local");
+		var v1 = this.service.publish(approved.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+
+		assertThatThrownBy(() -> this.service.restore(v1.getItemId(), UUID.randomUUID(), this.reviewerA,
+				"reviewer-a@onepiece.local"))
+			.isInstanceOf(ContentVersionNotFoundException.class);
 	}
 
 	/**

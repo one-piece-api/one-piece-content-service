@@ -12,10 +12,11 @@ import java.util.UUID;
 
 /**
  * An immutable snapshot of one item's fields at the moment of a successful Publish
- * (UF-CNT-07) - append-only, never edited or deleted (4.1's "Published version"). One row
- * per publish/rollback event once Step 7 adds rollback; for now (Step 5) only Publish
- * creates these. {@code sequenceNumber} is 1-based per item, assigned at creation time as
- * "how many versions this item already has, plus one" - simple and correct for a
+ * (UF-CNT-07) - append-only, never edited or deleted (4.1's "Published version"). Only
+ * Publish creates these; Rollback (Step 7) never does - it repoints
+ * {@code DevilFruitTypeItemEntity.liveVersionId} at an existing row instead.
+ * {@code sequenceNumber} is 1-based per item, assigned at creation time as "how many
+ * versions this item already has, plus one" - simple and correct for a
  * single-PUBLISHER-at-a-time action, no dedicated DB sequence needed.
  */
 @Entity

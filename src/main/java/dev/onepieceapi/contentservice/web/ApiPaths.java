@@ -66,6 +66,17 @@ public final class ApiPaths {
 
 	public static final String ENCYCLOPEDIA_ITEM = "/encyclopedia/{itemId}";
 
+	/**
+	 * Item-keyed and gated on {@code content:publish} only, not {@code content:read}
+	 * (Step 7, flows document 7.7) - a different authorization shape from
+	 * {@link #ENCYCLOPEDIA_ITEM}, so it lives in its own controller rather than folding
+	 * into that one, same reasoning as {@link #DEVIL_FRUIT_TYPE_EDIT_PUBLISHED} vs.
+	 * {@link #DEVIL_FRUIT_TYPE_BY_ID}.
+	 */
+	public static final String DEVIL_FRUIT_TYPE_VERSIONS = "/devil-fruit-types/{itemId}/versions";
+
+	public static final String DEVIL_FRUIT_TYPE_VERSION_RESTORE = DEVIL_FRUIT_TYPE_VERSIONS + "/{versionId}/restore";
+
 	private ApiPaths() {
 	}
 
