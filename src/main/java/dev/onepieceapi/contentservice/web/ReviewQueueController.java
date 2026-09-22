@@ -36,7 +36,8 @@ class ReviewQueueController {
 	@GetMapping(ApiPaths.REVIEW_QUEUE_ITEM)
 	WorkingRevisionDetailResponse get(@PathVariable UUID workingRevisionId) {
 		var revision = this.service.getForReview(workingRevisionId);
-		return DevilFruitTypeResponseMapper.toDetail(revision, this.service.translationsOf(revision.getId()));
+		return DevilFruitTypeResponseMapper.toDetail(revision, this.service.translationsOf(revision.getId()),
+				this.service.everPublished(revision.getItemId()));
 	}
 
 }

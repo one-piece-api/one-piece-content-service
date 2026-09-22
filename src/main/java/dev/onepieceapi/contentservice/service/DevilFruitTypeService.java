@@ -12,6 +12,7 @@ import dev.onepieceapi.contentservice.persistence.TranslationRepository;
 import dev.onepieceapi.contentservice.persistence.WorkingRevisionEntity;
 import dev.onepieceapi.contentservice.persistence.WorkingRevisionRepository;
 import dev.onepieceapi.contentservice.persistence.WorkingRevisionStatus;
+import dev.onepieceapi.contentservice.service.exception.CannotDeletePublishedItemException;
 import dev.onepieceapi.contentservice.service.exception.ContentVersionNotFoundException;
 import dev.onepieceapi.contentservice.service.exception.EncyclopediaItemNotFoundException;
 import dev.onepieceapi.contentservice.service.exception.InvalidStatusTransitionException;
@@ -75,6 +76,8 @@ public class DevilFruitTypeService {
 	private static final String AUDIT_ACTION_ROLLBACK = "DEVIL_FRUIT_TYPE_ROLLED_BACK";
 
 	private static final String AUDIT_ACTION_RETIRE = "DEVIL_FRUIT_TYPE_RETIRED";
+
+	private static final String AUDIT_ACTION_DELETE = "DEVIL_FRUIT_TYPE_DRAFT_DELETED";
 
 	private final DevilFruitTypeItemRepository itemRepository;
 
@@ -199,6 +202,33 @@ public class DevilFruitTypeService {
 		this.auditLogService.record(AUDIT_ACTION_WITHDRAW, authorId, authorEmail, revision.getItemId(),
 				revision.getRomaji(), null);
 		return revision;
+	}
+
+	/**
+	 * UF-CNT-11: permanently deletes the caller's own working revision - refused once the
+	 * item has any published-version history, regardless of that revision's own status or
+	 * how many other working revisions, by any author, currently exist for the item. An
+	 * item with published history can only be retired at the item level (UF-CNT-10),
+	 * never hard-deleted. Translations are removed first:
+	 * {@code devil_fruit_type_translation} has a plain FK to the working revision, no
+	 * cascade configured at the database level.
+	 */
+	@Transactional
+	public void deleteDraft(UUID workingRevisionId, UUID authorId, String authorEmail) {
+		var revision = ownWorkingRevisionOrThrow(workingRevisionId, authorId);
+		if (this.contentVersionRepository.existsByItemId(revision.getItemId())) {
+			throw new CannotDeletePublishedItemException(revision.getItemId());
+		}
+
+		this.translationRepository.deleteByIdWorkingRevisionId(workingRevisionId);
+		this.workingRevisionRepository.delete(revision);
+		this.auditLogService.record(AUDIT_ACTION_DELETE, authorId, authorEmail, revision.getItemId(),
+				revision.getRomaji(), null);
+	}
+
+	/** UF-CNT-11's delete precondition, exposed for the detail response's own flag. */
+	public boolean everPublished(UUID itemId) {
+		return this.contentVersionRepository.existsByItemId(itemId);
 	}
 
 	/**

@@ -11,6 +11,9 @@ public interface ContentVersionRepository extends JpaRepository<ContentVersionEn
 	/** Drives the next {@code sequenceNumber} at publish time. */
 	long countByItemId(UUID itemId);
 
+	/** UF-CNT-11's delete precondition: has this item ever been published at all? */
+	boolean existsByItemId(UUID itemId);
+
 	/** Step 7's "Storico versioni": every snapshot of one item, most recent first. */
 	List<ContentVersionEntity> findByItemIdOrderBySequenceNumberDesc(UUID itemId);
 

@@ -26,8 +26,11 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -67,6 +70,24 @@ class DevilFruitTypeControllerTest {
 	@Test
 	void anUnauthenticatedCallerIsUnauthorized() throws Exception {
 		this.mockMvc.perform(post("/devil-fruit-types")).andExpect(status().isUnauthorized());
+	}
+
+	@Test
+	void aCallerWithContentWriteCanDeleteTheirOwnDraft() throws Exception {
+		var workingRevisionId = UUID.randomUUID();
+
+		var request = delete("/devil-fruit-types/" + workingRevisionId)
+			.with(asUserWithAuthorities("PERMISSION_content:write"));
+		this.mockMvc.perform(request).andExpect(status().isNoContent());
+
+		verify(this.service).deleteDraft(eq(workingRevisionId), any(), any());
+	}
+
+	@Test
+	void aCallerWithoutContentWriteIsForbiddenFromDeleting() throws Exception {
+		var request = delete("/devil-fruit-types/" + UUID.randomUUID())
+			.with(asUserWithAuthorities("PERMISSION_content:read"));
+		this.mockMvc.perform(request).andExpect(status().isForbidden());
 	}
 
 	@Test

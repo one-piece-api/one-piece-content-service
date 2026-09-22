@@ -27,14 +27,14 @@ public class DevilFruitTypeResponseMapper {
 	/** Preferred language for the "Le mie bozze" summary's display name, see below. */
 	private static final String PREFERRED_LANGUAGE = "it";
 
-	public WorkingRevisionDetailResponse toDetail(WorkingRevisionEntity revision,
-			List<TranslationEntity> translations) {
+	public WorkingRevisionDetailResponse toDetail(WorkingRevisionEntity revision, List<TranslationEntity> translations,
+			boolean everPublished) {
 		Map<String, TranslationResponse> byLanguage = translations.stream()
 			.collect(Collectors.toMap(t -> t.getId().getLanguageCode(),
 					t -> new TranslationResponse(t.getName(), t.getDescription())));
 		return new WorkingRevisionDetailResponse(revision.getId(), revision.getItemId(), revision.getRomaji(),
 				revision.getStatus().name(), byLanguage, revision.getUpdatedAt(), revision.getAuthorEmail(),
-				revision.getClaimedByEmail(), revision.getRejectionReason());
+				revision.getClaimedByEmail(), revision.getRejectionReason(), everPublished);
 	}
 
 	public WorkingRevisionSummaryResponse toSummary(WorkingRevisionEntity revision,

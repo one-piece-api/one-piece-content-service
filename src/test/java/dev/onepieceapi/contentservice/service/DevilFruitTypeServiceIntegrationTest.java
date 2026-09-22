@@ -9,6 +9,7 @@ import dev.onepieceapi.contentservice.persistence.TranslationRepository;
 import dev.onepieceapi.contentservice.persistence.WorkingRevisionEntity;
 import dev.onepieceapi.contentservice.persistence.WorkingRevisionRepository;
 import dev.onepieceapi.contentservice.persistence.WorkingRevisionStatus;
+import dev.onepieceapi.contentservice.service.exception.CannotDeletePublishedItemException;
 import dev.onepieceapi.contentservice.service.exception.ContentVersionNotFoundException;
 import dev.onepieceapi.contentservice.service.exception.EncyclopediaItemNotFoundException;
 import dev.onepieceapi.contentservice.service.exception.IncompleteContentException;
@@ -363,6 +364,45 @@ class DevilFruitTypeServiceIntegrationTest {
 		var withdrawn = this.service.withdrawToDraft(revision.getId(), this.editorA, "editor-a@onepiece.local");
 
 		assertThat(withdrawn.getStatus()).isEqualTo(WorkingRevisionStatus.DRAFT);
+	}
+
+	@Test
+	void deletingAnOwnNeverPublishedDraftRemovesItAndItsTranslations() {
+		var revision = completeDraft(this.editorA, "editor-a@onepiece.local");
+
+		this.service.deleteDraft(revision.getId(), this.editorA, "editor-a@onepiece.local");
+
+		assertThat(this.workingRevisionRepository.findById(revision.getId())).isEmpty();
+		assertThat(this.translationRepository.findByIdWorkingRevisionId(revision.getId())).isEmpty();
+	}
+
+	@Test
+	void deletingAnotherAuthorsDraftFails() {
+		var revision = this.service.createDraft(this.editorA, "editor-a@onepiece.local");
+
+		assertThatThrownBy(() -> this.service.deleteDraft(revision.getId(), this.editorB, "editor-b@onepiece.local"))
+			.isInstanceOf(WorkingRevisionNotFoundException.class);
+	}
+
+	@Test
+	void deletingAWorkingRevisionOfAnItemWithPublishedHistoryFails() {
+		var approved = approvedCandidate(this.editorA, "editor-a@onepiece.local");
+		var published = this.service.publish(approved.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+		var laterDraft = this.service.editPublishedItem(published.getItemId(), this.editorB, "editor-b@onepiece.local");
+
+		assertThatThrownBy(() -> this.service.deleteDraft(laterDraft.getId(), this.editorB, "editor-b@onepiece.local"))
+			.isInstanceOf(CannotDeletePublishedItemException.class);
+	}
+
+	@Test
+	void everPublishedReflectsTheItemsVersionHistoryRegardlessOfWorkingRevisionStatus() {
+		var revision = completeDraft(this.editorA, "editor-a@onepiece.local");
+		assertThat(this.service.everPublished(revision.getItemId())).isFalse();
+
+		var approved = approvedCandidate(this.editorB, "editor-b@onepiece.local");
+		this.service.publish(approved.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+
+		assertThat(this.service.everPublished(approved.getItemId())).isTrue();
 	}
 
 	@Test
