@@ -34,8 +34,8 @@ public class DevilFruitTypeResponseMapper {
 	public WorkingRevisionSummaryResponse toSummary(WorkingRevisionEntity revision,
 			List<TranslationEntity> translations) {
 		return new WorkingRevisionSummaryResponse(revision.getId(), revision.getItemId(), ENTITY_TYPE,
-				revision.getRomaji(), displayNameOf(translations), revision.getStatus().name(),
-				revision.getUpdatedAt());
+				revision.getRomaji(), displayNameOf(translations), revision.getStatus().name(), revision.getUpdatedAt(),
+				revision.getRejectionReason());
 	}
 
 	/**

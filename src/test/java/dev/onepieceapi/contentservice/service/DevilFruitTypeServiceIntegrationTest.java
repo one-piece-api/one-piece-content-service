@@ -325,15 +325,33 @@ class DevilFruitTypeServiceIntegrationTest {
 	}
 
 	@Test
-	void withdrawingReleasesAnExistingClaimAutomatically() {
+	void withdrawingAClaimedRevisionFails() {
 		var revision = submittedDraft(this.editorA, "editor-a@onepiece.local");
 		this.service.claim(revision.getId(), this.reviewerA, "reviewer-a@onepiece.local");
 
-		this.service.withdrawToDraft(revision.getId(), this.editorA, "editor-a@onepiece.local");
-		var resubmitted = this.service.submitForReview(revision.getId(), this.editorA, "editor-a@onepiece.local");
-		var reclaimed = this.service.claim(resubmitted.getId(), this.reviewerB, "reviewer-b@onepiece.local");
+		assertThatThrownBy(
+				() -> this.service.withdrawToDraft(revision.getId(), this.editorA, "editor-a@onepiece.local"))
+			.isInstanceOf(ReviewAlreadyClaimedException.class);
+	}
 
-		assertThat(reclaimed.getClaimedBy()).isEqualTo(this.reviewerB);
+	@Test
+	void withdrawingSucceedsOnceTheClaimIsReleased() {
+		var revision = submittedDraft(this.editorA, "editor-a@onepiece.local");
+		this.service.claim(revision.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+		this.service.release(revision.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+
+		var withdrawn = this.service.withdrawToDraft(revision.getId(), this.editorA, "editor-a@onepiece.local");
+
+		assertThat(withdrawn.getStatus()).isEqualTo(WorkingRevisionStatus.DRAFT);
+	}
+
+	@Test
+	void editingSomethingNotInDraftFails() {
+		var revision = submittedDraft(this.editorA, "editor-a@onepiece.local");
+
+		assertThatThrownBy(() -> this.service.updateDraft(revision.getId(), this.editorA, "editor-a@onepiece.local",
+				"Changed", Map.of()))
+			.isInstanceOf(InvalidStatusTransitionException.class);
 	}
 
 	@Test

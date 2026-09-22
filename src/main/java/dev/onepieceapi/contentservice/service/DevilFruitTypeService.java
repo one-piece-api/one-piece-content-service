@@ -92,6 +92,7 @@ public class DevilFruitTypeService {
 	public WorkingRevisionEntity updateDraft(UUID workingRevisionId, UUID authorId, String authorEmail, String romaji,
 			Map<String, TranslationRequest> translations) {
 		var revision = ownWorkingRevisionOrThrow(workingRevisionId, authorId);
+		requireStatus(revision, WorkingRevisionStatus.DRAFT, "edit");
 
 		var requestedLanguages = translations == null ? Set.<String>of() : translations.keySet();
 		rejectUnknownLanguages(requestedLanguages);
@@ -130,9 +131,11 @@ public class DevilFruitTypeService {
 	public WorkingRevisionEntity withdrawToDraft(UUID workingRevisionId, UUID authorId, String authorEmail) {
 		var revision = ownWorkingRevisionOrThrow(workingRevisionId, authorId);
 		requireStatus(revision, WorkingRevisionStatus.IN_REVIEW, "withdraw to draft");
+		if (revision.getClaimedBy() != null) {
+			throw new ReviewAlreadyClaimedException(workingRevisionId);
+		}
 
 		revision.setStatus(WorkingRevisionStatus.DRAFT);
-		clearClaim(revision);
 		revision.setUpdatedAt(this.clock.instant());
 		this.auditLogService.record(AUDIT_ACTION_WITHDRAW, authorId, authorEmail, revision.getItemId(),
 				revision.getRomaji(), null);
