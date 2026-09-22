@@ -13,4 +13,10 @@ public interface WorkingRevisionRepository extends JpaRepository<WorkingRevision
 
 	List<WorkingRevisionEntity> findByAuthorIdAndStatusIn(UUID authorId, Collection<WorkingRevisionStatus> statuses);
 
+	/**
+	 * The review-queue-slot check (UF-CNT-03): is a *different* working revision of this
+	 * item already occupying it?
+	 */
+	boolean existsByItemIdAndStatusAndIdNot(UUID itemId, WorkingRevisionStatus status, UUID excludedId);
+
 }

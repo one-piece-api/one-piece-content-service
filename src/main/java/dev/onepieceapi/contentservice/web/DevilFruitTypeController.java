@@ -51,4 +51,18 @@ class DevilFruitTypeController {
 		return DevilFruitTypeResponseMapper.toDetail(revision, this.service.translationsOf(revision.getId()));
 	}
 
+	@PostMapping(ApiPaths.DEVIL_FRUIT_TYPE_SUBMIT)
+	WorkingRevisionDetailResponse submit(@PathVariable UUID workingRevisionId,
+			@AuthenticationPrincipal AuthenticatedCaller caller) {
+		var revision = this.service.submitForReview(workingRevisionId, caller.id(), caller.email());
+		return DevilFruitTypeResponseMapper.toDetail(revision, this.service.translationsOf(revision.getId()));
+	}
+
+	@PostMapping(ApiPaths.DEVIL_FRUIT_TYPE_WITHDRAW)
+	WorkingRevisionDetailResponse withdraw(@PathVariable UUID workingRevisionId,
+			@AuthenticationPrincipal AuthenticatedCaller caller) {
+		var revision = this.service.withdrawToDraft(workingRevisionId, caller.id(), caller.email());
+		return DevilFruitTypeResponseMapper.toDetail(revision, this.service.translationsOf(revision.getId()));
+	}
+
 }

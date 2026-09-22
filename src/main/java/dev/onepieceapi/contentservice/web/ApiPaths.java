@@ -17,6 +17,10 @@ public final class ApiPaths {
 
 	public static final String DEVIL_FRUIT_TYPE_BY_ID = "/devil-fruit-types/{workingRevisionId}";
 
+	public static final String DEVIL_FRUIT_TYPE_SUBMIT = "/devil-fruit-types/{workingRevisionId}/submit";
+
+	public static final String DEVIL_FRUIT_TYPE_WITHDRAW = "/devil-fruit-types/{workingRevisionId}/withdraw";
+
 	/**
 	 * Deliberately not under {@code /devil-fruit-types}: a personal, cross-entity list in
 	 * shape (docs/implementation-plan-content.md 2) even though it only queries this one

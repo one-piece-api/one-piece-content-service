@@ -24,6 +24,9 @@ enum SecuredEndpoint {
 	DEVIL_FRUIT_TYPE_CREATE(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPES, permission(Permission.CONTENT_WRITE)),
 	DEVIL_FRUIT_TYPE_UPDATE(HttpMethod.PUT, ApiPaths.DEVIL_FRUIT_TYPE_BY_ID, permission(Permission.CONTENT_WRITE)),
 	DEVIL_FRUIT_TYPE_GET(HttpMethod.GET, ApiPaths.DEVIL_FRUIT_TYPE_BY_ID, permission(Permission.CONTENT_WRITE)),
+	DEVIL_FRUIT_TYPE_SUBMIT(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_SUBMIT, permission(Permission.CONTENT_WRITE)),
+	DEVIL_FRUIT_TYPE_WITHDRAW(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_WITHDRAW,
+			permission(Permission.CONTENT_WRITE)),
 	MY_DRAFTS_LIST(HttpMethod.GET, ApiPaths.MY_DRAFTS, permission(Permission.CONTENT_WRITE));
 
 	private final HttpMethod method;

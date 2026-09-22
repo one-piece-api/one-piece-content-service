@@ -4,7 +4,9 @@ import dev.onepieceapi.contentservice.persistence.AuditLogRepository;
 import dev.onepieceapi.contentservice.persistence.DevilFruitTypeItemRepository;
 import dev.onepieceapi.contentservice.persistence.LanguageRepository;
 import dev.onepieceapi.contentservice.persistence.TranslationRepository;
+import dev.onepieceapi.contentservice.persistence.WorkingRevisionEntity;
 import dev.onepieceapi.contentservice.persistence.WorkingRevisionRepository;
+import dev.onepieceapi.contentservice.persistence.WorkingRevisionStatus;
 import dev.onepieceapi.contentservice.web.dto.TranslationRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -127,6 +129,107 @@ class DevilFruitTypeServiceIntegrationTest {
 	void gettingAnUnknownWorkingRevisionFails() {
 		assertThatThrownBy(() -> this.service.getOwnDraft(UUID.randomUUID(), this.editorA))
 			.isInstanceOf(WorkingRevisionNotFoundException.class);
+	}
+
+	@Test
+	void submittingAnIncompleteDraftListsWhatIsMissing() {
+		var revision = this.service.createDraft(this.editorA, "editor-a@onepiece.local");
+
+		assertThatThrownBy(
+				() -> this.service.submitForReview(revision.getId(), this.editorA, "editor-a@onepiece.local"))
+			.isInstanceOf(IncompleteContentException.class);
+	}
+
+	@Test
+	void submittingACompleteDraftMovesItToInReview() {
+		var revision = completeDraft(this.editorA, "editor-a@onepiece.local");
+
+		var submitted = this.service.submitForReview(revision.getId(), this.editorA, "editor-a@onepiece.local");
+
+		assertThat(submitted.getStatus()).isEqualTo(WorkingRevisionStatus.IN_REVIEW);
+	}
+
+	@Test
+	void submittingWhileASiblingOfTheSameItemIsAlreadyInReviewFails() {
+		var revision = completeDraft(this.editorA, "editor-a@onepiece.local");
+		// Simulates a second author's own working revision on the same item (only
+		// reachable through the real API from Step 6 onward - constructed directly here,
+		// same as one-piece-user-service's own precedent for testing an invariant ahead
+		// of the flow that will later produce it).
+		var now = this.clock().instant();
+		this.workingRevisionRepository.save(new WorkingRevisionEntity(UUID.randomUUID(), revision.getItemId(),
+				this.editorB, WorkingRevisionStatus.IN_REVIEW, now));
+
+		assertThatThrownBy(
+				() -> this.service.submitForReview(revision.getId(), this.editorA, "editor-a@onepiece.local"))
+			.isInstanceOf(ReviewSlotOccupiedException.class);
+	}
+
+	@Test
+	void submittingWhileASiblingOfTheSameItemIsAlreadyReviewedSucceeds() {
+		var revision = completeDraft(this.editorA, "editor-a@onepiece.local");
+		var now = this.clock().instant();
+		this.workingRevisionRepository.save(new WorkingRevisionEntity(UUID.randomUUID(), revision.getItemId(),
+				this.editorB, WorkingRevisionStatus.REVIEWED, now));
+
+		var submitted = this.service.submitForReview(revision.getId(), this.editorA, "editor-a@onepiece.local");
+
+		assertThat(submitted.getStatus()).isEqualTo(WorkingRevisionStatus.IN_REVIEW);
+	}
+
+	@Test
+	void submittingSomethingNotInDraftFails() {
+		var revision = completeDraft(this.editorA, "editor-a@onepiece.local");
+		this.service.submitForReview(revision.getId(), this.editorA, "editor-a@onepiece.local");
+
+		assertThatThrownBy(
+				() -> this.service.submitForReview(revision.getId(), this.editorA, "editor-a@onepiece.local"))
+			.isInstanceOf(InvalidStatusTransitionException.class);
+	}
+
+	@Test
+	void withdrawingAnInReviewDraftReturnsItToDraft() {
+		var revision = completeDraft(this.editorA, "editor-a@onepiece.local");
+		this.service.submitForReview(revision.getId(), this.editorA, "editor-a@onepiece.local");
+
+		var withdrawn = this.service.withdrawToDraft(revision.getId(), this.editorA, "editor-a@onepiece.local");
+
+		assertThat(withdrawn.getStatus()).isEqualTo(WorkingRevisionStatus.DRAFT);
+	}
+
+	@Test
+	void withdrawingSomethingNotInReviewFails() {
+		var revision = this.service.createDraft(this.editorA, "editor-a@onepiece.local");
+
+		assertThatThrownBy(
+				() -> this.service.withdrawToDraft(revision.getId(), this.editorA, "editor-a@onepiece.local"))
+			.isInstanceOf(InvalidStatusTransitionException.class);
+	}
+
+	@Test
+	void submitAndWithdrawAreOwnershipChecked() {
+		var revision = completeDraft(this.editorA, "editor-a@onepiece.local");
+
+		assertThatThrownBy(
+				() -> this.service.submitForReview(revision.getId(), this.editorB, "editor-b@onepiece.local"))
+			.isInstanceOf(WorkingRevisionNotFoundException.class);
+
+		this.service.submitForReview(revision.getId(), this.editorA, "editor-a@onepiece.local");
+		assertThatThrownBy(
+				() -> this.service.withdrawToDraft(revision.getId(), this.editorB, "editor-b@onepiece.local"))
+			.isInstanceOf(WorkingRevisionNotFoundException.class);
+	}
+
+	/** A draft filled in for every active language, ready to submit. */
+	private WorkingRevisionEntity completeDraft(UUID authorId, String authorEmail) {
+		var revision = this.service.createDraft(authorId, authorEmail);
+		return this.service.updateDraft(revision.getId(), authorId, authorEmail, "Paramishia",
+				Map.of("it", new TranslationRequest("Paramecia", "Descrizione IT"), "en",
+						new TranslationRequest("Paramecia", "EN description")));
+	}
+
+	private Clock clock() {
+		return Clock.fixed(Instant.parse("2026-09-21T10:00:00Z"), ZoneOffset.UTC);
 	}
 
 }

@@ -11,7 +11,7 @@ import dev.onepieceapi.exception.ErrorCode;
  */
 public enum ContentErrorCode implements ErrorCode {
 
-	WORKING_REVISION_NOT_FOUND, UNKNOWN_LANGUAGE;
+	WORKING_REVISION_NOT_FOUND, UNKNOWN_LANGUAGE, INCOMPLETE, REVIEW_SLOT_OCCUPIED, INVALID_STATUS_TRANSITION;
 
 	@Override
 	public String code() {
