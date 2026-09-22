@@ -1,7 +1,11 @@
 package dev.onepieceapi.contentservice.web;
 
+import dev.onepieceapi.contentservice.persistence.ContentVersionEntity;
+import dev.onepieceapi.contentservice.persistence.ContentVersionTranslationEntity;
 import dev.onepieceapi.contentservice.persistence.TranslationEntity;
 import dev.onepieceapi.contentservice.persistence.WorkingRevisionEntity;
+import dev.onepieceapi.contentservice.web.dto.EncyclopediaItemDetailResponse;
+import dev.onepieceapi.contentservice.web.dto.EncyclopediaItemResponse;
 import dev.onepieceapi.contentservice.web.dto.ReviewQueueItemResponse;
 import dev.onepieceapi.contentservice.web.dto.TranslationResponse;
 import dev.onepieceapi.contentservice.web.dto.WorkingRevisionDetailResponse;
@@ -60,6 +64,50 @@ public class DevilFruitTypeResponseMapper {
 				.comparing((TranslationEntity t) -> !PREFERRED_LANGUAGE.equals(t.getId().getLanguageCode()))
 				.thenComparing(t -> t.getId().getLanguageCode()))
 			.map(TranslationEntity::getName)
+			.findFirst()
+			.orElse(null);
+	}
+
+	/** "Enciclopedia" (Step 5): a `REVIEWED` working revision awaiting publish. */
+	public EncyclopediaItemResponse toEncyclopediaItem(WorkingRevisionEntity revision,
+			List<TranslationEntity> translations) {
+		return new EncyclopediaItemResponse(revision.getItemId(), ENTITY_TYPE, revision.getRomaji(),
+				displayNameOf(translations), "REVIEWED", revision.getUpdatedAt());
+	}
+
+	/** "Enciclopedia" (Step 5): an item's live published version. */
+	public EncyclopediaItemResponse toEncyclopediaItem(ContentVersionEntity version,
+			List<ContentVersionTranslationEntity> translations) {
+		return new EncyclopediaItemResponse(version.getItemId(), ENTITY_TYPE, version.getRomaji(),
+				displayNameOfVersion(translations), "PUBLISHED", version.getPublishedAt());
+	}
+
+	public EncyclopediaItemDetailResponse toEncyclopediaDetail(WorkingRevisionEntity revision,
+			List<TranslationEntity> translations) {
+		Map<String, TranslationResponse> byLanguage = translations.stream()
+			.collect(Collectors.toMap(t -> t.getId().getLanguageCode(),
+					t -> new TranslationResponse(t.getName(), t.getDescription())));
+		return new EncyclopediaItemDetailResponse(revision.getItemId(), revision.getRomaji(), "REVIEWED", byLanguage,
+				revision.getUpdatedAt(), null, null);
+	}
+
+	public EncyclopediaItemDetailResponse toEncyclopediaDetail(ContentVersionEntity version,
+			List<ContentVersionTranslationEntity> translations) {
+		Map<String, TranslationResponse> byLanguage = translations.stream()
+			.collect(Collectors.toMap(t -> t.getId().getLanguageCode(),
+					t -> new TranslationResponse(t.getName(), t.getDescription())));
+		return new EncyclopediaItemDetailResponse(version.getItemId(), version.getRomaji(), "PUBLISHED", byLanguage,
+				version.getPublishedAt(), version.getSequenceNumber(), version.getPublisherEmail());
+	}
+
+	private String displayNameOfVersion(List<ContentVersionTranslationEntity> translations) {
+		return translations.stream()
+			.filter(t -> t.getName() != null && !t.getName().isBlank())
+			.sorted(Comparator
+				.comparing(
+						(ContentVersionTranslationEntity t) -> !PREFERRED_LANGUAGE.equals(t.getId().getLanguageCode()))
+				.thenComparing(t -> t.getId().getLanguageCode()))
+			.map(ContentVersionTranslationEntity::getName)
 			.findFirst()
 			.orElse(null);
 	}

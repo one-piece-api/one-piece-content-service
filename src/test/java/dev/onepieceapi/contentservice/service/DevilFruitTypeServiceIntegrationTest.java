@@ -1,6 +1,8 @@
 package dev.onepieceapi.contentservice.service;
 
 import dev.onepieceapi.contentservice.persistence.AuditLogRepository;
+import dev.onepieceapi.contentservice.persistence.ContentVersionRepository;
+import dev.onepieceapi.contentservice.persistence.ContentVersionTranslationRepository;
 import dev.onepieceapi.contentservice.persistence.DevilFruitTypeItemRepository;
 import dev.onepieceapi.contentservice.persistence.LanguageRepository;
 import dev.onepieceapi.contentservice.persistence.TranslationRepository;
@@ -63,6 +65,12 @@ class DevilFruitTypeServiceIntegrationTest {
 	private LanguageRepository languageRepository;
 
 	@Autowired
+	private ContentVersionRepository contentVersionRepository;
+
+	@Autowired
+	private ContentVersionTranslationRepository contentVersionTranslationRepository;
+
+	@Autowired
 	private AuditLogRepository auditLogRepository;
 
 	private DevilFruitTypeService service;
@@ -80,7 +88,8 @@ class DevilFruitTypeServiceIntegrationTest {
 		var clock = Clock.fixed(Instant.parse("2026-09-21T10:00:00Z"), ZoneOffset.UTC);
 		var auditLogService = new AuditLogService(this.auditLogRepository, clock);
 		this.service = new DevilFruitTypeService(this.itemRepository, this.workingRevisionRepository,
-				this.translationRepository, this.languageRepository, auditLogService, clock);
+				this.translationRepository, this.languageRepository, this.contentVersionRepository,
+				this.contentVersionTranslationRepository, auditLogService, clock);
 	}
 
 	@Test
@@ -362,6 +371,111 @@ class DevilFruitTypeServiceIntegrationTest {
 		var queue = this.service.reviewQueue();
 
 		assertThat(queue).extracting(r -> r.getId()).containsExactly(queued.getId());
+	}
+
+	@Test
+	void publishingAnApprovedCandidateCreatesTheFirstVersionAndSetsItLive() {
+		var approved = approvedCandidate(this.editorA, "editor-a@onepiece.local");
+
+		var published = this.service.publish(approved.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+
+		assertThat(published.getStatus()).isEqualTo(WorkingRevisionStatus.PUBLISHED);
+		var item = this.itemRepository.findById(approved.getItemId()).orElseThrow();
+		assertThat(item.getLiveVersionId()).isNotNull();
+		var version = this.contentVersionRepository.findById(item.getLiveVersionId()).orElseThrow();
+		assertThat(version.getSequenceNumber()).isEqualTo(1);
+		assertThat(version.getRomaji()).isEqualTo("Paramishia");
+		assertThat(this.contentVersionTranslationRepository.findByIdContentVersionId(version.getId())).hasSize(2);
+	}
+
+	@Test
+	void publishingSomethingNotReviewedFails() {
+		var revision = submittedDraft(this.editorA, "editor-a@onepiece.local");
+
+		assertThatThrownBy(() -> this.service.publish(revision.getId(), this.reviewerA, "reviewer-a@onepiece.local"))
+			.isInstanceOf(InvalidStatusTransitionException.class);
+	}
+
+	@Test
+	void publishingASecondVersionOfTheSameItemIncrementsTheSequenceNumber() {
+		var approvedA = approvedCandidate(this.editorA, "editor-a@onepiece.local");
+		this.service.publish(approvedA.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+		var revisionB = independentReviewedSibling(approvedA.getItemId(), this.editorB, "editor-b@onepiece.local");
+
+		var published = this.service.publish(revisionB.getId(), this.reviewerB, "reviewer-b@onepiece.local");
+
+		assertThat(published.getStatus()).isEqualTo(WorkingRevisionStatus.PUBLISHED);
+		var item = this.itemRepository.findById(approvedA.getItemId()).orElseThrow();
+		var version = this.contentVersionRepository.findById(item.getLiveVersionId()).orElseThrow();
+		assertThat(version.getSequenceNumber()).isEqualTo(2);
+	}
+
+	@Test
+	void listEncyclopediaPrefersAReviewedCandidateOverAnAlreadyPublishedSiblingOfTheSameItem() {
+		var approvedA = approvedCandidate(this.editorA, "editor-a@onepiece.local");
+		this.service.publish(approvedA.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+		var revisionB = independentReviewedSibling(approvedA.getItemId(), this.editorB, "editor-b@onepiece.local");
+
+		var encyclopedia = this.service.listEncyclopedia();
+
+		assertThat(encyclopedia).hasSize(1);
+		assertThat(encyclopedia.get(0)).isInstanceOf(EncyclopediaEntry.ReviewedCandidate.class);
+		var reviewed = (EncyclopediaEntry.ReviewedCandidate) encyclopedia.get(0);
+		assertThat(reviewed.revision().getId()).isEqualTo(revisionB.getId());
+	}
+
+	@Test
+	void listEncyclopediaShowsAPublishedItemWithNoReviewedCandidate() {
+		var approved = approvedCandidate(this.editorA, "editor-a@onepiece.local");
+		this.service.publish(approved.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+
+		var encyclopedia = this.service.listEncyclopedia();
+
+		assertThat(encyclopedia).hasSize(1);
+		assertThat(encyclopedia.get(0)).isInstanceOf(EncyclopediaEntry.PublishedItem.class);
+	}
+
+	@Test
+	void gettingAnEncyclopediaItemReturnsTheLivePublishedVersion() {
+		var approved = approvedCandidate(this.editorA, "editor-a@onepiece.local");
+		this.service.publish(approved.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+
+		var entry = this.service.getEncyclopediaItem(approved.getItemId());
+
+		assertThat(entry).isInstanceOf(EncyclopediaEntry.PublishedItem.class);
+	}
+
+	@Test
+	void gettingAnUnknownEncyclopediaItemFails() {
+		assertThatThrownBy(() -> this.service.getEncyclopediaItem(UUID.randomUUID()))
+			.isInstanceOf(EncyclopediaItemNotFoundException.class);
+	}
+
+	@Test
+	void gettingAnEncyclopediaItemForAStillPrivateDraftFails() {
+		var revision = this.service.createDraft(this.editorA, "editor-a@onepiece.local");
+
+		assertThatThrownBy(() -> this.service.getEncyclopediaItem(revision.getItemId()))
+			.isInstanceOf(EncyclopediaItemNotFoundException.class);
+	}
+
+	/**
+	 * A `REVIEWED` working revision, claimed and approved by reviewerA, ready to publish.
+	 */
+	private WorkingRevisionEntity approvedCandidate(UUID authorId, String authorEmail) {
+		var revision = submittedDraft(authorId, authorEmail);
+		this.service.claim(revision.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+		return this.service.approve(revision.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+	}
+
+	/**
+	 * A second, independently-authored `REVIEWED` working revision of an item that
+	 * already has one - only reachable through the real API from Step 6 onward,
+	 * constructed directly here, same precedent as the supersession tests above.
+	 */
+	private WorkingRevisionEntity independentReviewedSibling(UUID itemId, UUID authorId, String authorEmail) {
+		return this.workingRevisionRepository.save(new WorkingRevisionEntity(UUID.randomUUID(), itemId, authorId,
+				authorEmail, WorkingRevisionStatus.REVIEWED, this.clock().instant()));
 	}
 
 	/** A submitted, `IN_REVIEW` working revision, ready for claim/approve/reject. */

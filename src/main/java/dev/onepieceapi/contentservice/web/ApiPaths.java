@@ -29,6 +29,8 @@ public final class ApiPaths {
 
 	public static final String DEVIL_FRUIT_TYPE_REJECT = "/devil-fruit-types/{workingRevisionId}/reject";
 
+	public static final String DEVIL_FRUIT_TYPE_PUBLISH = "/devil-fruit-types/{workingRevisionId}/publish";
+
 	/**
 	 * Deliberately not under {@code /devil-fruit-types}: a personal, cross-entity list in
 	 * shape (docs/implementation-plan-content.md 2) even though it only queries this one
@@ -43,6 +45,16 @@ public final class ApiPaths {
 	public static final String REVIEW_QUEUE = "/review-queue";
 
 	public static final String REVIEW_QUEUE_ITEM = "/review-queue/{workingRevisionId}";
+
+	/**
+	 * Same cross-entity, item-keyed shape (Step 5's "Enciclopedia") - not under
+	 * {@code /devil-fruit-types} because {@code /devil-fruit-types/{id}} is already
+	 * {@link #DEVIL_FRUIT_TYPE_BY_ID}, keyed by working revision id and author-gated;
+	 * this one is keyed by item id and gated on {@code content:read} instead.
+	 */
+	public static final String ENCYCLOPEDIA = "/encyclopedia";
+
+	public static final String ENCYCLOPEDIA_ITEM = "/encyclopedia/{itemId}";
 
 	private ApiPaths() {
 	}

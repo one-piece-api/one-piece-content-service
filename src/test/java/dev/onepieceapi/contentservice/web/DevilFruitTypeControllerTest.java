@@ -86,6 +86,25 @@ class DevilFruitTypeControllerTest {
 		this.mockMvc.perform(request).andExpect(status().isForbidden());
 	}
 
+	@Test
+	void aCallerWithContentPublishCanPublishAReviewedRevision() throws Exception {
+		var revision = new WorkingRevisionEntity(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+				"editor@onepiece.local", WorkingRevisionStatus.PUBLISHED, Instant.EPOCH);
+		when(this.service.publish(any(), any(), any())).thenReturn(revision);
+		when(this.service.translationsOf(any())).thenReturn(List.of());
+
+		var request = post("/devil-fruit-types/" + revision.getId() + "/publish")
+			.with(asUserWithAuthorities("PERMISSION_content:publish"));
+		this.mockMvc.perform(request).andExpect(status().isOk());
+	}
+
+	@Test
+	void aCallerWithoutContentPublishIsForbiddenFromPublishing() throws Exception {
+		var request = post("/devil-fruit-types/" + UUID.randomUUID() + "/publish")
+			.with(asUserWithAuthorities("PERMISSION_content:review"));
+		this.mockMvc.perform(request).andExpect(status().isForbidden());
+	}
+
 	private static RequestPostProcessor asUserWithAuthorities(String... authorities) {
 		var jwt = Jwt.withTokenValue("token")
 			.header("alg", "none")

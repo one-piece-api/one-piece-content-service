@@ -29,4 +29,10 @@ public interface WorkingRevisionRepository extends JpaRepository<WorkingRevision
 	List<WorkingRevisionEntity> findByItemIdAndStatusAndIdNot(UUID itemId, WorkingRevisionStatus status,
 			UUID excludedId);
 
+	/**
+	 * The item's active reviewed candidate, if any (Step 5) - at most one, by the
+	 * invariant above.
+	 */
+	Optional<WorkingRevisionEntity> findByItemIdAndStatus(UUID itemId, WorkingRevisionStatus status);
+
 }

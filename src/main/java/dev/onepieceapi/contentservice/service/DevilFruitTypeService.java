@@ -1,5 +1,9 @@
 package dev.onepieceapi.contentservice.service;
 
+import dev.onepieceapi.contentservice.persistence.ContentVersionEntity;
+import dev.onepieceapi.contentservice.persistence.ContentVersionRepository;
+import dev.onepieceapi.contentservice.persistence.ContentVersionTranslationEntity;
+import dev.onepieceapi.contentservice.persistence.ContentVersionTranslationRepository;
 import dev.onepieceapi.contentservice.persistence.DevilFruitTypeItemEntity;
 import dev.onepieceapi.contentservice.persistence.DevilFruitTypeItemRepository;
 import dev.onepieceapi.contentservice.persistence.LanguageRepository;
@@ -26,13 +30,14 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
- * UF-CNT-01 through UF-CNT-06/UF-CNT-13/UF-CNT-14: create/edit a private working
- * revision, submit it for review or withdraw it, and claim/release/approve/reject one in
- * the shared review queue. Ownership (4.1/7.5 - a draft is visible only to its own
- * author) and claim (4.1/7.6 - only the current claimant may approve/reject) are both
- * enforced here, not by {@code SecuredEndpoint}, which only knows about the coarse
- * {@code content:write}/{@code content:review} permissions, not who owns or claims which
- * row.
+ * UF-CNT-01 through UF-CNT-07/UF-CNT-13/UF-CNT-14: create/edit a private working
+ * revision, submit it for review or withdraw it, claim/release/approve/reject one in the
+ * shared review queue, and publish an approved candidate to the encyclopedia. Ownership
+ * (4.1/7.5 - a draft is visible only to its own author) and claim (4.1/7.6 - only the
+ * current claimant may approve/reject) are both enforced here, not by
+ * {@code SecuredEndpoint}, which only knows about the coarse
+ * {@code content:write}/{@code content:review}/{@code content:publish} permissions, not
+ * who owns or claims which row.
  */
 @Service
 @RequiredArgsConstructor(onConstructor_ = { @Autowired })
@@ -66,6 +71,8 @@ public class DevilFruitTypeService {
 
 	private static final String AUDIT_ACTION_SUPERSEDE = "DEVIL_FRUIT_TYPE_SUPERSEDED";
 
+	private static final String AUDIT_ACTION_PUBLISH = "DEVIL_FRUIT_TYPE_PUBLISHED";
+
 	private final DevilFruitTypeItemRepository itemRepository;
 
 	private final WorkingRevisionRepository workingRevisionRepository;
@@ -73,6 +80,10 @@ public class DevilFruitTypeService {
 	private final TranslationRepository translationRepository;
 
 	private final LanguageRepository languageRepository;
+
+	private final ContentVersionRepository contentVersionRepository;
+
+	private final ContentVersionTranslationRepository contentVersionTranslationRepository;
 
 	private final AuditLogService auditLogService;
 
@@ -218,6 +229,78 @@ public class DevilFruitTypeService {
 		this.auditLogService.record(AUDIT_ACTION_REJECT, reviewerId, reviewerEmail, revision.getItemId(),
 				revision.getRomaji(), reason);
 		return revision;
+	}
+
+	/**
+	 * UF-CNT-07: publishes the item's active reviewed candidate - creates an immutable
+	 * version snapshot, repoints the item's live pointer to it, and consumes the
+	 * candidate ({@code REVIEWED -> PUBLISHED}, permanently terminal).
+	 */
+	@Transactional
+	public WorkingRevisionEntity publish(UUID workingRevisionId, UUID publisherId, String publisherEmail) {
+		var revision = workingRevisionOrThrow(workingRevisionId);
+		requireStatus(revision, WorkingRevisionStatus.REVIEWED, "publish");
+
+		var now = this.clock.instant();
+		var sequenceNumber = (int) this.contentVersionRepository.countByItemId(revision.getItemId()) + 1;
+		var version = this.contentVersionRepository.save(new ContentVersionEntity(UUID.randomUUID(),
+				revision.getItemId(), sequenceNumber, revision.getRomaji(), publisherId, publisherEmail, now));
+		for (var translation : translationsOf(revision.getId())) {
+			this.contentVersionTranslationRepository.save(new ContentVersionTranslationEntity(version.getId(),
+					translation.getId().getLanguageCode(), translation.getName(), translation.getDescription()));
+		}
+
+		var item = this.itemRepository.findById(revision.getItemId()).orElseThrow();
+		item.setLiveVersionId(version.getId());
+
+		revision.setStatus(WorkingRevisionStatus.PUBLISHED);
+		revision.setUpdatedAt(now);
+		this.auditLogService.record(AUDIT_ACTION_PUBLISH, publisherId, publisherEmail, revision.getItemId(),
+				revision.getRomaji(), "v" + sequenceNumber);
+		return revision;
+	}
+
+	/**
+	 * "Enciclopedia" (Step 5): every `REVIEWED` candidate awaiting publish, plus every
+	 * currently-published item that doesn't already have one (a `REVIEWED` sibling always
+	 * takes priority for display - it is the thing a PUBLISHER needs to act on next).
+	 * `RETIRED` items are omitted entirely: nothing produces that state until Step 8.
+	 */
+	public List<EncyclopediaEntry> listEncyclopedia() {
+		var reviewed = this.workingRevisionRepository.findByStatusOrderByUpdatedAtAsc(WorkingRevisionStatus.REVIEWED);
+		var reviewedItemIds = reviewed.stream().map(WorkingRevisionEntity::getItemId).collect(Collectors.toSet());
+
+		List<EncyclopediaEntry> entries = new ArrayList<>();
+		for (var revision : reviewed) {
+			entries.add(new EncyclopediaEntry.ReviewedCandidate(revision, translationsOf(revision.getId())));
+		}
+		for (var item : this.itemRepository.findByLiveVersionIdIsNotNull()) {
+			if (reviewedItemIds.contains(item.getId())) {
+				continue;
+			}
+			var version = this.contentVersionRepository.findById(item.getLiveVersionId()).orElseThrow();
+			var translations = this.contentVersionTranslationRepository.findByIdContentVersionId(version.getId());
+			entries.add(new EncyclopediaEntry.PublishedItem(version, translations));
+		}
+		return entries;
+	}
+
+	public EncyclopediaEntry getEncyclopediaItem(UUID itemId) {
+		var reviewedCandidate = this.workingRevisionRepository.findByItemIdAndStatus(itemId,
+				WorkingRevisionStatus.REVIEWED);
+		if (reviewedCandidate.isPresent()) {
+			var revision = reviewedCandidate.get();
+			return new EncyclopediaEntry.ReviewedCandidate(revision, translationsOf(revision.getId()));
+		}
+
+		var item = this.itemRepository.findById(itemId)
+			.orElseThrow(() -> new EncyclopediaItemNotFoundException(itemId));
+		if (item.getLiveVersionId() == null) {
+			throw new EncyclopediaItemNotFoundException(itemId);
+		}
+		var version = this.contentVersionRepository.findById(item.getLiveVersionId()).orElseThrow();
+		var translations = this.contentVersionTranslationRepository.findByIdContentVersionId(version.getId());
+		return new EncyclopediaEntry.PublishedItem(version, translations);
 	}
 
 	public WorkingRevisionEntity getOwnDraft(UUID workingRevisionId, UUID authorId) {

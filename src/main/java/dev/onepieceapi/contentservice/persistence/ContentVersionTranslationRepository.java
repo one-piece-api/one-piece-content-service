@@ -1,0 +1,13 @@
+package dev.onepieceapi.contentservice.persistence;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+import java.util.UUID;
+
+public interface ContentVersionTranslationRepository
+		extends JpaRepository<ContentVersionTranslationEntity, ContentVersionTranslationId> {
+
+	List<ContentVersionTranslationEntity> findByIdContentVersionId(UUID contentVersionId);
+
+}
