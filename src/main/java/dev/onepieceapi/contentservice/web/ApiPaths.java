@@ -21,12 +21,28 @@ public final class ApiPaths {
 
 	public static final String DEVIL_FRUIT_TYPE_WITHDRAW = "/devil-fruit-types/{workingRevisionId}/withdraw";
 
+	public static final String DEVIL_FRUIT_TYPE_CLAIM = "/devil-fruit-types/{workingRevisionId}/claim";
+
+	public static final String DEVIL_FRUIT_TYPE_RELEASE = "/devil-fruit-types/{workingRevisionId}/release";
+
+	public static final String DEVIL_FRUIT_TYPE_APPROVE = "/devil-fruit-types/{workingRevisionId}/approve";
+
+	public static final String DEVIL_FRUIT_TYPE_REJECT = "/devil-fruit-types/{workingRevisionId}/reject";
+
 	/**
 	 * Deliberately not under {@code /devil-fruit-types}: a personal, cross-entity list in
 	 * shape (docs/implementation-plan-content.md 2) even though it only queries this one
 	 * entity's table today.
 	 */
 	public static final String MY_DRAFTS = "/my-drafts";
+
+	/**
+	 * Same cross-entity shape as {@link #MY_DRAFTS}, but every author's `IN_REVIEW` work,
+	 * not just the caller's own (Step 3's "In Revisione").
+	 */
+	public static final String REVIEW_QUEUE = "/review-queue";
+
+	public static final String REVIEW_QUEUE_ITEM = "/review-queue/{workingRevisionId}";
 
 	private ApiPaths() {
 	}

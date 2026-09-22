@@ -48,7 +48,7 @@ class DevilFruitTypeControllerTest {
 	@Test
 	void aCallerWithContentWriteCanCreateADraft() throws Exception {
 		var revision = new WorkingRevisionEntity(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
-				WorkingRevisionStatus.DRAFT, Instant.EPOCH);
+				"editor@onepiece.local", WorkingRevisionStatus.DRAFT, Instant.EPOCH);
 		when(this.service.createDraft(any(), any())).thenReturn(revision);
 		when(this.service.translationsOf(any())).thenReturn(List.of());
 
@@ -65,6 +65,25 @@ class DevilFruitTypeControllerTest {
 	@Test
 	void anUnauthenticatedCallerIsUnauthorized() throws Exception {
 		this.mockMvc.perform(post("/devil-fruit-types")).andExpect(status().isUnauthorized());
+	}
+
+	@Test
+	void aCallerWithContentReviewCanClaimAQueuedRevision() throws Exception {
+		var revision = new WorkingRevisionEntity(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+				"editor@onepiece.local", WorkingRevisionStatus.IN_REVIEW, Instant.EPOCH);
+		when(this.service.claim(any(), any(), any())).thenReturn(revision);
+		when(this.service.translationsOf(any())).thenReturn(List.of());
+
+		var request = post("/devil-fruit-types/" + revision.getId() + "/claim")
+			.with(asUserWithAuthorities("PERMISSION_content:review"));
+		this.mockMvc.perform(request).andExpect(status().isOk());
+	}
+
+	@Test
+	void aCallerWithoutContentReviewIsForbiddenFromClaiming() throws Exception {
+		var request = post("/devil-fruit-types/" + UUID.randomUUID() + "/claim")
+			.with(asUserWithAuthorities("PERMISSION_content:write"));
+		this.mockMvc.perform(request).andExpect(status().isForbidden());
 	}
 
 	private static RequestPostProcessor asUserWithAuthorities(String... authorities) {

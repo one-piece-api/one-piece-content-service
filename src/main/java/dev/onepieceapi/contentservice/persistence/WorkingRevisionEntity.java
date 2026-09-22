@@ -34,6 +34,15 @@ public class WorkingRevisionEntity {
 	@Column(name = "author_id", nullable = false)
 	private UUID authorId;
 
+	/**
+	 * Denormalized from the author's own JWT at creation time - content-service has no
+	 * user directory to resolve a bare id against, and the review queue (Step 3) must
+	 * show every author's identity to every REVIEWER, not just the caller's own. Nullable
+	 * because rows created before this column existed have none.
+	 */
+	@Column(name = "author_email")
+	private String authorEmail;
+
 	@Setter
 	private String romaji;
 
@@ -41,15 +50,41 @@ public class WorkingRevisionEntity {
 	@Enumerated(EnumType.STRING)
 	private WorkingRevisionStatus status;
 
+	/**
+	 * The REVIEWER currently claiming it, while {@code IN_REVIEW} - see
+	 * {@link #claimedByEmail}.
+	 */
+	@Setter
+	@Column(name = "claimed_by")
+	private UUID claimedBy;
+
+	/**
+	 * Same denormalization rationale as {@link #authorEmail}, for whoever holds
+	 * {@link #claimedBy}.
+	 */
+	@Setter
+	@Column(name = "claimed_by_email")
+	private String claimedByEmail;
+
+	/**
+	 * The most recent rejection's reason, visible to the author until overwritten or
+	 * resolved.
+	 */
+	@Setter
+	@Column(name = "rejection_reason")
+	private String rejectionReason;
+
 	private Instant createdAt;
 
 	@Setter
 	private Instant updatedAt;
 
-	public WorkingRevisionEntity(UUID id, UUID itemId, UUID authorId, WorkingRevisionStatus status, Instant createdAt) {
+	public WorkingRevisionEntity(UUID id, UUID itemId, UUID authorId, String authorEmail, WorkingRevisionStatus status,
+			Instant createdAt) {
 		this.id = id;
 		this.itemId = itemId;
 		this.authorId = authorId;
+		this.authorEmail = authorEmail;
 		this.status = status;
 		this.createdAt = createdAt;
 		this.updatedAt = createdAt;

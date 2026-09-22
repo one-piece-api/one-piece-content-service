@@ -2,6 +2,7 @@ package dev.onepieceapi.contentservice.web;
 
 import dev.onepieceapi.contentservice.persistence.TranslationEntity;
 import dev.onepieceapi.contentservice.persistence.WorkingRevisionEntity;
+import dev.onepieceapi.contentservice.web.dto.ReviewQueueItemResponse;
 import dev.onepieceapi.contentservice.web.dto.TranslationResponse;
 import dev.onepieceapi.contentservice.web.dto.WorkingRevisionDetailResponse;
 import dev.onepieceapi.contentservice.web.dto.WorkingRevisionSummaryResponse;
@@ -26,7 +27,24 @@ public class DevilFruitTypeResponseMapper {
 			.collect(Collectors.toMap(t -> t.getId().getLanguageCode(),
 					t -> new TranslationResponse(t.getName(), t.getDescription())));
 		return new WorkingRevisionDetailResponse(revision.getId(), revision.getItemId(), revision.getRomaji(),
-				revision.getStatus().name(), byLanguage, revision.getUpdatedAt());
+				revision.getStatus().name(), byLanguage, revision.getUpdatedAt(), revision.getAuthorEmail(),
+				revision.getClaimedByEmail(), revision.getRejectionReason());
+	}
+
+	public WorkingRevisionSummaryResponse toSummary(WorkingRevisionEntity revision,
+			List<TranslationEntity> translations) {
+		return new WorkingRevisionSummaryResponse(revision.getId(), revision.getItemId(), ENTITY_TYPE,
+				revision.getRomaji(), displayNameOf(translations), revision.getStatus().name(),
+				revision.getUpdatedAt());
+	}
+
+	/**
+	 * One row of the shared review queue (Step 3) - see {@link ReviewQueueItemResponse}.
+	 */
+	public ReviewQueueItemResponse toQueueItem(WorkingRevisionEntity revision, List<TranslationEntity> translations) {
+		return new ReviewQueueItemResponse(revision.getId(), revision.getItemId(), ENTITY_TYPE, revision.getRomaji(),
+				displayNameOf(translations), revision.getAuthorEmail(), revision.getClaimedByEmail(),
+				revision.getUpdatedAt());
 	}
 
 	/**
@@ -35,9 +53,8 @@ public class DevilFruitTypeResponseMapper {
 	 * code) that has one, otherwise {@code null} - the frontend falls back to "bozza
 	 * senza nome", matching the reference mockup's pattern.
 	 */
-	public WorkingRevisionSummaryResponse toSummary(WorkingRevisionEntity revision,
-			List<TranslationEntity> translations) {
-		String displayName = translations.stream()
+	private String displayNameOf(List<TranslationEntity> translations) {
+		return translations.stream()
 			.filter(t -> t.getName() != null && !t.getName().isBlank())
 			.sorted(Comparator
 				.comparing((TranslationEntity t) -> !PREFERRED_LANGUAGE.equals(t.getId().getLanguageCode()))
@@ -45,8 +62,6 @@ public class DevilFruitTypeResponseMapper {
 			.map(TranslationEntity::getName)
 			.findFirst()
 			.orElse(null);
-		return new WorkingRevisionSummaryResponse(revision.getId(), revision.getItemId(), ENTITY_TYPE,
-				revision.getRomaji(), displayName, revision.getStatus().name(), revision.getUpdatedAt());
 	}
 
 }

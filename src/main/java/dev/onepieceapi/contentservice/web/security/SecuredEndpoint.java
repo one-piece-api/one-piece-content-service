@@ -27,7 +27,14 @@ enum SecuredEndpoint {
 	DEVIL_FRUIT_TYPE_SUBMIT(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_SUBMIT, permission(Permission.CONTENT_WRITE)),
 	DEVIL_FRUIT_TYPE_WITHDRAW(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_WITHDRAW,
 			permission(Permission.CONTENT_WRITE)),
-	MY_DRAFTS_LIST(HttpMethod.GET, ApiPaths.MY_DRAFTS, permission(Permission.CONTENT_WRITE));
+	MY_DRAFTS_LIST(HttpMethod.GET, ApiPaths.MY_DRAFTS, permission(Permission.CONTENT_WRITE)),
+
+	DEVIL_FRUIT_TYPE_CLAIM(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_CLAIM, permission(Permission.CONTENT_REVIEW)),
+	DEVIL_FRUIT_TYPE_RELEASE(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_RELEASE, permission(Permission.CONTENT_REVIEW)),
+	DEVIL_FRUIT_TYPE_APPROVE(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_APPROVE, permission(Permission.CONTENT_REVIEW)),
+	DEVIL_FRUIT_TYPE_REJECT(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_REJECT, permission(Permission.CONTENT_REVIEW)),
+	REVIEW_QUEUE_LIST(HttpMethod.GET, ApiPaths.REVIEW_QUEUE, permission(Permission.CONTENT_REVIEW)),
+	REVIEW_QUEUE_ITEM_GET(HttpMethod.GET, ApiPaths.REVIEW_QUEUE_ITEM, permission(Permission.CONTENT_REVIEW));
 
 	private final HttpMethod method;
 

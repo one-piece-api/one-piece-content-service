@@ -10,7 +10,9 @@ import java.util.UUID;
  * visible only to its own author (docs/user-flows/authentication-and-user-management.md
  * 4.1/7.5, total isolation); returning {@code 403} for "exists but not yours" would leak
  * that something exists at this id, which is exactly what that isolation is meant to
- * prevent.
+ * prevent. Also raised, without any ownership dimension, when a REVIEWER's claim/release/
+ * approve/reject/review-detail action (Step 3) targets an id that simply doesn't exist -
+ * still a plain {@code 404}, just for a different reason.
  */
 public class WorkingRevisionNotFoundException extends NotFoundException {
 

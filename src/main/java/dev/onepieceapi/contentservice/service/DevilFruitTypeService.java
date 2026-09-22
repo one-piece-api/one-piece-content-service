@@ -26,10 +26,13 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
- * UF-CNT-01/02/03/04: create/edit a private working revision, submit it for review, or
- * withdraw it back to draft. Ownership (4.1/7.5 - a draft is visible only to its own
- * author) is enforced here, not by {@code SecuredEndpoint}, which only knows about the
- * coarse {@code content:write} permission, not who owns which row.
+ * UF-CNT-01 through UF-CNT-06/UF-CNT-13/UF-CNT-14: create/edit a private working
+ * revision, submit it for review or withdraw it, and claim/release/approve/reject one in
+ * the shared review queue. Ownership (4.1/7.5 - a draft is visible only to its own
+ * author) and claim (4.1/7.6 - only the current claimant may approve/reject) are both
+ * enforced here, not by {@code SecuredEndpoint}, which only knows about the coarse
+ * {@code content:write}/{@code content:review} permissions, not who owns or claims which
+ * row.
  */
 @Service
 @RequiredArgsConstructor(onConstructor_ = { @Autowired })
@@ -53,6 +56,16 @@ public class DevilFruitTypeService {
 
 	private static final String AUDIT_ACTION_WITHDRAW = "DEVIL_FRUIT_TYPE_WITHDRAWN_TO_DRAFT";
 
+	private static final String AUDIT_ACTION_CLAIM = "DEVIL_FRUIT_TYPE_CLAIMED";
+
+	private static final String AUDIT_ACTION_RELEASE = "DEVIL_FRUIT_TYPE_RELEASED";
+
+	private static final String AUDIT_ACTION_APPROVE = "DEVIL_FRUIT_TYPE_APPROVED";
+
+	private static final String AUDIT_ACTION_REJECT = "DEVIL_FRUIT_TYPE_REJECTED";
+
+	private static final String AUDIT_ACTION_SUPERSEDE = "DEVIL_FRUIT_TYPE_SUPERSEDED";
+
 	private final DevilFruitTypeItemRepository itemRepository;
 
 	private final WorkingRevisionRepository workingRevisionRepository;
@@ -69,8 +82,8 @@ public class DevilFruitTypeService {
 	public WorkingRevisionEntity createDraft(UUID authorId, String authorEmail) {
 		var now = this.clock.instant();
 		var item = this.itemRepository.save(new DevilFruitTypeItemEntity(UUID.randomUUID(), now));
-		var revision = this.workingRevisionRepository.save(
-				new WorkingRevisionEntity(UUID.randomUUID(), item.getId(), authorId, WorkingRevisionStatus.DRAFT, now));
+		var revision = this.workingRevisionRepository.save(new WorkingRevisionEntity(UUID.randomUUID(), item.getId(),
+				authorId, authorEmail, WorkingRevisionStatus.DRAFT, now));
 		this.auditLogService.record(AUDIT_ACTION_CREATE, authorId, authorEmail, item.getId(), null, null);
 		return revision;
 	}
@@ -119,14 +132,104 @@ public class DevilFruitTypeService {
 		requireStatus(revision, WorkingRevisionStatus.IN_REVIEW, "withdraw to draft");
 
 		revision.setStatus(WorkingRevisionStatus.DRAFT);
+		clearClaim(revision);
 		revision.setUpdatedAt(this.clock.instant());
 		this.auditLogService.record(AUDIT_ACTION_WITHDRAW, authorId, authorEmail, revision.getItemId(),
 				revision.getRomaji(), null);
 		return revision;
 	}
 
+	/**
+	 * UF-CNT-13: claims an unclaimed, queued working revision for the acting REVIEWER.
+	 */
+	@Transactional
+	public WorkingRevisionEntity claim(UUID workingRevisionId, UUID reviewerId, String reviewerEmail) {
+		var revision = workingRevisionOrThrow(workingRevisionId);
+		requireStatus(revision, WorkingRevisionStatus.IN_REVIEW, "claim");
+		if (revision.getClaimedBy() != null) {
+			throw new ReviewAlreadyClaimedException(workingRevisionId);
+		}
+
+		revision.setClaimedBy(reviewerId);
+		revision.setClaimedByEmail(reviewerEmail);
+		revision.setUpdatedAt(this.clock.instant());
+		this.auditLogService.record(AUDIT_ACTION_CLAIM, reviewerId, reviewerEmail, revision.getItemId(),
+				revision.getRomaji(), null);
+		return revision;
+	}
+
+	/** UF-CNT-14: releases the acting REVIEWER's own claim, making it claimable again. */
+	@Transactional
+	public WorkingRevisionEntity release(UUID workingRevisionId, UUID reviewerId, String reviewerEmail) {
+		var revision = workingRevisionOrThrow(workingRevisionId);
+		requireStatus(revision, WorkingRevisionStatus.IN_REVIEW, "release");
+		requireClaimant(revision, reviewerId, "release");
+
+		clearClaim(revision);
+		revision.setUpdatedAt(this.clock.instant());
+		this.auditLogService.record(AUDIT_ACTION_RELEASE, reviewerId, reviewerEmail, revision.getItemId(),
+				revision.getRomaji(), null);
+		return revision;
+	}
+
+	/**
+	 * UF-CNT-05: approves the acting REVIEWER's own claim -
+	 * {@code IN_REVIEW -> REVIEWED}. If the item already has a different {@code REVIEWED}
+	 * working revision, it is immediately superseded (4.1): this one becomes the sole
+	 * active candidate.
+	 */
+	@Transactional
+	public WorkingRevisionEntity approve(UUID workingRevisionId, UUID reviewerId, String reviewerEmail) {
+		var revision = workingRevisionOrThrow(workingRevisionId);
+		requireStatus(revision, WorkingRevisionStatus.IN_REVIEW, "approve");
+		requireClaimant(revision, reviewerId, "approve");
+
+		supersedeReviewedSibling(revision, reviewerId, reviewerEmail);
+
+		revision.setStatus(WorkingRevisionStatus.REVIEWED);
+		clearClaim(revision);
+		revision.setUpdatedAt(this.clock.instant());
+		this.auditLogService.record(AUDIT_ACTION_APPROVE, reviewerId, reviewerEmail, revision.getItemId(),
+				revision.getRomaji(), null);
+		return revision;
+	}
+
+	/**
+	 * UF-CNT-06: rejects the acting REVIEWER's own claim with a mandatory reason -
+	 * {@code IN_REVIEW -> DRAFT}, editable again by its author, the reason attached so
+	 * they can see what to correct.
+	 */
+	@Transactional
+	public WorkingRevisionEntity reject(UUID workingRevisionId, UUID reviewerId, String reviewerEmail, String reason) {
+		var revision = workingRevisionOrThrow(workingRevisionId);
+		requireStatus(revision, WorkingRevisionStatus.IN_REVIEW, "reject");
+		requireClaimant(revision, reviewerId, "reject");
+		if (reason == null || reason.isBlank()) {
+			throw new MissingRejectionReasonException();
+		}
+
+		revision.setStatus(WorkingRevisionStatus.DRAFT);
+		revision.setRejectionReason(reason);
+		clearClaim(revision);
+		revision.setUpdatedAt(this.clock.instant());
+		this.auditLogService.record(AUDIT_ACTION_REJECT, reviewerId, reviewerEmail, revision.getItemId(),
+				revision.getRomaji(), reason);
+		return revision;
+	}
+
 	public WorkingRevisionEntity getOwnDraft(UUID workingRevisionId, UUID authorId) {
 		return ownWorkingRevisionOrThrow(workingRevisionId, authorId);
+	}
+
+	/**
+	 * The shared review queue (UF-CNT-13+): every working revision currently `IN_REVIEW`.
+	 */
+	public List<WorkingRevisionEntity> reviewQueue() {
+		return this.workingRevisionRepository.findByStatusOrderByUpdatedAtAsc(WorkingRevisionStatus.IN_REVIEW);
+	}
+
+	public WorkingRevisionEntity getForReview(UUID workingRevisionId) {
+		return workingRevisionOrThrow(workingRevisionId);
 	}
 
 	public List<TranslationEntity> translationsOf(UUID workingRevisionId) {
@@ -143,9 +246,39 @@ public class DevilFruitTypeService {
 			.orElseThrow(() -> new WorkingRevisionNotFoundException(workingRevisionId));
 	}
 
+	private WorkingRevisionEntity workingRevisionOrThrow(UUID workingRevisionId) {
+		return this.workingRevisionRepository.findById(workingRevisionId)
+			.orElseThrow(() -> new WorkingRevisionNotFoundException(workingRevisionId));
+	}
+
 	private static void requireStatus(WorkingRevisionEntity revision, WorkingRevisionStatus required, String action) {
 		if (revision.getStatus() != required) {
 			throw new InvalidStatusTransitionException(revision.getStatus(), action);
+		}
+	}
+
+	private static void requireClaimant(WorkingRevisionEntity revision, UUID reviewerId, String action) {
+		if (!reviewerId.equals(revision.getClaimedBy())) {
+			throw new NotClaimantException(action);
+		}
+	}
+
+	private static void clearClaim(WorkingRevisionEntity revision) {
+		revision.setClaimedBy(null);
+		revision.setClaimedByEmail(null);
+	}
+
+	/**
+	 * 4.1's supersession rule: a later approval displaces an item's existing active
+	 * candidate.
+	 */
+	private void supersedeReviewedSibling(WorkingRevisionEntity revision, UUID reviewerId, String reviewerEmail) {
+		for (var sibling : this.workingRevisionRepository.findByItemIdAndStatusAndIdNot(revision.getItemId(),
+				WorkingRevisionStatus.REVIEWED, revision.getId())) {
+			sibling.setStatus(WorkingRevisionStatus.SUPERSEDED);
+			sibling.setUpdatedAt(this.clock.instant());
+			this.auditLogService.record(AUDIT_ACTION_SUPERSEDE, reviewerId, reviewerEmail, sibling.getItemId(),
+					sibling.getRomaji(), "Superseded by working revision " + revision.getId());
 		}
 	}
 

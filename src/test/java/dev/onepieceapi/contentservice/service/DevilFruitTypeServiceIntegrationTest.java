@@ -71,6 +71,10 @@ class DevilFruitTypeServiceIntegrationTest {
 
 	private final UUID editorB = UUID.randomUUID();
 
+	private final UUID reviewerA = UUID.randomUUID();
+
+	private final UUID reviewerB = UUID.randomUUID();
+
 	@BeforeEach
 	void setUp() {
 		var clock = Clock.fixed(Instant.parse("2026-09-21T10:00:00Z"), ZoneOffset.UTC);
@@ -158,7 +162,7 @@ class DevilFruitTypeServiceIntegrationTest {
 		// of the flow that will later produce it).
 		var now = this.clock().instant();
 		this.workingRevisionRepository.save(new WorkingRevisionEntity(UUID.randomUUID(), revision.getItemId(),
-				this.editorB, WorkingRevisionStatus.IN_REVIEW, now));
+				this.editorB, "editor-b@onepiece.local", WorkingRevisionStatus.IN_REVIEW, now));
 
 		assertThatThrownBy(
 				() -> this.service.submitForReview(revision.getId(), this.editorA, "editor-a@onepiece.local"))
@@ -170,7 +174,7 @@ class DevilFruitTypeServiceIntegrationTest {
 		var revision = completeDraft(this.editorA, "editor-a@onepiece.local");
 		var now = this.clock().instant();
 		this.workingRevisionRepository.save(new WorkingRevisionEntity(UUID.randomUUID(), revision.getItemId(),
-				this.editorB, WorkingRevisionStatus.REVIEWED, now));
+				this.editorB, "editor-b@onepiece.local", WorkingRevisionStatus.REVIEWED, now));
 
 		var submitted = this.service.submitForReview(revision.getId(), this.editorA, "editor-a@onepiece.local");
 
@@ -218,6 +222,134 @@ class DevilFruitTypeServiceIntegrationTest {
 		assertThatThrownBy(
 				() -> this.service.withdrawToDraft(revision.getId(), this.editorB, "editor-b@onepiece.local"))
 			.isInstanceOf(WorkingRevisionNotFoundException.class);
+	}
+
+	@Test
+	void claimingAnUnclaimedInReviewRevisionSucceeds() {
+		var revision = submittedDraft(this.editorA, "editor-a@onepiece.local");
+
+		var claimed = this.service.claim(revision.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+
+		assertThat(claimed.getClaimedBy()).isEqualTo(this.reviewerA);
+	}
+
+	@Test
+	void claimingAnAlreadyClaimedRevisionFails() {
+		var revision = submittedDraft(this.editorA, "editor-a@onepiece.local");
+		this.service.claim(revision.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+
+		assertThatThrownBy(() -> this.service.claim(revision.getId(), this.reviewerB, "reviewer-b@onepiece.local"))
+			.isInstanceOf(ReviewAlreadyClaimedException.class);
+	}
+
+	@Test
+	void claimingSomethingNotInReviewFails() {
+		var revision = completeDraft(this.editorA, "editor-a@onepiece.local");
+
+		assertThatThrownBy(() -> this.service.claim(revision.getId(), this.reviewerA, "reviewer-a@onepiece.local"))
+			.isInstanceOf(InvalidStatusTransitionException.class);
+	}
+
+	@Test
+	void releasingMakesItClaimableAgainByAnyReviewer() {
+		var revision = submittedDraft(this.editorA, "editor-a@onepiece.local");
+		this.service.claim(revision.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+
+		this.service.release(revision.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+		var reclaimed = this.service.claim(revision.getId(), this.reviewerB, "reviewer-b@onepiece.local");
+
+		assertThat(reclaimed.getClaimedBy()).isEqualTo(this.reviewerB);
+	}
+
+	@Test
+	void releasingAndApprovingAndRejectingRequireBeingTheCurrentClaimant() {
+		var revision = submittedDraft(this.editorA, "editor-a@onepiece.local");
+		this.service.claim(revision.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+
+		assertThatThrownBy(() -> this.service.release(revision.getId(), this.reviewerB, "reviewer-b@onepiece.local"))
+			.isInstanceOf(NotClaimantException.class);
+		assertThatThrownBy(() -> this.service.approve(revision.getId(), this.reviewerB, "reviewer-b@onepiece.local"))
+			.isInstanceOf(NotClaimantException.class);
+		assertThatThrownBy(() -> this.service.reject(revision.getId(), this.reviewerB, "reviewer-b@onepiece.local",
+				"Not good enough"))
+			.isInstanceOf(NotClaimantException.class);
+	}
+
+	@Test
+	void approvingByTheClaimantMovesItToReviewedAndClearsTheClaim() {
+		var revision = submittedDraft(this.editorA, "editor-a@onepiece.local");
+		this.service.claim(revision.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+
+		var approved = this.service.approve(revision.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+
+		assertThat(approved.getStatus()).isEqualTo(WorkingRevisionStatus.REVIEWED);
+		assertThat(approved.getClaimedBy()).isNull();
+	}
+
+	@Test
+	void approvingSupersedesAnExistingReviewedSiblingOfTheSameItem() {
+		var revision = submittedDraft(this.editorA, "editor-a@onepiece.local");
+		var now = this.clock().instant();
+		var sibling = this.workingRevisionRepository.save(new WorkingRevisionEntity(UUID.randomUUID(),
+				revision.getItemId(), this.editorB, "editor-b@onepiece.local", WorkingRevisionStatus.REVIEWED, now));
+		this.service.claim(revision.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+
+		var approved = this.service.approve(revision.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+
+		assertThat(approved.getStatus()).isEqualTo(WorkingRevisionStatus.REVIEWED);
+		var supersededSibling = this.workingRevisionRepository.findById(sibling.getId()).orElseThrow();
+		assertThat(supersededSibling.getStatus()).isEqualTo(WorkingRevisionStatus.SUPERSEDED);
+	}
+
+	@Test
+	void rejectingWithoutAReasonFails() {
+		var revision = submittedDraft(this.editorA, "editor-a@onepiece.local");
+		this.service.claim(revision.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+
+		assertThatThrownBy(
+				() -> this.service.reject(revision.getId(), this.reviewerA, "reviewer-a@onepiece.local", " "))
+			.isInstanceOf(MissingRejectionReasonException.class);
+	}
+
+	@Test
+	void rejectingReturnsItToDraftWithTheReasonVisibleAndClearsTheClaim() {
+		var revision = submittedDraft(this.editorA, "editor-a@onepiece.local");
+		this.service.claim(revision.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+
+		var rejected = this.service.reject(revision.getId(), this.reviewerA, "reviewer-a@onepiece.local",
+				"Romaji is misspelled");
+
+		assertThat(rejected.getStatus()).isEqualTo(WorkingRevisionStatus.DRAFT);
+		assertThat(rejected.getRejectionReason()).isEqualTo("Romaji is misspelled");
+		assertThat(rejected.getClaimedBy()).isNull();
+	}
+
+	@Test
+	void withdrawingReleasesAnExistingClaimAutomatically() {
+		var revision = submittedDraft(this.editorA, "editor-a@onepiece.local");
+		this.service.claim(revision.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+
+		this.service.withdrawToDraft(revision.getId(), this.editorA, "editor-a@onepiece.local");
+		var resubmitted = this.service.submitForReview(revision.getId(), this.editorA, "editor-a@onepiece.local");
+		var reclaimed = this.service.claim(resubmitted.getId(), this.reviewerB, "reviewer-b@onepiece.local");
+
+		assertThat(reclaimed.getClaimedBy()).isEqualTo(this.reviewerB);
+	}
+
+	@Test
+	void reviewQueueListsOnlyInReviewRevisionsAcrossEveryAuthor() {
+		completeDraft(this.editorA, "editor-a@onepiece.local");
+		var queued = submittedDraft(this.editorB, "editor-b@onepiece.local");
+
+		var queue = this.service.reviewQueue();
+
+		assertThat(queue).extracting(r -> r.getId()).containsExactly(queued.getId());
+	}
+
+	/** A submitted, `IN_REVIEW` working revision, ready for claim/approve/reject. */
+	private WorkingRevisionEntity submittedDraft(UUID authorId, String authorEmail) {
+		var revision = completeDraft(authorId, authorEmail);
+		return this.service.submitForReview(revision.getId(), authorId, authorEmail);
 	}
 
 	/** A draft filled in for every active language, ready to submit. */
