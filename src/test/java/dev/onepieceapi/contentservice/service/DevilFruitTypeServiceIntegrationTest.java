@@ -469,6 +469,62 @@ class DevilFruitTypeServiceIntegrationTest {
 			.isInstanceOf(EncyclopediaItemNotFoundException.class);
 	}
 
+	@Test
+	void editingAPublishedItemCreatesANewDraftPrefilledFromTheLiveSnapshot() {
+		var approved = approvedCandidate(this.editorA, "editor-a@onepiece.local");
+		var published = this.service.publish(approved.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+
+		var newDraft = this.service.editPublishedItem(published.getItemId(), this.editorB, "editor-b@onepiece.local");
+
+		assertThat(newDraft.getId()).isNotEqualTo(published.getId());
+		assertThat(newDraft.getItemId()).isEqualTo(published.getItemId());
+		assertThat(newDraft.getStatus()).isEqualTo(WorkingRevisionStatus.DRAFT);
+		assertThat(newDraft.getAuthorId()).isEqualTo(this.editorB);
+		assertThat(newDraft.getRomaji()).isEqualTo("Paramishia");
+		var translations = this.service.translationsOf(newDraft.getId());
+		assertThat(translations).hasSize(2);
+	}
+
+	@Test
+	void editingAPublishedItemLeavesTheLiveContentUntouched() {
+		var approved = approvedCandidate(this.editorA, "editor-a@onepiece.local");
+		var published = this.service.publish(approved.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+		var itemBefore = this.itemRepository.findById(published.getItemId()).orElseThrow();
+
+		this.service.editPublishedItem(published.getItemId(), this.editorB, "editor-b@onepiece.local");
+
+		var itemAfter = this.itemRepository.findById(published.getItemId()).orElseThrow();
+		assertThat(itemAfter.getLiveVersionId()).isEqualTo(itemBefore.getLiveVersionId());
+	}
+
+	@Test
+	void twoAuthorsCanIndependentlyEditTheSamePublishedItem() {
+		var approved = approvedCandidate(this.editorA, "editor-a@onepiece.local");
+		var published = this.service.publish(approved.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+
+		var draftB = this.service.editPublishedItem(published.getItemId(), this.editorB, "editor-b@onepiece.local");
+		var draftC = this.service.editPublishedItem(published.getItemId(), this.editorA, "editor-a@onepiece.local");
+
+		assertThat(draftB.getId()).isNotEqualTo(draftC.getId());
+		assertThat(draftB.getItemId()).isEqualTo(draftC.getItemId());
+	}
+
+	@Test
+	void editingAnItemThatWasNeverPublishedFails() {
+		var revision = this.service.createDraft(this.editorA, "editor-a@onepiece.local");
+
+		assertThatThrownBy(
+				() -> this.service.editPublishedItem(revision.getItemId(), this.editorB, "editor-b@onepiece.local"))
+			.isInstanceOf(EncyclopediaItemNotFoundException.class);
+	}
+
+	@Test
+	void editingAnUnknownItemFails() {
+		assertThatThrownBy(
+				() -> this.service.editPublishedItem(UUID.randomUUID(), this.editorA, "editor-a@onepiece.local"))
+			.isInstanceOf(EncyclopediaItemNotFoundException.class);
+	}
+
 	/**
 	 * A `REVIEWED` working revision, claimed and approved by reviewerA, ready to publish.
 	 */

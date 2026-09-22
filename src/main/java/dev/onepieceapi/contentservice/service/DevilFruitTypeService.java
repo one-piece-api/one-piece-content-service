@@ -51,6 +51,8 @@ public class DevilFruitTypeService {
 
 	private static final String AUDIT_ACTION_CREATE = "DEVIL_FRUIT_TYPE_DRAFT_CREATED";
 
+	private static final String AUDIT_ACTION_EDIT_PUBLISHED = "DEVIL_FRUIT_TYPE_EDIT_STARTED_FROM_PUBLISHED";
+
 	private static final String AUDIT_ACTION_EDIT = "DEVIL_FRUIT_TYPE_DRAFT_EDITED";
 
 	private static final String AUDIT_ACTION_SUBMIT = "DEVIL_FRUIT_TYPE_SUBMITTED_FOR_REVIEW";
@@ -92,6 +94,38 @@ public class DevilFruitTypeService {
 		var revision = this.workingRevisionRepository.save(new WorkingRevisionEntity(UUID.randomUUID(), item.getId(),
 				authorId, authorEmail, WorkingRevisionStatus.DRAFT, now));
 		this.auditLogService.record(AUDIT_ACTION_CREATE, authorId, authorEmail, item.getId(), null, null);
+		return revision;
+	}
+
+	/**
+	 * UF-CNT-08: starts a new working revision on an already-published item, owned by the
+	 * caller and pre-filled from the item's current live snapshot - independent of any
+	 * other author's own in-progress working revision of the same item (4.1/7.5). The
+	 * live content itself is untouched until this new revision is, in turn, reviewed and
+	 * published. Only the `PUBLISHED` case is reachable today - `RETIRED`'s "last live
+	 * snapshot" depends on how Step 8 ends up representing a cleared live pointer, which
+	 * isn't decided yet.
+	 */
+	@Transactional
+	public WorkingRevisionEntity editPublishedItem(UUID itemId, UUID authorId, String authorEmail) {
+		var item = this.itemRepository.findById(itemId)
+			.orElseThrow(() -> new EncyclopediaItemNotFoundException(itemId));
+		if (item.getLiveVersionId() == null) {
+			throw new EncyclopediaItemNotFoundException(itemId);
+		}
+		var liveVersion = this.contentVersionRepository.findById(item.getLiveVersionId()).orElseThrow();
+		var liveTranslations = this.contentVersionTranslationRepository.findByIdContentVersionId(liveVersion.getId());
+
+		var now = this.clock.instant();
+		var revision = this.workingRevisionRepository.save(new WorkingRevisionEntity(UUID.randomUUID(), itemId,
+				authorId, authorEmail, WorkingRevisionStatus.DRAFT, now));
+		revision.setRomaji(liveVersion.getRomaji());
+		for (var translation : liveTranslations) {
+			this.translationRepository.save(new TranslationEntity(revision.getId(),
+					translation.getId().getLanguageCode(), translation.getName(), translation.getDescription()));
+		}
+		this.auditLogService.record(AUDIT_ACTION_EDIT_PUBLISHED, authorId, authorEmail, itemId, liveVersion.getRomaji(),
+				null);
 		return revision;
 	}
 

@@ -101,4 +101,12 @@ class DevilFruitTypeController {
 		return DevilFruitTypeResponseMapper.toDetail(revision, this.service.translationsOf(revision.getId()));
 	}
 
+	@PostMapping(ApiPaths.DEVIL_FRUIT_TYPE_EDIT_PUBLISHED)
+	@ResponseStatus(HttpStatus.CREATED)
+	WorkingRevisionDetailResponse editPublished(@PathVariable UUID itemId,
+			@AuthenticationPrincipal AuthenticatedCaller caller) {
+		var revision = this.service.editPublishedItem(itemId, caller.id(), caller.email());
+		return DevilFruitTypeResponseMapper.toDetail(revision, this.service.translationsOf(revision.getId()));
+	}
+
 }

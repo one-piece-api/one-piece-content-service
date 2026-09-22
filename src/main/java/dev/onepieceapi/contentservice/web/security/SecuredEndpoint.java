@@ -39,7 +39,10 @@ enum SecuredEndpoint {
 	DEVIL_FRUIT_TYPE_PUBLISH(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_PUBLISH,
 			permission(Permission.CONTENT_PUBLISH)),
 	ENCYCLOPEDIA_LIST(HttpMethod.GET, ApiPaths.ENCYCLOPEDIA, permission(Permission.CONTENT_READ)),
-	ENCYCLOPEDIA_ITEM_GET(HttpMethod.GET, ApiPaths.ENCYCLOPEDIA_ITEM, permission(Permission.CONTENT_READ));
+	ENCYCLOPEDIA_ITEM_GET(HttpMethod.GET, ApiPaths.ENCYCLOPEDIA_ITEM, permission(Permission.CONTENT_READ)),
+
+	DEVIL_FRUIT_TYPE_EDIT_PUBLISHED(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_EDIT_PUBLISHED,
+			permission(Permission.CONTENT_WRITE));
 
 	private final HttpMethod method;
 

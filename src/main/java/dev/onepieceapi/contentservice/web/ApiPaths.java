@@ -32,6 +32,16 @@ public final class ApiPaths {
 	public static final String DEVIL_FRUIT_TYPE_PUBLISH = "/devil-fruit-types/{workingRevisionId}/publish";
 
 	/**
+	 * Item-keyed, unlike every other path in this family (UF-CNT-08, Step 6): once
+	 * published there is no single "the" working revision to address - editing starts a
+	 * brand new one, seeded from the item's live content. No collision with
+	 * {@link #DEVIL_FRUIT_TYPE_BY_ID}: different route shape ({@code {id}/edit} vs bare
+	 * {@code {id}}), and a path variable's name is just a binding label to Spring, not
+	 * part of route matching.
+	 */
+	public static final String DEVIL_FRUIT_TYPE_EDIT_PUBLISHED = "/devil-fruit-types/{itemId}/edit";
+
+	/**
 	 * Deliberately not under {@code /devil-fruit-types}: a personal, cross-entity list in
 	 * shape (docs/implementation-plan-content.md 2) even though it only queries this one
 	 * entity's table today.
