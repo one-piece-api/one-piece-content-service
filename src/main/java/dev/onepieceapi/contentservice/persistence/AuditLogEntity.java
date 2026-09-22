@@ -36,7 +36,10 @@ public class AuditLogEntity {
 	@Column(nullable = false)
 	private String actorEmail;
 
-	@Column(nullable = false)
+	/**
+	 * Null for an action with no single content item as its target - e.g. the language
+	 * catalog (Step 10), which is system configuration rather than a content item.
+	 */
 	private UUID targetItemId;
 
 	private String targetLabel;

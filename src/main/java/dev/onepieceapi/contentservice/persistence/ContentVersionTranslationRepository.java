@@ -10,4 +10,7 @@ public interface ContentVersionTranslationRepository
 
 	List<ContentVersionTranslationEntity> findByIdContentVersionId(UUID contentVersionId);
 
+	/** Step 10: whether any published version snapshot still references this language. */
+	boolean existsByIdLanguageCode(String languageCode);
+
 }

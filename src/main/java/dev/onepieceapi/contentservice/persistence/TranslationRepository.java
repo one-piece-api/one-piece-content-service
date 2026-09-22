@@ -12,4 +12,7 @@ public interface TranslationRepository extends JpaRepository<TranslationEntity, 
 	/** Clears a working revision's translations ahead of deleting the revision itself. */
 	void deleteByIdWorkingRevisionId(UUID workingRevisionId);
 
+	/** Step 10: whether any in-progress content still references this language. */
+	boolean existsByIdLanguageCode(String languageCode);
+
 }

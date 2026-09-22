@@ -49,7 +49,18 @@ enum SecuredEndpoint {
 	DEVIL_FRUIT_TYPE_VERSIONS_LIST(HttpMethod.GET, ApiPaths.DEVIL_FRUIT_TYPE_VERSIONS,
 			permission(Permission.CONTENT_PUBLISH)),
 	DEVIL_FRUIT_TYPE_VERSION_RESTORE(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_VERSION_RESTORE,
-			permission(Permission.CONTENT_PUBLISH));
+			permission(Permission.CONTENT_PUBLISH)),
+
+	/**
+	 * Readable by any authenticated caller, not gated on a {@code content:*}/
+	 * {@code languages:manage} permission: EDITOR/REVIEWER/PUBLISHER each hold a
+	 * different single {@code content:*} permission, yet every one of them needs this
+	 * list to render its own screen's language tabs - no single existing permission
+	 * covers all three.
+	 */
+	LANGUAGE_LIST(HttpMethod.GET, ApiPaths.LANGUAGES, AuthorizeHttpRequestsConfigurer.AuthorizedUrl::authenticated),
+	LANGUAGE_CREATE(HttpMethod.POST, ApiPaths.LANGUAGES, permission(Permission.LANGUAGES_MANAGE)),
+	LANGUAGE_DELETE(HttpMethod.DELETE, ApiPaths.LANGUAGE_BY_CODE, permission(Permission.LANGUAGES_MANAGE));
 
 	private final HttpMethod method;
 

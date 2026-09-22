@@ -84,6 +84,15 @@ public final class ApiPaths {
 
 	public static final String DEVIL_FRUIT_TYPE_VERSION_RESTORE = DEVIL_FRUIT_TYPE_VERSIONS + "/{versionId}/restore";
 
+	/**
+	 * Step 10, 3.2: the ADMIN-managed language catalog. Not under any entity's own path -
+	 * it is shared system configuration, not editorial content, and every content
+	 * screen's language tabs read it regardless of entity type.
+	 */
+	public static final String LANGUAGES = "/languages";
+
+	public static final String LANGUAGE_BY_CODE = "/languages/{code}";
+
 	private ApiPaths() {
 	}
 
