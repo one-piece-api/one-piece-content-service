@@ -1,6 +1,7 @@
 package dev.onepieceapi.contentservice.web;
 
 import dev.onepieceapi.contentservice.service.DevilFruitTypeService;
+import dev.onepieceapi.contentservice.web.dto.EncyclopediaItemDetailResponse;
 import dev.onepieceapi.contentservice.web.dto.RejectRequest;
 import dev.onepieceapi.contentservice.web.dto.UpdateDraftRequest;
 import dev.onepieceapi.contentservice.web.dto.WorkingRevisionDetailResponse;
@@ -107,6 +108,13 @@ class DevilFruitTypeController {
 			@AuthenticationPrincipal AuthenticatedCaller caller) {
 		var revision = this.service.editPublishedItem(itemId, caller.id(), caller.email());
 		return DevilFruitTypeResponseMapper.toDetail(revision, this.service.translationsOf(revision.getId()));
+	}
+
+	@PostMapping(ApiPaths.DEVIL_FRUIT_TYPE_RETIRE)
+	EncyclopediaItemDetailResponse retire(@PathVariable UUID itemId,
+			@AuthenticationPrincipal AuthenticatedCaller caller) {
+		this.service.retire(itemId, caller.id(), caller.email());
+		return DevilFruitTypeResponseMapper.toEncyclopediaDetail(this.service.getEncyclopediaItem(itemId));
 	}
 
 }

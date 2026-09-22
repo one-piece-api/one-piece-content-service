@@ -4,6 +4,7 @@ import dev.onepieceapi.contentservice.persistence.ContentVersionEntity;
 import dev.onepieceapi.contentservice.persistence.ContentVersionTranslationEntity;
 import dev.onepieceapi.contentservice.persistence.TranslationEntity;
 import dev.onepieceapi.contentservice.persistence.WorkingRevisionEntity;
+import dev.onepieceapi.contentservice.service.EncyclopediaEntry;
 import dev.onepieceapi.contentservice.web.dto.ContentVersionResponse;
 import dev.onepieceapi.contentservice.web.dto.EncyclopediaItemDetailResponse;
 import dev.onepieceapi.contentservice.web.dto.EncyclopediaItemResponse;
@@ -69,21 +70,45 @@ public class DevilFruitTypeResponseMapper {
 			.orElse(null);
 	}
 
-	/** "Enciclopedia" (Step 5): a `REVIEWED` working revision awaiting publish. */
-	public EncyclopediaItemResponse toEncyclopediaItem(WorkingRevisionEntity revision,
+	/**
+	 * "Enciclopedia" (Step 5, extended Step 8): maps any entry kind to its list-row shape
+	 * - the one entry point every caller should use, so the `ReviewedCandidate` /
+	 * `PublishedItem` / `RetiredItem` switch lives in exactly one place.
+	 */
+	public EncyclopediaItemResponse toEncyclopediaItem(EncyclopediaEntry entry) {
+		return switch (entry) {
+			case EncyclopediaEntry.ReviewedCandidate rc -> reviewedEncyclopediaItem(rc.revision(), rc.translations());
+			case EncyclopediaEntry.PublishedItem pi ->
+				versionEncyclopediaItem(pi.version(), pi.translations(), "PUBLISHED");
+			case EncyclopediaEntry.RetiredItem ri ->
+				versionEncyclopediaItem(ri.lastVersion(), ri.translations(), "RETIRED");
+		};
+	}
+
+	/** Same as {@link #toEncyclopediaItem(EncyclopediaEntry)}, for the detail shape. */
+	public EncyclopediaItemDetailResponse toEncyclopediaDetail(EncyclopediaEntry entry) {
+		return switch (entry) {
+			case EncyclopediaEntry.ReviewedCandidate rc -> reviewedEncyclopediaDetail(rc.revision(), rc.translations());
+			case EncyclopediaEntry.PublishedItem pi ->
+				versionEncyclopediaDetail(pi.version(), pi.translations(), "PUBLISHED");
+			case EncyclopediaEntry.RetiredItem ri ->
+				versionEncyclopediaDetail(ri.lastVersion(), ri.translations(), "RETIRED");
+		};
+	}
+
+	private EncyclopediaItemResponse reviewedEncyclopediaItem(WorkingRevisionEntity revision,
 			List<TranslationEntity> translations) {
 		return new EncyclopediaItemResponse(revision.getItemId(), revision.getId(), ENTITY_TYPE, revision.getRomaji(),
 				displayNameOf(translations), "REVIEWED", revision.getUpdatedAt());
 	}
 
-	/** "Enciclopedia" (Step 5): an item's live published version. */
-	public EncyclopediaItemResponse toEncyclopediaItem(ContentVersionEntity version,
-			List<ContentVersionTranslationEntity> translations) {
+	private EncyclopediaItemResponse versionEncyclopediaItem(ContentVersionEntity version,
+			List<ContentVersionTranslationEntity> translations, String status) {
 		return new EncyclopediaItemResponse(version.getItemId(), null, ENTITY_TYPE, version.getRomaji(),
-				displayNameOfVersion(translations), "PUBLISHED", version.getPublishedAt());
+				displayNameOfVersion(translations), status, version.getPublishedAt());
 	}
 
-	public EncyclopediaItemDetailResponse toEncyclopediaDetail(WorkingRevisionEntity revision,
+	private EncyclopediaItemDetailResponse reviewedEncyclopediaDetail(WorkingRevisionEntity revision,
 			List<TranslationEntity> translations) {
 		Map<String, TranslationResponse> byLanguage = translations.stream()
 			.collect(Collectors.toMap(t -> t.getId().getLanguageCode(),
@@ -92,13 +117,13 @@ public class DevilFruitTypeResponseMapper {
 				"REVIEWED", byLanguage, revision.getUpdatedAt(), null, null);
 	}
 
-	public EncyclopediaItemDetailResponse toEncyclopediaDetail(ContentVersionEntity version,
-			List<ContentVersionTranslationEntity> translations) {
+	private EncyclopediaItemDetailResponse versionEncyclopediaDetail(ContentVersionEntity version,
+			List<ContentVersionTranslationEntity> translations, String status) {
 		Map<String, TranslationResponse> byLanguage = translations.stream()
 			.collect(Collectors.toMap(t -> t.getId().getLanguageCode(),
 					t -> new TranslationResponse(t.getName(), t.getDescription())));
-		return new EncyclopediaItemDetailResponse(version.getItemId(), null, version.getRomaji(), "PUBLISHED",
-				byLanguage, version.getPublishedAt(), version.getSequenceNumber(), version.getPublisherEmail());
+		return new EncyclopediaItemDetailResponse(version.getItemId(), null, version.getRomaji(), status, byLanguage,
+				version.getPublishedAt(), version.getSequenceNumber(), version.getPublisherEmail());
 	}
 
 	/** One row of Step 7's "Storico versioni" - see {@link ContentVersionResponse}. */

@@ -8,11 +8,12 @@ import dev.onepieceapi.contentservice.persistence.WorkingRevisionEntity;
 import java.util.List;
 
 /**
- * "Enciclopedia" (Step 5): one entry, from either of the two entity kinds it can come
- * from - a `REVIEWED` working revision awaiting publish, or an item's live published
- * version. Kept in {@code service} (not {@code web}) so the service layer never has to
- * depend on {@code web} to build response DTOs itself - the controller maps each variant
- * with {@code DevilFruitTypeResponseMapper}, same as every other list endpoint.
+ * "Enciclopedia" (Step 5, extended Step 8): one entry, from any of the three entity kinds
+ * it can come from - a `REVIEWED` working revision awaiting publish, an item's live
+ * published version, or a retired item's last published version before its live pointer
+ * was cleared. Kept in {@code service} (not {@code web}) so the service layer never has
+ * to depend on {@code web} to build response DTOs itself - the controller maps each
+ * variant with {@code DevilFruitTypeResponseMapper}, same as every other list endpoint.
  */
 public sealed interface EncyclopediaEntry {
 
@@ -21,6 +22,14 @@ public sealed interface EncyclopediaEntry {
 	}
 
 	record PublishedItem(ContentVersionEntity version,
+			List<ContentVersionTranslationEntity> translations) implements EncyclopediaEntry {
+	}
+
+	/**
+	 * UF-CNT-10: an item whose live pointer is currently clear, shown with the content of
+	 * the last version that was live before it was retired.
+	 */
+	record RetiredItem(ContentVersionEntity lastVersion,
 			List<ContentVersionTranslationEntity> translations) implements EncyclopediaEntry {
 	}
 

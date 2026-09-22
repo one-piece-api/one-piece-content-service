@@ -4,10 +4,10 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * One row of "Enciclopedia" (Step 5) - an item currently `REVIEWED` (awaiting publish,
- * shown so a PUBLISHER knows what to act on) or `PUBLISHED`. `RETIRED` is a valid value
- * too (declared now so the column/contract never needs widening) but unreachable until
- * Step 8 adds Retire. Item-keyed, not working-revision-keyed, unlike
+ * One row of "Enciclopedia" (Step 5, extended Step 8) - an item currently `REVIEWED`
+ * (awaiting publish, shown so a PUBLISHER knows what to act on), `PUBLISHED`, or
+ * `RETIRED` (shown with the content of its last live version). Item-keyed, not
+ * working-revision-keyed, unlike
  * {@link WorkingRevisionSummaryResponse}/{@link ReviewQueueItemResponse}: once published,
  * there is no single working revision left representing "the" item.
  * {@code workingRevisionId} (non-null only for a `REVIEWED` row) is the id Publish (`POST

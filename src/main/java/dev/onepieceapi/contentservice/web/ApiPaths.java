@@ -32,6 +32,13 @@ public final class ApiPaths {
 	public static final String DEVIL_FRUIT_TYPE_PUBLISH = "/devil-fruit-types/{workingRevisionId}/publish";
 
 	/**
+	 * Item-keyed, not working-revision-keyed (UF-CNT-10, Step 8): retiring clears the
+	 * item's live pointer directly, with no working revision of its own involved - same
+	 * reasoning as {@link #DEVIL_FRUIT_TYPE_EDIT_PUBLISHED}.
+	 */
+	public static final String DEVIL_FRUIT_TYPE_RETIRE = "/devil-fruit-types/{itemId}/retire";
+
+	/**
 	 * Item-keyed, unlike every other path in this family (UF-CNT-08, Step 6): once
 	 * published there is no single "the" working revision to address - editing starts a
 	 * brand new one, seeded from the item's live content. No collision with

@@ -34,12 +34,12 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
- * UF-CNT-01 through UF-CNT-07/UF-CNT-13/UF-CNT-14: create/edit a private working
+ * UF-CNT-01 through UF-CNT-10/UF-CNT-13/UF-CNT-14: create/edit a private working
  * revision, submit it for review or withdraw it, claim/release/approve/reject one in the
- * shared review queue, and publish an approved candidate to the encyclopedia. Ownership
- * (4.1/7.5 - a draft is visible only to its own author) and claim (4.1/7.6 - only the
- * current claimant may approve/reject) are both enforced here, not by
- * {@code SecuredEndpoint}, which only knows about the coarse
+ * shared review queue, publish an approved candidate to the encyclopedia, and retire a
+ * published item. Ownership (4.1/7.5 - a draft is visible only to its own author) and
+ * claim (4.1/7.6 - only the current claimant may approve/reject) are both enforced here,
+ * not by {@code SecuredEndpoint}, which only knows about the coarse
  * {@code content:write}/{@code content:review}/{@code content:publish} permissions, not
  * who owns or claims which row. Content-shape checks (is a draft complete enough to
  * submit, are its languages known, is a rejection reason present) are delegated to
@@ -74,6 +74,8 @@ public class DevilFruitTypeService {
 
 	private static final String AUDIT_ACTION_ROLLBACK = "DEVIL_FRUIT_TYPE_ROLLED_BACK";
 
+	private static final String AUDIT_ACTION_RETIRE = "DEVIL_FRUIT_TYPE_RETIRED";
+
 	private final DevilFruitTypeItemRepository itemRepository;
 
 	private final WorkingRevisionRepository workingRevisionRepository;
@@ -101,35 +103,48 @@ public class DevilFruitTypeService {
 	}
 
 	/**
-	 * UF-CNT-08: starts a new working revision on an already-published item, owned by the
-	 * caller and pre-filled from the item's current live snapshot - independent of any
-	 * other author's own in-progress working revision of the same item (4.1/7.5). The
-	 * live content itself is untouched until this new revision is, in turn, reviewed and
-	 * published. Only the `PUBLISHED` case is reachable today - `RETIRED`'s "last live
-	 * snapshot" depends on how Step 8 ends up representing a cleared live pointer, which
-	 * isn't decided yet.
+	 * UF-CNT-08: starts a new working revision on an already-published or retired item,
+	 * owned by the caller and pre-filled from the item's current live snapshot - or, if
+	 * retired, its last live one - independent of any other author's own in-progress
+	 * working revision of the same item (4.1/7.5). The live content itself is untouched
+	 * until this new revision is, in turn, reviewed and published.
 	 */
 	@Transactional
 	public WorkingRevisionEntity editPublishedItem(UUID itemId, UUID authorId, String authorEmail) {
 		var item = this.itemRepository.findById(itemId)
 			.orElseThrow(() -> new EncyclopediaItemNotFoundException(itemId));
-		if (item.getLiveVersionId() == null) {
-			throw new EncyclopediaItemNotFoundException(itemId);
-		}
-		var liveVersion = this.contentVersionRepository.findById(item.getLiveVersionId()).orElseThrow();
-		var liveTranslations = this.contentVersionTranslationRepository.findByIdContentVersionId(liveVersion.getId());
+		var sourceVersion = editSourceVersion(item);
+		var sourceTranslations = this.contentVersionTranslationRepository
+			.findByIdContentVersionId(sourceVersion.getId());
 
 		var now = this.clock.instant();
 		var revision = this.workingRevisionRepository.save(new WorkingRevisionEntity(UUID.randomUUID(), itemId,
 				authorId, authorEmail, WorkingRevisionStatus.DRAFT, now));
-		revision.setRomaji(liveVersion.getRomaji());
-		for (var translation : liveTranslations) {
+		revision.setRomaji(sourceVersion.getRomaji());
+		for (var translation : sourceTranslations) {
 			this.translationRepository.save(new TranslationEntity(revision.getId(),
 					translation.getId().getLanguageCode(), translation.getName(), translation.getDescription()));
 		}
-		this.auditLogService.record(AUDIT_ACTION_EDIT_PUBLISHED, authorId, authorEmail, itemId, liveVersion.getRomaji(),
-				null);
+		this.auditLogService.record(AUDIT_ACTION_EDIT_PUBLISHED, authorId, authorEmail, itemId,
+				sourceVersion.getRomaji(), null);
 		return revision;
+	}
+
+	/**
+	 * The snapshot a new edit of a published/retired item is pre-filled from: the live
+	 * one if there is one, otherwise the most recent snapshot in the item's history (a
+	 * retired item's "last live" version, UF-CNT-08). Fails if the item was never
+	 * published at all - the same "don't distinguish missing from not-yet-visible" stance
+	 * as everywhere else an item is looked up this way.
+	 */
+	private ContentVersionEntity editSourceVersion(DevilFruitTypeItemEntity item) {
+		if (item.getLiveVersionId() != null) {
+			return this.contentVersionRepository.findById(item.getLiveVersionId()).orElseThrow();
+		}
+		return this.contentVersionRepository.findByItemIdOrderBySequenceNumberDesc(item.getId())
+			.stream()
+			.findFirst()
+			.orElseThrow(() -> new EncyclopediaItemNotFoundException(item.getId()));
 	}
 
 	@Transactional
@@ -324,10 +339,32 @@ public class DevilFruitTypeService {
 	}
 
 	/**
-	 * "Enciclopedia" (Step 5): every `REVIEWED` candidate awaiting publish, plus every
-	 * currently-published item that doesn't already have one (a `REVIEWED` sibling always
-	 * takes priority for display - it is the thing a PUBLISHER needs to act on next).
-	 * `RETIRED` items are omitted entirely: nothing produces that state until Step 8.
+	 * UF-CNT-10: clears the item's live pointer - nothing is shown as live/public for it
+	 * anymore. The version history and any in-progress working revision are untouched;
+	 * idempotent (retiring an already-retired item only adds another audit record). Fails
+	 * only if the item was never published at all, same stance as
+	 * {@link #editSourceVersion}.
+	 */
+	@Transactional
+	public void retire(UUID itemId, UUID publisherId, String publisherEmail) {
+		var item = this.itemRepository.findById(itemId)
+			.orElseThrow(() -> new EncyclopediaItemNotFoundException(itemId));
+		var lastVersion = this.contentVersionRepository.findByItemIdOrderBySequenceNumberDesc(itemId)
+			.stream()
+			.findFirst()
+			.orElseThrow(() -> new EncyclopediaItemNotFoundException(itemId));
+
+		item.setLiveVersionId(null);
+		this.auditLogService.record(AUDIT_ACTION_RETIRE, publisherId, publisherEmail, itemId, lastVersion.getRomaji(),
+				"Retired from v" + lastVersion.getSequenceNumber());
+	}
+
+	/**
+	 * "Enciclopedia" (Step 5, extended Step 8): every `REVIEWED` candidate awaiting
+	 * publish, plus every currently-published or currently-retired item that doesn't
+	 * already have one (a `REVIEWED` sibling always takes priority for display - it is
+	 * the thing a PUBLISHER needs to act on next). A retired item is shown with the
+	 * content of its last live version.
 	 */
 	public List<EncyclopediaEntry> listEncyclopedia() {
 		var reviewed = this.workingRevisionRepository.findByStatusOrderByUpdatedAtAsc(WorkingRevisionStatus.REVIEWED);
@@ -345,6 +382,18 @@ public class DevilFruitTypeService {
 			var translations = this.contentVersionTranslationRepository.findByIdContentVersionId(version.getId());
 			entries.add(new EncyclopediaEntry.PublishedItem(version, translations));
 		}
+		for (var item : this.itemRepository.findByLiveVersionIdIsNull()) {
+			if (reviewedItemIds.contains(item.getId())) {
+				continue;
+			}
+			var versions = this.contentVersionRepository.findByItemIdOrderBySequenceNumberDesc(item.getId());
+			if (versions.isEmpty()) {
+				continue;
+			}
+			var lastVersion = versions.get(0);
+			var translations = this.contentVersionTranslationRepository.findByIdContentVersionId(lastVersion.getId());
+			entries.add(new EncyclopediaEntry.RetiredItem(lastVersion, translations));
+		}
 		return entries;
 	}
 
@@ -358,12 +407,18 @@ public class DevilFruitTypeService {
 
 		var item = this.itemRepository.findById(itemId)
 			.orElseThrow(() -> new EncyclopediaItemNotFoundException(itemId));
-		if (item.getLiveVersionId() == null) {
-			throw new EncyclopediaItemNotFoundException(itemId);
+		if (item.getLiveVersionId() != null) {
+			var version = this.contentVersionRepository.findById(item.getLiveVersionId()).orElseThrow();
+			var translations = this.contentVersionTranslationRepository.findByIdContentVersionId(version.getId());
+			return new EncyclopediaEntry.PublishedItem(version, translations);
 		}
-		var version = this.contentVersionRepository.findById(item.getLiveVersionId()).orElseThrow();
-		var translations = this.contentVersionTranslationRepository.findByIdContentVersionId(version.getId());
-		return new EncyclopediaEntry.PublishedItem(version, translations);
+
+		var lastVersion = this.contentVersionRepository.findByItemIdOrderBySequenceNumberDesc(itemId)
+			.stream()
+			.findFirst()
+			.orElseThrow(() -> new EncyclopediaItemNotFoundException(itemId));
+		var translations = this.contentVersionTranslationRepository.findByIdContentVersionId(lastVersion.getId());
+		return new EncyclopediaEntry.RetiredItem(lastVersion, translations);
 	}
 
 	public WorkingRevisionEntity getOwnDraft(UUID workingRevisionId, UUID authorId) {

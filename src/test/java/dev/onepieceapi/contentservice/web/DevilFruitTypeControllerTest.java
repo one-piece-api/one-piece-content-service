@@ -1,8 +1,10 @@
 package dev.onepieceapi.contentservice.web;
 
+import dev.onepieceapi.contentservice.persistence.ContentVersionEntity;
 import dev.onepieceapi.contentservice.persistence.WorkingRevisionEntity;
 import dev.onepieceapi.contentservice.persistence.WorkingRevisionStatus;
 import dev.onepieceapi.contentservice.service.DevilFruitTypeService;
+import dev.onepieceapi.contentservice.service.EncyclopediaEntry;
 import dev.onepieceapi.contentservice.web.security.AuthenticatedCaller;
 import dev.onepieceapi.contentservice.web.security.ContentAuthenticationToken;
 import dev.onepieceapi.contentservice.web.security.SecurityConfig;
@@ -102,6 +104,26 @@ class DevilFruitTypeControllerTest {
 	void aCallerWithoutContentPublishIsForbiddenFromPublishing() throws Exception {
 		var request = post("/devil-fruit-types/" + UUID.randomUUID() + "/publish")
 			.with(asUserWithAuthorities("PERMISSION_content:review"));
+		this.mockMvc.perform(request).andExpect(status().isForbidden());
+	}
+
+	@Test
+	void aCallerWithContentPublishCanRetireAnItem() throws Exception {
+		var itemId = UUID.randomUUID();
+		var version = new ContentVersionEntity(UUID.randomUUID(), itemId, 1, "Paramishia", UUID.randomUUID(),
+				"publisher@onepiece.local", Instant.EPOCH);
+		when(this.service.getEncyclopediaItem(itemId))
+			.thenReturn(new EncyclopediaEntry.RetiredItem(version, List.of()));
+
+		var request = post("/devil-fruit-types/" + itemId + "/retire")
+			.with(asUserWithAuthorities("PERMISSION_content:publish"));
+		this.mockMvc.perform(request).andExpect(status().isOk());
+	}
+
+	@Test
+	void aCallerWithoutContentPublishIsForbiddenFromRetiring() throws Exception {
+		var request = post("/devil-fruit-types/" + UUID.randomUUID() + "/retire")
+			.with(asUserWithAuthorities("PERMISSION_content:write"));
 		this.mockMvc.perform(request).andExpect(status().isForbidden());
 	}
 

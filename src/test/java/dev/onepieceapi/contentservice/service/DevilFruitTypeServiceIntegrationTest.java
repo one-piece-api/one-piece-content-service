@@ -589,6 +589,120 @@ class DevilFruitTypeServiceIntegrationTest {
 			.isInstanceOf(ContentVersionNotFoundException.class);
 	}
 
+	@Test
+	void retiringClearsTheLivePointerWithoutTouchingHistory() {
+		var approved = approvedCandidate(this.editorA, "editor-a@onepiece.local");
+		var published = this.service.publish(approved.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+		var itemId = published.getItemId();
+
+		this.service.retire(itemId, this.reviewerA, "reviewer-a@onepiece.local");
+
+		var item = this.itemRepository.findById(itemId).orElseThrow();
+		assertThat(item.getLiveVersionId()).isNull();
+		assertThat(this.contentVersionRepository.findByItemIdOrderBySequenceNumberDesc(itemId)).hasSize(1);
+	}
+
+	@Test
+	void retiringIsIdempotent() {
+		var approved = approvedCandidate(this.editorA, "editor-a@onepiece.local");
+		var published = this.service.publish(approved.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+		var itemId = published.getItemId();
+		this.service.retire(itemId, this.reviewerA, "reviewer-a@onepiece.local");
+
+		this.service.retire(itemId, this.reviewerA, "reviewer-a@onepiece.local");
+
+		var item = this.itemRepository.findById(itemId).orElseThrow();
+		assertThat(item.getLiveVersionId()).isNull();
+	}
+
+	@Test
+	void retiringAnItemThatWasNeverPublishedFails() {
+		var revision = this.service.createDraft(this.editorA, "editor-a@onepiece.local");
+
+		assertThatThrownBy(() -> this.service.retire(revision.getItemId(), this.reviewerA, "reviewer-a@onepiece.local"))
+			.isInstanceOf(EncyclopediaItemNotFoundException.class);
+	}
+
+	@Test
+	void retiringAnUnknownItemFails() {
+		assertThatThrownBy(() -> this.service.retire(UUID.randomUUID(), this.reviewerA, "reviewer-a@onepiece.local"))
+			.isInstanceOf(EncyclopediaItemNotFoundException.class);
+	}
+
+	@Test
+	void aRetiredItemShowsInTheEncyclopediaWithItsLastLiveContent() {
+		var approved = approvedCandidate(this.editorA, "editor-a@onepiece.local");
+		var published = this.service.publish(approved.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+		var itemId = published.getItemId();
+		this.service.retire(itemId, this.reviewerA, "reviewer-a@onepiece.local");
+
+		var entry = this.service.getEncyclopediaItem(itemId);
+
+		assertThat(entry).isInstanceOf(EncyclopediaEntry.RetiredItem.class);
+		var retired = (EncyclopediaEntry.RetiredItem) entry;
+		assertThat(retired.lastVersion().getRomaji()).isEqualTo("Paramishia");
+
+		var encyclopedia = this.service.listEncyclopedia();
+		assertThat(encyclopedia).hasSize(1).first().isInstanceOf(EncyclopediaEntry.RetiredItem.class);
+	}
+
+	@Test
+	void aReviewedSiblingTakesPriorityOverARetiredItemInTheEncyclopedia() {
+		var approved = approvedCandidate(this.editorA, "editor-a@onepiece.local");
+		var published = this.service.publish(approved.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+		var itemId = published.getItemId();
+		this.service.retire(itemId, this.reviewerA, "reviewer-a@onepiece.local");
+		independentReviewedSibling(itemId, this.editorB, "editor-b@onepiece.local");
+
+		var entry = this.service.getEncyclopediaItem(itemId);
+
+		assertThat(entry).isInstanceOf(EncyclopediaEntry.ReviewedCandidate.class);
+	}
+
+	@Test
+	void editingARetiredItemPrefillsFromItsLastLiveSnapshot() {
+		var approved = approvedCandidate(this.editorA, "editor-a@onepiece.local");
+		var published = this.service.publish(approved.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+		var itemId = published.getItemId();
+		this.service.retire(itemId, this.reviewerA, "reviewer-a@onepiece.local");
+
+		var newDraft = this.service.editPublishedItem(itemId, this.editorB, "editor-b@onepiece.local");
+
+		assertThat(newDraft.getItemId()).isEqualTo(itemId);
+		assertThat(newDraft.getStatus()).isEqualTo(WorkingRevisionStatus.DRAFT);
+		assertThat(newDraft.getRomaji()).isEqualTo("Paramishia");
+		assertThat(this.service.translationsOf(newDraft.getId())).hasSize(2);
+	}
+
+	@Test
+	void aRetiredItemCanReturnLiveViaPublishOfANewlyApprovedCandidate() {
+		var approved = approvedCandidate(this.editorA, "editor-a@onepiece.local");
+		var published = this.service.publish(approved.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+		var itemId = published.getItemId();
+		this.service.retire(itemId, this.reviewerA, "reviewer-a@onepiece.local");
+		var revisionB = independentReviewedSibling(itemId, this.editorB, "editor-b@onepiece.local");
+
+		this.service.publish(revisionB.getId(), this.reviewerB, "reviewer-b@onepiece.local");
+
+		var item = this.itemRepository.findById(itemId).orElseThrow();
+		assertThat(item.getLiveVersionId()).isNotNull();
+		assertThat(this.service.getEncyclopediaItem(itemId)).isInstanceOf(EncyclopediaEntry.PublishedItem.class);
+	}
+
+	@Test
+	void aRetiredItemCanReturnLiveViaRestore() {
+		var approved = approvedCandidate(this.editorA, "editor-a@onepiece.local");
+		var published = this.service.publish(approved.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+		var itemId = published.getItemId();
+		var v1Id = this.itemRepository.findById(itemId).orElseThrow().getLiveVersionId();
+		this.service.retire(itemId, this.reviewerA, "reviewer-a@onepiece.local");
+
+		this.service.restore(itemId, v1Id, this.reviewerA, "reviewer-a@onepiece.local");
+
+		var item = this.itemRepository.findById(itemId).orElseThrow();
+		assertThat(item.getLiveVersionId()).isEqualTo(v1Id);
+	}
+
 	/**
 	 * A `REVIEWED` working revision, claimed and approved by reviewerA, ready to publish.
 	 */
