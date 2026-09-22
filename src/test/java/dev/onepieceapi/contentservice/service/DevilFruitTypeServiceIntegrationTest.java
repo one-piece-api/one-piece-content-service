@@ -9,6 +9,15 @@ import dev.onepieceapi.contentservice.persistence.TranslationRepository;
 import dev.onepieceapi.contentservice.persistence.WorkingRevisionEntity;
 import dev.onepieceapi.contentservice.persistence.WorkingRevisionRepository;
 import dev.onepieceapi.contentservice.persistence.WorkingRevisionStatus;
+import dev.onepieceapi.contentservice.service.exception.EncyclopediaItemNotFoundException;
+import dev.onepieceapi.contentservice.service.exception.IncompleteContentException;
+import dev.onepieceapi.contentservice.service.exception.InvalidStatusTransitionException;
+import dev.onepieceapi.contentservice.service.exception.MissingRejectionReasonException;
+import dev.onepieceapi.contentservice.service.exception.NotClaimantException;
+import dev.onepieceapi.contentservice.service.exception.ReviewAlreadyClaimedException;
+import dev.onepieceapi.contentservice.service.exception.ReviewSlotOccupiedException;
+import dev.onepieceapi.contentservice.service.exception.UnknownLanguageException;
+import dev.onepieceapi.contentservice.service.exception.WorkingRevisionNotFoundException;
 import dev.onepieceapi.contentservice.web.dto.TranslationRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -87,9 +96,10 @@ class DevilFruitTypeServiceIntegrationTest {
 	void setUp() {
 		var clock = Clock.fixed(Instant.parse("2026-09-21T10:00:00Z"), ZoneOffset.UTC);
 		var auditLogService = new AuditLogService(this.auditLogRepository, clock);
+		var contentValidator = new ContentValidator(this.translationRepository, this.languageRepository);
 		this.service = new DevilFruitTypeService(this.itemRepository, this.workingRevisionRepository,
-				this.translationRepository, this.languageRepository, this.contentVersionRepository,
-				this.contentVersionTranslationRepository, auditLogService, clock);
+				this.translationRepository, this.contentVersionRepository, this.contentVersionTranslationRepository,
+				contentValidator, auditLogService, clock);
 	}
 
 	@Test

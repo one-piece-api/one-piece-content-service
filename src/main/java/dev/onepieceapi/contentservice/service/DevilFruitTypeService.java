@@ -6,15 +6,19 @@ import dev.onepieceapi.contentservice.persistence.ContentVersionTranslationEntit
 import dev.onepieceapi.contentservice.persistence.ContentVersionTranslationRepository;
 import dev.onepieceapi.contentservice.persistence.DevilFruitTypeItemEntity;
 import dev.onepieceapi.contentservice.persistence.DevilFruitTypeItemRepository;
-import dev.onepieceapi.contentservice.persistence.LanguageRepository;
 import dev.onepieceapi.contentservice.persistence.TranslationEntity;
 import dev.onepieceapi.contentservice.persistence.TranslationId;
 import dev.onepieceapi.contentservice.persistence.TranslationRepository;
 import dev.onepieceapi.contentservice.persistence.WorkingRevisionEntity;
 import dev.onepieceapi.contentservice.persistence.WorkingRevisionRepository;
 import dev.onepieceapi.contentservice.persistence.WorkingRevisionStatus;
+import dev.onepieceapi.contentservice.service.exception.EncyclopediaItemNotFoundException;
+import dev.onepieceapi.contentservice.service.exception.InvalidStatusTransitionException;
+import dev.onepieceapi.contentservice.service.exception.NotClaimantException;
+import dev.onepieceapi.contentservice.service.exception.ReviewAlreadyClaimedException;
+import dev.onepieceapi.contentservice.service.exception.ReviewSlotOccupiedException;
+import dev.onepieceapi.contentservice.service.exception.WorkingRevisionNotFoundException;
 import dev.onepieceapi.contentservice.web.dto.TranslationRequest;
-import dev.onepieceapi.exception.web.FieldViolation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -22,7 +26,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -37,21 +40,14 @@ import java.util.stream.Collectors;
  * current claimant may approve/reject) are both enforced here, not by
  * {@code SecuredEndpoint}, which only knows about the coarse
  * {@code content:write}/{@code content:review}/{@code content:publish} permissions, not
- * who owns or claims which row.
+ * who owns or claims which row. Content-shape checks (is a draft complete enough to
+ * submit, are its languages known, is a rejection reason present) are delegated to
+ * {@link ContentValidator} rather than inlined here - this class stays about
+ * orchestrating state transitions, not about what makes a field valid.
  */
 @Service
 @RequiredArgsConstructor(onConstructor_ = { @Autowired })
 public class DevilFruitTypeService {
-
-	/**
-	 * Submission length limits (3.1) - not enforced at the database level on purpose, see
-	 * V3's migration comment.
-	 */
-	private static final int MAX_ROMAJI_LENGTH = 100;
-
-	private static final int MAX_NAME_LENGTH = 100;
-
-	private static final int MAX_DESCRIPTION_LENGTH = 2000;
 
 	private static final String AUDIT_ACTION_CREATE = "DEVIL_FRUIT_TYPE_DRAFT_CREATED";
 
@@ -79,11 +75,11 @@ public class DevilFruitTypeService {
 
 	private final TranslationRepository translationRepository;
 
-	private final LanguageRepository languageRepository;
-
 	private final ContentVersionRepository contentVersionRepository;
 
 	private final ContentVersionTranslationRepository contentVersionTranslationRepository;
+
+	private final ContentValidator contentValidator;
 
 	private final AuditLogService auditLogService;
 
@@ -106,7 +102,7 @@ public class DevilFruitTypeService {
 		requireStatus(revision, WorkingRevisionStatus.DRAFT, "edit");
 
 		var requestedLanguages = translations == null ? Set.<String>of() : translations.keySet();
-		rejectUnknownLanguages(requestedLanguages);
+		this.contentValidator.requireKnownLanguages(requestedLanguages);
 
 		revision.setRomaji(romaji);
 		revision.setUpdatedAt(this.clock.instant());
@@ -125,7 +121,7 @@ public class DevilFruitTypeService {
 	public WorkingRevisionEntity submitForReview(UUID workingRevisionId, UUID authorId, String authorEmail) {
 		var revision = ownWorkingRevisionOrThrow(workingRevisionId, authorId);
 		requireStatus(revision, WorkingRevisionStatus.DRAFT, "submit for review");
-		validateCompleteForSubmission(revision);
+		this.contentValidator.requireCompleteForSubmission(revision);
 		if (this.workingRevisionRepository.existsByItemIdAndStatusAndIdNot(revision.getItemId(),
 				WorkingRevisionStatus.IN_REVIEW, revision.getId())) {
 			throw new ReviewSlotOccupiedException(revision.getItemId());
@@ -218,9 +214,7 @@ public class DevilFruitTypeService {
 		var revision = workingRevisionOrThrow(workingRevisionId);
 		requireStatus(revision, WorkingRevisionStatus.IN_REVIEW, "reject");
 		requireClaimant(revision, reviewerId, "reject");
-		if (reason == null || reason.isBlank()) {
-			throw new MissingRejectionReasonException();
-		}
+		this.contentValidator.requireReason(reason);
 
 		revision.setStatus(WorkingRevisionStatus.DRAFT);
 		revision.setRejectionReason(reason);
@@ -365,56 +359,6 @@ public class DevilFruitTypeService {
 			sibling.setUpdatedAt(this.clock.instant());
 			this.auditLogService.record(AUDIT_ACTION_SUPERSEDE, reviewerId, reviewerEmail, sibling.getItemId(),
 					sibling.getRomaji(), "Superseded by working revision " + revision.getId());
-		}
-	}
-
-	/**
-	 * UF-CNT-03: every active language's {@code name}/{@code description} must be
-	 * non-blank and within its length limit, and {@code romaji} likewise - a draft may be
-	 * saved incomplete/over-length, but not submitted that way.
-	 */
-	private void validateCompleteForSubmission(WorkingRevisionEntity revision) {
-		List<FieldViolation> violations = new ArrayList<>();
-		checkField(violations, "romaji", revision.getRomaji(), MAX_ROMAJI_LENGTH);
-
-		var translationsByLanguage = this.translationRepository.findByIdWorkingRevisionId(revision.getId())
-			.stream()
-			.collect(Collectors.toMap(t -> t.getId().getLanguageCode(), t -> t));
-		for (var language : this.languageRepository.findAll()) {
-			var translation = translationsByLanguage.get(language.getCode());
-			String name = translation != null ? translation.getName() : null;
-			String description = translation != null ? translation.getDescription() : null;
-			checkField(violations, "translations." + language.getCode() + ".name", name, MAX_NAME_LENGTH);
-			checkField(violations, "translations." + language.getCode() + ".description", description,
-					MAX_DESCRIPTION_LENGTH);
-		}
-
-		if (!violations.isEmpty()) {
-			throw new IncompleteContentException(violations);
-		}
-	}
-
-	private static void checkField(List<FieldViolation> violations, String field, String value, int maxLength) {
-		if (value == null || value.isBlank()) {
-			violations.add(new FieldViolation(field, "required"));
-		}
-		else if (value.length() > maxLength) {
-			violations.add(new FieldViolation(field, "must be at most " + maxLength + " characters"));
-		}
-	}
-
-	private void rejectUnknownLanguages(Set<String> requestedLanguages) {
-		if (requestedLanguages.isEmpty()) {
-			return;
-		}
-		var known = this.languageRepository.findAllByCodeIn(List.copyOf(requestedLanguages))
-			.stream()
-			.map(l -> l.getCode())
-			.collect(Collectors.toSet());
-		var unknown = new HashSet<>(requestedLanguages);
-		unknown.removeAll(known);
-		if (!unknown.isEmpty()) {
-			throw new UnknownLanguageException(unknown);
 		}
 	}
 

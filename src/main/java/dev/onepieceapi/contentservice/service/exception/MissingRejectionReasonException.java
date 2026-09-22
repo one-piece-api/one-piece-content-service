@@ -1,4 +1,4 @@
-package dev.onepieceapi.contentservice.service;
+package dev.onepieceapi.contentservice.service.exception;
 
 import dev.onepieceapi.exception.DomainException;
 
