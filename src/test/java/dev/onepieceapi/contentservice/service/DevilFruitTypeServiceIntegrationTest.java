@@ -11,6 +11,7 @@ import dev.onepieceapi.contentservice.persistence.WorkingRevisionRepository;
 import dev.onepieceapi.contentservice.persistence.WorkingRevisionStatus;
 import dev.onepieceapi.contentservice.service.exception.CannotDeletePublishedItemException;
 import dev.onepieceapi.contentservice.service.exception.ContentVersionNotFoundException;
+import dev.onepieceapi.contentservice.service.exception.DuplicateContentException;
 import dev.onepieceapi.contentservice.service.exception.EncyclopediaItemNotFoundException;
 import dev.onepieceapi.contentservice.service.exception.IncompleteContentException;
 import dev.onepieceapi.contentservice.service.exception.InvalidStatusTransitionException;
@@ -98,7 +99,8 @@ class DevilFruitTypeServiceIntegrationTest {
 	void setUp() {
 		var clock = Clock.fixed(Instant.parse("2026-09-21T10:00:00Z"), ZoneOffset.UTC);
 		var auditLogService = new AuditLogService(this.auditLogRepository, clock);
-		var contentValidator = new ContentValidator(this.translationRepository, this.languageRepository);
+		var contentValidator = new ContentValidator(this.translationRepository, this.languageRepository,
+				this.workingRevisionRepository);
 		this.service = new DevilFruitTypeService(this.itemRepository, this.workingRevisionRepository,
 				this.translationRepository, this.contentVersionRepository, this.contentVersionTranslationRepository,
 				contentValidator, auditLogService, clock);
@@ -200,6 +202,69 @@ class DevilFruitTypeServiceIntegrationTest {
 		var submitted = this.service.submitForReview(revision.getId(), this.editorA, "editor-a@onepiece.local");
 
 		assertThat(submitted.getStatus()).isEqualTo(WorkingRevisionStatus.IN_REVIEW);
+	}
+
+	@Test
+	void submittingRomajiAlreadyReservedByAnotherItemFails() {
+		submittedDraft(this.editorA, "editor-a@onepiece.local");
+		var revisionB = this.service.createDraft(this.editorB, "editor-b@onepiece.local");
+		this.service.updateDraft(revisionB.getId(), this.editorB, "editor-b@onepiece.local", "Paramishia",
+				Map.of("it", new TranslationRequest("Zoan", "Descrizione IT"), "en",
+						new TranslationRequest("Zoan", "EN description")));
+
+		assertThatThrownBy(
+				() -> this.service.submitForReview(revisionB.getId(), this.editorB, "editor-b@onepiece.local"))
+			.isInstanceOf(DuplicateContentException.class);
+	}
+
+	@Test
+	void submittingANameAlreadyReservedByAnotherItemFails() {
+		submittedDraft(this.editorA, "editor-a@onepiece.local");
+		var revisionB = this.service.createDraft(this.editorB, "editor-b@onepiece.local");
+		this.service.updateDraft(revisionB.getId(), this.editorB, "editor-b@onepiece.local", "Zoiashia",
+				Map.of("it", new TranslationRequest("Paramecia", "Descrizione IT"), "en",
+						new TranslationRequest("Zoan", "EN description")));
+
+		assertThatThrownBy(
+				() -> this.service.submitForReview(revisionB.getId(), this.editorB, "editor-b@onepiece.local"))
+			.isInstanceOf(DuplicateContentException.class);
+	}
+
+	@Test
+	void submittingContentMatchingAnotherAuthorsStillPrivateDraftSucceeds() {
+		// 7.5/3.3: a DRAFT never submitted by anyone reserves nothing - checking against
+		// it would leak that another author's invisible draft exists.
+		completeDraft(this.editorA, "editor-a@onepiece.local");
+		var revisionB = completeDraft(this.editorB, "editor-b@onepiece.local");
+
+		var submitted = this.service.submitForReview(revisionB.getId(), this.editorB, "editor-b@onepiece.local");
+
+		assertThat(submitted.getStatus()).isEqualTo(WorkingRevisionStatus.IN_REVIEW);
+	}
+
+	@Test
+	void submittingContentMatchingARetiredItemStillFails() {
+		var approved = approvedCandidate(this.editorA, "editor-a@onepiece.local");
+		var published = this.service.publish(approved.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+		this.service.retire(published.getItemId(), this.reviewerA, "reviewer-a@onepiece.local");
+		var revisionB = completeDraft(this.editorB, "editor-b@onepiece.local");
+
+		assertThatThrownBy(
+				() -> this.service.submitForReview(revisionB.getId(), this.editorB, "editor-b@onepiece.local"))
+			.isInstanceOf(DuplicateContentException.class);
+	}
+
+	@Test
+	void resubmittingTheSameItemsOwnNameAndRomajiIsNeverACollision() {
+		// 3.3: editing/resubmitting your own item's own identity replaces a version, it
+		// never collides with itself.
+		var approved = approvedCandidate(this.editorA, "editor-a@onepiece.local");
+		var published = this.service.publish(approved.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+		var newDraft = this.service.editPublishedItem(published.getItemId(), this.editorB, "editor-b@onepiece.local");
+
+		var resubmitted = this.service.submitForReview(newDraft.getId(), this.editorB, "editor-b@onepiece.local");
+
+		assertThat(resubmitted.getStatus()).isEqualTo(WorkingRevisionStatus.IN_REVIEW);
 	}
 
 	@Test
@@ -609,7 +674,7 @@ class DevilFruitTypeServiceIntegrationTest {
 		var approvedA = approvedCandidate(this.editorA, "editor-a@onepiece.local");
 		var published = this.service.publish(approvedA.getId(), this.reviewerA, "reviewer-a@onepiece.local");
 		var itemAVersionId = this.itemRepository.findById(published.getItemId()).orElseThrow().getLiveVersionId();
-		var otherItemApproved = approvedCandidate(this.editorB, "editor-b@onepiece.local");
+		var otherItemApproved = approvedCandidate(this.editorB, "editor-b@onepiece.local", "Zoiashia", "Zoan");
 		var otherItemPublished = this.service.publish(otherItemApproved.getId(), this.reviewerB,
 				"reviewer-b@onepiece.local");
 		var otherItemId = otherItemPublished.getItemId();
@@ -750,6 +815,22 @@ class DevilFruitTypeServiceIntegrationTest {
 		var revision = submittedDraft(authorId, authorEmail);
 		this.service.claim(revision.getId(), this.reviewerA, "reviewer-a@onepiece.local");
 		return this.service.approve(revision.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+	}
+
+	/**
+	 * Same as {@link #approvedCandidate(UUID, String)}, but for a genuinely separate item
+	 * that must coexist with one already reserving {@code completeDraft}'s hardcoded
+	 * romaji/name (3.3) - used only where a test needs two independent items both
+	 * `REVIEWED`/`PUBLISHED` at once, which the shared content would otherwise collide
+	 * on.
+	 */
+	private WorkingRevisionEntity approvedCandidate(UUID authorId, String authorEmail, String romaji, String name) {
+		var revision = this.service.createDraft(authorId, authorEmail);
+		var filled = this.service.updateDraft(revision.getId(), authorId, authorEmail, romaji, Map.of("it",
+				new TranslationRequest(name, "Descrizione IT"), "en", new TranslationRequest(name, "EN description")));
+		var submitted = this.service.submitForReview(filled.getId(), authorId, authorEmail);
+		this.service.claim(submitted.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+		return this.service.approve(submitted.getId(), this.reviewerA, "reviewer-a@onepiece.local");
 	}
 
 	/**

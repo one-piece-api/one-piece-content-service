@@ -35,4 +35,18 @@ public interface WorkingRevisionRepository extends JpaRepository<WorkingRevision
 	 */
 	Optional<WorkingRevisionEntity> findByItemIdAndStatus(UUID itemId, WorkingRevisionStatus status);
 
+	/**
+	 * The romaji-uniqueness check (3.3): does another item's already-submitted/reviewed/
+	 * published romaji collide with this one?
+	 */
+	boolean existsByRomajiIgnoreCaseAndStatusInAndItemIdNot(String romaji, Collection<WorkingRevisionStatus> statuses,
+			UUID excludedItemId);
+
+	/**
+	 * Every other item's working revisions currently "reserving" their name (3.3) - fed
+	 * into the per-language name-uniqueness check.
+	 */
+	List<WorkingRevisionEntity> findByStatusInAndItemIdNot(Collection<WorkingRevisionStatus> statuses,
+			UUID excludedItemId);
+
 }
