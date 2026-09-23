@@ -11,7 +11,7 @@ versioni. Primo caso d'uso concreto: **Devil Fruit Type**.
 ## Sviluppo locale
 
 ```bash
-./gradlew bootRun          # richiede Keycloak + content-postgresql raggiungibili via port-forward
+./gradlew bootRun          # richiede Keycloak + PostgreSQL condiviso raggiungibili via port-forward
 ./gradlew check            # test + checkstyle + format
 ./gradlew spotlessApply    # o l'equivalente format task, se le differenze di formattazione bloccano la build
 ```
