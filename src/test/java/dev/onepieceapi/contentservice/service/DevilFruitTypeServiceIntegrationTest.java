@@ -13,6 +13,7 @@ import dev.onepieceapi.contentservice.service.exception.CannotDeletePublishedIte
 import dev.onepieceapi.contentservice.service.exception.ContentVersionNotFoundException;
 import dev.onepieceapi.contentservice.service.exception.DuplicateContentException;
 import dev.onepieceapi.contentservice.service.exception.EncyclopediaItemNotFoundException;
+import dev.onepieceapi.contentservice.service.exception.IdenticalToExistingVersionException;
 import dev.onepieceapi.contentservice.service.exception.IncompleteContentException;
 import dev.onepieceapi.contentservice.service.exception.InvalidStatusTransitionException;
 import dev.onepieceapi.contentservice.service.exception.MissingRejectionReasonException;
@@ -100,7 +101,8 @@ class DevilFruitTypeServiceIntegrationTest {
 		var clock = Clock.fixed(Instant.parse("2026-09-21T10:00:00Z"), ZoneOffset.UTC);
 		var auditLogService = new AuditLogService(this.auditLogRepository, clock);
 		var contentValidator = new ContentValidator(this.translationRepository, this.languageRepository,
-				this.workingRevisionRepository);
+				this.workingRevisionRepository, this.contentVersionRepository,
+				this.contentVersionTranslationRepository);
 		this.service = new DevilFruitTypeService(this.itemRepository, this.workingRevisionRepository,
 				this.translationRepository, this.contentVersionRepository, this.contentVersionTranslationRepository,
 				contentValidator, auditLogService, clock);
@@ -257,14 +259,58 @@ class DevilFruitTypeServiceIntegrationTest {
 	@Test
 	void resubmittingTheSameItemsOwnNameAndRomajiIsNeverACollision() {
 		// 3.3: editing/resubmitting your own item's own identity replaces a version, it
-		// never collides with itself.
+		// never collides with itself. The description is tweaked (not the name/romaji) so
+		// this stays distinct from requireDifferentFromExistingVersions' own "must
+		// actually
+		// change something" rule below - this test is about the *other* check.
 		var approved = approvedCandidate(this.editorA, "editor-a@onepiece.local");
 		var published = this.service.publish(approved.getId(), this.reviewerA, "reviewer-a@onepiece.local");
 		var newDraft = this.service.editPublishedItem(published.getItemId(), this.editorB, "editor-b@onepiece.local");
+		this.service.updateDraft(newDraft.getId(), this.editorB, "editor-b@onepiece.local", newDraft.getRomaji(),
+				Map.of("it", new TranslationRequest("Paramecia", "Descrizione IT aggiornata"), "en",
+						new TranslationRequest("Paramecia", "EN description")));
 
 		var resubmitted = this.service.submitForReview(newDraft.getId(), this.editorB, "editor-b@onepiece.local");
 
 		assertThat(resubmitted.getStatus()).isEqualTo(WorkingRevisionStatus.IN_REVIEW);
+	}
+
+	@Test
+	void resubmittingAPublishedItemUnchangedFails() {
+		var approved = approvedCandidate(this.editorA, "editor-a@onepiece.local");
+		var published = this.service.publish(approved.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+		var newDraft = this.service.editPublishedItem(published.getItemId(), this.editorB, "editor-b@onepiece.local");
+
+		assertThatThrownBy(
+				() -> this.service.submitForReview(newDraft.getId(), this.editorB, "editor-b@onepiece.local"))
+			.isInstanceOf(IdenticalToExistingVersionException.class);
+	}
+
+	@Test
+	void resubmittingContentMatchingAnOlderNonLiveVersionAlsoFails() {
+		var approved = approvedCandidate(this.editorA, "editor-a@onepiece.local");
+		this.service.publish(approved.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+		var itemId = approved.getItemId();
+		// v2, with different content, becomes live - v1 ("Paramecia"/"Paramishia") is no
+		// longer live, but still part of the item's history.
+		var v2Draft = this.service.editPublishedItem(itemId, this.editorB, "editor-b@onepiece.local");
+		this.service.updateDraft(v2Draft.getId(), this.editorB, "editor-b@onepiece.local", "Zoiashia",
+				Map.of("it", new TranslationRequest("Zoan", "Descrizione IT v2"), "en",
+						new TranslationRequest("Zoan", "EN description v2")));
+		var v2Submitted = this.service.submitForReview(v2Draft.getId(), this.editorB, "editor-b@onepiece.local");
+		this.service.claim(v2Submitted.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+		var v2Approved = this.service.approve(v2Submitted.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+		this.service.publish(v2Approved.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+
+		// A third draft reverts back to v1's exact content - still a collision, even
+		// though v1 is no longer the live version.
+		var v3Draft = this.service.editPublishedItem(itemId, this.editorA, "editor-a@onepiece.local");
+		this.service.updateDraft(v3Draft.getId(), this.editorA, "editor-a@onepiece.local", "Paramishia",
+				Map.of("it", new TranslationRequest("Paramecia", "Descrizione IT"), "en",
+						new TranslationRequest("Paramecia", "EN description")));
+
+		assertThatThrownBy(() -> this.service.submitForReview(v3Draft.getId(), this.editorA, "editor-a@onepiece.local"))
+			.isInstanceOf(IdenticalToExistingVersionException.class);
 	}
 
 	@Test

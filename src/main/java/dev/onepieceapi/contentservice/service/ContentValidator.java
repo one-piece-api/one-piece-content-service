@@ -1,5 +1,8 @@
 package dev.onepieceapi.contentservice.service;
 
+import dev.onepieceapi.contentservice.persistence.ContentVersionEntity;
+import dev.onepieceapi.contentservice.persistence.ContentVersionRepository;
+import dev.onepieceapi.contentservice.persistence.ContentVersionTranslationRepository;
 import dev.onepieceapi.contentservice.persistence.LanguageRepository;
 import dev.onepieceapi.contentservice.persistence.TranslationEntity;
 import dev.onepieceapi.contentservice.persistence.TranslationRepository;
@@ -7,6 +10,7 @@ import dev.onepieceapi.contentservice.persistence.WorkingRevisionEntity;
 import dev.onepieceapi.contentservice.persistence.WorkingRevisionRepository;
 import dev.onepieceapi.contentservice.persistence.WorkingRevisionStatus;
 import dev.onepieceapi.contentservice.service.exception.DuplicateContentException;
+import dev.onepieceapi.contentservice.service.exception.IdenticalToExistingVersionException;
 import dev.onepieceapi.contentservice.service.exception.IncompleteContentException;
 import dev.onepieceapi.contentservice.service.exception.MissingRejectionReasonException;
 import dev.onepieceapi.contentservice.service.exception.UnknownLanguageException;
@@ -19,21 +23,24 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
  * Every content-shape rule {@link DevilFruitTypeService} enforces, in one place: is a
  * draft complete enough to submit (UF-CNT-03), does its romaji/name collide with another
- * item's (3.3), does an edit reference only known languages (3.2), is a rejection reason
- * actually present (UF-CNT-06). Deliberately plain methods on an injected collaborator,
- * not Bean Validation annotations - these checks read the database (the language catalog,
- * the working revision's own saved translations, every other item's reserving content),
- * which {@code @Valid}/{@code ConstraintValidator} is not a good fit for: it validates
- * the shape of an object already in memory, not invariants that depend on looking
- * something up first. A {@code ConstraintValidator} that injects a repository to do this
- * would just hide the same database-dependent business logic behind an annotation instead
- * of making it explicit here.
+ * item's (3.3), does it actually change anything from this same item's own publish
+ * history (3.3, user-reported gap), does an edit reference only known languages (3.2), is
+ * a rejection reason actually present (UF-CNT-06). Deliberately plain methods on an
+ * injected collaborator, not Bean Validation annotations - these checks read the database
+ * (the language catalog, the working revision's own saved translations, every other
+ * item's reserving content, this item's own version history), which
+ * {@code @Valid}/{@code ConstraintValidator} is not a good fit for: it validates the
+ * shape of an object already in memory, not invariants that depend on looking something
+ * up first. A {@code ConstraintValidator} that injects a repository to do this would just
+ * hide the same database-dependent business logic behind an annotation instead of making
+ * it explicit here.
  */
 @Service
 @RequiredArgsConstructor(onConstructor_ = { @Autowired })
@@ -71,12 +78,17 @@ public class ContentValidator {
 
 	private final WorkingRevisionRepository workingRevisionRepository;
 
+	private final ContentVersionRepository contentVersionRepository;
+
+	private final ContentVersionTranslationRepository contentVersionTranslationRepository;
+
 	/**
 	 * UF-CNT-03: every active language's {@code name}/{@code description} must be
 	 * non-blank and within its length limit, and {@code romaji} likewise - a draft may be
-	 * saved incomplete/over-length, but not submitted that way. Once complete, 3.3's
-	 * uniqueness rule is checked next (see {@link #requireUniqueForSubmission}) - there
-	 * is no point flagging a still-blank field as a collision too.
+	 * saved incomplete/over-length, but not submitted that way. Once complete, 3.3's two
+	 * uniqueness rules are checked next (see {@link #requireUniqueForSubmission} and
+	 * {@link #requireDifferentFromExistingVersions}) - there is no point flagging a
+	 * still-blank field as a collision too.
 	 */
 	public void requireCompleteForSubmission(WorkingRevisionEntity revision) {
 		List<FieldViolation> violations = new ArrayList<>();
@@ -99,6 +111,7 @@ public class ContentValidator {
 		}
 
 		requireUniqueForSubmission(revision, translationsByLanguage);
+		requireDifferentFromExistingVersions(revision, translationsByLanguage);
 	}
 
 	/**
@@ -134,6 +147,45 @@ public class ContentValidator {
 		if (!violations.isEmpty()) {
 			throw new DuplicateContentException(violations);
 		}
+	}
+
+	/**
+	 * 3.3 (user-reported gap): a submission on an item that already has publish history
+	 * must actually change something from every version ever published for it, not just
+	 * the current live one - otherwise nothing stops an author from submitting, and a
+	 * PUBLISHER from approving/publishing, several byte-for-byte identical versions in a
+	 * row. A brand-new item has no history yet, so this is a no-op for it.
+	 */
+	private void requireDifferentFromExistingVersions(WorkingRevisionEntity revision,
+			Map<String, TranslationEntity> translationsByLanguage) {
+		for (var version : this.contentVersionRepository.findByItemIdOrderBySequenceNumberDesc(revision.getItemId())) {
+			if (isIdenticalToVersion(revision, translationsByLanguage, version)) {
+				throw new IdenticalToExistingVersionException(version.getSequenceNumber());
+			}
+		}
+	}
+
+	private boolean isIdenticalToVersion(WorkingRevisionEntity revision,
+			Map<String, TranslationEntity> translationsByLanguage, ContentVersionEntity version) {
+		if (!Objects.equals(revision.getRomaji(), version.getRomaji())) {
+			return false;
+		}
+		var versionTranslationsByLanguage = this.contentVersionTranslationRepository
+			.findByIdContentVersionId(version.getId())
+			.stream()
+			.collect(Collectors.toMap(t -> t.getId().getLanguageCode(), t -> t));
+		for (var language : this.languageRepository.findAll()) {
+			var newTranslation = translationsByLanguage.get(language.getCode());
+			var oldTranslation = versionTranslationsByLanguage.get(language.getCode());
+			String newName = newTranslation != null ? newTranslation.getName() : null;
+			String newDescription = newTranslation != null ? newTranslation.getDescription() : null;
+			String oldName = oldTranslation != null ? oldTranslation.getName() : null;
+			String oldDescription = oldTranslation != null ? oldTranslation.getDescription() : null;
+			if (!Objects.equals(newName, oldName) || !Objects.equals(newDescription, oldDescription)) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	/** 3.2: every language an edit touches must already be in the active catalog. */
