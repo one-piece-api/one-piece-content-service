@@ -68,6 +68,26 @@ class VersionHistoryControllerTest {
 	}
 
 	@Test
+	void aCallerWithContentPublishCanGetAVersionsFullContent() throws Exception {
+		var version = new ContentVersionEntity(UUID.randomUUID(), UUID.randomUUID(), 1, "Paramishia", UUID.randomUUID(),
+				"publisher@onepiece.local", Instant.EPOCH);
+		when(this.service.getVersion(any(), any())).thenReturn(version);
+		when(this.service.getLiveVersionId(any())).thenReturn(version.getId());
+		when(this.service.versionTranslationsOf(any())).thenReturn(List.of());
+
+		var request = get("/devil-fruit-types/" + version.getItemId() + "/versions/" + version.getId())
+			.with(asUserWithAuthorities("PERMISSION_content:publish"));
+		this.mockMvc.perform(request).andExpect(status().isOk());
+	}
+
+	@Test
+	void aCallerWithoutContentPublishIsForbiddenFromGettingAVersion() throws Exception {
+		var request = get("/devil-fruit-types/" + UUID.randomUUID() + "/versions/" + UUID.randomUUID())
+			.with(asUserWithAuthorities("PERMISSION_content:read"));
+		this.mockMvc.perform(request).andExpect(status().isForbidden());
+	}
+
+	@Test
 	void aCallerWithContentPublishCanRestoreAVersion() throws Exception {
 		var version = new ContentVersionEntity(UUID.randomUUID(), UUID.randomUUID(), 1, "Paramishia", UUID.randomUUID(),
 				"publisher@onepiece.local", Instant.EPOCH);

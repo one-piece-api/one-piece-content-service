@@ -1,6 +1,7 @@
 package dev.onepieceapi.contentservice.web;
 
 import dev.onepieceapi.contentservice.service.DevilFruitTypeService;
+import dev.onepieceapi.contentservice.web.dto.ContentVersionDetailResponse;
 import dev.onepieceapi.contentservice.web.dto.ContentVersionResponse;
 import dev.onepieceapi.contentservice.web.security.AuthenticatedCaller;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +37,15 @@ class VersionHistoryController {
 			.stream()
 			.map(version -> DevilFruitTypeResponseMapper.toVersion(version, version.getId().equals(liveVersionId)))
 			.toList();
+	}
+
+	@GetMapping(ApiPaths.DEVIL_FRUIT_TYPE_VERSION_BY_ID)
+	ContentVersionDetailResponse get(@PathVariable UUID itemId, @PathVariable UUID versionId) {
+		var version = this.service.getVersion(itemId, versionId);
+		var liveVersionId = this.service.getLiveVersionId(itemId);
+		var translations = this.service.versionTranslationsOf(versionId);
+		return DevilFruitTypeResponseMapper.toVersionDetail(version, version.getId().equals(liveVersionId),
+				translations);
 	}
 
 	@PostMapping(ApiPaths.DEVIL_FRUIT_TYPE_VERSION_RESTORE)

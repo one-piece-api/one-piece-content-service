@@ -351,6 +351,19 @@ public class DevilFruitTypeService {
 	}
 
 	/**
+	 * One specific version's own record - lets a PUBLISHER see what a past snapshot
+	 * actually said (user-reported gap) before deciding whether to restore it.
+	 */
+	public ContentVersionEntity getVersion(UUID itemId, UUID versionId) {
+		return this.contentVersionRepository.findByIdAndItemId(versionId, itemId)
+			.orElseThrow(() -> new ContentVersionNotFoundException(itemId, versionId));
+	}
+
+	public List<ContentVersionTranslationEntity> versionTranslationsOf(UUID versionId) {
+		return this.contentVersionTranslationRepository.findByIdContentVersionId(versionId);
+	}
+
+	/**
 	 * Step 7: repoints the item's live pointer straight at an older snapshot - no new
 	 * {@link ContentVersionEntity} row (the plan is explicit: "no new version row, no new
 	 * review") and no working revision involved at all.

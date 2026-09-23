@@ -694,6 +694,33 @@ class DevilFruitTypeServiceIntegrationTest {
 	}
 
 	@Test
+	void gettingAVersionReturnsItsFullContent() {
+		var approved = approvedCandidate(this.editorA, "editor-a@onepiece.local");
+		var published = this.service.publish(approved.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+		var itemId = published.getItemId();
+		var v1Id = this.itemRepository.findById(itemId).orElseThrow().getLiveVersionId();
+
+		var version = this.service.getVersion(itemId, v1Id);
+		var translations = this.service.versionTranslationsOf(version.getId());
+
+		assertThat(version.getRomaji()).isEqualTo("Paramishia");
+		assertThat(translations).extracting(t -> t.getId().getLanguageCode()).containsExactlyInAnyOrder("it", "en");
+	}
+
+	@Test
+	void gettingAVersionThatDoesNotBelongToTheItemFails() {
+		var approvedA = approvedCandidate(this.editorA, "editor-a@onepiece.local");
+		var publishedA = this.service.publish(approvedA.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+		var v1Id = this.itemRepository.findById(publishedA.getItemId()).orElseThrow().getLiveVersionId();
+		var otherItemApproved = approvedCandidate(this.editorB, "editor-b@onepiece.local", "Zoiashia", "Zoan");
+		var otherItemPublished = this.service.publish(otherItemApproved.getId(), this.reviewerB,
+				"reviewer-b@onepiece.local");
+
+		assertThatThrownBy(() -> this.service.getVersion(otherItemPublished.getItemId(), v1Id))
+			.isInstanceOf(ContentVersionNotFoundException.class);
+	}
+
+	@Test
 	void restoringRepointsTheLivePointerWithoutCreatingANewVersionRow() {
 		var approvedA = approvedCandidate(this.editorA, "editor-a@onepiece.local");
 		this.service.publish(approvedA.getId(), this.reviewerA, "reviewer-a@onepiece.local");
