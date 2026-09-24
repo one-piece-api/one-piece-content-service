@@ -1,4 +1,4 @@
-package dev.onepieceapi.contentservice.service;
+package dev.onepieceapi.contentservice.service.validation;
 
 import dev.onepieceapi.contentservice.persistence.entity.ContentVersionEntity;
 import dev.onepieceapi.contentservice.persistence.repository.ContentVersionRepository;
@@ -9,6 +9,7 @@ import dev.onepieceapi.contentservice.persistence.repository.TranslationReposito
 import dev.onepieceapi.contentservice.persistence.entity.WorkingRevisionEntity;
 import dev.onepieceapi.contentservice.persistence.repository.WorkingRevisionRepository;
 import dev.onepieceapi.contentservice.persistence.entity.WorkingRevisionStatus;
+import dev.onepieceapi.contentservice.service.DevilFruitTypeService;
 import dev.onepieceapi.contentservice.service.exception.DuplicateContentException;
 import dev.onepieceapi.contentservice.service.exception.IdenticalToExistingVersionException;
 import dev.onepieceapi.contentservice.service.exception.IncompleteContentException;

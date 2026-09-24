@@ -22,6 +22,7 @@ import dev.onepieceapi.contentservice.service.exception.ReviewAlreadyClaimedExce
 import dev.onepieceapi.contentservice.service.exception.ReviewSlotOccupiedException;
 import dev.onepieceapi.contentservice.service.exception.UnknownLanguageException;
 import dev.onepieceapi.contentservice.service.exception.WorkingRevisionNotFoundException;
+import dev.onepieceapi.contentservice.service.validation.ContentValidator;
 import dev.onepieceapi.contentservice.web.dto.TranslationRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

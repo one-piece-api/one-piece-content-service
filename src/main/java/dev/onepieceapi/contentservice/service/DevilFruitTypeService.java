@@ -20,6 +20,7 @@ import dev.onepieceapi.contentservice.service.exception.NotClaimantException;
 import dev.onepieceapi.contentservice.service.exception.ReviewAlreadyClaimedException;
 import dev.onepieceapi.contentservice.service.exception.ReviewSlotOccupiedException;
 import dev.onepieceapi.contentservice.service.exception.WorkingRevisionNotFoundException;
+import dev.onepieceapi.contentservice.service.validation.ContentValidator;
 import dev.onepieceapi.contentservice.web.dto.TranslationRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
