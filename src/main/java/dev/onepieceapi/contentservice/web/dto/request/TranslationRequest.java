@@ -1,4 +1,4 @@
-package dev.onepieceapi.contentservice.web.dto;
+package dev.onepieceapi.contentservice.web.dto.request;
 
 /**
  * Deliberately no {@code @Size}/{@code @NotBlank} constraints: a draft may be saved

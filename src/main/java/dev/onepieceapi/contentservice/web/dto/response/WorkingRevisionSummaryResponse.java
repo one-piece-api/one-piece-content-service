@@ -1,4 +1,4 @@
-package dev.onepieceapi.contentservice.web.dto;
+package dev.onepieceapi.contentservice.web.dto.response;
 
 import java.time.Instant;
 import java.util.UUID;

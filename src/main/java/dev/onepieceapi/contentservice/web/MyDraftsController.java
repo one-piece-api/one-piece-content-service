@@ -1,7 +1,7 @@
 package dev.onepieceapi.contentservice.web;
 
 import dev.onepieceapi.contentservice.service.DevilFruitTypeService;
-import dev.onepieceapi.contentservice.web.dto.WorkingRevisionSummaryResponse;
+import dev.onepieceapi.contentservice.web.dto.response.WorkingRevisionSummaryResponse;
 import dev.onepieceapi.contentservice.web.security.AuthenticatedCaller;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;

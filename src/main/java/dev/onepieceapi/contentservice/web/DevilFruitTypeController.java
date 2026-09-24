@@ -1,10 +1,10 @@
 package dev.onepieceapi.contentservice.web;
 
 import dev.onepieceapi.contentservice.service.DevilFruitTypeService;
-import dev.onepieceapi.contentservice.web.dto.EncyclopediaItemDetailResponse;
-import dev.onepieceapi.contentservice.web.dto.RejectRequest;
-import dev.onepieceapi.contentservice.web.dto.UpdateDraftRequest;
-import dev.onepieceapi.contentservice.web.dto.WorkingRevisionDetailResponse;
+import dev.onepieceapi.contentservice.web.dto.response.EncyclopediaItemDetailResponse;
+import dev.onepieceapi.contentservice.web.dto.request.RejectRequest;
+import dev.onepieceapi.contentservice.web.dto.request.UpdateDraftRequest;
+import dev.onepieceapi.contentservice.web.dto.response.WorkingRevisionDetailResponse;
 import dev.onepieceapi.contentservice.web.security.AuthenticatedCaller;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;

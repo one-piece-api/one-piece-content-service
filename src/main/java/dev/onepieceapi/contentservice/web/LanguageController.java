@@ -1,8 +1,8 @@
 package dev.onepieceapi.contentservice.web;
 
 import dev.onepieceapi.contentservice.service.LanguageService;
-import dev.onepieceapi.contentservice.web.dto.CreateLanguageRequest;
-import dev.onepieceapi.contentservice.web.dto.LanguageResponse;
+import dev.onepieceapi.contentservice.web.dto.request.CreateLanguageRequest;
+import dev.onepieceapi.contentservice.web.dto.response.LanguageResponse;
 import dev.onepieceapi.contentservice.web.security.AuthenticatedCaller;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;

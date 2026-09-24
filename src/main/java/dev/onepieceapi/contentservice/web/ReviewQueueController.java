@@ -1,8 +1,8 @@
 package dev.onepieceapi.contentservice.web;
 
 import dev.onepieceapi.contentservice.service.DevilFruitTypeService;
-import dev.onepieceapi.contentservice.web.dto.ReviewQueueItemResponse;
-import dev.onepieceapi.contentservice.web.dto.WorkingRevisionDetailResponse;
+import dev.onepieceapi.contentservice.web.dto.response.ReviewQueueItemResponse;
+import dev.onepieceapi.contentservice.web.dto.response.WorkingRevisionDetailResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;

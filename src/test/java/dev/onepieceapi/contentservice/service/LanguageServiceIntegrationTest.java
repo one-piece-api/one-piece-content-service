@@ -18,7 +18,7 @@ import dev.onepieceapi.contentservice.service.exception.InvalidLanguageNameExcep
 import dev.onepieceapi.contentservice.service.exception.LanguageAlreadyExistsException;
 import dev.onepieceapi.contentservice.service.exception.LanguageInUseException;
 import dev.onepieceapi.contentservice.service.exception.LanguageNotFoundException;
-import dev.onepieceapi.contentservice.web.dto.LanguageResponse;
+import dev.onepieceapi.contentservice.web.dto.response.LanguageResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

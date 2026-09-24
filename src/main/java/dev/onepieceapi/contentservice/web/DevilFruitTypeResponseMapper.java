@@ -5,14 +5,14 @@ import dev.onepieceapi.contentservice.persistence.entity.ContentVersionTranslati
 import dev.onepieceapi.contentservice.persistence.entity.TranslationEntity;
 import dev.onepieceapi.contentservice.persistence.entity.WorkingRevisionEntity;
 import dev.onepieceapi.contentservice.service.EncyclopediaEntry;
-import dev.onepieceapi.contentservice.web.dto.ContentVersionDetailResponse;
-import dev.onepieceapi.contentservice.web.dto.ContentVersionResponse;
-import dev.onepieceapi.contentservice.web.dto.EncyclopediaItemDetailResponse;
-import dev.onepieceapi.contentservice.web.dto.EncyclopediaItemResponse;
-import dev.onepieceapi.contentservice.web.dto.ReviewQueueItemResponse;
-import dev.onepieceapi.contentservice.web.dto.TranslationResponse;
-import dev.onepieceapi.contentservice.web.dto.WorkingRevisionDetailResponse;
-import dev.onepieceapi.contentservice.web.dto.WorkingRevisionSummaryResponse;
+import dev.onepieceapi.contentservice.web.dto.response.ContentVersionDetailResponse;
+import dev.onepieceapi.contentservice.web.dto.response.ContentVersionResponse;
+import dev.onepieceapi.contentservice.web.dto.response.EncyclopediaItemDetailResponse;
+import dev.onepieceapi.contentservice.web.dto.response.EncyclopediaItemResponse;
+import dev.onepieceapi.contentservice.web.dto.response.ReviewQueueItemResponse;
+import dev.onepieceapi.contentservice.web.dto.response.TranslationResponse;
+import dev.onepieceapi.contentservice.web.dto.response.WorkingRevisionDetailResponse;
+import dev.onepieceapi.contentservice.web.dto.response.WorkingRevisionSummaryResponse;
 import lombok.experimental.UtilityClass;
 
 import java.util.Comparator;

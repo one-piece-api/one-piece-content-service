@@ -1,7 +1,7 @@
 package dev.onepieceapi.contentservice.web;
 
 import dev.onepieceapi.contentservice.service.LanguageService;
-import dev.onepieceapi.contentservice.web.dto.LanguageResponse;
+import dev.onepieceapi.contentservice.web.dto.response.LanguageResponse;
 import dev.onepieceapi.contentservice.web.security.AuthenticatedCaller;
 import dev.onepieceapi.contentservice.web.security.ContentAuthenticationToken;
 import dev.onepieceapi.contentservice.web.security.SecurityConfig;

@@ -10,7 +10,7 @@ import dev.onepieceapi.contentservice.service.exception.LanguageAlreadyExistsExc
 import dev.onepieceapi.contentservice.service.exception.LanguageInUseException;
 import dev.onepieceapi.contentservice.service.exception.LanguageNotFoundException;
 import dev.onepieceapi.contentservice.service.validation.ContentValidator;
-import dev.onepieceapi.contentservice.web.dto.LanguageResponse;
+import dev.onepieceapi.contentservice.web.dto.response.LanguageResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;

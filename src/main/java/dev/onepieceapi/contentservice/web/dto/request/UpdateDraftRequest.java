@@ -1,4 +1,4 @@
-package dev.onepieceapi.contentservice.web.dto;
+package dev.onepieceapi.contentservice.web.dto.request;
 
 import java.util.Map;
 
