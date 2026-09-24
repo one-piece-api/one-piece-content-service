@@ -1,8 +1,8 @@
 package dev.onepieceapi.contentservice.web;
 
-import dev.onepieceapi.contentservice.persistence.TranslationEntity;
-import dev.onepieceapi.contentservice.persistence.WorkingRevisionEntity;
-import dev.onepieceapi.contentservice.persistence.WorkingRevisionStatus;
+import dev.onepieceapi.contentservice.persistence.entity.TranslationEntity;
+import dev.onepieceapi.contentservice.persistence.entity.WorkingRevisionEntity;
+import dev.onepieceapi.contentservice.persistence.entity.WorkingRevisionStatus;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;

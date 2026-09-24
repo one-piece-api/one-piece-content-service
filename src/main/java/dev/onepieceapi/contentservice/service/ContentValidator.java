@@ -1,14 +1,14 @@
 package dev.onepieceapi.contentservice.service;
 
-import dev.onepieceapi.contentservice.persistence.ContentVersionEntity;
-import dev.onepieceapi.contentservice.persistence.ContentVersionRepository;
-import dev.onepieceapi.contentservice.persistence.ContentVersionTranslationRepository;
-import dev.onepieceapi.contentservice.persistence.LanguageRepository;
-import dev.onepieceapi.contentservice.persistence.TranslationEntity;
-import dev.onepieceapi.contentservice.persistence.TranslationRepository;
-import dev.onepieceapi.contentservice.persistence.WorkingRevisionEntity;
-import dev.onepieceapi.contentservice.persistence.WorkingRevisionRepository;
-import dev.onepieceapi.contentservice.persistence.WorkingRevisionStatus;
+import dev.onepieceapi.contentservice.persistence.entity.ContentVersionEntity;
+import dev.onepieceapi.contentservice.persistence.repository.ContentVersionRepository;
+import dev.onepieceapi.contentservice.persistence.repository.ContentVersionTranslationRepository;
+import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
+import dev.onepieceapi.contentservice.persistence.entity.TranslationEntity;
+import dev.onepieceapi.contentservice.persistence.repository.TranslationRepository;
+import dev.onepieceapi.contentservice.persistence.entity.WorkingRevisionEntity;
+import dev.onepieceapi.contentservice.persistence.repository.WorkingRevisionRepository;
+import dev.onepieceapi.contentservice.persistence.entity.WorkingRevisionStatus;
 import dev.onepieceapi.contentservice.service.exception.DuplicateContentException;
 import dev.onepieceapi.contentservice.service.exception.IdenticalToExistingVersionException;
 import dev.onepieceapi.contentservice.service.exception.IncompleteContentException;

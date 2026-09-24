@@ -1,4 +1,4 @@
-package dev.onepieceapi.contentservice.persistence;
+package dev.onepieceapi.contentservice.persistence.entity;
 
 import jakarta.persistence.Embeddable;
 import lombok.EqualsAndHashCode;
@@ -12,14 +12,14 @@ import java.util.UUID;
 @Getter
 @EqualsAndHashCode
 @NoArgsConstructor
-public class TranslationId implements Serializable {
+public class ContentVersionTranslationId implements Serializable {
 
-	private UUID workingRevisionId;
+	private UUID contentVersionId;
 
 	private String languageCode;
 
-	public TranslationId(UUID workingRevisionId, String languageCode) {
-		this.workingRevisionId = workingRevisionId;
+	public ContentVersionTranslationId(UUID contentVersionId, String languageCode) {
+		this.contentVersionId = contentVersionId;
 		this.languageCode = languageCode;
 	}
 

@@ -1,8 +1,8 @@
 package dev.onepieceapi.contentservice.web;
 
-import dev.onepieceapi.contentservice.persistence.ContentVersionEntity;
-import dev.onepieceapi.contentservice.persistence.WorkingRevisionEntity;
-import dev.onepieceapi.contentservice.persistence.WorkingRevisionStatus;
+import dev.onepieceapi.contentservice.persistence.entity.ContentVersionEntity;
+import dev.onepieceapi.contentservice.persistence.entity.WorkingRevisionEntity;
+import dev.onepieceapi.contentservice.persistence.entity.WorkingRevisionStatus;
 import dev.onepieceapi.contentservice.service.DevilFruitTypeService;
 import dev.onepieceapi.contentservice.service.EncyclopediaEntry;
 import dev.onepieceapi.contentservice.web.security.AuthenticatedCaller;

@@ -1,7 +1,7 @@
 package dev.onepieceapi.contentservice.service;
 
-import dev.onepieceapi.contentservice.persistence.AuditLogEntity;
-import dev.onepieceapi.contentservice.persistence.AuditLogRepository;
+import dev.onepieceapi.contentservice.persistence.entity.AuditLogEntity;
+import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;

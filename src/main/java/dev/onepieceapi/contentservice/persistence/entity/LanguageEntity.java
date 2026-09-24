@@ -1,4 +1,4 @@
-package dev.onepieceapi.contentservice.persistence;
+package dev.onepieceapi.contentservice.persistence.entity;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;

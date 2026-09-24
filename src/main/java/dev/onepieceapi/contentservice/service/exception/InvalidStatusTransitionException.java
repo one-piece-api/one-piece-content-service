@@ -1,6 +1,6 @@
 package dev.onepieceapi.contentservice.service.exception;
 
-import dev.onepieceapi.contentservice.persistence.WorkingRevisionStatus;
+import dev.onepieceapi.contentservice.persistence.entity.WorkingRevisionStatus;
 import dev.onepieceapi.exception.ConflictException;
 
 /**

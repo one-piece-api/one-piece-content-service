@@ -1,4 +1,4 @@
-package dev.onepieceapi.contentservice.persistence;
+package dev.onepieceapi.contentservice.persistence.entity;
 
 /**
  * A working revision's own lifecycle state

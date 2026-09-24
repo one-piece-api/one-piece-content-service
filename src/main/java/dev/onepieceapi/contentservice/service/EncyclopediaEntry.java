@@ -1,9 +1,9 @@
 package dev.onepieceapi.contentservice.service;
 
-import dev.onepieceapi.contentservice.persistence.ContentVersionEntity;
-import dev.onepieceapi.contentservice.persistence.ContentVersionTranslationEntity;
-import dev.onepieceapi.contentservice.persistence.TranslationEntity;
-import dev.onepieceapi.contentservice.persistence.WorkingRevisionEntity;
+import dev.onepieceapi.contentservice.persistence.entity.ContentVersionEntity;
+import dev.onepieceapi.contentservice.persistence.entity.ContentVersionTranslationEntity;
+import dev.onepieceapi.contentservice.persistence.entity.TranslationEntity;
+import dev.onepieceapi.contentservice.persistence.entity.WorkingRevisionEntity;
 
 import java.util.List;
 

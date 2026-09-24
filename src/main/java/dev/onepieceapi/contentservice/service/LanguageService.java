@@ -1,9 +1,9 @@
 package dev.onepieceapi.contentservice.service;
 
-import dev.onepieceapi.contentservice.persistence.ContentVersionTranslationRepository;
-import dev.onepieceapi.contentservice.persistence.LanguageEntity;
-import dev.onepieceapi.contentservice.persistence.LanguageRepository;
-import dev.onepieceapi.contentservice.persistence.TranslationRepository;
+import dev.onepieceapi.contentservice.persistence.repository.ContentVersionTranslationRepository;
+import dev.onepieceapi.contentservice.persistence.entity.LanguageEntity;
+import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
+import dev.onepieceapi.contentservice.persistence.repository.TranslationRepository;
 import dev.onepieceapi.contentservice.service.exception.InvalidLanguageCodeException;
 import dev.onepieceapi.contentservice.service.exception.InvalidLanguageNameException;
 import dev.onepieceapi.contentservice.service.exception.LanguageAlreadyExistsException;

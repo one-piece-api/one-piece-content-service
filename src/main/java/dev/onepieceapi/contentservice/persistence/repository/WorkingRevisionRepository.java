@@ -1,4 +1,7 @@
-package dev.onepieceapi.contentservice.persistence;
+package dev.onepieceapi.contentservice.persistence.repository;
+
+import dev.onepieceapi.contentservice.persistence.entity.WorkingRevisionEntity;
+import dev.onepieceapi.contentservice.persistence.entity.WorkingRevisionStatus;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 

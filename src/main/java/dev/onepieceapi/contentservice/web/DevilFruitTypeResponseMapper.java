@@ -1,9 +1,9 @@
 package dev.onepieceapi.contentservice.web;
 
-import dev.onepieceapi.contentservice.persistence.ContentVersionEntity;
-import dev.onepieceapi.contentservice.persistence.ContentVersionTranslationEntity;
-import dev.onepieceapi.contentservice.persistence.TranslationEntity;
-import dev.onepieceapi.contentservice.persistence.WorkingRevisionEntity;
+import dev.onepieceapi.contentservice.persistence.entity.ContentVersionEntity;
+import dev.onepieceapi.contentservice.persistence.entity.ContentVersionTranslationEntity;
+import dev.onepieceapi.contentservice.persistence.entity.TranslationEntity;
+import dev.onepieceapi.contentservice.persistence.entity.WorkingRevisionEntity;
 import dev.onepieceapi.contentservice.service.EncyclopediaEntry;
 import dev.onepieceapi.contentservice.web.dto.ContentVersionDetailResponse;
 import dev.onepieceapi.contentservice.web.dto.ContentVersionResponse;
