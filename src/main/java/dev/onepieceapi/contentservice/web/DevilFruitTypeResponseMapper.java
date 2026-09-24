@@ -17,6 +17,7 @@ import lombok.experimental.UtilityClass;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -25,8 +26,13 @@ public class DevilFruitTypeResponseMapper {
 
 	private static final String ENTITY_TYPE = "DEVIL_FRUIT_TYPE";
 
-	/** Preferred language for the "Le mie bozze" summary's display name, see below. */
-	private static final String PREFERRED_LANGUAGE = "it";
+	/**
+	 * Fallback whenever the caller's `Accept-Language` is missing or isn't Italian - see
+	 * {@link #preferredLanguageOf(String)}.
+	 */
+	private static final String DEFAULT_LANGUAGE = "en";
+
+	private static final String ITALIAN = "it";
 
 	public WorkingRevisionDetailResponse toDetail(WorkingRevisionEntity revision, List<TranslationEntity> translations,
 			boolean everPublished) {
@@ -39,36 +45,71 @@ public class DevilFruitTypeResponseMapper {
 	}
 
 	public WorkingRevisionSummaryResponse toSummary(WorkingRevisionEntity revision,
-			List<TranslationEntity> translations) {
+			List<TranslationEntity> translations, String acceptLanguage) {
 		return new WorkingRevisionSummaryResponse(revision.getId(), revision.getItemId(), ENTITY_TYPE,
-				revision.getRomaji(), displayNameOf(translations), revision.getStatus().name(), revision.getUpdatedAt(),
-				revision.getRejectionReason());
+				revision.getRomaji(), displayNameOf(translations, preferredLanguageOf(acceptLanguage)),
+				revision.getStatus().name(), revision.getUpdatedAt(), revision.getRejectionReason());
 	}
 
 	/**
 	 * One row of the shared review queue (Step 3) - see {@link ReviewQueueItemResponse}.
 	 */
-	public ReviewQueueItemResponse toQueueItem(WorkingRevisionEntity revision, List<TranslationEntity> translations) {
+	public ReviewQueueItemResponse toQueueItem(WorkingRevisionEntity revision, List<TranslationEntity> translations,
+			String acceptLanguage) {
 		return new ReviewQueueItemResponse(revision.getId(), revision.getItemId(), ENTITY_TYPE, revision.getRomaji(),
-				displayNameOf(translations), revision.getAuthorEmail(), revision.getClaimedByEmail(),
-				revision.getUpdatedAt());
+				displayNameOf(translations, preferredLanguageOf(acceptLanguage)), revision.getAuthorEmail(),
+				revision.getClaimedByEmail(), revision.getUpdatedAt());
+	}
+
+	/**
+	 * English by default, Italian only when the caller's UI is in Italian - the same two
+	 * languages the frontend's own language switch offers today (see
+	 * {@code AVAILABLE_LOCALES} in one-piece-user-frontend). A future UI locale the
+	 * switch doesn't yet cover falls back to this same rule rather than to itself, since
+	 * there is no content translation to prefer for it.
+	 */
+	private String preferredLanguageOf(String acceptLanguage) {
+		if (acceptLanguage == null || acceptLanguage.isBlank()) {
+			return DEFAULT_LANGUAGE;
+		}
+		try {
+			var ranges = Locale.LanguageRange.parse(acceptLanguage);
+			return ITALIAN.equals(Locale.lookupTag(ranges, List.of(ITALIAN, DEFAULT_LANGUAGE))) ? ITALIAN
+					: DEFAULT_LANGUAGE;
+		}
+		catch (IllegalArgumentException ex) {
+			return DEFAULT_LANGUAGE;
+		}
 	}
 
 	/**
 	 * Picks a best-effort display name for a compact list row: the preferred language's
-	 * name if present and non-blank, otherwise the first other translation (by language
-	 * code) that has one, otherwise {@code null} - the frontend falls back to "bozza
-	 * senza nome", matching the reference mockup's pattern.
+	 * name if present and non-blank, otherwise the other one of English/Italian,
+	 * otherwise the first remaining translation (by language code) that has one,
+	 * otherwise {@code null} - the frontend falls back to "bozza senza nome", matching
+	 * the reference mockup's pattern.
 	 */
-	private String displayNameOf(List<TranslationEntity> translations) {
+	private String displayNameOf(List<TranslationEntity> translations, String preferredLanguage) {
+		String secondaryLanguage = ITALIAN.equals(preferredLanguage) ? DEFAULT_LANGUAGE : ITALIAN;
 		return translations.stream()
 			.filter(t -> t.getName() != null && !t.getName().isBlank())
 			.sorted(Comparator
-				.comparing((TranslationEntity t) -> !PREFERRED_LANGUAGE.equals(t.getId().getLanguageCode()))
+				.comparing((TranslationEntity t) -> languageRank(t.getId().getLanguageCode(), preferredLanguage,
+						secondaryLanguage))
 				.thenComparing(t -> t.getId().getLanguageCode()))
 			.map(TranslationEntity::getName)
 			.findFirst()
 			.orElse(null);
+	}
+
+	private int languageRank(String languageCode, String preferredLanguage, String secondaryLanguage) {
+		if (preferredLanguage.equals(languageCode)) {
+			return 0;
+		}
+		if (secondaryLanguage.equals(languageCode)) {
+			return 1;
+		}
+		return 2;
 	}
 
 	/**
@@ -76,13 +117,15 @@ public class DevilFruitTypeResponseMapper {
 	 * - the one entry point every caller should use, so the `ReviewedCandidate` /
 	 * `PublishedItem` / `RetiredItem` switch lives in exactly one place.
 	 */
-	public EncyclopediaItemResponse toEncyclopediaItem(EncyclopediaEntry entry) {
+	public EncyclopediaItemResponse toEncyclopediaItem(EncyclopediaEntry entry, String acceptLanguage) {
+		String preferredLanguage = preferredLanguageOf(acceptLanguage);
 		return switch (entry) {
-			case EncyclopediaEntry.ReviewedCandidate rc -> reviewedEncyclopediaItem(rc.revision(), rc.translations());
+			case EncyclopediaEntry.ReviewedCandidate rc ->
+				reviewedEncyclopediaItem(rc.revision(), rc.translations(), preferredLanguage);
 			case EncyclopediaEntry.PublishedItem pi ->
-				versionEncyclopediaItem(pi.version(), pi.translations(), "PUBLISHED");
+				versionEncyclopediaItem(pi.version(), pi.translations(), "PUBLISHED", preferredLanguage);
 			case EncyclopediaEntry.RetiredItem ri ->
-				versionEncyclopediaItem(ri.lastVersion(), ri.translations(), "RETIRED");
+				versionEncyclopediaItem(ri.lastVersion(), ri.translations(), "RETIRED", preferredLanguage);
 		};
 	}
 
@@ -98,15 +141,15 @@ public class DevilFruitTypeResponseMapper {
 	}
 
 	private EncyclopediaItemResponse reviewedEncyclopediaItem(WorkingRevisionEntity revision,
-			List<TranslationEntity> translations) {
+			List<TranslationEntity> translations, String preferredLanguage) {
 		return new EncyclopediaItemResponse(revision.getItemId(), revision.getId(), ENTITY_TYPE, revision.getRomaji(),
-				displayNameOf(translations), "REVIEWED", revision.getUpdatedAt());
+				displayNameOf(translations, preferredLanguage), "REVIEWED", revision.getUpdatedAt());
 	}
 
 	private EncyclopediaItemResponse versionEncyclopediaItem(ContentVersionEntity version,
-			List<ContentVersionTranslationEntity> translations, String status) {
+			List<ContentVersionTranslationEntity> translations, String status, String preferredLanguage) {
 		return new EncyclopediaItemResponse(version.getItemId(), null, ENTITY_TYPE, version.getRomaji(),
-				displayNameOfVersion(translations), status, version.getPublishedAt());
+				displayNameOfVersion(translations, preferredLanguage), status, version.getPublishedAt());
 	}
 
 	private EncyclopediaItemDetailResponse reviewedEncyclopediaDetail(WorkingRevisionEntity revision,
@@ -143,12 +186,13 @@ public class DevilFruitTypeResponseMapper {
 				version.getPublisherEmail(), version.getPublishedAt(), live, version.getRomaji(), byLanguage);
 	}
 
-	private String displayNameOfVersion(List<ContentVersionTranslationEntity> translations) {
+	private String displayNameOfVersion(List<ContentVersionTranslationEntity> translations, String preferredLanguage) {
+		String secondaryLanguage = ITALIAN.equals(preferredLanguage) ? DEFAULT_LANGUAGE : ITALIAN;
 		return translations.stream()
 			.filter(t -> t.getName() != null && !t.getName().isBlank())
 			.sorted(Comparator
-				.comparing(
-						(ContentVersionTranslationEntity t) -> !PREFERRED_LANGUAGE.equals(t.getId().getLanguageCode()))
+				.comparing((ContentVersionTranslationEntity t) -> languageRank(t.getId().getLanguageCode(),
+						preferredLanguage, secondaryLanguage))
 				.thenComparing(t -> t.getId().getLanguageCode()))
 			.map(ContentVersionTranslationEntity::getName)
 			.findFirst()

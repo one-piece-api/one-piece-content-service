@@ -6,8 +6,10 @@ import dev.onepieceapi.contentservice.web.dto.EncyclopediaItemDetailResponse;
 import dev.onepieceapi.contentservice.web.dto.EncyclopediaItemResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -27,8 +29,12 @@ class EncyclopediaController {
 	private final DevilFruitTypeService service;
 
 	@GetMapping(ApiPaths.ENCYCLOPEDIA)
-	List<EncyclopediaItemResponse> list() {
-		return this.service.listEncyclopedia().stream().map(DevilFruitTypeResponseMapper::toEncyclopediaItem).toList();
+	List<EncyclopediaItemResponse> list(
+			@RequestHeader(value = HttpHeaders.ACCEPT_LANGUAGE, required = false) String acceptLanguage) {
+		return this.service.listEncyclopedia()
+			.stream()
+			.map(entry -> DevilFruitTypeResponseMapper.toEncyclopediaItem(entry, acceptLanguage))
+			.toList();
 	}
 
 	@GetMapping(ApiPaths.ENCYCLOPEDIA_ITEM)

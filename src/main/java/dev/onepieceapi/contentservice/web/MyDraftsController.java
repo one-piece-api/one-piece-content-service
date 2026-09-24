@@ -5,8 +5,10 @@ import dev.onepieceapi.contentservice.web.dto.WorkingRevisionSummaryResponse;
 import dev.onepieceapi.contentservice.web.security.AuthenticatedCaller;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -24,11 +26,12 @@ class MyDraftsController {
 	private final DevilFruitTypeService service;
 
 	@GetMapping(ApiPaths.MY_DRAFTS)
-	List<WorkingRevisionSummaryResponse> list(@AuthenticationPrincipal AuthenticatedCaller caller) {
+	List<WorkingRevisionSummaryResponse> list(@AuthenticationPrincipal AuthenticatedCaller caller,
+			@RequestHeader(value = HttpHeaders.ACCEPT_LANGUAGE, required = false) String acceptLanguage) {
 		return this.service.listOwnDrafts(caller.id())
 			.stream()
 			.map(revision -> DevilFruitTypeResponseMapper.toSummary(revision,
-					this.service.translationsOf(revision.getId())))
+					this.service.translationsOf(revision.getId()), acceptLanguage))
 			.toList();
 	}
 
