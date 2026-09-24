@@ -31,16 +31,14 @@ class ReviewQueueController {
 			@RequestHeader(value = HttpHeaders.ACCEPT_LANGUAGE, required = false) String acceptLanguage) {
 		return this.service.reviewQueue()
 			.stream()
-			.map(revision -> DevilFruitTypeResponseMapper.toQueueItem(revision,
-					this.service.translationsOf(revision.getId()), acceptLanguage))
+			.map(revision -> DevilFruitTypeResponseMapper.toQueueItem(revision, acceptLanguage))
 			.toList();
 	}
 
 	@GetMapping(ApiPaths.REVIEW_QUEUE_ITEM)
 	WorkingRevisionDetailResponse get(@PathVariable UUID workingRevisionId) {
 		var revision = this.service.getForReview(workingRevisionId);
-		return DevilFruitTypeResponseMapper.toDetail(revision, this.service.translationsOf(revision.getId()),
-				this.service.everPublished(revision.getItemId()));
+		return DevilFruitTypeResponseMapper.toDetail(revision, this.service.everPublished(revision.itemId()));
 	}
 
 }

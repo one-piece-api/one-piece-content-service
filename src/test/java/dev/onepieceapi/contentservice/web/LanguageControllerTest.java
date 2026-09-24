@@ -1,7 +1,7 @@
 package dev.onepieceapi.contentservice.web;
 
+import dev.onepieceapi.contentservice.domain.Language;
 import dev.onepieceapi.contentservice.service.LanguageService;
-import dev.onepieceapi.contentservice.web.dto.response.LanguageResponse;
 import dev.onepieceapi.contentservice.web.security.AuthenticatedCaller;
 import dev.onepieceapi.contentservice.web.security.ContentAuthenticationToken;
 import dev.onepieceapi.contentservice.web.security.SecurityConfig;
@@ -48,7 +48,7 @@ class LanguageControllerTest {
 
 	@Test
 	void anyAuthenticatedCallerCanListLanguages() throws Exception {
-		when(this.service.list()).thenReturn(List.of(new LanguageResponse("en", "English")));
+		when(this.service.list()).thenReturn(List.of(new Language("en", "English")));
 
 		var request = get("/languages").with(asUserWithAuthorities("PERMISSION_content:write"));
 		this.mockMvc.perform(request).andExpect(status().isOk());
@@ -61,7 +61,7 @@ class LanguageControllerTest {
 
 	@Test
 	void aCallerWithLanguagesManageCanCreateALanguage() throws Exception {
-		when(this.service.create(any(), any(), any(), any())).thenReturn(new LanguageResponse("fr", "Français"));
+		when(this.service.create(any(), any(), any(), any())).thenReturn(new Language("fr", "Français"));
 
 		var request = post("/languages").with(asUserWithAuthorities("PERMISSION_languages:manage"))
 			.contentType("application/json")

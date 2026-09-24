@@ -30,8 +30,7 @@ class MyDraftsController {
 			@RequestHeader(value = HttpHeaders.ACCEPT_LANGUAGE, required = false) String acceptLanguage) {
 		return this.service.listOwnDrafts(caller.id())
 			.stream()
-			.map(revision -> DevilFruitTypeResponseMapper.toSummary(revision,
-					this.service.translationsOf(revision.getId()), acceptLanguage))
+			.map(revision -> DevilFruitTypeResponseMapper.toSummary(revision, acceptLanguage))
 			.toList();
 	}
 

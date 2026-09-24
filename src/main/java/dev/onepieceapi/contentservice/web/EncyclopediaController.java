@@ -1,7 +1,7 @@
 package dev.onepieceapi.contentservice.web;
 
+import dev.onepieceapi.contentservice.domain.EncyclopediaEntry;
 import dev.onepieceapi.contentservice.service.DevilFruitTypeService;
-import dev.onepieceapi.contentservice.service.EncyclopediaEntry;
 import dev.onepieceapi.contentservice.web.dto.response.EncyclopediaItemDetailResponse;
 import dev.onepieceapi.contentservice.web.dto.response.EncyclopediaItemResponse;
 import lombok.RequiredArgsConstructor;

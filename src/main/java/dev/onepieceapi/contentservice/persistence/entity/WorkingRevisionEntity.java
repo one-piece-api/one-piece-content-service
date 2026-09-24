@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.persistence.entity;
 
+import dev.onepieceapi.contentservice.domain.WorkingRevisionStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

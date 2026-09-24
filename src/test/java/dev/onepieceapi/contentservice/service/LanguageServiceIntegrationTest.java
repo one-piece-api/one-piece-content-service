@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.service;
 
+import dev.onepieceapi.contentservice.domain.Language;
 import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
 import dev.onepieceapi.contentservice.persistence.entity.ContentVersionEntity;
 import dev.onepieceapi.contentservice.persistence.repository.ContentVersionRepository;
@@ -12,13 +13,12 @@ import dev.onepieceapi.contentservice.persistence.entity.TranslationEntity;
 import dev.onepieceapi.contentservice.persistence.repository.TranslationRepository;
 import dev.onepieceapi.contentservice.persistence.entity.WorkingRevisionEntity;
 import dev.onepieceapi.contentservice.persistence.repository.WorkingRevisionRepository;
-import dev.onepieceapi.contentservice.persistence.entity.WorkingRevisionStatus;
+import dev.onepieceapi.contentservice.domain.WorkingRevisionStatus;
 import dev.onepieceapi.contentservice.service.exception.InvalidLanguageCodeException;
 import dev.onepieceapi.contentservice.service.exception.InvalidLanguageNameException;
 import dev.onepieceapi.contentservice.service.exception.LanguageAlreadyExistsException;
 import dev.onepieceapi.contentservice.service.exception.LanguageInUseException;
 import dev.onepieceapi.contentservice.service.exception.LanguageNotFoundException;
-import dev.onepieceapi.contentservice.web.dto.response.LanguageResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -91,15 +91,14 @@ class LanguageServiceIntegrationTest {
 
 	@Test
 	void listsTheSeededCatalogInOrder() {
-		assertThat(this.service.list()).containsExactly(new LanguageResponse("en", "English"),
-				new LanguageResponse("it", "Italiano"));
+		assertThat(this.service.list()).containsExactly(new Language("en", "English"), new Language("it", "Italiano"));
 	}
 
 	@Test
 	void createAddsANewLanguageAndNormalizesItsCode() {
 		var created = this.service.create(" FR ", "Français", this.admin, "admin@onepiece.local");
 
-		assertThat(created).isEqualTo(new LanguageResponse("fr", "Français"));
+		assertThat(created).isEqualTo(new Language("fr", "Français"));
 		assertThat(this.languageRepository.existsById("fr")).isTrue();
 		assertThat(this.auditLogRepository.findAll()).anySatisfy(entry -> {
 			assertThat(entry.getAction()).isEqualTo("LANGUAGE_CREATED");

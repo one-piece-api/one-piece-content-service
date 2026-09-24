@@ -1,5 +1,10 @@
 package dev.onepieceapi.contentservice.service;
 
+import dev.onepieceapi.contentservice.domain.ContentVersion;
+import dev.onepieceapi.contentservice.domain.EncyclopediaEntry;
+import dev.onepieceapi.contentservice.domain.Translation;
+import dev.onepieceapi.contentservice.domain.WorkingRevision;
+import dev.onepieceapi.contentservice.domain.WorkingRevisionStatus;
 import dev.onepieceapi.contentservice.persistence.entity.ContentVersionEntity;
 import dev.onepieceapi.contentservice.persistence.repository.ContentVersionRepository;
 import dev.onepieceapi.contentservice.persistence.entity.ContentVersionTranslationEntity;
@@ -11,7 +16,6 @@ import dev.onepieceapi.contentservice.persistence.entity.TranslationId;
 import dev.onepieceapi.contentservice.persistence.repository.TranslationRepository;
 import dev.onepieceapi.contentservice.persistence.entity.WorkingRevisionEntity;
 import dev.onepieceapi.contentservice.persistence.repository.WorkingRevisionRepository;
-import dev.onepieceapi.contentservice.persistence.entity.WorkingRevisionStatus;
 import dev.onepieceapi.contentservice.service.exception.CannotDeletePublishedItemException;
 import dev.onepieceapi.contentservice.service.exception.ContentVersionNotFoundException;
 import dev.onepieceapi.contentservice.service.exception.EncyclopediaItemNotFoundException;
@@ -97,13 +101,13 @@ public class DevilFruitTypeService {
 	private final Clock clock;
 
 	@Transactional
-	public WorkingRevisionEntity createDraft(UUID authorId, String authorEmail) {
+	public WorkingRevision createDraft(UUID authorId, String authorEmail) {
 		var now = this.clock.instant();
 		var item = this.itemRepository.save(new DevilFruitTypeItemEntity(UUID.randomUUID(), now));
 		var revision = this.workingRevisionRepository.save(new WorkingRevisionEntity(UUID.randomUUID(), item.getId(),
 				authorId, authorEmail, WorkingRevisionStatus.DRAFT, now));
 		this.auditLogService.record(AUDIT_ACTION_CREATE, authorId, authorEmail, item.getId(), null, null);
-		return revision;
+		return toDomain(revision);
 	}
 
 	/**
@@ -114,7 +118,7 @@ public class DevilFruitTypeService {
 	 * until this new revision is, in turn, reviewed and published.
 	 */
 	@Transactional
-	public WorkingRevisionEntity editPublishedItem(UUID itemId, UUID authorId, String authorEmail) {
+	public WorkingRevision editPublishedItem(UUID itemId, UUID authorId, String authorEmail) {
 		var item = this.itemRepository.findById(itemId)
 			.orElseThrow(() -> new EncyclopediaItemNotFoundException(itemId));
 		var sourceVersion = editSourceVersion(item);
@@ -131,7 +135,7 @@ public class DevilFruitTypeService {
 		}
 		this.auditLogService.record(AUDIT_ACTION_EDIT_PUBLISHED, authorId, authorEmail, itemId,
 				sourceVersion.getRomaji(), null);
-		return revision;
+		return toDomain(revision);
 	}
 
 	/**
@@ -152,7 +156,7 @@ public class DevilFruitTypeService {
 	}
 
 	@Transactional
-	public WorkingRevisionEntity updateDraft(UUID workingRevisionId, UUID authorId, String authorEmail, String romaji,
+	public WorkingRevision updateDraft(UUID workingRevisionId, UUID authorId, String authorEmail, String romaji,
 			Map<String, TranslationRequest> translations) {
 		var revision = ownWorkingRevisionOrThrow(workingRevisionId, authorId);
 		requireStatus(revision, WorkingRevisionStatus.DRAFT, "edit");
@@ -170,11 +174,11 @@ public class DevilFruitTypeService {
 		}
 
 		this.auditLogService.record(AUDIT_ACTION_EDIT, authorId, authorEmail, revision.getItemId(), romaji, null);
-		return revision;
+		return toDomain(revision);
 	}
 
 	@Transactional
-	public WorkingRevisionEntity submitForReview(UUID workingRevisionId, UUID authorId, String authorEmail) {
+	public WorkingRevision submitForReview(UUID workingRevisionId, UUID authorId, String authorEmail) {
 		var revision = ownWorkingRevisionOrThrow(workingRevisionId, authorId);
 		requireStatus(revision, WorkingRevisionStatus.DRAFT, "submit for review");
 		this.contentValidator.requireCompleteForSubmission(revision);
@@ -187,11 +191,11 @@ public class DevilFruitTypeService {
 		revision.setUpdatedAt(this.clock.instant());
 		this.auditLogService.record(AUDIT_ACTION_SUBMIT, authorId, authorEmail, revision.getItemId(),
 				revision.getRomaji(), null);
-		return revision;
+		return toDomain(revision);
 	}
 
 	@Transactional
-	public WorkingRevisionEntity withdrawToDraft(UUID workingRevisionId, UUID authorId, String authorEmail) {
+	public WorkingRevision withdrawToDraft(UUID workingRevisionId, UUID authorId, String authorEmail) {
 		var revision = ownWorkingRevisionOrThrow(workingRevisionId, authorId);
 		requireStatus(revision, WorkingRevisionStatus.IN_REVIEW, "withdraw to draft");
 		if (revision.getClaimedBy() != null) {
@@ -202,7 +206,7 @@ public class DevilFruitTypeService {
 		revision.setUpdatedAt(this.clock.instant());
 		this.auditLogService.record(AUDIT_ACTION_WITHDRAW, authorId, authorEmail, revision.getItemId(),
 				revision.getRomaji(), null);
-		return revision;
+		return toDomain(revision);
 	}
 
 	/**
@@ -236,7 +240,7 @@ public class DevilFruitTypeService {
 	 * UF-CNT-13: claims an unclaimed, queued working revision for the acting REVIEWER.
 	 */
 	@Transactional
-	public WorkingRevisionEntity claim(UUID workingRevisionId, UUID reviewerId, String reviewerEmail) {
+	public WorkingRevision claim(UUID workingRevisionId, UUID reviewerId, String reviewerEmail) {
 		var revision = workingRevisionOrThrow(workingRevisionId);
 		requireStatus(revision, WorkingRevisionStatus.IN_REVIEW, "claim");
 		if (revision.getClaimedBy() != null) {
@@ -248,12 +252,12 @@ public class DevilFruitTypeService {
 		revision.setUpdatedAt(this.clock.instant());
 		this.auditLogService.record(AUDIT_ACTION_CLAIM, reviewerId, reviewerEmail, revision.getItemId(),
 				revision.getRomaji(), null);
-		return revision;
+		return toDomain(revision);
 	}
 
 	/** UF-CNT-14: releases the acting REVIEWER's own claim, making it claimable again. */
 	@Transactional
-	public WorkingRevisionEntity release(UUID workingRevisionId, UUID reviewerId, String reviewerEmail) {
+	public WorkingRevision release(UUID workingRevisionId, UUID reviewerId, String reviewerEmail) {
 		var revision = workingRevisionOrThrow(workingRevisionId);
 		requireStatus(revision, WorkingRevisionStatus.IN_REVIEW, "release");
 		requireClaimant(revision, reviewerId, "release");
@@ -262,7 +266,7 @@ public class DevilFruitTypeService {
 		revision.setUpdatedAt(this.clock.instant());
 		this.auditLogService.record(AUDIT_ACTION_RELEASE, reviewerId, reviewerEmail, revision.getItemId(),
 				revision.getRomaji(), null);
-		return revision;
+		return toDomain(revision);
 	}
 
 	/**
@@ -272,7 +276,7 @@ public class DevilFruitTypeService {
 	 * active candidate.
 	 */
 	@Transactional
-	public WorkingRevisionEntity approve(UUID workingRevisionId, UUID reviewerId, String reviewerEmail) {
+	public WorkingRevision approve(UUID workingRevisionId, UUID reviewerId, String reviewerEmail) {
 		var revision = workingRevisionOrThrow(workingRevisionId);
 		requireStatus(revision, WorkingRevisionStatus.IN_REVIEW, "approve");
 		requireClaimant(revision, reviewerId, "approve");
@@ -284,7 +288,7 @@ public class DevilFruitTypeService {
 		revision.setUpdatedAt(this.clock.instant());
 		this.auditLogService.record(AUDIT_ACTION_APPROVE, reviewerId, reviewerEmail, revision.getItemId(),
 				revision.getRomaji(), null);
-		return revision;
+		return toDomain(revision);
 	}
 
 	/**
@@ -293,7 +297,7 @@ public class DevilFruitTypeService {
 	 * they can see what to correct.
 	 */
 	@Transactional
-	public WorkingRevisionEntity reject(UUID workingRevisionId, UUID reviewerId, String reviewerEmail, String reason) {
+	public WorkingRevision reject(UUID workingRevisionId, UUID reviewerId, String reviewerEmail, String reason) {
 		var revision = workingRevisionOrThrow(workingRevisionId);
 		requireStatus(revision, WorkingRevisionStatus.IN_REVIEW, "reject");
 		requireClaimant(revision, reviewerId, "reject");
@@ -305,7 +309,7 @@ public class DevilFruitTypeService {
 		revision.setUpdatedAt(this.clock.instant());
 		this.auditLogService.record(AUDIT_ACTION_REJECT, reviewerId, reviewerEmail, revision.getItemId(),
 				revision.getRomaji(), reason);
-		return revision;
+		return toDomain(revision);
 	}
 
 	/**
@@ -314,7 +318,7 @@ public class DevilFruitTypeService {
 	 * candidate ({@code REVIEWED -> PUBLISHED}, permanently terminal).
 	 */
 	@Transactional
-	public WorkingRevisionEntity publish(UUID workingRevisionId, UUID publisherId, String publisherEmail) {
+	public WorkingRevision publish(UUID workingRevisionId, UUID publisherId, String publisherEmail) {
 		var revision = workingRevisionOrThrow(workingRevisionId);
 		requireStatus(revision, WorkingRevisionStatus.REVIEWED, "publish");
 
@@ -322,7 +326,7 @@ public class DevilFruitTypeService {
 		var sequenceNumber = (int) this.contentVersionRepository.countByItemId(revision.getItemId()) + 1;
 		var version = this.contentVersionRepository.save(new ContentVersionEntity(UUID.randomUUID(),
 				revision.getItemId(), sequenceNumber, revision.getRomaji(), publisherId, publisherEmail, now));
-		for (var translation : translationsOf(revision.getId())) {
+		for (var translation : this.translationRepository.findByIdWorkingRevisionId(revision.getId())) {
 			this.contentVersionTranslationRepository.save(new ContentVersionTranslationEntity(version.getId(),
 					translation.getId().getLanguageCode(), translation.getName(), translation.getDescription()));
 		}
@@ -334,7 +338,7 @@ public class DevilFruitTypeService {
 		revision.setUpdatedAt(now);
 		this.auditLogService.record(AUDIT_ACTION_PUBLISH, publisherId, publisherEmail, revision.getItemId(),
 				revision.getRomaji(), "v" + sequenceNumber);
-		return revision;
+		return toDomain(revision);
 	}
 
 	/**
@@ -342,8 +346,11 @@ public class DevilFruitTypeService {
 	 * recent first - {@code content:publish} only (flows document 7.7), unlike every
 	 * `content:read` view this service otherwise exposes.
 	 */
-	public List<ContentVersionEntity> listVersions(UUID itemId) {
-		return this.contentVersionRepository.findByItemIdOrderBySequenceNumberDesc(itemId);
+	public List<ContentVersion> listVersions(UUID itemId) {
+		return this.contentVersionRepository.findByItemIdOrderBySequenceNumberDesc(itemId)
+			.stream()
+			.map(this::toDomain)
+			.toList();
 	}
 
 	/** The item's current live version id, or {@code null} if it was never published. */
@@ -355,13 +362,10 @@ public class DevilFruitTypeService {
 	 * One specific version's own record - lets a PUBLISHER see what a past snapshot
 	 * actually said (user-reported gap) before deciding whether to restore it.
 	 */
-	public ContentVersionEntity getVersion(UUID itemId, UUID versionId) {
-		return this.contentVersionRepository.findByIdAndItemId(versionId, itemId)
+	public ContentVersion getVersion(UUID itemId, UUID versionId) {
+		var version = this.contentVersionRepository.findByIdAndItemId(versionId, itemId)
 			.orElseThrow(() -> new ContentVersionNotFoundException(itemId, versionId));
-	}
-
-	public List<ContentVersionTranslationEntity> versionTranslationsOf(UUID versionId) {
-		return this.contentVersionTranslationRepository.findByIdContentVersionId(versionId);
+		return toDomain(version);
 	}
 
 	/**
@@ -370,7 +374,7 @@ public class DevilFruitTypeService {
 	 * review") and no working revision involved at all.
 	 */
 	@Transactional
-	public ContentVersionEntity restore(UUID itemId, UUID versionId, UUID publisherId, String publisherEmail) {
+	public ContentVersion restore(UUID itemId, UUID versionId, UUID publisherId, String publisherEmail) {
 		var item = this.itemRepository.findById(itemId)
 			.orElseThrow(() -> new ContentVersionNotFoundException(itemId, versionId));
 		var version = this.contentVersionRepository.findByIdAndItemId(versionId, itemId)
@@ -379,7 +383,7 @@ public class DevilFruitTypeService {
 		item.setLiveVersionId(version.getId());
 		this.auditLogService.record(AUDIT_ACTION_ROLLBACK, publisherId, publisherEmail, itemId, version.getRomaji(),
 				"Rolled back to v" + version.getSequenceNumber());
-		return version;
+		return toDomain(version);
 	}
 
 	/**
@@ -416,15 +420,14 @@ public class DevilFruitTypeService {
 
 		List<EncyclopediaEntry> entries = new ArrayList<>();
 		for (var revision : reviewed) {
-			entries.add(new EncyclopediaEntry.ReviewedCandidate(revision, translationsOf(revision.getId())));
+			entries.add(new EncyclopediaEntry.ReviewedCandidate(toDomain(revision)));
 		}
 		for (var item : this.itemRepository.findByLiveVersionIdIsNotNull()) {
 			if (reviewedItemIds.contains(item.getId())) {
 				continue;
 			}
 			var version = this.contentVersionRepository.findById(item.getLiveVersionId()).orElseThrow();
-			var translations = this.contentVersionTranslationRepository.findByIdContentVersionId(version.getId());
-			entries.add(new EncyclopediaEntry.PublishedItem(version, translations));
+			entries.add(new EncyclopediaEntry.PublishedItem(toDomain(version)));
 		}
 		for (var item : this.itemRepository.findByLiveVersionIdIsNull()) {
 			if (reviewedItemIds.contains(item.getId())) {
@@ -434,9 +437,7 @@ public class DevilFruitTypeService {
 			if (versions.isEmpty()) {
 				continue;
 			}
-			var lastVersion = versions.get(0);
-			var translations = this.contentVersionTranslationRepository.findByIdContentVersionId(lastVersion.getId());
-			entries.add(new EncyclopediaEntry.RetiredItem(lastVersion, translations));
+			entries.add(new EncyclopediaEntry.RetiredItem(toDomain(versions.get(0))));
 		}
 		return entries;
 	}
@@ -445,48 +446,74 @@ public class DevilFruitTypeService {
 		var reviewedCandidate = this.workingRevisionRepository.findByItemIdAndStatus(itemId,
 				WorkingRevisionStatus.REVIEWED);
 		if (reviewedCandidate.isPresent()) {
-			var revision = reviewedCandidate.get();
-			return new EncyclopediaEntry.ReviewedCandidate(revision, translationsOf(revision.getId()));
+			return new EncyclopediaEntry.ReviewedCandidate(toDomain(reviewedCandidate.get()));
 		}
 
 		var item = this.itemRepository.findById(itemId)
 			.orElseThrow(() -> new EncyclopediaItemNotFoundException(itemId));
 		if (item.getLiveVersionId() != null) {
 			var version = this.contentVersionRepository.findById(item.getLiveVersionId()).orElseThrow();
-			var translations = this.contentVersionTranslationRepository.findByIdContentVersionId(version.getId());
-			return new EncyclopediaEntry.PublishedItem(version, translations);
+			return new EncyclopediaEntry.PublishedItem(toDomain(version));
 		}
 
 		var lastVersion = this.contentVersionRepository.findByItemIdOrderBySequenceNumberDesc(itemId)
 			.stream()
 			.findFirst()
 			.orElseThrow(() -> new EncyclopediaItemNotFoundException(itemId));
-		var translations = this.contentVersionTranslationRepository.findByIdContentVersionId(lastVersion.getId());
-		return new EncyclopediaEntry.RetiredItem(lastVersion, translations);
+		return new EncyclopediaEntry.RetiredItem(toDomain(lastVersion));
 	}
 
-	public WorkingRevisionEntity getOwnDraft(UUID workingRevisionId, UUID authorId) {
-		return ownWorkingRevisionOrThrow(workingRevisionId, authorId);
+	public WorkingRevision getOwnDraft(UUID workingRevisionId, UUID authorId) {
+		return toDomain(ownWorkingRevisionOrThrow(workingRevisionId, authorId));
 	}
 
 	/**
 	 * The shared review queue (UF-CNT-13+): every working revision currently `IN_REVIEW`.
 	 */
-	public List<WorkingRevisionEntity> reviewQueue() {
-		return this.workingRevisionRepository.findByStatusOrderByUpdatedAtAsc(WorkingRevisionStatus.IN_REVIEW);
+	public List<WorkingRevision> reviewQueue() {
+		return this.workingRevisionRepository.findByStatusOrderByUpdatedAtAsc(WorkingRevisionStatus.IN_REVIEW)
+			.stream()
+			.map(this::toDomain)
+			.toList();
 	}
 
-	public WorkingRevisionEntity getForReview(UUID workingRevisionId) {
-		return workingRevisionOrThrow(workingRevisionId);
+	public WorkingRevision getForReview(UUID workingRevisionId) {
+		return toDomain(workingRevisionOrThrow(workingRevisionId));
 	}
 
-	public List<TranslationEntity> translationsOf(UUID workingRevisionId) {
-		return this.translationRepository.findByIdWorkingRevisionId(workingRevisionId);
+	public List<WorkingRevision> listOwnDrafts(UUID authorId) {
+		return this.workingRevisionRepository
+			.findByAuthorIdAndStatusIn(authorId, List.of(WorkingRevisionStatus.DRAFT, WorkingRevisionStatus.IN_REVIEW))
+			.stream()
+			.map(this::toDomain)
+			.toList();
 	}
 
-	public List<WorkingRevisionEntity> listOwnDrafts(UUID authorId) {
-		return this.workingRevisionRepository.findByAuthorIdAndStatusIn(authorId,
-				List.of(WorkingRevisionStatus.DRAFT, WorkingRevisionStatus.IN_REVIEW));
+	private WorkingRevision toDomain(WorkingRevisionEntity revision) {
+		return new WorkingRevision(revision.getId(), revision.getItemId(), revision.getAuthorId(),
+				revision.getAuthorEmail(), revision.getRomaji(), revision.getStatus(),
+				translationsAsDomain(revision.getId()), revision.getClaimedBy(), revision.getClaimedByEmail(),
+				revision.getRejectionReason(), revision.getUpdatedAt());
+	}
+
+	private Map<String, Translation> translationsAsDomain(UUID workingRevisionId) {
+		return this.translationRepository.findByIdWorkingRevisionId(workingRevisionId)
+			.stream()
+			.collect(Collectors.toMap(t -> t.getId().getLanguageCode(),
+					t -> new Translation(t.getName(), t.getDescription())));
+	}
+
+	private ContentVersion toDomain(ContentVersionEntity version) {
+		return new ContentVersion(version.getId(), version.getItemId(), version.getSequenceNumber(),
+				version.getRomaji(), version.getPublisherId(), version.getPublisherEmail(), version.getPublishedAt(),
+				versionTranslationsAsDomain(version.getId()));
+	}
+
+	private Map<String, Translation> versionTranslationsAsDomain(UUID versionId) {
+		return this.contentVersionTranslationRepository.findByIdContentVersionId(versionId)
+			.stream()
+			.collect(Collectors.toMap(t -> t.getId().getLanguageCode(),
+					t -> new Translation(t.getName(), t.getDescription())));
 	}
 
 	private WorkingRevisionEntity ownWorkingRevisionOrThrow(UUID workingRevisionId, UUID authorId) {

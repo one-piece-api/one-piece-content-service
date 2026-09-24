@@ -1,6 +1,6 @@
 package dev.onepieceapi.contentservice.web;
 
-import dev.onepieceapi.contentservice.persistence.entity.ContentVersionEntity;
+import dev.onepieceapi.contentservice.domain.ContentVersion;
 import dev.onepieceapi.contentservice.service.DevilFruitTypeService;
 import dev.onepieceapi.contentservice.web.security.AuthenticatedCaller;
 import dev.onepieceapi.contentservice.web.security.ContentAuthenticationToken;
@@ -18,6 +18,7 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -69,13 +70,12 @@ class VersionHistoryControllerTest {
 
 	@Test
 	void aCallerWithContentPublishCanGetAVersionsFullContent() throws Exception {
-		var version = new ContentVersionEntity(UUID.randomUUID(), UUID.randomUUID(), 1, "Paramishia", UUID.randomUUID(),
-				"publisher@onepiece.local", Instant.EPOCH);
+		var version = new ContentVersion(UUID.randomUUID(), UUID.randomUUID(), 1, "Paramishia", UUID.randomUUID(),
+				"publisher@onepiece.local", Instant.EPOCH, Map.of());
 		when(this.service.getVersion(any(), any())).thenReturn(version);
-		when(this.service.getLiveVersionId(any())).thenReturn(version.getId());
-		when(this.service.versionTranslationsOf(any())).thenReturn(List.of());
+		when(this.service.getLiveVersionId(any())).thenReturn(version.id());
 
-		var request = get("/devil-fruit-types/" + version.getItemId() + "/versions/" + version.getId())
+		var request = get("/devil-fruit-types/" + version.itemId() + "/versions/" + version.id())
 			.with(asUserWithAuthorities("PERMISSION_content:publish"));
 		this.mockMvc.perform(request).andExpect(status().isOk());
 	}
@@ -89,11 +89,11 @@ class VersionHistoryControllerTest {
 
 	@Test
 	void aCallerWithContentPublishCanRestoreAVersion() throws Exception {
-		var version = new ContentVersionEntity(UUID.randomUUID(), UUID.randomUUID(), 1, "Paramishia", UUID.randomUUID(),
-				"publisher@onepiece.local", Instant.EPOCH);
+		var version = new ContentVersion(UUID.randomUUID(), UUID.randomUUID(), 1, "Paramishia", UUID.randomUUID(),
+				"publisher@onepiece.local", Instant.EPOCH, Map.of());
 		when(this.service.restore(any(), any(), any(), any())).thenReturn(version);
 
-		var request = post("/devil-fruit-types/" + version.getItemId() + "/versions/" + version.getId() + "/restore")
+		var request = post("/devil-fruit-types/" + version.itemId() + "/versions/" + version.id() + "/restore")
 			.with(asUserWithAuthorities("PERMISSION_content:publish"));
 		this.mockMvc.perform(request).andExpect(status().isOk());
 	}

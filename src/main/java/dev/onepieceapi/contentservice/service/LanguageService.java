@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.service;
 
+import dev.onepieceapi.contentservice.domain.Language;
 import dev.onepieceapi.contentservice.persistence.repository.ContentVersionTranslationRepository;
 import dev.onepieceapi.contentservice.persistence.entity.LanguageEntity;
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
@@ -10,7 +11,6 @@ import dev.onepieceapi.contentservice.service.exception.LanguageAlreadyExistsExc
 import dev.onepieceapi.contentservice.service.exception.LanguageInUseException;
 import dev.onepieceapi.contentservice.service.exception.LanguageNotFoundException;
 import dev.onepieceapi.contentservice.service.validation.ContentValidator;
-import dev.onepieceapi.contentservice.web.dto.response.LanguageResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -53,12 +53,12 @@ public class LanguageService {
 
 	private final AuditLogService auditLogService;
 
-	public List<LanguageResponse> list() {
-		return this.languageRepository.findAllByOrderByCode().stream().map(LanguageService::toResponse).toList();
+	public List<Language> list() {
+		return this.languageRepository.findAllByOrderByCode().stream().map(LanguageService::toDomain).toList();
 	}
 
 	@Transactional
-	public LanguageResponse create(String rawCode, String rawName, UUID actorId, String actorEmail) {
+	public Language create(String rawCode, String rawName, UUID actorId, String actorEmail) {
 		var code = normalizeCode(rawCode);
 		if (!CODE_PATTERN.matcher(code).matches()) {
 			throw new InvalidLanguageCodeException(rawCode);
@@ -72,7 +72,7 @@ public class LanguageService {
 		}
 		var language = this.languageRepository.save(new LanguageEntity(code, name));
 		this.auditLogService.record(AUDIT_ACTION_CREATE, actorId, actorEmail, null, code, name);
-		return toResponse(language);
+		return toDomain(language);
 	}
 
 	@Transactional
@@ -87,8 +87,8 @@ public class LanguageService {
 		this.auditLogService.record(AUDIT_ACTION_DELETE, actorId, actorEmail, null, code, language.getName());
 	}
 
-	private static LanguageResponse toResponse(LanguageEntity language) {
-		return new LanguageResponse(language.getCode(), language.getName());
+	private static Language toDomain(LanguageEntity language) {
+		return new Language(language.getCode(), language.getName());
 	}
 
 	private static String normalizeCode(String rawCode) {

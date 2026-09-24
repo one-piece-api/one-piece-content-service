@@ -1,10 +1,10 @@
 package dev.onepieceapi.contentservice.web;
 
-import dev.onepieceapi.contentservice.persistence.entity.ContentVersionEntity;
-import dev.onepieceapi.contentservice.persistence.entity.WorkingRevisionEntity;
-import dev.onepieceapi.contentservice.persistence.entity.WorkingRevisionStatus;
+import dev.onepieceapi.contentservice.domain.ContentVersion;
+import dev.onepieceapi.contentservice.domain.EncyclopediaEntry;
+import dev.onepieceapi.contentservice.domain.WorkingRevision;
+import dev.onepieceapi.contentservice.domain.WorkingRevisionStatus;
 import dev.onepieceapi.contentservice.service.DevilFruitTypeService;
-import dev.onepieceapi.contentservice.service.EncyclopediaEntry;
 import dev.onepieceapi.contentservice.web.security.AuthenticatedCaller;
 import dev.onepieceapi.contentservice.web.security.ContentAuthenticationToken;
 import dev.onepieceapi.contentservice.web.security.SecurityConfig;
@@ -20,7 +20,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 import java.time.Instant;
-import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -52,10 +52,8 @@ class DevilFruitTypeControllerTest {
 
 	@Test
 	void aCallerWithContentWriteCanCreateADraft() throws Exception {
-		var revision = new WorkingRevisionEntity(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
-				"editor@onepiece.local", WorkingRevisionStatus.DRAFT, Instant.EPOCH);
+		var revision = aWorkingRevision(WorkingRevisionStatus.DRAFT);
 		when(this.service.createDraft(any(), any())).thenReturn(revision);
-		when(this.service.translationsOf(any())).thenReturn(List.of());
 
 		var request = post("/devil-fruit-types").with(asUserWithAuthorities("PERMISSION_content:write"));
 		this.mockMvc.perform(request).andExpect(status().isCreated());
@@ -92,12 +90,10 @@ class DevilFruitTypeControllerTest {
 
 	@Test
 	void aCallerWithContentReviewCanClaimAQueuedRevision() throws Exception {
-		var revision = new WorkingRevisionEntity(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
-				"editor@onepiece.local", WorkingRevisionStatus.IN_REVIEW, Instant.EPOCH);
+		var revision = aWorkingRevision(WorkingRevisionStatus.IN_REVIEW);
 		when(this.service.claim(any(), any(), any())).thenReturn(revision);
-		when(this.service.translationsOf(any())).thenReturn(List.of());
 
-		var request = post("/devil-fruit-types/" + revision.getId() + "/claim")
+		var request = post("/devil-fruit-types/" + revision.id() + "/claim")
 			.with(asUserWithAuthorities("PERMISSION_content:review"));
 		this.mockMvc.perform(request).andExpect(status().isOk());
 	}
@@ -111,12 +107,10 @@ class DevilFruitTypeControllerTest {
 
 	@Test
 	void aCallerWithContentPublishCanPublishAReviewedRevision() throws Exception {
-		var revision = new WorkingRevisionEntity(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
-				"editor@onepiece.local", WorkingRevisionStatus.PUBLISHED, Instant.EPOCH);
+		var revision = aWorkingRevision(WorkingRevisionStatus.PUBLISHED);
 		when(this.service.publish(any(), any(), any())).thenReturn(revision);
-		when(this.service.translationsOf(any())).thenReturn(List.of());
 
-		var request = post("/devil-fruit-types/" + revision.getId() + "/publish")
+		var request = post("/devil-fruit-types/" + revision.id() + "/publish")
 			.with(asUserWithAuthorities("PERMISSION_content:publish"));
 		this.mockMvc.perform(request).andExpect(status().isOk());
 	}
@@ -131,10 +125,9 @@ class DevilFruitTypeControllerTest {
 	@Test
 	void aCallerWithContentPublishCanRetireAnItem() throws Exception {
 		var itemId = UUID.randomUUID();
-		var version = new ContentVersionEntity(UUID.randomUUID(), itemId, 1, "Paramishia", UUID.randomUUID(),
-				"publisher@onepiece.local", Instant.EPOCH);
-		when(this.service.getEncyclopediaItem(itemId))
-			.thenReturn(new EncyclopediaEntry.RetiredItem(version, List.of()));
+		var version = new ContentVersion(UUID.randomUUID(), itemId, 1, "Paramishia", UUID.randomUUID(),
+				"publisher@onepiece.local", Instant.EPOCH, Map.of());
+		when(this.service.getEncyclopediaItem(itemId)).thenReturn(new EncyclopediaEntry.RetiredItem(version));
 
 		var request = post("/devil-fruit-types/" + itemId + "/retire")
 			.with(asUserWithAuthorities("PERMISSION_content:publish"));
@@ -146,6 +139,11 @@ class DevilFruitTypeControllerTest {
 		var request = post("/devil-fruit-types/" + UUID.randomUUID() + "/retire")
 			.with(asUserWithAuthorities("PERMISSION_content:write"));
 		this.mockMvc.perform(request).andExpect(status().isForbidden());
+	}
+
+	private static WorkingRevision aWorkingRevision(WorkingRevisionStatus status) {
+		return new WorkingRevision(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "editor@onepiece.local",
+				"Paramishia", status, Map.of(), null, null, null, Instant.EPOCH);
 	}
 
 	private static RequestPostProcessor asUserWithAuthorities(String... authorities) {

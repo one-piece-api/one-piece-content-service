@@ -35,7 +35,7 @@ class VersionHistoryController {
 		var liveVersionId = this.service.getLiveVersionId(itemId);
 		return this.service.listVersions(itemId)
 			.stream()
-			.map(version -> DevilFruitTypeResponseMapper.toVersion(version, version.getId().equals(liveVersionId)))
+			.map(version -> DevilFruitTypeResponseMapper.toVersion(version, version.id().equals(liveVersionId)))
 			.toList();
 	}
 
@@ -43,9 +43,7 @@ class VersionHistoryController {
 	ContentVersionDetailResponse get(@PathVariable UUID itemId, @PathVariable UUID versionId) {
 		var version = this.service.getVersion(itemId, versionId);
 		var liveVersionId = this.service.getLiveVersionId(itemId);
-		var translations = this.service.versionTranslationsOf(versionId);
-		return DevilFruitTypeResponseMapper.toVersionDetail(version, version.getId().equals(liveVersionId),
-				translations);
+		return DevilFruitTypeResponseMapper.toVersionDetail(version, version.id().equals(liveVersionId));
 	}
 
 	@PostMapping(ApiPaths.DEVIL_FRUIT_TYPE_VERSION_RESTORE)

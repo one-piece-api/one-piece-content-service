@@ -1,5 +1,8 @@
 package dev.onepieceapi.contentservice.service;
 
+import dev.onepieceapi.contentservice.domain.EncyclopediaEntry;
+import dev.onepieceapi.contentservice.domain.WorkingRevision;
+import dev.onepieceapi.contentservice.domain.WorkingRevisionStatus;
 import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentVersionTranslationRepository;
@@ -8,7 +11,6 @@ import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
 import dev.onepieceapi.contentservice.persistence.repository.TranslationRepository;
 import dev.onepieceapi.contentservice.persistence.entity.WorkingRevisionEntity;
 import dev.onepieceapi.contentservice.persistence.repository.WorkingRevisionRepository;
-import dev.onepieceapi.contentservice.persistence.entity.WorkingRevisionStatus;
 import dev.onepieceapi.contentservice.service.exception.CannotDeletePublishedItemException;
 import dev.onepieceapi.contentservice.service.exception.ContentVersionNotFoundException;
 import dev.onepieceapi.contentservice.service.exception.DuplicateContentException;
@@ -113,29 +115,27 @@ class DevilFruitTypeServiceIntegrationTest {
 	void aNewDraftIsEmptyAndOwnedByItsCreator() {
 		var revision = this.service.createDraft(this.editorA, "editor-a@onepiece.local");
 
-		assertThat(revision.getAuthorId()).isEqualTo(this.editorA);
-		assertThat(revision.getStatus().name()).isEqualTo("DRAFT");
-		assertThat(revision.getRomaji()).isNull();
+		assertThat(revision.authorId()).isEqualTo(this.editorA);
+		assertThat(revision.status().name()).isEqualTo("DRAFT");
+		assertThat(revision.romaji()).isNull();
 	}
 
 	@Test
 	void editingSavesRomajiAndTranslationsForEveryLanguageProvided() {
 		var revision = this.service.createDraft(this.editorA, "editor-a@onepiece.local");
 
-		var updated = this.service.updateDraft(revision.getId(), this.editorA, "editor-a@onepiece.local", "Paramishia",
-				Map.of("it", new TranslationRequest("Paramecia", "Descrizione IT"), "en",
-						new TranslationRequest("", "")));
+		var updated = this.service.updateDraft(revision.id(), this.editorA, "editor-a@onepiece.local", "Paramishia", Map
+			.of("it", new TranslationRequest("Paramecia", "Descrizione IT"), "en", new TranslationRequest("", "")));
 
-		assertThat(updated.getRomaji()).isEqualTo("Paramishia");
-		var translations = this.service.translationsOf(updated.getId());
-		assertThat(translations).hasSize(2);
+		assertThat(updated.romaji()).isEqualTo("Paramishia");
+		assertThat(updated.translations()).hasSize(2);
 	}
 
 	@Test
 	void editingRejectsAnUnknownLanguageCode() {
 		var revision = this.service.createDraft(this.editorA, "editor-a@onepiece.local");
 
-		assertThatThrownBy(() -> this.service.updateDraft(revision.getId(), this.editorA, "editor-a@onepiece.local",
+		assertThatThrownBy(() -> this.service.updateDraft(revision.id(), this.editorA, "editor-a@onepiece.local",
 				"Paramishia", Map.of("fr", new TranslationRequest("Paramécie", "..."))))
 			.isInstanceOf(UnknownLanguageException.class);
 	}
@@ -144,13 +144,12 @@ class DevilFruitTypeServiceIntegrationTest {
 	void aDraftIsInvisibleToEveryAuthorButItsOwn() {
 		var revision = this.service.createDraft(this.editorA, "editor-a@onepiece.local");
 
-		assertThat(this.service.listOwnDrafts(this.editorA)).extracting(r -> r.getId())
-			.containsExactly(revision.getId());
+		assertThat(this.service.listOwnDrafts(this.editorA)).extracting(r -> r.id()).containsExactly(revision.id());
 		assertThat(this.service.listOwnDrafts(this.editorB)).isEmpty();
 
-		assertThatThrownBy(() -> this.service.getOwnDraft(revision.getId(), this.editorB))
+		assertThatThrownBy(() -> this.service.getOwnDraft(revision.id(), this.editorB))
 			.isInstanceOf(WorkingRevisionNotFoundException.class);
-		assertThatThrownBy(() -> this.service.updateDraft(revision.getId(), this.editorB, "editor-b@onepiece.local",
+		assertThatThrownBy(() -> this.service.updateDraft(revision.id(), this.editorB, "editor-b@onepiece.local",
 				"Hijack", Map.of()))
 			.isInstanceOf(WorkingRevisionNotFoundException.class);
 	}
@@ -165,8 +164,7 @@ class DevilFruitTypeServiceIntegrationTest {
 	void submittingAnIncompleteDraftListsWhatIsMissing() {
 		var revision = this.service.createDraft(this.editorA, "editor-a@onepiece.local");
 
-		assertThatThrownBy(
-				() -> this.service.submitForReview(revision.getId(), this.editorA, "editor-a@onepiece.local"))
+		assertThatThrownBy(() -> this.service.submitForReview(revision.id(), this.editorA, "editor-a@onepiece.local"))
 			.isInstanceOf(IncompleteContentException.class);
 	}
 
@@ -174,9 +172,9 @@ class DevilFruitTypeServiceIntegrationTest {
 	void submittingACompleteDraftMovesItToInReview() {
 		var revision = completeDraft(this.editorA, "editor-a@onepiece.local");
 
-		var submitted = this.service.submitForReview(revision.getId(), this.editorA, "editor-a@onepiece.local");
+		var submitted = this.service.submitForReview(revision.id(), this.editorA, "editor-a@onepiece.local");
 
-		assertThat(submitted.getStatus()).isEqualTo(WorkingRevisionStatus.IN_REVIEW);
+		assertThat(submitted.status()).isEqualTo(WorkingRevisionStatus.IN_REVIEW);
 	}
 
 	@Test
@@ -187,11 +185,10 @@ class DevilFruitTypeServiceIntegrationTest {
 		// same as one-piece-user-service's own precedent for testing an invariant ahead
 		// of the flow that will later produce it).
 		var now = this.clock().instant();
-		this.workingRevisionRepository.save(new WorkingRevisionEntity(UUID.randomUUID(), revision.getItemId(),
+		this.workingRevisionRepository.save(new WorkingRevisionEntity(UUID.randomUUID(), revision.itemId(),
 				this.editorB, "editor-b@onepiece.local", WorkingRevisionStatus.IN_REVIEW, now));
 
-		assertThatThrownBy(
-				() -> this.service.submitForReview(revision.getId(), this.editorA, "editor-a@onepiece.local"))
+		assertThatThrownBy(() -> this.service.submitForReview(revision.id(), this.editorA, "editor-a@onepiece.local"))
 			.isInstanceOf(ReviewSlotOccupiedException.class);
 	}
 
@@ -199,24 +196,23 @@ class DevilFruitTypeServiceIntegrationTest {
 	void submittingWhileASiblingOfTheSameItemIsAlreadyReviewedSucceeds() {
 		var revision = completeDraft(this.editorA, "editor-a@onepiece.local");
 		var now = this.clock().instant();
-		this.workingRevisionRepository.save(new WorkingRevisionEntity(UUID.randomUUID(), revision.getItemId(),
+		this.workingRevisionRepository.save(new WorkingRevisionEntity(UUID.randomUUID(), revision.itemId(),
 				this.editorB, "editor-b@onepiece.local", WorkingRevisionStatus.REVIEWED, now));
 
-		var submitted = this.service.submitForReview(revision.getId(), this.editorA, "editor-a@onepiece.local");
+		var submitted = this.service.submitForReview(revision.id(), this.editorA, "editor-a@onepiece.local");
 
-		assertThat(submitted.getStatus()).isEqualTo(WorkingRevisionStatus.IN_REVIEW);
+		assertThat(submitted.status()).isEqualTo(WorkingRevisionStatus.IN_REVIEW);
 	}
 
 	@Test
 	void submittingRomajiAlreadyReservedByAnotherItemFails() {
 		submittedDraft(this.editorA, "editor-a@onepiece.local");
 		var revisionB = this.service.createDraft(this.editorB, "editor-b@onepiece.local");
-		this.service.updateDraft(revisionB.getId(), this.editorB, "editor-b@onepiece.local", "Paramishia",
+		this.service.updateDraft(revisionB.id(), this.editorB, "editor-b@onepiece.local", "Paramishia",
 				Map.of("it", new TranslationRequest("Zoan", "Descrizione IT"), "en",
 						new TranslationRequest("Zoan", "EN description")));
 
-		assertThatThrownBy(
-				() -> this.service.submitForReview(revisionB.getId(), this.editorB, "editor-b@onepiece.local"))
+		assertThatThrownBy(() -> this.service.submitForReview(revisionB.id(), this.editorB, "editor-b@onepiece.local"))
 			.isInstanceOf(DuplicateContentException.class);
 	}
 
@@ -224,12 +220,11 @@ class DevilFruitTypeServiceIntegrationTest {
 	void submittingANameAlreadyReservedByAnotherItemFails() {
 		submittedDraft(this.editorA, "editor-a@onepiece.local");
 		var revisionB = this.service.createDraft(this.editorB, "editor-b@onepiece.local");
-		this.service.updateDraft(revisionB.getId(), this.editorB, "editor-b@onepiece.local", "Zoiashia",
+		this.service.updateDraft(revisionB.id(), this.editorB, "editor-b@onepiece.local", "Zoiashia",
 				Map.of("it", new TranslationRequest("Paramecia", "Descrizione IT"), "en",
 						new TranslationRequest("Zoan", "EN description")));
 
-		assertThatThrownBy(
-				() -> this.service.submitForReview(revisionB.getId(), this.editorB, "editor-b@onepiece.local"))
+		assertThatThrownBy(() -> this.service.submitForReview(revisionB.id(), this.editorB, "editor-b@onepiece.local"))
 			.isInstanceOf(DuplicateContentException.class);
 	}
 
@@ -240,20 +235,19 @@ class DevilFruitTypeServiceIntegrationTest {
 		completeDraft(this.editorA, "editor-a@onepiece.local");
 		var revisionB = completeDraft(this.editorB, "editor-b@onepiece.local");
 
-		var submitted = this.service.submitForReview(revisionB.getId(), this.editorB, "editor-b@onepiece.local");
+		var submitted = this.service.submitForReview(revisionB.id(), this.editorB, "editor-b@onepiece.local");
 
-		assertThat(submitted.getStatus()).isEqualTo(WorkingRevisionStatus.IN_REVIEW);
+		assertThat(submitted.status()).isEqualTo(WorkingRevisionStatus.IN_REVIEW);
 	}
 
 	@Test
 	void submittingContentMatchingARetiredItemStillFails() {
 		var approved = approvedCandidate(this.editorA, "editor-a@onepiece.local");
-		var published = this.service.publish(approved.getId(), this.reviewerA, "reviewer-a@onepiece.local");
-		this.service.retire(published.getItemId(), this.reviewerA, "reviewer-a@onepiece.local");
+		var published = this.service.publish(approved.id(), this.reviewerA, "reviewer-a@onepiece.local");
+		this.service.retire(published.itemId(), this.reviewerA, "reviewer-a@onepiece.local");
 		var revisionB = completeDraft(this.editorB, "editor-b@onepiece.local");
 
-		assertThatThrownBy(
-				() -> this.service.submitForReview(revisionB.getId(), this.editorB, "editor-b@onepiece.local"))
+		assertThatThrownBy(() -> this.service.submitForReview(revisionB.id(), this.editorB, "editor-b@onepiece.local"))
 			.isInstanceOf(DuplicateContentException.class);
 	}
 
@@ -265,81 +259,78 @@ class DevilFruitTypeServiceIntegrationTest {
 		// actually
 		// change something" rule below - this test is about the *other* check.
 		var approved = approvedCandidate(this.editorA, "editor-a@onepiece.local");
-		var published = this.service.publish(approved.getId(), this.reviewerA, "reviewer-a@onepiece.local");
-		var newDraft = this.service.editPublishedItem(published.getItemId(), this.editorB, "editor-b@onepiece.local");
-		this.service.updateDraft(newDraft.getId(), this.editorB, "editor-b@onepiece.local", newDraft.getRomaji(),
+		var published = this.service.publish(approved.id(), this.reviewerA, "reviewer-a@onepiece.local");
+		var newDraft = this.service.editPublishedItem(published.itemId(), this.editorB, "editor-b@onepiece.local");
+		this.service.updateDraft(newDraft.id(), this.editorB, "editor-b@onepiece.local", newDraft.romaji(),
 				Map.of("it", new TranslationRequest("Paramecia", "Descrizione IT aggiornata"), "en",
 						new TranslationRequest("Paramecia", "EN description")));
 
-		var resubmitted = this.service.submitForReview(newDraft.getId(), this.editorB, "editor-b@onepiece.local");
+		var resubmitted = this.service.submitForReview(newDraft.id(), this.editorB, "editor-b@onepiece.local");
 
-		assertThat(resubmitted.getStatus()).isEqualTo(WorkingRevisionStatus.IN_REVIEW);
+		assertThat(resubmitted.status()).isEqualTo(WorkingRevisionStatus.IN_REVIEW);
 	}
 
 	@Test
 	void resubmittingAPublishedItemUnchangedFails() {
 		var approved = approvedCandidate(this.editorA, "editor-a@onepiece.local");
-		var published = this.service.publish(approved.getId(), this.reviewerA, "reviewer-a@onepiece.local");
-		var newDraft = this.service.editPublishedItem(published.getItemId(), this.editorB, "editor-b@onepiece.local");
+		var published = this.service.publish(approved.id(), this.reviewerA, "reviewer-a@onepiece.local");
+		var newDraft = this.service.editPublishedItem(published.itemId(), this.editorB, "editor-b@onepiece.local");
 
-		assertThatThrownBy(
-				() -> this.service.submitForReview(newDraft.getId(), this.editorB, "editor-b@onepiece.local"))
+		assertThatThrownBy(() -> this.service.submitForReview(newDraft.id(), this.editorB, "editor-b@onepiece.local"))
 			.isInstanceOf(IdenticalToExistingVersionException.class);
 	}
 
 	@Test
 	void resubmittingContentMatchingAnOlderNonLiveVersionAlsoFails() {
 		var approved = approvedCandidate(this.editorA, "editor-a@onepiece.local");
-		this.service.publish(approved.getId(), this.reviewerA, "reviewer-a@onepiece.local");
-		var itemId = approved.getItemId();
+		this.service.publish(approved.id(), this.reviewerA, "reviewer-a@onepiece.local");
+		var itemId = approved.itemId();
 		// v2, with different content, becomes live - v1 ("Paramecia"/"Paramishia") is no
 		// longer live, but still part of the item's history.
 		var v2Draft = this.service.editPublishedItem(itemId, this.editorB, "editor-b@onepiece.local");
-		this.service.updateDraft(v2Draft.getId(), this.editorB, "editor-b@onepiece.local", "Zoiashia",
+		this.service.updateDraft(v2Draft.id(), this.editorB, "editor-b@onepiece.local", "Zoiashia",
 				Map.of("it", new TranslationRequest("Zoan", "Descrizione IT v2"), "en",
 						new TranslationRequest("Zoan", "EN description v2")));
-		var v2Submitted = this.service.submitForReview(v2Draft.getId(), this.editorB, "editor-b@onepiece.local");
-		this.service.claim(v2Submitted.getId(), this.reviewerA, "reviewer-a@onepiece.local");
-		var v2Approved = this.service.approve(v2Submitted.getId(), this.reviewerA, "reviewer-a@onepiece.local");
-		this.service.publish(v2Approved.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+		var v2Submitted = this.service.submitForReview(v2Draft.id(), this.editorB, "editor-b@onepiece.local");
+		this.service.claim(v2Submitted.id(), this.reviewerA, "reviewer-a@onepiece.local");
+		var v2Approved = this.service.approve(v2Submitted.id(), this.reviewerA, "reviewer-a@onepiece.local");
+		this.service.publish(v2Approved.id(), this.reviewerA, "reviewer-a@onepiece.local");
 
 		// A third draft reverts back to v1's exact content - still a collision, even
 		// though v1 is no longer the live version.
 		var v3Draft = this.service.editPublishedItem(itemId, this.editorA, "editor-a@onepiece.local");
-		this.service.updateDraft(v3Draft.getId(), this.editorA, "editor-a@onepiece.local", "Paramishia",
+		this.service.updateDraft(v3Draft.id(), this.editorA, "editor-a@onepiece.local", "Paramishia",
 				Map.of("it", new TranslationRequest("Paramecia", "Descrizione IT"), "en",
 						new TranslationRequest("Paramecia", "EN description")));
 
-		assertThatThrownBy(() -> this.service.submitForReview(v3Draft.getId(), this.editorA, "editor-a@onepiece.local"))
+		assertThatThrownBy(() -> this.service.submitForReview(v3Draft.id(), this.editorA, "editor-a@onepiece.local"))
 			.isInstanceOf(IdenticalToExistingVersionException.class);
 	}
 
 	@Test
 	void submittingSomethingNotInDraftFails() {
 		var revision = completeDraft(this.editorA, "editor-a@onepiece.local");
-		this.service.submitForReview(revision.getId(), this.editorA, "editor-a@onepiece.local");
+		this.service.submitForReview(revision.id(), this.editorA, "editor-a@onepiece.local");
 
-		assertThatThrownBy(
-				() -> this.service.submitForReview(revision.getId(), this.editorA, "editor-a@onepiece.local"))
+		assertThatThrownBy(() -> this.service.submitForReview(revision.id(), this.editorA, "editor-a@onepiece.local"))
 			.isInstanceOf(InvalidStatusTransitionException.class);
 	}
 
 	@Test
 	void withdrawingAnInReviewDraftReturnsItToDraft() {
 		var revision = completeDraft(this.editorA, "editor-a@onepiece.local");
-		this.service.submitForReview(revision.getId(), this.editorA, "editor-a@onepiece.local");
+		this.service.submitForReview(revision.id(), this.editorA, "editor-a@onepiece.local");
 
-		var withdrawn = this.service.withdrawToDraft(revision.getId(), this.editorA, "editor-a@onepiece.local");
+		var withdrawn = this.service.withdrawToDraft(revision.id(), this.editorA, "editor-a@onepiece.local");
 
-		assertThat(withdrawn.getStatus()).isEqualTo(WorkingRevisionStatus.DRAFT);
+		assertThat(withdrawn.status()).isEqualTo(WorkingRevisionStatus.DRAFT);
 	}
 
 	@Test
 	void withdrawingSomethingNotInReviewFails() {
 		var revision = this.service.createDraft(this.editorA, "editor-a@onepiece.local");
 
-		assertThatThrownBy(
-				() -> this.service.withdrawToDraft(revision.getId(), this.editorA, "editor-a@onepiece.local"))
+		assertThatThrownBy(() -> this.service.withdrawToDraft(revision.id(), this.editorA, "editor-a@onepiece.local"))
 			.isInstanceOf(InvalidStatusTransitionException.class);
 	}
 
@@ -347,13 +338,11 @@ class DevilFruitTypeServiceIntegrationTest {
 	void submitAndWithdrawAreOwnershipChecked() {
 		var revision = completeDraft(this.editorA, "editor-a@onepiece.local");
 
-		assertThatThrownBy(
-				() -> this.service.submitForReview(revision.getId(), this.editorB, "editor-b@onepiece.local"))
+		assertThatThrownBy(() -> this.service.submitForReview(revision.id(), this.editorB, "editor-b@onepiece.local"))
 			.isInstanceOf(WorkingRevisionNotFoundException.class);
 
-		this.service.submitForReview(revision.getId(), this.editorA, "editor-a@onepiece.local");
-		assertThatThrownBy(
-				() -> this.service.withdrawToDraft(revision.getId(), this.editorB, "editor-b@onepiece.local"))
+		this.service.submitForReview(revision.id(), this.editorA, "editor-a@onepiece.local");
+		assertThatThrownBy(() -> this.service.withdrawToDraft(revision.id(), this.editorB, "editor-b@onepiece.local"))
 			.isInstanceOf(WorkingRevisionNotFoundException.class);
 	}
 
@@ -361,17 +350,17 @@ class DevilFruitTypeServiceIntegrationTest {
 	void claimingAnUnclaimedInReviewRevisionSucceeds() {
 		var revision = submittedDraft(this.editorA, "editor-a@onepiece.local");
 
-		var claimed = this.service.claim(revision.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+		var claimed = this.service.claim(revision.id(), this.reviewerA, "reviewer-a@onepiece.local");
 
-		assertThat(claimed.getClaimedBy()).isEqualTo(this.reviewerA);
+		assertThat(claimed.claimedBy()).isEqualTo(this.reviewerA);
 	}
 
 	@Test
 	void claimingAnAlreadyClaimedRevisionFails() {
 		var revision = submittedDraft(this.editorA, "editor-a@onepiece.local");
-		this.service.claim(revision.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+		this.service.claim(revision.id(), this.reviewerA, "reviewer-a@onepiece.local");
 
-		assertThatThrownBy(() -> this.service.claim(revision.getId(), this.reviewerB, "reviewer-b@onepiece.local"))
+		assertThatThrownBy(() -> this.service.claim(revision.id(), this.reviewerB, "reviewer-b@onepiece.local"))
 			.isInstanceOf(ReviewAlreadyClaimedException.class);
 	}
 
@@ -379,31 +368,31 @@ class DevilFruitTypeServiceIntegrationTest {
 	void claimingSomethingNotInReviewFails() {
 		var revision = completeDraft(this.editorA, "editor-a@onepiece.local");
 
-		assertThatThrownBy(() -> this.service.claim(revision.getId(), this.reviewerA, "reviewer-a@onepiece.local"))
+		assertThatThrownBy(() -> this.service.claim(revision.id(), this.reviewerA, "reviewer-a@onepiece.local"))
 			.isInstanceOf(InvalidStatusTransitionException.class);
 	}
 
 	@Test
 	void releasingMakesItClaimableAgainByAnyReviewer() {
 		var revision = submittedDraft(this.editorA, "editor-a@onepiece.local");
-		this.service.claim(revision.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+		this.service.claim(revision.id(), this.reviewerA, "reviewer-a@onepiece.local");
 
-		this.service.release(revision.getId(), this.reviewerA, "reviewer-a@onepiece.local");
-		var reclaimed = this.service.claim(revision.getId(), this.reviewerB, "reviewer-b@onepiece.local");
+		this.service.release(revision.id(), this.reviewerA, "reviewer-a@onepiece.local");
+		var reclaimed = this.service.claim(revision.id(), this.reviewerB, "reviewer-b@onepiece.local");
 
-		assertThat(reclaimed.getClaimedBy()).isEqualTo(this.reviewerB);
+		assertThat(reclaimed.claimedBy()).isEqualTo(this.reviewerB);
 	}
 
 	@Test
 	void releasingAndApprovingAndRejectingRequireBeingTheCurrentClaimant() {
 		var revision = submittedDraft(this.editorA, "editor-a@onepiece.local");
-		this.service.claim(revision.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+		this.service.claim(revision.id(), this.reviewerA, "reviewer-a@onepiece.local");
 
-		assertThatThrownBy(() -> this.service.release(revision.getId(), this.reviewerB, "reviewer-b@onepiece.local"))
+		assertThatThrownBy(() -> this.service.release(revision.id(), this.reviewerB, "reviewer-b@onepiece.local"))
 			.isInstanceOf(NotClaimantException.class);
-		assertThatThrownBy(() -> this.service.approve(revision.getId(), this.reviewerB, "reviewer-b@onepiece.local"))
+		assertThatThrownBy(() -> this.service.approve(revision.id(), this.reviewerB, "reviewer-b@onepiece.local"))
 			.isInstanceOf(NotClaimantException.class);
-		assertThatThrownBy(() -> this.service.reject(revision.getId(), this.reviewerB, "reviewer-b@onepiece.local",
+		assertThatThrownBy(() -> this.service.reject(revision.id(), this.reviewerB, "reviewer-b@onepiece.local",
 				"Not good enough"))
 			.isInstanceOf(NotClaimantException.class);
 	}
@@ -411,12 +400,12 @@ class DevilFruitTypeServiceIntegrationTest {
 	@Test
 	void approvingByTheClaimantMovesItToReviewedAndClearsTheClaim() {
 		var revision = submittedDraft(this.editorA, "editor-a@onepiece.local");
-		this.service.claim(revision.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+		this.service.claim(revision.id(), this.reviewerA, "reviewer-a@onepiece.local");
 
-		var approved = this.service.approve(revision.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+		var approved = this.service.approve(revision.id(), this.reviewerA, "reviewer-a@onepiece.local");
 
-		assertThat(approved.getStatus()).isEqualTo(WorkingRevisionStatus.REVIEWED);
-		assertThat(approved.getClaimedBy()).isNull();
+		assertThat(approved.status()).isEqualTo(WorkingRevisionStatus.REVIEWED);
+		assertThat(approved.claimedBy()).isNull();
 	}
 
 	@Test
@@ -424,12 +413,12 @@ class DevilFruitTypeServiceIntegrationTest {
 		var revision = submittedDraft(this.editorA, "editor-a@onepiece.local");
 		var now = this.clock().instant();
 		var sibling = this.workingRevisionRepository.save(new WorkingRevisionEntity(UUID.randomUUID(),
-				revision.getItemId(), this.editorB, "editor-b@onepiece.local", WorkingRevisionStatus.REVIEWED, now));
-		this.service.claim(revision.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+				revision.itemId(), this.editorB, "editor-b@onepiece.local", WorkingRevisionStatus.REVIEWED, now));
+		this.service.claim(revision.id(), this.reviewerA, "reviewer-a@onepiece.local");
 
-		var approved = this.service.approve(revision.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+		var approved = this.service.approve(revision.id(), this.reviewerA, "reviewer-a@onepiece.local");
 
-		assertThat(approved.getStatus()).isEqualTo(WorkingRevisionStatus.REVIEWED);
+		assertThat(approved.status()).isEqualTo(WorkingRevisionStatus.REVIEWED);
 		var supersededSibling = this.workingRevisionRepository.findById(sibling.getId()).orElseThrow();
 		assertThat(supersededSibling.getStatus()).isEqualTo(WorkingRevisionStatus.SUPERSEDED);
 	}
@@ -437,91 +426,89 @@ class DevilFruitTypeServiceIntegrationTest {
 	@Test
 	void rejectingWithoutAReasonFails() {
 		var revision = submittedDraft(this.editorA, "editor-a@onepiece.local");
-		this.service.claim(revision.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+		this.service.claim(revision.id(), this.reviewerA, "reviewer-a@onepiece.local");
 
-		assertThatThrownBy(
-				() -> this.service.reject(revision.getId(), this.reviewerA, "reviewer-a@onepiece.local", " "))
+		assertThatThrownBy(() -> this.service.reject(revision.id(), this.reviewerA, "reviewer-a@onepiece.local", " "))
 			.isInstanceOf(MissingRejectionReasonException.class);
 	}
 
 	@Test
 	void rejectingReturnsItToDraftWithTheReasonVisibleAndClearsTheClaim() {
 		var revision = submittedDraft(this.editorA, "editor-a@onepiece.local");
-		this.service.claim(revision.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+		this.service.claim(revision.id(), this.reviewerA, "reviewer-a@onepiece.local");
 
-		var rejected = this.service.reject(revision.getId(), this.reviewerA, "reviewer-a@onepiece.local",
+		var rejected = this.service.reject(revision.id(), this.reviewerA, "reviewer-a@onepiece.local",
 				"Romaji is misspelled");
 
-		assertThat(rejected.getStatus()).isEqualTo(WorkingRevisionStatus.DRAFT);
-		assertThat(rejected.getRejectionReason()).isEqualTo("Romaji is misspelled");
-		assertThat(rejected.getClaimedBy()).isNull();
+		assertThat(rejected.status()).isEqualTo(WorkingRevisionStatus.DRAFT);
+		assertThat(rejected.rejectionReason()).isEqualTo("Romaji is misspelled");
+		assertThat(rejected.claimedBy()).isNull();
 	}
 
 	@Test
 	void withdrawingAClaimedRevisionFails() {
 		var revision = submittedDraft(this.editorA, "editor-a@onepiece.local");
-		this.service.claim(revision.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+		this.service.claim(revision.id(), this.reviewerA, "reviewer-a@onepiece.local");
 
-		assertThatThrownBy(
-				() -> this.service.withdrawToDraft(revision.getId(), this.editorA, "editor-a@onepiece.local"))
+		assertThatThrownBy(() -> this.service.withdrawToDraft(revision.id(), this.editorA, "editor-a@onepiece.local"))
 			.isInstanceOf(ReviewAlreadyClaimedException.class);
 	}
 
 	@Test
 	void withdrawingSucceedsOnceTheClaimIsReleased() {
 		var revision = submittedDraft(this.editorA, "editor-a@onepiece.local");
-		this.service.claim(revision.getId(), this.reviewerA, "reviewer-a@onepiece.local");
-		this.service.release(revision.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+		this.service.claim(revision.id(), this.reviewerA, "reviewer-a@onepiece.local");
+		this.service.release(revision.id(), this.reviewerA, "reviewer-a@onepiece.local");
 
-		var withdrawn = this.service.withdrawToDraft(revision.getId(), this.editorA, "editor-a@onepiece.local");
+		var withdrawn = this.service.withdrawToDraft(revision.id(), this.editorA, "editor-a@onepiece.local");
 
-		assertThat(withdrawn.getStatus()).isEqualTo(WorkingRevisionStatus.DRAFT);
+		assertThat(withdrawn.status()).isEqualTo(WorkingRevisionStatus.DRAFT);
 	}
 
 	@Test
 	void deletingAnOwnNeverPublishedDraftRemovesItAndItsTranslations() {
 		var revision = completeDraft(this.editorA, "editor-a@onepiece.local");
 
-		this.service.deleteDraft(revision.getId(), this.editorA, "editor-a@onepiece.local");
+		this.service.deleteDraft(revision.id(), this.editorA, "editor-a@onepiece.local");
 
-		assertThat(this.workingRevisionRepository.findById(revision.getId())).isEmpty();
-		assertThat(this.translationRepository.findByIdWorkingRevisionId(revision.getId())).isEmpty();
+		assertThat(this.workingRevisionRepository.findById(revision.id())).isEmpty();
+		assertThat(this.translationRepository.findByIdWorkingRevisionId(revision.id())).isEmpty();
 	}
 
 	@Test
 	void deletingAnotherAuthorsDraftFails() {
 		var revision = this.service.createDraft(this.editorA, "editor-a@onepiece.local");
 
-		assertThatThrownBy(() -> this.service.deleteDraft(revision.getId(), this.editorB, "editor-b@onepiece.local"))
+		assertThatThrownBy(() -> this.service.deleteDraft(revision.id(), this.editorB, "editor-b@onepiece.local"))
 			.isInstanceOf(WorkingRevisionNotFoundException.class);
 	}
 
 	@Test
 	void deletingAWorkingRevisionOfAnItemWithPublishedHistoryFails() {
 		var approved = approvedCandidate(this.editorA, "editor-a@onepiece.local");
-		var published = this.service.publish(approved.getId(), this.reviewerA, "reviewer-a@onepiece.local");
-		var laterDraft = this.service.editPublishedItem(published.getItemId(), this.editorB, "editor-b@onepiece.local");
+		var published = this.service.publish(approved.id(), this.reviewerA, "reviewer-a@onepiece.local");
+		var laterDraft = this.service.editPublishedItem(published.itemId(), this.editorB, "editor-b@onepiece.local");
 
-		assertThatThrownBy(() -> this.service.deleteDraft(laterDraft.getId(), this.editorB, "editor-b@onepiece.local"))
+		assertThatThrownBy(() -> this.service.deleteDraft(laterDraft.id(), this.editorB, "editor-b@onepiece.local"))
 			.isInstanceOf(CannotDeletePublishedItemException.class);
 	}
 
 	@Test
 	void everPublishedReflectsTheItemsVersionHistoryRegardlessOfWorkingRevisionStatus() {
 		var revision = completeDraft(this.editorA, "editor-a@onepiece.local");
-		assertThat(this.service.everPublished(revision.getItemId())).isFalse();
+		assertThat(this.service.everPublished(revision.itemId())).isFalse();
 
 		var approved = approvedCandidate(this.editorB, "editor-b@onepiece.local");
-		this.service.publish(approved.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+		this.service.publish(approved.id(), this.reviewerA, "reviewer-a@onepiece.local");
 
-		assertThat(this.service.everPublished(approved.getItemId())).isTrue();
+		assertThat(this.service.everPublished(approved.itemId())).isTrue();
 	}
 
 	@Test
 	void editingSomethingNotInDraftFails() {
 		var revision = submittedDraft(this.editorA, "editor-a@onepiece.local");
 
-		assertThatThrownBy(() -> this.service.updateDraft(revision.getId(), this.editorA, "editor-a@onepiece.local",
+		assertThatThrownBy(() -> this.service.updateDraft(revision.id(), this.editorA, "editor-a@onepiece.local",
 				"Changed", Map.of()))
 			.isInstanceOf(InvalidStatusTransitionException.class);
 	}
@@ -533,17 +520,17 @@ class DevilFruitTypeServiceIntegrationTest {
 
 		var queue = this.service.reviewQueue();
 
-		assertThat(queue).extracting(r -> r.getId()).containsExactly(queued.getId());
+		assertThat(queue).extracting(r -> r.id()).containsExactly(queued.id());
 	}
 
 	@Test
 	void publishingAnApprovedCandidateCreatesTheFirstVersionAndSetsItLive() {
 		var approved = approvedCandidate(this.editorA, "editor-a@onepiece.local");
 
-		var published = this.service.publish(approved.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+		var published = this.service.publish(approved.id(), this.reviewerA, "reviewer-a@onepiece.local");
 
-		assertThat(published.getStatus()).isEqualTo(WorkingRevisionStatus.PUBLISHED);
-		var item = this.itemRepository.findById(approved.getItemId()).orElseThrow();
+		assertThat(published.status()).isEqualTo(WorkingRevisionStatus.PUBLISHED);
+		var item = this.itemRepository.findById(approved.itemId()).orElseThrow();
 		assertThat(item.getLiveVersionId()).isNotNull();
 		var version = this.contentVersionRepository.findById(item.getLiveVersionId()).orElseThrow();
 		assertThat(version.getSequenceNumber()).isEqualTo(1);
@@ -555,20 +542,20 @@ class DevilFruitTypeServiceIntegrationTest {
 	void publishingSomethingNotReviewedFails() {
 		var revision = submittedDraft(this.editorA, "editor-a@onepiece.local");
 
-		assertThatThrownBy(() -> this.service.publish(revision.getId(), this.reviewerA, "reviewer-a@onepiece.local"))
+		assertThatThrownBy(() -> this.service.publish(revision.id(), this.reviewerA, "reviewer-a@onepiece.local"))
 			.isInstanceOf(InvalidStatusTransitionException.class);
 	}
 
 	@Test
 	void publishingASecondVersionOfTheSameItemIncrementsTheSequenceNumber() {
 		var approvedA = approvedCandidate(this.editorA, "editor-a@onepiece.local");
-		this.service.publish(approvedA.getId(), this.reviewerA, "reviewer-a@onepiece.local");
-		var revisionB = independentReviewedSibling(approvedA.getItemId(), this.editorB, "editor-b@onepiece.local");
+		this.service.publish(approvedA.id(), this.reviewerA, "reviewer-a@onepiece.local");
+		var revisionB = independentReviewedSibling(approvedA.itemId(), this.editorB, "editor-b@onepiece.local");
 
 		var published = this.service.publish(revisionB.getId(), this.reviewerB, "reviewer-b@onepiece.local");
 
-		assertThat(published.getStatus()).isEqualTo(WorkingRevisionStatus.PUBLISHED);
-		var item = this.itemRepository.findById(approvedA.getItemId()).orElseThrow();
+		assertThat(published.status()).isEqualTo(WorkingRevisionStatus.PUBLISHED);
+		var item = this.itemRepository.findById(approvedA.itemId()).orElseThrow();
 		var version = this.contentVersionRepository.findById(item.getLiveVersionId()).orElseThrow();
 		assertThat(version.getSequenceNumber()).isEqualTo(2);
 	}
@@ -576,21 +563,21 @@ class DevilFruitTypeServiceIntegrationTest {
 	@Test
 	void listEncyclopediaPrefersAReviewedCandidateOverAnAlreadyPublishedSiblingOfTheSameItem() {
 		var approvedA = approvedCandidate(this.editorA, "editor-a@onepiece.local");
-		this.service.publish(approvedA.getId(), this.reviewerA, "reviewer-a@onepiece.local");
-		var revisionB = independentReviewedSibling(approvedA.getItemId(), this.editorB, "editor-b@onepiece.local");
+		this.service.publish(approvedA.id(), this.reviewerA, "reviewer-a@onepiece.local");
+		var revisionB = independentReviewedSibling(approvedA.itemId(), this.editorB, "editor-b@onepiece.local");
 
 		var encyclopedia = this.service.listEncyclopedia();
 
 		assertThat(encyclopedia).hasSize(1);
 		assertThat(encyclopedia.get(0)).isInstanceOf(EncyclopediaEntry.ReviewedCandidate.class);
 		var reviewed = (EncyclopediaEntry.ReviewedCandidate) encyclopedia.get(0);
-		assertThat(reviewed.revision().getId()).isEqualTo(revisionB.getId());
+		assertThat(reviewed.revision().id()).isEqualTo(revisionB.getId());
 	}
 
 	@Test
 	void listEncyclopediaShowsAPublishedItemWithNoReviewedCandidate() {
 		var approved = approvedCandidate(this.editorA, "editor-a@onepiece.local");
-		this.service.publish(approved.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+		this.service.publish(approved.id(), this.reviewerA, "reviewer-a@onepiece.local");
 
 		var encyclopedia = this.service.listEncyclopedia();
 
@@ -601,9 +588,9 @@ class DevilFruitTypeServiceIntegrationTest {
 	@Test
 	void gettingAnEncyclopediaItemReturnsTheLivePublishedVersion() {
 		var approved = approvedCandidate(this.editorA, "editor-a@onepiece.local");
-		this.service.publish(approved.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+		this.service.publish(approved.id(), this.reviewerA, "reviewer-a@onepiece.local");
 
-		var entry = this.service.getEncyclopediaItem(approved.getItemId());
+		var entry = this.service.getEncyclopediaItem(approved.itemId());
 
 		assertThat(entry).isInstanceOf(EncyclopediaEntry.PublishedItem.class);
 	}
@@ -618,48 +605,47 @@ class DevilFruitTypeServiceIntegrationTest {
 	void gettingAnEncyclopediaItemForAStillPrivateDraftFails() {
 		var revision = this.service.createDraft(this.editorA, "editor-a@onepiece.local");
 
-		assertThatThrownBy(() -> this.service.getEncyclopediaItem(revision.getItemId()))
+		assertThatThrownBy(() -> this.service.getEncyclopediaItem(revision.itemId()))
 			.isInstanceOf(EncyclopediaItemNotFoundException.class);
 	}
 
 	@Test
 	void editingAPublishedItemCreatesANewDraftPrefilledFromTheLiveSnapshot() {
 		var approved = approvedCandidate(this.editorA, "editor-a@onepiece.local");
-		var published = this.service.publish(approved.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+		var published = this.service.publish(approved.id(), this.reviewerA, "reviewer-a@onepiece.local");
 
-		var newDraft = this.service.editPublishedItem(published.getItemId(), this.editorB, "editor-b@onepiece.local");
+		var newDraft = this.service.editPublishedItem(published.itemId(), this.editorB, "editor-b@onepiece.local");
 
-		assertThat(newDraft.getId()).isNotEqualTo(published.getId());
-		assertThat(newDraft.getItemId()).isEqualTo(published.getItemId());
-		assertThat(newDraft.getStatus()).isEqualTo(WorkingRevisionStatus.DRAFT);
-		assertThat(newDraft.getAuthorId()).isEqualTo(this.editorB);
-		assertThat(newDraft.getRomaji()).isEqualTo("Paramishia");
-		var translations = this.service.translationsOf(newDraft.getId());
-		assertThat(translations).hasSize(2);
+		assertThat(newDraft.id()).isNotEqualTo(published.id());
+		assertThat(newDraft.itemId()).isEqualTo(published.itemId());
+		assertThat(newDraft.status()).isEqualTo(WorkingRevisionStatus.DRAFT);
+		assertThat(newDraft.authorId()).isEqualTo(this.editorB);
+		assertThat(newDraft.romaji()).isEqualTo("Paramishia");
+		assertThat(newDraft.translations()).hasSize(2);
 	}
 
 	@Test
 	void editingAPublishedItemLeavesTheLiveContentUntouched() {
 		var approved = approvedCandidate(this.editorA, "editor-a@onepiece.local");
-		var published = this.service.publish(approved.getId(), this.reviewerA, "reviewer-a@onepiece.local");
-		var itemBefore = this.itemRepository.findById(published.getItemId()).orElseThrow();
+		var published = this.service.publish(approved.id(), this.reviewerA, "reviewer-a@onepiece.local");
+		var itemBefore = this.itemRepository.findById(published.itemId()).orElseThrow();
 
-		this.service.editPublishedItem(published.getItemId(), this.editorB, "editor-b@onepiece.local");
+		this.service.editPublishedItem(published.itemId(), this.editorB, "editor-b@onepiece.local");
 
-		var itemAfter = this.itemRepository.findById(published.getItemId()).orElseThrow();
+		var itemAfter = this.itemRepository.findById(published.itemId()).orElseThrow();
 		assertThat(itemAfter.getLiveVersionId()).isEqualTo(itemBefore.getLiveVersionId());
 	}
 
 	@Test
 	void twoAuthorsCanIndependentlyEditTheSamePublishedItem() {
 		var approved = approvedCandidate(this.editorA, "editor-a@onepiece.local");
-		var published = this.service.publish(approved.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+		var published = this.service.publish(approved.id(), this.reviewerA, "reviewer-a@onepiece.local");
 
-		var draftB = this.service.editPublishedItem(published.getItemId(), this.editorB, "editor-b@onepiece.local");
-		var draftC = this.service.editPublishedItem(published.getItemId(), this.editorA, "editor-a@onepiece.local");
+		var draftB = this.service.editPublishedItem(published.itemId(), this.editorB, "editor-b@onepiece.local");
+		var draftC = this.service.editPublishedItem(published.itemId(), this.editorA, "editor-a@onepiece.local");
 
-		assertThat(draftB.getId()).isNotEqualTo(draftC.getId());
-		assertThat(draftB.getItemId()).isEqualTo(draftC.getItemId());
+		assertThat(draftB.id()).isNotEqualTo(draftC.id());
+		assertThat(draftB.itemId()).isEqualTo(draftC.itemId());
 	}
 
 	@Test
@@ -667,7 +653,7 @@ class DevilFruitTypeServiceIntegrationTest {
 		var revision = this.service.createDraft(this.editorA, "editor-a@onepiece.local");
 
 		assertThatThrownBy(
-				() -> this.service.editPublishedItem(revision.getItemId(), this.editorB, "editor-b@onepiece.local"))
+				() -> this.service.editPublishedItem(revision.itemId(), this.editorB, "editor-b@onepiece.local"))
 			.isInstanceOf(EncyclopediaItemNotFoundException.class);
 	}
 
@@ -681,53 +667,52 @@ class DevilFruitTypeServiceIntegrationTest {
 	@Test
 	void listVersionsReturnsEveryPublishedSnapshotMostRecentFirstWithTheLiveOneFlagged() {
 		var approvedA = approvedCandidate(this.editorA, "editor-a@onepiece.local");
-		var v1 = this.service.publish(approvedA.getId(), this.reviewerA, "reviewer-a@onepiece.local");
-		var revisionB = independentReviewedSibling(approvedA.getItemId(), this.editorB, "editor-b@onepiece.local");
+		var v1 = this.service.publish(approvedA.id(), this.reviewerA, "reviewer-a@onepiece.local");
+		var revisionB = independentReviewedSibling(approvedA.itemId(), this.editorB, "editor-b@onepiece.local");
 		var v2 = this.service.publish(revisionB.getId(), this.reviewerB, "reviewer-b@onepiece.local");
 
-		var versions = this.service.listVersions(v2.getItemId());
+		var versions = this.service.listVersions(v2.itemId());
 
 		assertThat(versions).hasSize(2);
-		var item = this.itemRepository.findById(v2.getItemId()).orElseThrow();
-		assertThat(versions.get(0).getSequenceNumber()).isEqualTo(2);
-		assertThat(versions.get(0).getId()).isEqualTo(item.getLiveVersionId());
-		assertThat(versions.get(1).getSequenceNumber()).isEqualTo(1);
+		var item = this.itemRepository.findById(v2.itemId()).orElseThrow();
+		assertThat(versions.get(0).sequenceNumber()).isEqualTo(2);
+		assertThat(versions.get(0).id()).isEqualTo(item.getLiveVersionId());
+		assertThat(versions.get(1).sequenceNumber()).isEqualTo(1);
 	}
 
 	@Test
 	void gettingAVersionReturnsItsFullContent() {
 		var approved = approvedCandidate(this.editorA, "editor-a@onepiece.local");
-		var published = this.service.publish(approved.getId(), this.reviewerA, "reviewer-a@onepiece.local");
-		var itemId = published.getItemId();
+		var published = this.service.publish(approved.id(), this.reviewerA, "reviewer-a@onepiece.local");
+		var itemId = published.itemId();
 		var v1Id = this.itemRepository.findById(itemId).orElseThrow().getLiveVersionId();
 
 		var version = this.service.getVersion(itemId, v1Id);
-		var translations = this.service.versionTranslationsOf(version.getId());
 
-		assertThat(version.getRomaji()).isEqualTo("Paramishia");
-		assertThat(translations).extracting(t -> t.getId().getLanguageCode()).containsExactlyInAnyOrder("it", "en");
+		assertThat(version.romaji()).isEqualTo("Paramishia");
+		assertThat(version.translations().keySet()).containsExactlyInAnyOrder("it", "en");
 	}
 
 	@Test
 	void gettingAVersionThatDoesNotBelongToTheItemFails() {
 		var approvedA = approvedCandidate(this.editorA, "editor-a@onepiece.local");
-		var publishedA = this.service.publish(approvedA.getId(), this.reviewerA, "reviewer-a@onepiece.local");
-		var v1Id = this.itemRepository.findById(publishedA.getItemId()).orElseThrow().getLiveVersionId();
+		var publishedA = this.service.publish(approvedA.id(), this.reviewerA, "reviewer-a@onepiece.local");
+		var v1Id = this.itemRepository.findById(publishedA.itemId()).orElseThrow().getLiveVersionId();
 		var otherItemApproved = approvedCandidate(this.editorB, "editor-b@onepiece.local", "Zoiashia", "Zoan");
-		var otherItemPublished = this.service.publish(otherItemApproved.getId(), this.reviewerB,
+		var otherItemPublished = this.service.publish(otherItemApproved.id(), this.reviewerB,
 				"reviewer-b@onepiece.local");
 
-		assertThatThrownBy(() -> this.service.getVersion(otherItemPublished.getItemId(), v1Id))
+		assertThatThrownBy(() -> this.service.getVersion(otherItemPublished.itemId(), v1Id))
 			.isInstanceOf(ContentVersionNotFoundException.class);
 	}
 
 	@Test
 	void restoringRepointsTheLivePointerWithoutCreatingANewVersionRow() {
 		var approvedA = approvedCandidate(this.editorA, "editor-a@onepiece.local");
-		this.service.publish(approvedA.getId(), this.reviewerA, "reviewer-a@onepiece.local");
-		var revisionB = independentReviewedSibling(approvedA.getItemId(), this.editorB, "editor-b@onepiece.local");
+		this.service.publish(approvedA.id(), this.reviewerA, "reviewer-a@onepiece.local");
+		var revisionB = independentReviewedSibling(approvedA.itemId(), this.editorB, "editor-b@onepiece.local");
 		var v2 = this.service.publish(revisionB.getId(), this.reviewerB, "reviewer-b@onepiece.local");
-		var itemId = v2.getItemId();
+		var itemId = v2.itemId();
 		var v1Id = this.contentVersionRepository.findByItemIdOrderBySequenceNumberDesc(itemId)
 			.stream()
 			.filter(v -> v.getSequenceNumber() == 1)
@@ -737,7 +722,7 @@ class DevilFruitTypeServiceIntegrationTest {
 
 		var restored = this.service.restore(itemId, v1Id, this.reviewerA, "reviewer-a@onepiece.local");
 
-		assertThat(restored.getId()).isEqualTo(v1Id);
+		assertThat(restored.id()).isEqualTo(v1Id);
 		var item = this.itemRepository.findById(itemId).orElseThrow();
 		assertThat(item.getLiveVersionId()).isEqualTo(v1Id);
 		assertThat(this.contentVersionRepository.findByItemIdOrderBySequenceNumberDesc(itemId)).hasSize(2);
@@ -746,12 +731,12 @@ class DevilFruitTypeServiceIntegrationTest {
 	@Test
 	void restoringAVersionThatDoesNotBelongToTheItemFails() {
 		var approvedA = approvedCandidate(this.editorA, "editor-a@onepiece.local");
-		var published = this.service.publish(approvedA.getId(), this.reviewerA, "reviewer-a@onepiece.local");
-		var itemAVersionId = this.itemRepository.findById(published.getItemId()).orElseThrow().getLiveVersionId();
+		var published = this.service.publish(approvedA.id(), this.reviewerA, "reviewer-a@onepiece.local");
+		var itemAVersionId = this.itemRepository.findById(published.itemId()).orElseThrow().getLiveVersionId();
 		var otherItemApproved = approvedCandidate(this.editorB, "editor-b@onepiece.local", "Zoiashia", "Zoan");
-		var otherItemPublished = this.service.publish(otherItemApproved.getId(), this.reviewerB,
+		var otherItemPublished = this.service.publish(otherItemApproved.id(), this.reviewerB,
 				"reviewer-b@onepiece.local");
-		var otherItemId = otherItemPublished.getItemId();
+		var otherItemId = otherItemPublished.itemId();
 
 		assertThatThrownBy(
 				() -> this.service.restore(otherItemId, itemAVersionId, this.reviewerA, "reviewer-a@onepiece.local"))
@@ -761,18 +746,18 @@ class DevilFruitTypeServiceIntegrationTest {
 	@Test
 	void restoringAnUnknownVersionFails() {
 		var approved = approvedCandidate(this.editorA, "editor-a@onepiece.local");
-		var v1 = this.service.publish(approved.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+		var v1 = this.service.publish(approved.id(), this.reviewerA, "reviewer-a@onepiece.local");
 
-		assertThatThrownBy(() -> this.service.restore(v1.getItemId(), UUID.randomUUID(), this.reviewerA,
-				"reviewer-a@onepiece.local"))
+		assertThatThrownBy(
+				() -> this.service.restore(v1.itemId(), UUID.randomUUID(), this.reviewerA, "reviewer-a@onepiece.local"))
 			.isInstanceOf(ContentVersionNotFoundException.class);
 	}
 
 	@Test
 	void retiringClearsTheLivePointerWithoutTouchingHistory() {
 		var approved = approvedCandidate(this.editorA, "editor-a@onepiece.local");
-		var published = this.service.publish(approved.getId(), this.reviewerA, "reviewer-a@onepiece.local");
-		var itemId = published.getItemId();
+		var published = this.service.publish(approved.id(), this.reviewerA, "reviewer-a@onepiece.local");
+		var itemId = published.itemId();
 
 		this.service.retire(itemId, this.reviewerA, "reviewer-a@onepiece.local");
 
@@ -784,8 +769,8 @@ class DevilFruitTypeServiceIntegrationTest {
 	@Test
 	void retiringIsIdempotent() {
 		var approved = approvedCandidate(this.editorA, "editor-a@onepiece.local");
-		var published = this.service.publish(approved.getId(), this.reviewerA, "reviewer-a@onepiece.local");
-		var itemId = published.getItemId();
+		var published = this.service.publish(approved.id(), this.reviewerA, "reviewer-a@onepiece.local");
+		var itemId = published.itemId();
 		this.service.retire(itemId, this.reviewerA, "reviewer-a@onepiece.local");
 
 		this.service.retire(itemId, this.reviewerA, "reviewer-a@onepiece.local");
@@ -798,7 +783,7 @@ class DevilFruitTypeServiceIntegrationTest {
 	void retiringAnItemThatWasNeverPublishedFails() {
 		var revision = this.service.createDraft(this.editorA, "editor-a@onepiece.local");
 
-		assertThatThrownBy(() -> this.service.retire(revision.getItemId(), this.reviewerA, "reviewer-a@onepiece.local"))
+		assertThatThrownBy(() -> this.service.retire(revision.itemId(), this.reviewerA, "reviewer-a@onepiece.local"))
 			.isInstanceOf(EncyclopediaItemNotFoundException.class);
 	}
 
@@ -811,15 +796,15 @@ class DevilFruitTypeServiceIntegrationTest {
 	@Test
 	void aRetiredItemShowsInTheEncyclopediaWithItsLastLiveContent() {
 		var approved = approvedCandidate(this.editorA, "editor-a@onepiece.local");
-		var published = this.service.publish(approved.getId(), this.reviewerA, "reviewer-a@onepiece.local");
-		var itemId = published.getItemId();
+		var published = this.service.publish(approved.id(), this.reviewerA, "reviewer-a@onepiece.local");
+		var itemId = published.itemId();
 		this.service.retire(itemId, this.reviewerA, "reviewer-a@onepiece.local");
 
 		var entry = this.service.getEncyclopediaItem(itemId);
 
 		assertThat(entry).isInstanceOf(EncyclopediaEntry.RetiredItem.class);
 		var retired = (EncyclopediaEntry.RetiredItem) entry;
-		assertThat(retired.lastVersion().getRomaji()).isEqualTo("Paramishia");
+		assertThat(retired.lastVersion().romaji()).isEqualTo("Paramishia");
 
 		var encyclopedia = this.service.listEncyclopedia();
 		assertThat(encyclopedia).hasSize(1).first().isInstanceOf(EncyclopediaEntry.RetiredItem.class);
@@ -828,8 +813,8 @@ class DevilFruitTypeServiceIntegrationTest {
 	@Test
 	void aReviewedSiblingTakesPriorityOverARetiredItemInTheEncyclopedia() {
 		var approved = approvedCandidate(this.editorA, "editor-a@onepiece.local");
-		var published = this.service.publish(approved.getId(), this.reviewerA, "reviewer-a@onepiece.local");
-		var itemId = published.getItemId();
+		var published = this.service.publish(approved.id(), this.reviewerA, "reviewer-a@onepiece.local");
+		var itemId = published.itemId();
 		this.service.retire(itemId, this.reviewerA, "reviewer-a@onepiece.local");
 		independentReviewedSibling(itemId, this.editorB, "editor-b@onepiece.local");
 
@@ -841,23 +826,23 @@ class DevilFruitTypeServiceIntegrationTest {
 	@Test
 	void editingARetiredItemPrefillsFromItsLastLiveSnapshot() {
 		var approved = approvedCandidate(this.editorA, "editor-a@onepiece.local");
-		var published = this.service.publish(approved.getId(), this.reviewerA, "reviewer-a@onepiece.local");
-		var itemId = published.getItemId();
+		var published = this.service.publish(approved.id(), this.reviewerA, "reviewer-a@onepiece.local");
+		var itemId = published.itemId();
 		this.service.retire(itemId, this.reviewerA, "reviewer-a@onepiece.local");
 
 		var newDraft = this.service.editPublishedItem(itemId, this.editorB, "editor-b@onepiece.local");
 
-		assertThat(newDraft.getItemId()).isEqualTo(itemId);
-		assertThat(newDraft.getStatus()).isEqualTo(WorkingRevisionStatus.DRAFT);
-		assertThat(newDraft.getRomaji()).isEqualTo("Paramishia");
-		assertThat(this.service.translationsOf(newDraft.getId())).hasSize(2);
+		assertThat(newDraft.itemId()).isEqualTo(itemId);
+		assertThat(newDraft.status()).isEqualTo(WorkingRevisionStatus.DRAFT);
+		assertThat(newDraft.romaji()).isEqualTo("Paramishia");
+		assertThat(newDraft.translations()).hasSize(2);
 	}
 
 	@Test
 	void aRetiredItemCanReturnLiveViaPublishOfANewlyApprovedCandidate() {
 		var approved = approvedCandidate(this.editorA, "editor-a@onepiece.local");
-		var published = this.service.publish(approved.getId(), this.reviewerA, "reviewer-a@onepiece.local");
-		var itemId = published.getItemId();
+		var published = this.service.publish(approved.id(), this.reviewerA, "reviewer-a@onepiece.local");
+		var itemId = published.itemId();
 		this.service.retire(itemId, this.reviewerA, "reviewer-a@onepiece.local");
 		var revisionB = independentReviewedSibling(itemId, this.editorB, "editor-b@onepiece.local");
 
@@ -871,8 +856,8 @@ class DevilFruitTypeServiceIntegrationTest {
 	@Test
 	void aRetiredItemCanReturnLiveViaRestore() {
 		var approved = approvedCandidate(this.editorA, "editor-a@onepiece.local");
-		var published = this.service.publish(approved.getId(), this.reviewerA, "reviewer-a@onepiece.local");
-		var itemId = published.getItemId();
+		var published = this.service.publish(approved.id(), this.reviewerA, "reviewer-a@onepiece.local");
+		var itemId = published.itemId();
 		var v1Id = this.itemRepository.findById(itemId).orElseThrow().getLiveVersionId();
 		this.service.retire(itemId, this.reviewerA, "reviewer-a@onepiece.local");
 
@@ -885,10 +870,10 @@ class DevilFruitTypeServiceIntegrationTest {
 	/**
 	 * A `REVIEWED` working revision, claimed and approved by reviewerA, ready to publish.
 	 */
-	private WorkingRevisionEntity approvedCandidate(UUID authorId, String authorEmail) {
+	private WorkingRevision approvedCandidate(UUID authorId, String authorEmail) {
 		var revision = submittedDraft(authorId, authorEmail);
-		this.service.claim(revision.getId(), this.reviewerA, "reviewer-a@onepiece.local");
-		return this.service.approve(revision.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+		this.service.claim(revision.id(), this.reviewerA, "reviewer-a@onepiece.local");
+		return this.service.approve(revision.id(), this.reviewerA, "reviewer-a@onepiece.local");
 	}
 
 	/**
@@ -898,13 +883,13 @@ class DevilFruitTypeServiceIntegrationTest {
 	 * `REVIEWED`/`PUBLISHED` at once, which the shared content would otherwise collide
 	 * on.
 	 */
-	private WorkingRevisionEntity approvedCandidate(UUID authorId, String authorEmail, String romaji, String name) {
+	private WorkingRevision approvedCandidate(UUID authorId, String authorEmail, String romaji, String name) {
 		var revision = this.service.createDraft(authorId, authorEmail);
-		var filled = this.service.updateDraft(revision.getId(), authorId, authorEmail, romaji, Map.of("it",
+		var filled = this.service.updateDraft(revision.id(), authorId, authorEmail, romaji, Map.of("it",
 				new TranslationRequest(name, "Descrizione IT"), "en", new TranslationRequest(name, "EN description")));
-		var submitted = this.service.submitForReview(filled.getId(), authorId, authorEmail);
-		this.service.claim(submitted.getId(), this.reviewerA, "reviewer-a@onepiece.local");
-		return this.service.approve(submitted.getId(), this.reviewerA, "reviewer-a@onepiece.local");
+		var submitted = this.service.submitForReview(filled.id(), authorId, authorEmail);
+		this.service.claim(submitted.id(), this.reviewerA, "reviewer-a@onepiece.local");
+		return this.service.approve(submitted.id(), this.reviewerA, "reviewer-a@onepiece.local");
 	}
 
 	/**
@@ -918,15 +903,15 @@ class DevilFruitTypeServiceIntegrationTest {
 	}
 
 	/** A submitted, `IN_REVIEW` working revision, ready for claim/approve/reject. */
-	private WorkingRevisionEntity submittedDraft(UUID authorId, String authorEmail) {
+	private WorkingRevision submittedDraft(UUID authorId, String authorEmail) {
 		var revision = completeDraft(authorId, authorEmail);
-		return this.service.submitForReview(revision.getId(), authorId, authorEmail);
+		return this.service.submitForReview(revision.id(), authorId, authorEmail);
 	}
 
 	/** A draft filled in for every active language, ready to submit. */
-	private WorkingRevisionEntity completeDraft(UUID authorId, String authorEmail) {
+	private WorkingRevision completeDraft(UUID authorId, String authorEmail) {
 		var revision = this.service.createDraft(authorId, authorEmail);
-		return this.service.updateDraft(revision.getId(), authorId, authorEmail, "Paramishia",
+		return this.service.updateDraft(revision.id(), authorId, authorEmail, "Paramishia",
 				Map.of("it", new TranslationRequest("Paramecia", "Descrizione IT"), "en",
 						new TranslationRequest("Paramecia", "EN description")));
 	}

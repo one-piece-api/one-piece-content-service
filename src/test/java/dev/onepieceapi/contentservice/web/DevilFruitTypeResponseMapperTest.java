@@ -1,12 +1,12 @@
 package dev.onepieceapi.contentservice.web;
 
-import dev.onepieceapi.contentservice.persistence.entity.TranslationEntity;
-import dev.onepieceapi.contentservice.persistence.entity.WorkingRevisionEntity;
-import dev.onepieceapi.contentservice.persistence.entity.WorkingRevisionStatus;
+import dev.onepieceapi.contentservice.domain.Translation;
+import dev.onepieceapi.contentservice.domain.WorkingRevision;
+import dev.onepieceapi.contentservice.domain.WorkingRevisionStatus;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
-import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -21,75 +21,65 @@ class DevilFruitTypeResponseMapperTest {
 
 	@Test
 	void prefersEnglishWhenNoAcceptLanguageIsSent() {
-		var revision = aRevision();
-		var translations = List.of(translation(revision, "it", "Nome italiano"),
-				translation(revision, "en", "English name"));
+		var revision = aRevision(
+				Map.of("it", new Translation("Nome italiano", null), "en", new Translation("English name", null)));
 
-		var summary = DevilFruitTypeResponseMapper.toSummary(revision, translations, null);
+		var summary = DevilFruitTypeResponseMapper.toSummary(revision, null);
 
 		assertThat(summary.displayName()).isEqualTo("English name");
 	}
 
 	@Test
 	void prefersEnglishWhenTheAcceptLanguageIsEnglish() {
-		var revision = aRevision();
-		var translations = List.of(translation(revision, "it", "Nome italiano"),
-				translation(revision, "en", "English name"));
+		var revision = aRevision(
+				Map.of("it", new Translation("Nome italiano", null), "en", new Translation("English name", null)));
 
-		var summary = DevilFruitTypeResponseMapper.toSummary(revision, translations, "en-US,en;q=0.9");
+		var summary = DevilFruitTypeResponseMapper.toSummary(revision, "en-US,en;q=0.9");
 
 		assertThat(summary.displayName()).isEqualTo("English name");
 	}
 
 	@Test
 	void prefersItalianWhenTheAcceptLanguageIsItalian() {
-		var revision = aRevision();
-		var translations = List.of(translation(revision, "it", "Nome italiano"),
-				translation(revision, "en", "English name"));
+		var revision = aRevision(
+				Map.of("it", new Translation("Nome italiano", null), "en", new Translation("English name", null)));
 
-		var summary = DevilFruitTypeResponseMapper.toSummary(revision, translations, "it-IT,it;q=0.9,en;q=0.8");
+		var summary = DevilFruitTypeResponseMapper.toSummary(revision, "it-IT,it;q=0.9,en;q=0.8");
 
 		assertThat(summary.displayName()).isEqualTo("Nome italiano");
 	}
 
 	@Test
 	void fallsBackToItalianWhenItalianIsRequestedButOnlyEnglishExists() {
-		var revision = aRevision();
-		var translations = List.of(translation(revision, "en", "English name"));
+		var revision = aRevision(Map.of("en", new Translation("English name", null)));
 
-		var summary = DevilFruitTypeResponseMapper.toSummary(revision, translations, "it");
+		var summary = DevilFruitTypeResponseMapper.toSummary(revision, "it");
 
 		assertThat(summary.displayName()).isEqualTo("English name");
 	}
 
 	@Test
 	void fallsBackToAnyOtherTranslationWhenNeitherEnglishNorItalianExists() {
-		var revision = aRevision();
-		var translations = List.of(translation(revision, "fr", "Nom francais"));
+		var revision = aRevision(Map.of("fr", new Translation("Nom francais", null)));
 
-		var summary = DevilFruitTypeResponseMapper.toSummary(revision, translations, "en");
+		var summary = DevilFruitTypeResponseMapper.toSummary(revision, "en");
 
 		assertThat(summary.displayName()).isEqualTo("Nom francais");
 	}
 
 	@Test
 	void treatsAnUnparseableAcceptLanguageAsEnglish() {
-		var revision = aRevision();
-		var translations = List.of(translation(revision, "it", "Nome italiano"),
-				translation(revision, "en", "English name"));
+		var revision = aRevision(
+				Map.of("it", new Translation("Nome italiano", null), "en", new Translation("English name", null)));
 
-		var summary = DevilFruitTypeResponseMapper.toSummary(revision, translations, "not a locale");
+		var summary = DevilFruitTypeResponseMapper.toSummary(revision, "not a locale");
 
 		assertThat(summary.displayName()).isEqualTo("English name");
 	}
 
-	private static WorkingRevisionEntity aRevision() {
-		return new WorkingRevisionEntity(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
-				"author@onepiece.local", WorkingRevisionStatus.DRAFT, Instant.EPOCH);
-	}
-
-	private static TranslationEntity translation(WorkingRevisionEntity revision, String languageCode, String name) {
-		return new TranslationEntity(revision.getId(), languageCode, name, null);
+	private static WorkingRevision aRevision(Map<String, Translation> translations) {
+		return new WorkingRevision(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "author@onepiece.local",
+				"Romaji", WorkingRevisionStatus.DRAFT, translations, null, null, null, Instant.EPOCH);
 	}
 
 }

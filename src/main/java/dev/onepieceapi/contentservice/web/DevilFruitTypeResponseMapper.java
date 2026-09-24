@@ -1,10 +1,9 @@
 package dev.onepieceapi.contentservice.web;
 
-import dev.onepieceapi.contentservice.persistence.entity.ContentVersionEntity;
-import dev.onepieceapi.contentservice.persistence.entity.ContentVersionTranslationEntity;
-import dev.onepieceapi.contentservice.persistence.entity.TranslationEntity;
-import dev.onepieceapi.contentservice.persistence.entity.WorkingRevisionEntity;
-import dev.onepieceapi.contentservice.service.EncyclopediaEntry;
+import dev.onepieceapi.contentservice.domain.ContentVersion;
+import dev.onepieceapi.contentservice.domain.EncyclopediaEntry;
+import dev.onepieceapi.contentservice.domain.Translation;
+import dev.onepieceapi.contentservice.domain.WorkingRevision;
 import dev.onepieceapi.contentservice.web.dto.response.ContentVersionDetailResponse;
 import dev.onepieceapi.contentservice.web.dto.response.ContentVersionResponse;
 import dev.onepieceapi.contentservice.web.dto.response.EncyclopediaItemDetailResponse;
@@ -21,6 +20,12 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * Maps the domain's
+ * {@link WorkingRevision}/{@link ContentVersion}/{@link EncyclopediaEntry} to this
+ * service's response shapes - the one place that knows how to pick a list row's display
+ * language, so every controller shares the same rule.
+ */
 @UtilityClass
 public class DevilFruitTypeResponseMapper {
 
@@ -34,31 +39,25 @@ public class DevilFruitTypeResponseMapper {
 
 	private static final String ITALIAN = "it";
 
-	public WorkingRevisionDetailResponse toDetail(WorkingRevisionEntity revision, List<TranslationEntity> translations,
-			boolean everPublished) {
-		Map<String, TranslationResponse> byLanguage = translations.stream()
-			.collect(Collectors.toMap(t -> t.getId().getLanguageCode(),
-					t -> new TranslationResponse(t.getName(), t.getDescription())));
-		return new WorkingRevisionDetailResponse(revision.getId(), revision.getItemId(), revision.getRomaji(),
-				revision.getStatus().name(), byLanguage, revision.getUpdatedAt(), revision.getAuthorEmail(),
-				revision.getClaimedByEmail(), revision.getRejectionReason(), everPublished);
+	public WorkingRevisionDetailResponse toDetail(WorkingRevision revision, boolean everPublished) {
+		return new WorkingRevisionDetailResponse(revision.id(), revision.itemId(), revision.romaji(),
+				revision.status().name(), toTranslationResponses(revision.translations()), revision.updatedAt(),
+				revision.authorEmail(), revision.claimedByEmail(), revision.rejectionReason(), everPublished);
 	}
 
-	public WorkingRevisionSummaryResponse toSummary(WorkingRevisionEntity revision,
-			List<TranslationEntity> translations, String acceptLanguage) {
-		return new WorkingRevisionSummaryResponse(revision.getId(), revision.getItemId(), ENTITY_TYPE,
-				revision.getRomaji(), displayNameOf(translations, preferredLanguageOf(acceptLanguage)),
-				revision.getStatus().name(), revision.getUpdatedAt(), revision.getRejectionReason());
+	public WorkingRevisionSummaryResponse toSummary(WorkingRevision revision, String acceptLanguage) {
+		return new WorkingRevisionSummaryResponse(revision.id(), revision.itemId(), ENTITY_TYPE, revision.romaji(),
+				displayNameOf(revision.translations(), preferredLanguageOf(acceptLanguage)), revision.status().name(),
+				revision.updatedAt(), revision.rejectionReason());
 	}
 
 	/**
 	 * One row of the shared review queue (Step 3) - see {@link ReviewQueueItemResponse}.
 	 */
-	public ReviewQueueItemResponse toQueueItem(WorkingRevisionEntity revision, List<TranslationEntity> translations,
-			String acceptLanguage) {
-		return new ReviewQueueItemResponse(revision.getId(), revision.getItemId(), ENTITY_TYPE, revision.getRomaji(),
-				displayNameOf(translations, preferredLanguageOf(acceptLanguage)), revision.getAuthorEmail(),
-				revision.getClaimedByEmail(), revision.getUpdatedAt());
+	public ReviewQueueItemResponse toQueueItem(WorkingRevision revision, String acceptLanguage) {
+		return new ReviewQueueItemResponse(revision.id(), revision.itemId(), ENTITY_TYPE, revision.romaji(),
+				displayNameOf(revision.translations(), preferredLanguageOf(acceptLanguage)), revision.authorEmail(),
+				revision.claimedByEmail(), revision.updatedAt());
 	}
 
 	/**
@@ -89,15 +88,16 @@ public class DevilFruitTypeResponseMapper {
 	 * otherwise {@code null} - the frontend falls back to "bozza senza nome", matching
 	 * the reference mockup's pattern.
 	 */
-	private String displayNameOf(List<TranslationEntity> translations, String preferredLanguage) {
+	private String displayNameOf(Map<String, Translation> translations, String preferredLanguage) {
 		String secondaryLanguage = ITALIAN.equals(preferredLanguage) ? DEFAULT_LANGUAGE : ITALIAN;
-		return translations.stream()
-			.filter(t -> t.getName() != null && !t.getName().isBlank())
+		return translations.entrySet()
+			.stream()
+			.filter(e -> e.getValue().name() != null && !e.getValue().name().isBlank())
 			.sorted(Comparator
-				.comparing((TranslationEntity t) -> languageRank(t.getId().getLanguageCode(), preferredLanguage,
+				.comparing((Map.Entry<String, Translation> e) -> languageRank(e.getKey(), preferredLanguage,
 						secondaryLanguage))
-				.thenComparing(t -> t.getId().getLanguageCode()))
-			.map(TranslationEntity::getName)
+				.thenComparing(Map.Entry::getKey))
+			.map(e -> e.getValue().name())
 			.findFirst()
 			.orElse(null);
 	}
@@ -120,83 +120,65 @@ public class DevilFruitTypeResponseMapper {
 	public EncyclopediaItemResponse toEncyclopediaItem(EncyclopediaEntry entry, String acceptLanguage) {
 		String preferredLanguage = preferredLanguageOf(acceptLanguage);
 		return switch (entry) {
-			case EncyclopediaEntry.ReviewedCandidate rc ->
-				reviewedEncyclopediaItem(rc.revision(), rc.translations(), preferredLanguage);
+			case EncyclopediaEntry.ReviewedCandidate rc -> reviewedEncyclopediaItem(rc.revision(), preferredLanguage);
 			case EncyclopediaEntry.PublishedItem pi ->
-				versionEncyclopediaItem(pi.version(), pi.translations(), "PUBLISHED", preferredLanguage);
+				versionEncyclopediaItem(pi.version(), "PUBLISHED", preferredLanguage);
 			case EncyclopediaEntry.RetiredItem ri ->
-				versionEncyclopediaItem(ri.lastVersion(), ri.translations(), "RETIRED", preferredLanguage);
+				versionEncyclopediaItem(ri.lastVersion(), "RETIRED", preferredLanguage);
 		};
 	}
 
-	/** Same as {@link #toEncyclopediaItem(EncyclopediaEntry)}, for the detail shape. */
+	/**
+	 * Same as {@link #toEncyclopediaItem(EncyclopediaEntry, String)}, for the detail
+	 * shape.
+	 */
 	public EncyclopediaItemDetailResponse toEncyclopediaDetail(EncyclopediaEntry entry) {
 		return switch (entry) {
-			case EncyclopediaEntry.ReviewedCandidate rc -> reviewedEncyclopediaDetail(rc.revision(), rc.translations());
-			case EncyclopediaEntry.PublishedItem pi ->
-				versionEncyclopediaDetail(pi.version(), pi.translations(), "PUBLISHED");
-			case EncyclopediaEntry.RetiredItem ri ->
-				versionEncyclopediaDetail(ri.lastVersion(), ri.translations(), "RETIRED");
+			case EncyclopediaEntry.ReviewedCandidate rc -> reviewedEncyclopediaDetail(rc.revision());
+			case EncyclopediaEntry.PublishedItem pi -> versionEncyclopediaDetail(pi.version(), "PUBLISHED");
+			case EncyclopediaEntry.RetiredItem ri -> versionEncyclopediaDetail(ri.lastVersion(), "RETIRED");
 		};
 	}
 
-	private EncyclopediaItemResponse reviewedEncyclopediaItem(WorkingRevisionEntity revision,
-			List<TranslationEntity> translations, String preferredLanguage) {
-		return new EncyclopediaItemResponse(revision.getItemId(), revision.getId(), ENTITY_TYPE, revision.getRomaji(),
-				displayNameOf(translations, preferredLanguage), "REVIEWED", revision.getUpdatedAt());
+	private EncyclopediaItemResponse reviewedEncyclopediaItem(WorkingRevision revision, String preferredLanguage) {
+		return new EncyclopediaItemResponse(revision.itemId(), revision.id(), ENTITY_TYPE, revision.romaji(),
+				displayNameOf(revision.translations(), preferredLanguage), "REVIEWED", revision.updatedAt());
 	}
 
-	private EncyclopediaItemResponse versionEncyclopediaItem(ContentVersionEntity version,
-			List<ContentVersionTranslationEntity> translations, String status, String preferredLanguage) {
-		return new EncyclopediaItemResponse(version.getItemId(), null, ENTITY_TYPE, version.getRomaji(),
-				displayNameOfVersion(translations, preferredLanguage), status, version.getPublishedAt());
+	private EncyclopediaItemResponse versionEncyclopediaItem(ContentVersion version, String status,
+			String preferredLanguage) {
+		return new EncyclopediaItemResponse(version.itemId(), null, ENTITY_TYPE, version.romaji(),
+				displayNameOf(version.translations(), preferredLanguage), status, version.publishedAt());
 	}
 
-	private EncyclopediaItemDetailResponse reviewedEncyclopediaDetail(WorkingRevisionEntity revision,
-			List<TranslationEntity> translations) {
-		Map<String, TranslationResponse> byLanguage = translations.stream()
-			.collect(Collectors.toMap(t -> t.getId().getLanguageCode(),
-					t -> new TranslationResponse(t.getName(), t.getDescription())));
-		return new EncyclopediaItemDetailResponse(revision.getItemId(), revision.getId(), revision.getRomaji(),
-				"REVIEWED", byLanguage, revision.getUpdatedAt(), null, null);
+	private EncyclopediaItemDetailResponse reviewedEncyclopediaDetail(WorkingRevision revision) {
+		return new EncyclopediaItemDetailResponse(revision.itemId(), revision.id(), revision.romaji(), "REVIEWED",
+				toTranslationResponses(revision.translations()), revision.updatedAt(), null, null);
 	}
 
-	private EncyclopediaItemDetailResponse versionEncyclopediaDetail(ContentVersionEntity version,
-			List<ContentVersionTranslationEntity> translations, String status) {
-		Map<String, TranslationResponse> byLanguage = translations.stream()
-			.collect(Collectors.toMap(t -> t.getId().getLanguageCode(),
-					t -> new TranslationResponse(t.getName(), t.getDescription())));
-		return new EncyclopediaItemDetailResponse(version.getItemId(), null, version.getRomaji(), status, byLanguage,
-				version.getPublishedAt(), version.getSequenceNumber(), version.getPublisherEmail());
+	private EncyclopediaItemDetailResponse versionEncyclopediaDetail(ContentVersion version, String status) {
+		return new EncyclopediaItemDetailResponse(version.itemId(), null, version.romaji(), status,
+				toTranslationResponses(version.translations()), version.publishedAt(), version.sequenceNumber(),
+				version.publisherEmail());
 	}
 
 	/** One row of Step 7's "Storico versioni" - see {@link ContentVersionResponse}. */
-	public ContentVersionResponse toVersion(ContentVersionEntity version, boolean live) {
-		return new ContentVersionResponse(version.getId(), version.getSequenceNumber(), version.getPublisherEmail(),
-				version.getPublishedAt(), live);
+	public ContentVersionResponse toVersion(ContentVersion version, boolean live) {
+		return new ContentVersionResponse(version.id(), version.sequenceNumber(), version.publisherEmail(),
+				version.publishedAt(), live);
 	}
 
 	/** One version's full content - see {@link ContentVersionDetailResponse}. */
-	public ContentVersionDetailResponse toVersionDetail(ContentVersionEntity version, boolean live,
-			List<ContentVersionTranslationEntity> translations) {
-		Map<String, TranslationResponse> byLanguage = translations.stream()
-			.collect(Collectors.toMap(t -> t.getId().getLanguageCode(),
-					t -> new TranslationResponse(t.getName(), t.getDescription())));
-		return new ContentVersionDetailResponse(version.getId(), version.getSequenceNumber(),
-				version.getPublisherEmail(), version.getPublishedAt(), live, version.getRomaji(), byLanguage);
+	public ContentVersionDetailResponse toVersionDetail(ContentVersion version, boolean live) {
+		return new ContentVersionDetailResponse(version.id(), version.sequenceNumber(), version.publisherEmail(),
+				version.publishedAt(), live, version.romaji(), toTranslationResponses(version.translations()));
 	}
 
-	private String displayNameOfVersion(List<ContentVersionTranslationEntity> translations, String preferredLanguage) {
-		String secondaryLanguage = ITALIAN.equals(preferredLanguage) ? DEFAULT_LANGUAGE : ITALIAN;
-		return translations.stream()
-			.filter(t -> t.getName() != null && !t.getName().isBlank())
-			.sorted(Comparator
-				.comparing((ContentVersionTranslationEntity t) -> languageRank(t.getId().getLanguageCode(),
-						preferredLanguage, secondaryLanguage))
-				.thenComparing(t -> t.getId().getLanguageCode()))
-			.map(ContentVersionTranslationEntity::getName)
-			.findFirst()
-			.orElse(null);
+	private Map<String, TranslationResponse> toTranslationResponses(Map<String, Translation> translations) {
+		return translations.entrySet()
+			.stream()
+			.collect(Collectors.toMap(Map.Entry::getKey,
+					e -> new TranslationResponse(e.getValue().name(), e.getValue().description())));
 	}
 
 }
