@@ -1,0 +1,6 @@
+info:
+  name: Encyclopedia
+  type: folder
+
+request:
+  auth: inherit

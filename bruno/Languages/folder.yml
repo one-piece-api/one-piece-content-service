@@ -1,0 +1,6 @@
+info:
+  name: Languages
+  type: folder
+
+request:
+  auth: inherit

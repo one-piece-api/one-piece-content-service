@@ -1,0 +1,6 @@
+info:
+  name: Review_queue
+  type: folder
+
+request:
+  auth: inherit

@@ -1,0 +1,117 @@
+info:
+  name: encyclopediaList
+  type: http
+  seq: 1
+  tags:
+    - Encyclopedia
+
+http:
+  method: GET
+  url: "{{baseUrl}}/encyclopedia"
+  headers:
+    - name: Accept-Language
+      value: ""
+      disabled: true
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+examples:
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/encyclopedia"
+      method: GET
+      headers:
+        - name: Accept-Language
+          value: ""
+          disabled: true
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          [
+            {
+              "displayName": "",
+              "entityType": "",
+              "itemId": "",
+              "romaji": "",
+              "status": "",
+              "updatedAt": "",
+              "workingRevisionId": ""
+            }
+          ]
+  - name: 4XX Response
+    description: Client error - a problem detail, except a 401/403 rejected by the security filter chain before reaching the application, which has no body
+    request:
+      url: "{{baseUrl}}/encyclopedia"
+      method: GET
+      headers:
+        - name: Accept-Language
+          value: ""
+          disabled: true
+    response:
+      headers:
+        - name: Content-Type
+          value: application/problem+json
+      body:
+        type: json
+        data: |-
+          {
+            "detail": "",
+            "errorCode": "",
+            "errors": [
+              {
+                "field": "",
+                "message": ""
+              }
+            ],
+            "instance": "",
+            "status": 0,
+            "timestamp": "",
+            "title": "",
+            "traceId": "",
+            "type": ""
+          }
+  - name: 5XX Response
+    description: Unexpected server error
+    request:
+      url: "{{baseUrl}}/encyclopedia"
+      method: GET
+      headers:
+        - name: Accept-Language
+          value: ""
+          disabled: true
+    response:
+      headers:
+        - name: Content-Type
+          value: application/problem+json
+      body:
+        type: json
+        data: |-
+          {
+            "detail": "",
+            "errorCode": "",
+            "errors": [
+              {
+                "field": "",
+                "message": ""
+              }
+            ],
+            "instance": "",
+            "status": 0,
+            "timestamp": "",
+            "title": "",
+            "traceId": "",
+            "type": ""
+          }

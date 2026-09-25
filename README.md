@@ -7,6 +7,7 @@ versioni. Primo caso d'uso concreto: **Devil Fruit Type**.
 - **Flussi/regole di prodotto:** `docs/user-flows/authentication-and-user-management.md` (repo `one-piece-api`).
 - **Piano di implementazione:** `docs/implementation-plan-content.md` (repo `one-piece-api`).
 - **Stack:** vedi `docs/technology-stack.md` (repo `one-piece-api`).
+- **Decisioni architetturali di questo servizio:** `docs/adr/`.
 
 ## Sviluppo locale
 
@@ -39,6 +40,20 @@ risponde su `http://localhost:8082/api/content/...`
 ./gradlew check            # test + verifica formattazione (spring-javaformat)
 ./gradlew format           # applica la formattazione automaticamente
 ```
+
+**API: spec OpenAPI, Swagger UI, Bruno** (vedi `docs/adr/0001-openapi-contract-and-bruno-collection.md`):
+
+- Swagger UI: `http://localhost:4180/api/content/swagger-ui.html` (dopo il login; in remoto stesso path sull'IP pubblico).
+- Spec committata: `openapi/openapi.yaml`. Dopo una modifica alle API:
+
+  ```bash
+  ./gradlew updateOpenApiSpec              # rigenera openapi/openapi.yaml (il test fallisce se è disallineata)
+  ./scripts/generate-bruno-collection.sh   # rigenera bruno/ dalla spec (richiede Node.js)
+  ```
+
+- Bruno: "Open Collection" su `bruno/`, environment `local` o `remote` (per `remote` copia
+  `bruno/.env.example` in `bruno/.env` e imposta `REMOTE_HOST`). Il primo invio apre il
+  login Keycloak (client `bruno`, PKCE).
 
 **Verifica nel cluster `kind`** (build immagine reale, non solo il processo
 locale): `scripts/deploy-local.sh` (build immagine + `kind load` + rollout

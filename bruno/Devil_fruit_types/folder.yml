@@ -1,0 +1,6 @@
+info:
+  name: Devil_fruit_types
+  type: folder
+
+request:
+  auth: inherit
