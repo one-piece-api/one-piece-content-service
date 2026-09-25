@@ -60,7 +60,8 @@ risponde su `http://localhost:8082/api/content/...`
   ./scripts/generate-bruno-collection.sh   # rigenera bruno/ dalla spec (richiede Node.js)
   ```
 
-- Bruno: "Open Collection" su `bruno/`, environment `local` o `remote` (per `remote` copia
+- Bruno: "Open Collection" su `bruno/`, environment `dev` (servizio avviato da IntelliJ,
+  `localhost:8082`, senza proxy), `local` (cluster `kind` via oauth2-proxy) o `remote` (per `remote` copia
   `bruno/.env.example` in `bruno/.env` e imposta `REMOTE_HOST`). Il primo invio apre il
   login Keycloak (client `bruno`, PKCE).
 
