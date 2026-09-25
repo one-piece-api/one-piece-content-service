@@ -4,6 +4,7 @@ import dev.onepieceapi.contentservice.service.DevilFruitTypeService;
 import dev.onepieceapi.contentservice.web.dto.response.ContentVersionDetailResponse;
 import dev.onepieceapi.contentservice.web.dto.response.ContentVersionResponse;
 import dev.onepieceapi.contentservice.web.security.AuthenticatedCaller;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -25,6 +26,7 @@ import java.util.UUID;
  * OR-condition bolted onto one of them.
  */
 @RestController
+@Tag(name = "Version history")
 @RequiredArgsConstructor(onConstructor_ = { @Autowired })
 class VersionHistoryController {
 

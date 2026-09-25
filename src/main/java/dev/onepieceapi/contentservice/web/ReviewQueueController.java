@@ -3,6 +3,7 @@ package dev.onepieceapi.contentservice.web;
 import dev.onepieceapi.contentservice.service.DevilFruitTypeService;
 import dev.onepieceapi.contentservice.web.dto.response.ReviewQueueItemResponse;
 import dev.onepieceapi.contentservice.web.dto.response.WorkingRevisionDetailResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -21,6 +22,7 @@ import java.util.UUID;
  * {@link MyDraftsController}, which is the caller's own work only).
  */
 @RestController
+@Tag(name = "Review queue")
 @RequiredArgsConstructor(onConstructor_ = { @Autowired })
 class ReviewQueueController {
 

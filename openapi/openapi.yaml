@@ -1,0 +1,857 @@
+openapi: 3.1.0
+info:
+  title: content-service
+  version: v1
+servers:
+- url: /api/content
+security:
+- keycloak: []
+paths:
+  /devil-fruit-types:
+    post:
+      operationId: devilFruitTypeCreate
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkingRevisionDetailResponse"
+          description: Created
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Devil fruit types
+      x-required-permission: content:write
+  /devil-fruit-types/{itemId}/edit:
+    post:
+      operationId: devilFruitTypeEditPublished
+      parameters:
+      - in: path
+        name: itemId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkingRevisionDetailResponse"
+          description: Created
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Devil fruit types
+      x-required-permission: content:write
+  /devil-fruit-types/{itemId}/retire:
+    post:
+      operationId: devilFruitTypeRetire
+      parameters:
+      - in: path
+        name: itemId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EncyclopediaItemDetailResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Devil fruit types
+      x-required-permission: content:publish
+  /devil-fruit-types/{itemId}/versions:
+    get:
+      operationId: versionHistoryList
+      parameters:
+      - in: path
+        name: itemId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ContentVersionResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Version history
+      x-required-permission: content:publish
+  /devil-fruit-types/{itemId}/versions/{versionId}:
+    get:
+      operationId: versionHistoryGet
+      parameters:
+      - in: path
+        name: itemId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: versionId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContentVersionDetailResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Version history
+      x-required-permission: content:publish
+  /devil-fruit-types/{itemId}/versions/{versionId}/restore:
+    post:
+      operationId: versionHistoryRestore
+      parameters:
+      - in: path
+        name: itemId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: versionId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContentVersionResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Version history
+      x-required-permission: content:publish
+  /devil-fruit-types/{workingRevisionId}:
+    delete:
+      operationId: devilFruitTypeDelete
+      parameters:
+      - in: path
+        name: workingRevisionId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "204":
+          description: No Content
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Devil fruit types
+      x-required-permission: content:write
+    get:
+      operationId: devilFruitTypeGet
+      parameters:
+      - in: path
+        name: workingRevisionId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkingRevisionDetailResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Devil fruit types
+      x-required-permission: content:write
+    put:
+      operationId: devilFruitTypeUpdate
+      parameters:
+      - in: path
+        name: workingRevisionId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDraftRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkingRevisionDetailResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Devil fruit types
+      x-required-permission: content:write
+  /devil-fruit-types/{workingRevisionId}/approve:
+    post:
+      operationId: devilFruitTypeApprove
+      parameters:
+      - in: path
+        name: workingRevisionId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkingRevisionDetailResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Devil fruit types
+      x-required-permission: content:review
+  /devil-fruit-types/{workingRevisionId}/claim:
+    post:
+      operationId: devilFruitTypeClaim
+      parameters:
+      - in: path
+        name: workingRevisionId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkingRevisionDetailResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Devil fruit types
+      x-required-permission: content:review
+  /devil-fruit-types/{workingRevisionId}/publish:
+    post:
+      operationId: devilFruitTypePublish
+      parameters:
+      - in: path
+        name: workingRevisionId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkingRevisionDetailResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Devil fruit types
+      x-required-permission: content:publish
+  /devil-fruit-types/{workingRevisionId}/reject:
+    post:
+      operationId: devilFruitTypeReject
+      parameters:
+      - in: path
+        name: workingRevisionId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RejectRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkingRevisionDetailResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Devil fruit types
+      x-required-permission: content:review
+  /devil-fruit-types/{workingRevisionId}/release:
+    post:
+      operationId: devilFruitTypeRelease
+      parameters:
+      - in: path
+        name: workingRevisionId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkingRevisionDetailResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Devil fruit types
+      x-required-permission: content:review
+  /devil-fruit-types/{workingRevisionId}/submit:
+    post:
+      operationId: devilFruitTypeSubmit
+      parameters:
+      - in: path
+        name: workingRevisionId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkingRevisionDetailResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Devil fruit types
+      x-required-permission: content:write
+  /devil-fruit-types/{workingRevisionId}/withdraw:
+    post:
+      operationId: devilFruitTypeWithdraw
+      parameters:
+      - in: path
+        name: workingRevisionId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkingRevisionDetailResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Devil fruit types
+      x-required-permission: content:write
+  /encyclopedia:
+    get:
+      operationId: encyclopediaList
+      parameters:
+      - in: header
+        name: Accept-Language
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EncyclopediaItemResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Encyclopedia
+      x-required-permission: content:read
+  /encyclopedia/{itemId}:
+    get:
+      operationId: encyclopediaGet
+      parameters:
+      - in: path
+        name: itemId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EncyclopediaItemDetailResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Encyclopedia
+      x-required-permission: content:read
+  /languages:
+    get:
+      operationId: languageList
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LanguageResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Languages
+    post:
+      operationId: languageCreate
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLanguageRequest"
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LanguageResponse"
+          description: Created
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Languages
+      x-required-permission: languages:manage
+  /languages/{code}:
+    delete:
+      operationId: languageDelete
+      parameters:
+      - in: path
+        name: code
+        required: true
+        schema:
+          type: string
+      responses:
+        "204":
+          description: No Content
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Languages
+      x-required-permission: languages:manage
+  /my-drafts:
+    get:
+      operationId: myDraftsList
+      parameters:
+      - in: header
+        name: Accept-Language
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WorkingRevisionSummaryResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - My drafts
+      x-required-permission: content:write
+  /review-queue:
+    get:
+      operationId: reviewQueueList
+      parameters:
+      - in: header
+        name: Accept-Language
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ReviewQueueItemResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Review queue
+      x-required-permission: content:review
+  /review-queue/{workingRevisionId}:
+    get:
+      operationId: reviewQueueGet
+      parameters:
+      - in: path
+        name: workingRevisionId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkingRevisionDetailResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Review queue
+      x-required-permission: content:review
+components:
+  responses:
+    ClientError:
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+      description: "Client error - a problem detail, except a 401/403 rejected by\
+        \ the security filter chain before reaching the application, which has no\
+        \ body"
+    ServerError:
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+      description: Unexpected server error
+  schemas:
+    ContentVersionDetailResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        live:
+          type: boolean
+        publishedAt:
+          type: string
+          format: date-time
+        publisherEmail:
+          type: string
+        romaji:
+          type: string
+        sequenceNumber:
+          type: integer
+          format: int32
+        translations:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/TranslationResponse"
+    ContentVersionResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        live:
+          type: boolean
+        publishedAt:
+          type: string
+          format: date-time
+        publisherEmail:
+          type: string
+        sequenceNumber:
+          type: integer
+          format: int32
+    CreateLanguageRequest:
+      type: object
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+    EncyclopediaItemDetailResponse:
+      type: object
+      properties:
+        itemId:
+          type: string
+          format: uuid
+        publisherEmail:
+          type: string
+        romaji:
+          type: string
+        sequenceNumber:
+          type: integer
+          format: int32
+        status:
+          type: string
+        translations:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/TranslationResponse"
+        updatedAt:
+          type: string
+          format: date-time
+        workingRevisionId:
+          type: string
+          format: uuid
+    EncyclopediaItemResponse:
+      type: object
+      properties:
+        displayName:
+          type: string
+        entityType:
+          type: string
+        itemId:
+          type: string
+          format: uuid
+        romaji:
+          type: string
+        status:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+        workingRevisionId:
+          type: string
+          format: uuid
+    FieldViolation:
+      type: object
+      properties:
+        field:
+          type: string
+        message:
+          type: string
+      required:
+      - field
+      - message
+    LanguageResponse:
+      type: object
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+    ProblemDetail:
+      type: object
+      description: "RFC 9457 problem detail, plus this API's own properties"
+      properties:
+        detail:
+          type: string
+        errorCode:
+          type: string
+          description: "Stable, machine-readable error code"
+        errors:
+          type: array
+          description: "Per-field failures, present only when errorCode is VALIDATION_FAILED"
+          items:
+            $ref: "#/components/schemas/FieldViolation"
+        instance:
+          type: string
+          format: uri
+        status:
+          type: integer
+          format: int32
+        timestamp:
+          type: string
+          format: date-time
+        title:
+          type: string
+        traceId:
+          type: string
+        type:
+          type: string
+          format: uri
+      required:
+      - errorCode
+      - status
+      - title
+      - type
+    RejectRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+    ReviewQueueItemResponse:
+      type: object
+      properties:
+        authorEmail:
+          type: string
+        claimedByEmail:
+          type: string
+        displayName:
+          type: string
+        entityType:
+          type: string
+        id:
+          type: string
+          format: uuid
+        itemId:
+          type: string
+          format: uuid
+        romaji:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+    TranslationRequest:
+      type: object
+      properties:
+        description:
+          type: string
+        name:
+          type: string
+    TranslationResponse:
+      type: object
+      properties:
+        description:
+          type: string
+        name:
+          type: string
+    UpdateDraftRequest:
+      type: object
+      properties:
+        romaji:
+          type: string
+        translations:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/TranslationRequest"
+    WorkingRevisionDetailResponse:
+      type: object
+      properties:
+        authorEmail:
+          type: string
+        claimedByEmail:
+          type: string
+        everPublished:
+          type: boolean
+        id:
+          type: string
+          format: uuid
+        itemId:
+          type: string
+          format: uuid
+        rejectionReason:
+          type: string
+        romaji:
+          type: string
+        status:
+          type: string
+        translations:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/TranslationResponse"
+        updatedAt:
+          type: string
+          format: date-time
+    WorkingRevisionSummaryResponse:
+      type: object
+      properties:
+        displayName:
+          type: string
+        entityType:
+          type: string
+        id:
+          type: string
+          format: uuid
+        itemId:
+          type: string
+          format: uuid
+        rejectionReason:
+          type: string
+        romaji:
+          type: string
+        status:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+  securitySchemes:
+    keycloak:
+      flows:
+        authorizationCode:
+          authorizationUrl: http://localhost:8080/realms/onepiece/protocol/openid-connect/auth
+          refreshUrl: http://localhost:8080/realms/onepiece/protocol/openid-connect/token
+          scopes:
+            openid: OpenID Connect sign-in
+          tokenUrl: http://localhost:8080/realms/onepiece/protocol/openid-connect/token
+      type: oauth2

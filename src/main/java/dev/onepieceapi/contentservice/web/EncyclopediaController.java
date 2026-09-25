@@ -4,6 +4,7 @@ import dev.onepieceapi.contentservice.domain.EncyclopediaEntry;
 import dev.onepieceapi.contentservice.service.DevilFruitTypeService;
 import dev.onepieceapi.contentservice.web.dto.response.EncyclopediaItemDetailResponse;
 import dev.onepieceapi.contentservice.web.dto.response.EncyclopediaItemResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -23,6 +24,7 @@ import java.util.UUID;
  * {@link EncyclopediaEntry}.
  */
 @RestController
+@Tag(name = "Encyclopedia")
 @RequiredArgsConstructor(onConstructor_ = { @Autowired })
 class EncyclopediaController {
 

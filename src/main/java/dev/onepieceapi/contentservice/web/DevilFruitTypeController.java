@@ -6,6 +6,7 @@ import dev.onepieceapi.contentservice.web.dto.request.RejectRequest;
 import dev.onepieceapi.contentservice.web.dto.request.UpdateDraftRequest;
 import dev.onepieceapi.contentservice.web.dto.response.WorkingRevisionDetailResponse;
 import dev.onepieceapi.contentservice.web.security.AuthenticatedCaller;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -27,6 +28,7 @@ import java.util.UUID;
  * working revisions - see {@link DevilFruitTypeService}.
  */
 @RestController
+@Tag(name = "Devil fruit types")
 @RequiredArgsConstructor(onConstructor_ = { @Autowired })
 class DevilFruitTypeController {
 

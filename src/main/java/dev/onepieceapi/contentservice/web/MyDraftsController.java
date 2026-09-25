@@ -3,6 +3,7 @@ package dev.onepieceapi.contentservice.web;
 import dev.onepieceapi.contentservice.service.DevilFruitTypeService;
 import dev.onepieceapi.contentservice.web.dto.response.WorkingRevisionSummaryResponse;
 import dev.onepieceapi.contentservice.web.security.AuthenticatedCaller;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -20,6 +21,7 @@ import java.util.List;
  * {@code content:read}, so it drops out of this list at that point (Step 3+).
  */
 @RestController
+@Tag(name = "My drafts")
 @RequiredArgsConstructor(onConstructor_ = { @Autowired })
 class MyDraftsController {
 

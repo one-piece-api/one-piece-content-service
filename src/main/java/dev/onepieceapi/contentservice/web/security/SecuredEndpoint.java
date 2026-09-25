@@ -1,11 +1,12 @@
 package dev.onepieceapi.contentservice.web.security;
 
 import dev.onepieceapi.contentservice.web.ApiPaths;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AuthorizeHttpRequestsConfigurer;
 
+import java.util.Arrays;
+import java.util.Optional;
 import java.util.function.Consumer;
 
 /**
@@ -16,42 +17,44 @@ import java.util.function.Consumer;
  * {@code one-piece-user-service}'s {@code SecuredEndpoint}
  * ({@code docs/adr/0009-permission-based-endpoint-registry.md} there).
  */
-@RequiredArgsConstructor
 enum SecuredEndpoint {
 
 	HEALTH(HttpMethod.GET, ApiPaths.HEALTH, AuthorizeHttpRequestsConfigurer.AuthorizedUrl::permitAll),
 
-	DEVIL_FRUIT_TYPE_CREATE(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPES, permission(Permission.CONTENT_WRITE)),
-	DEVIL_FRUIT_TYPE_UPDATE(HttpMethod.PUT, ApiPaths.DEVIL_FRUIT_TYPE_BY_ID, permission(Permission.CONTENT_WRITE)),
-	DEVIL_FRUIT_TYPE_GET(HttpMethod.GET, ApiPaths.DEVIL_FRUIT_TYPE_BY_ID, permission(Permission.CONTENT_WRITE)),
-	DEVIL_FRUIT_TYPE_DELETE(HttpMethod.DELETE, ApiPaths.DEVIL_FRUIT_TYPE_BY_ID, permission(Permission.CONTENT_WRITE)),
-	DEVIL_FRUIT_TYPE_SUBMIT(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_SUBMIT, permission(Permission.CONTENT_WRITE)),
-	DEVIL_FRUIT_TYPE_WITHDRAW(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_WITHDRAW,
-			permission(Permission.CONTENT_WRITE)),
-	MY_DRAFTS_LIST(HttpMethod.GET, ApiPaths.MY_DRAFTS, permission(Permission.CONTENT_WRITE)),
+	// The API contract and its Swagger UI: any signed-in user - every operation "Try it
+	// out" calls is still authorized by its own entry below.
+	API_DOCS(HttpMethod.GET, ApiPaths.API_DOCS, AuthorizeHttpRequestsConfigurer.AuthorizedUrl::authenticated),
+	SWAGGER_UI(HttpMethod.GET, ApiPaths.SWAGGER_UI, AuthorizeHttpRequestsConfigurer.AuthorizedUrl::authenticated),
+	SWAGGER_UI_ENTRY(HttpMethod.GET, ApiPaths.SWAGGER_UI_ENTRY,
+			AuthorizeHttpRequestsConfigurer.AuthorizedUrl::authenticated),
 
-	DEVIL_FRUIT_TYPE_CLAIM(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_CLAIM, permission(Permission.CONTENT_REVIEW)),
-	DEVIL_FRUIT_TYPE_RELEASE(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_RELEASE, permission(Permission.CONTENT_REVIEW)),
-	DEVIL_FRUIT_TYPE_APPROVE(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_APPROVE, permission(Permission.CONTENT_REVIEW)),
-	DEVIL_FRUIT_TYPE_REJECT(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_REJECT, permission(Permission.CONTENT_REVIEW)),
-	REVIEW_QUEUE_LIST(HttpMethod.GET, ApiPaths.REVIEW_QUEUE, permission(Permission.CONTENT_REVIEW)),
-	REVIEW_QUEUE_ITEM_GET(HttpMethod.GET, ApiPaths.REVIEW_QUEUE_ITEM, permission(Permission.CONTENT_REVIEW)),
+	DEVIL_FRUIT_TYPE_CREATE(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPES, Permission.CONTENT_WRITE),
+	DEVIL_FRUIT_TYPE_UPDATE(HttpMethod.PUT, ApiPaths.DEVIL_FRUIT_TYPE_BY_ID, Permission.CONTENT_WRITE),
+	DEVIL_FRUIT_TYPE_GET(HttpMethod.GET, ApiPaths.DEVIL_FRUIT_TYPE_BY_ID, Permission.CONTENT_WRITE),
+	DEVIL_FRUIT_TYPE_DELETE(HttpMethod.DELETE, ApiPaths.DEVIL_FRUIT_TYPE_BY_ID, Permission.CONTENT_WRITE),
+	DEVIL_FRUIT_TYPE_SUBMIT(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_SUBMIT, Permission.CONTENT_WRITE),
+	DEVIL_FRUIT_TYPE_WITHDRAW(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_WITHDRAW, Permission.CONTENT_WRITE),
+	MY_DRAFTS_LIST(HttpMethod.GET, ApiPaths.MY_DRAFTS, Permission.CONTENT_WRITE),
 
-	DEVIL_FRUIT_TYPE_PUBLISH(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_PUBLISH,
-			permission(Permission.CONTENT_PUBLISH)),
-	DEVIL_FRUIT_TYPE_RETIRE(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_RETIRE, permission(Permission.CONTENT_PUBLISH)),
-	ENCYCLOPEDIA_LIST(HttpMethod.GET, ApiPaths.ENCYCLOPEDIA, permission(Permission.CONTENT_READ)),
-	ENCYCLOPEDIA_ITEM_GET(HttpMethod.GET, ApiPaths.ENCYCLOPEDIA_ITEM, permission(Permission.CONTENT_READ)),
+	DEVIL_FRUIT_TYPE_CLAIM(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_CLAIM, Permission.CONTENT_REVIEW),
+	DEVIL_FRUIT_TYPE_RELEASE(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_RELEASE, Permission.CONTENT_REVIEW),
+	DEVIL_FRUIT_TYPE_APPROVE(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_APPROVE, Permission.CONTENT_REVIEW),
+	DEVIL_FRUIT_TYPE_REJECT(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_REJECT, Permission.CONTENT_REVIEW),
+	REVIEW_QUEUE_LIST(HttpMethod.GET, ApiPaths.REVIEW_QUEUE, Permission.CONTENT_REVIEW),
+	REVIEW_QUEUE_ITEM_GET(HttpMethod.GET, ApiPaths.REVIEW_QUEUE_ITEM, Permission.CONTENT_REVIEW),
+
+	DEVIL_FRUIT_TYPE_PUBLISH(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_PUBLISH, Permission.CONTENT_PUBLISH),
+	DEVIL_FRUIT_TYPE_RETIRE(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_RETIRE, Permission.CONTENT_PUBLISH),
+	ENCYCLOPEDIA_LIST(HttpMethod.GET, ApiPaths.ENCYCLOPEDIA, Permission.CONTENT_READ),
+	ENCYCLOPEDIA_ITEM_GET(HttpMethod.GET, ApiPaths.ENCYCLOPEDIA_ITEM, Permission.CONTENT_READ),
 
 	DEVIL_FRUIT_TYPE_EDIT_PUBLISHED(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_EDIT_PUBLISHED,
-			permission(Permission.CONTENT_WRITE)),
+			Permission.CONTENT_WRITE),
 
-	DEVIL_FRUIT_TYPE_VERSIONS_LIST(HttpMethod.GET, ApiPaths.DEVIL_FRUIT_TYPE_VERSIONS,
-			permission(Permission.CONTENT_PUBLISH)),
-	DEVIL_FRUIT_TYPE_VERSION_GET(HttpMethod.GET, ApiPaths.DEVIL_FRUIT_TYPE_VERSION_BY_ID,
-			permission(Permission.CONTENT_PUBLISH)),
+	DEVIL_FRUIT_TYPE_VERSIONS_LIST(HttpMethod.GET, ApiPaths.DEVIL_FRUIT_TYPE_VERSIONS, Permission.CONTENT_PUBLISH),
+	DEVIL_FRUIT_TYPE_VERSION_GET(HttpMethod.GET, ApiPaths.DEVIL_FRUIT_TYPE_VERSION_BY_ID, Permission.CONTENT_PUBLISH),
 	DEVIL_FRUIT_TYPE_VERSION_RESTORE(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_VERSION_RESTORE,
-			permission(Permission.CONTENT_PUBLISH)),
+			Permission.CONTENT_PUBLISH),
 
 	/**
 	 * Readable by any authenticated caller, not gated on a {@code content:*}/
@@ -61,14 +64,35 @@ enum SecuredEndpoint {
 	 * covers all three.
 	 */
 	LANGUAGE_LIST(HttpMethod.GET, ApiPaths.LANGUAGES, AuthorizeHttpRequestsConfigurer.AuthorizedUrl::authenticated),
-	LANGUAGE_CREATE(HttpMethod.POST, ApiPaths.LANGUAGES, permission(Permission.LANGUAGES_MANAGE)),
-	LANGUAGE_DELETE(HttpMethod.DELETE, ApiPaths.LANGUAGE_BY_CODE, permission(Permission.LANGUAGES_MANAGE));
+	LANGUAGE_CREATE(HttpMethod.POST, ApiPaths.LANGUAGES, Permission.LANGUAGES_MANAGE),
+	LANGUAGE_DELETE(HttpMethod.DELETE, ApiPaths.LANGUAGE_BY_CODE, Permission.LANGUAGES_MANAGE);
 
 	private final HttpMethod method;
 
 	private final String path;
 
 	private final Consumer<AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizedUrl> rule;
+
+	/**
+	 * The permission this endpoint requires, or null when the rule isn't
+	 * permission-based.
+	 */
+	private final Permission permission;
+
+	SecuredEndpoint(HttpMethod method, String path,
+			Consumer<AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizedUrl> rule) {
+		this.method = method;
+		this.path = path;
+		this.rule = rule;
+		this.permission = null;
+	}
+
+	SecuredEndpoint(HttpMethod method, String path, Permission permission) {
+		this.method = method;
+		this.path = path;
+		this.rule = authorizedUrl -> authorizedUrl.hasAuthority(permission.authority());
+		this.permission = permission;
+	}
 
 	/**
 	 * Applies every constant's rule to the given registry - the one entry point
@@ -82,9 +106,17 @@ enum SecuredEndpoint {
 		}
 	}
 
-	private static Consumer<AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizedUrl> permission(
-			Permission permission) {
-		return authorizedUrl -> authorizedUrl.hasAuthority(permission.authority());
+	/**
+	 * The permission required by the endpoint mapped at exactly this method and path
+	 * template (as written in {@link ApiPaths}), if any - what
+	 * {@link RequiredPermissionOpenApiCustomizer} documents on each OpenAPI operation, so
+	 * the published contract is derived from the same registry that enforces it.
+	 */
+	static Optional<Permission> requiredPermission(HttpMethod method, String path) {
+		return Arrays.stream(values())
+			.filter(endpoint -> endpoint.method.equals(method) && endpoint.path.equals(path))
+			.findFirst()
+			.map(endpoint -> endpoint.permission);
 	}
 
 }

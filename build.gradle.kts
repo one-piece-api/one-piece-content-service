@@ -33,7 +33,7 @@ repositories {
 }
 
 dependencies {
-	implementation("dev.onepieceapi:one-piece-exception:0.1.0")
+	implementation("dev.onepieceapi:one-piece-exception:0.2.0")
 	implementation("org.springframework.boot:spring-boot-starter-actuator")
 	implementation("org.springframework.boot:spring-boot-starter-security-oauth2-resource-server")
 	implementation("org.springframework.boot:spring-boot-starter-validation")
@@ -42,6 +42,10 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-flyway")
 	runtimeOnly("org.flywaydb:flyway-database-postgresql")
 	runtimeOnly("org.postgresql:postgresql")
+	// OpenAPI spec + Swagger UI, same setup as one-piece-user-service - see
+	// docs/adr/0001-openapi-contract-and-bruno-collection.md. Not managed by Spring Boot's
+	// BOM; 3.1.x is the line built against Boot 4.1.
+	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.1")
 	compileOnly("org.projectlombok:lombok")
 	annotationProcessor("org.projectlombok:lombok")
 	testCompileOnly("org.projectlombok:lombok")
@@ -60,6 +64,18 @@ dependencies {
 
 tasks.withType<Test> {
 	useJUnitPlatform()
+}
+
+// Rewrites openapi/openapi.yaml from the current controllers instead of failing on a
+// mismatch - the one command to run after an API change (see OpenApiSpecTest).
+tasks.register<Test>("updateOpenApiSpec") {
+	description = "Regenerates openapi/openapi.yaml from the current controllers."
+	group = "documentation"
+	testClassesDirs = sourceSets.test.get().output.classesDirs
+	classpath = sourceSets.test.get().runtimeClasspath
+	filter { includeTestsMatching("*OpenApiSpecTest") }
+	systemProperty("openapi.update", "true")
+	outputs.upToDateWhen { false }
 }
 
 checkstyle {
