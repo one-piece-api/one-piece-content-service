@@ -33,8 +33,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Imports the real {@link SecurityConfig} to prove the catalog's read/write split is
  * actually enforced - {@code GET} for any authenticated caller,
- * {@code POST}/{@code DELETE} only for {@code languages:manage} - same pattern as
- * {@link dev.onepieceapi.contentservice.web.DevilFruitTypeControllerTest}.
+ * {@code POST}/{@code DELETE} only for {@code languages:manage}.
  */
 @WebMvcTest(LanguageController.class)
 @Import({ SecurityConfig.class, ApplicationExceptionHandler.class })

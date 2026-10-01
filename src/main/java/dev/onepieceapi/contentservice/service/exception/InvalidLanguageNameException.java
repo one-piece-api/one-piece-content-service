@@ -3,8 +3,8 @@ package dev.onepieceapi.contentservice.service.exception;
 import dev.onepieceapi.exception.ValidationException;
 
 /**
- * Raised by {@code LanguageService#create} (Step 10) when the display name is blank or
- * exceeds {@code language.name}'s column length (100).
+ * Raised by {@code LanguageService#create} when the display name is blank or exceeds
+ * {@code language.name}'s column length (100).
  */
 public class InvalidLanguageNameException extends ValidationException {
 

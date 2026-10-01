@@ -13,9 +13,8 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * The JPA row behind one audit record - see {@code db/migration/V1__create_audit_log.sql}
- * and {@code docs/user-flows/authentication-and-user-management.md} 6. Package-private:
- * nothing outside {@code service.AuditLogService} touches this class.
+ * The JPA row behind one audit record - see {@code db/migration/V1__baseline.sql} and
+ * {@code docs/user-flows/content-editorial-workflow.md} 7.
  */
 @Entity
 @Table(name = "audit_log")
@@ -38,7 +37,7 @@ public class AuditLogEntity {
 
 	/**
 	 * Null for an action with no single content item as its target - e.g. the language
-	 * catalog (Step 10), which is system configuration rather than a content item.
+	 * catalog, which is system configuration rather than a content item.
 	 */
 	private UUID targetItemId;
 

@@ -21,9 +21,9 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 /**
- * Step 10 (docs/implementation-plan-content.md): the ADMIN-managed language catalog - a
- * code (exactly two lowercase letters, ISO 639-1 style) plus a full display name (e.g.
- * "English"). {@code GET} is reachable by any authenticated caller (see
+ * The ADMIN-managed language catalog (docs/user-flows/content-editorial-workflow.md 3.2)
+ * - a code (exactly two lowercase letters, ISO 639-1 style) plus a full display name
+ * (e.g. "English"). {@code GET} is reachable by any authenticated caller (see
  * {@code SecuredEndpoint}); create and delete require {@code languages:manage}.
  */
 @RestController

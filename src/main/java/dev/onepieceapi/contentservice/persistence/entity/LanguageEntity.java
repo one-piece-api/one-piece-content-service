@@ -8,9 +8,9 @@ import lombok.NoArgsConstructor;
 
 /**
  * One row in the ADMIN-managed language catalog
- * (docs/user-flows/authentication-and-user-management.md 3.2). Presence in this table is
- * what "active" means - there is no separate soft-delete flag, so removing a language
- * (Step 10, {@code languages:manage}) is a literal {@code DELETE}.
+ * (docs/user-flows/content-editorial-workflow.md 3.2). Presence in this table is what
+ * "active" means - there is no separate soft-delete flag, so removing a language
+ * ({@code languages:manage}) is a literal {@code DELETE}.
  */
 @Entity
 @Table(name = "language")

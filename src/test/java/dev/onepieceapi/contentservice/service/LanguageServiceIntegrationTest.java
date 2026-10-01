@@ -2,22 +2,10 @@ package dev.onepieceapi.contentservice.service;
 
 import dev.onepieceapi.contentservice.domain.Language;
 import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
-import dev.onepieceapi.contentservice.persistence.entity.ContentVersionEntity;
-import dev.onepieceapi.contentservice.persistence.repository.ContentVersionRepository;
-import dev.onepieceapi.contentservice.persistence.entity.ContentVersionTranslationEntity;
-import dev.onepieceapi.contentservice.persistence.repository.ContentVersionTranslationRepository;
-import dev.onepieceapi.contentservice.persistence.entity.DevilFruitTypeItemEntity;
-import dev.onepieceapi.contentservice.persistence.repository.DevilFruitTypeItemRepository;
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
-import dev.onepieceapi.contentservice.persistence.entity.TranslationEntity;
-import dev.onepieceapi.contentservice.persistence.repository.TranslationRepository;
-import dev.onepieceapi.contentservice.persistence.entity.WorkingRevisionEntity;
-import dev.onepieceapi.contentservice.persistence.repository.WorkingRevisionRepository;
-import dev.onepieceapi.contentservice.domain.WorkingRevisionStatus;
 import dev.onepieceapi.contentservice.service.exception.InvalidLanguageCodeException;
 import dev.onepieceapi.contentservice.service.exception.InvalidLanguageNameException;
 import dev.onepieceapi.contentservice.service.exception.LanguageAlreadyExistsException;
-import dev.onepieceapi.contentservice.service.exception.LanguageInUseException;
 import dev.onepieceapi.contentservice.service.exception.LanguageNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,10 +29,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase.Replace;
 
 /**
- * Runs Step 10's language catalog CRUD against a real PostgreSQL (Testcontainers) - the
- * "already referenced, can't delete" rule depends on the real {@code REFERENCES} foreign
- * key on both translation tables (V3/V5), which an in-memory mock repository can't
- * exercise.
+ * Runs the language catalog CRUD against a real PostgreSQL (Testcontainers), so the
+ * Flyway-seeded catalog and the audit trail are the real ones.
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = Replace.NONE)
@@ -60,21 +46,6 @@ class LanguageServiceIntegrationTest {
 	private LanguageRepository languageRepository;
 
 	@Autowired
-	private TranslationRepository translationRepository;
-
-	@Autowired
-	private ContentVersionTranslationRepository contentVersionTranslationRepository;
-
-	@Autowired
-	private DevilFruitTypeItemRepository itemRepository;
-
-	@Autowired
-	private WorkingRevisionRepository workingRevisionRepository;
-
-	@Autowired
-	private ContentVersionRepository contentVersionRepository;
-
-	@Autowired
 	private AuditLogRepository auditLogRepository;
 
 	private LanguageService service;
@@ -85,8 +56,7 @@ class LanguageServiceIntegrationTest {
 	void setUp() {
 		var clock = Clock.fixed(Instant.parse("2026-09-22T10:00:00Z"), ZoneOffset.UTC);
 		var auditLogService = new AuditLogService(this.auditLogRepository, clock);
-		this.service = new LanguageService(this.languageRepository, this.translationRepository,
-				this.contentVersionTranslationRepository, auditLogService);
+		this.service = new LanguageService(this.languageRepository, auditLogService);
 	}
 
 	@Test
@@ -132,7 +102,7 @@ class LanguageServiceIntegrationTest {
 	}
 
 	@Test
-	void deleteRemovesAnUnreferencedLanguage() {
+	void deleteRemovesALanguage() {
 		this.service.create("fr", "Français", this.admin, "admin@onepiece.local");
 
 		this.service.delete("fr", this.admin, "admin@onepiece.local");
@@ -144,33 +114,6 @@ class LanguageServiceIntegrationTest {
 	void deleteFailsForAnUnknownCode() {
 		assertThatThrownBy(() -> this.service.delete("xx", this.admin, "admin@onepiece.local"))
 			.isInstanceOf(LanguageNotFoundException.class);
-	}
-
-	@Test
-	void deleteFailsWhileAWorkingRevisionStillReferencesTheLanguage() {
-		var now = Instant.parse("2026-09-22T10:00:00Z");
-		var item = this.itemRepository.save(new DevilFruitTypeItemEntity(UUID.randomUUID(), now));
-		var revision = this.workingRevisionRepository.save(new WorkingRevisionEntity(UUID.randomUUID(), item.getId(),
-				UUID.randomUUID(), "editor@onepiece.local", WorkingRevisionStatus.DRAFT, now));
-		this.translationRepository.save(new TranslationEntity(revision.getId(), "it", "Paramecia", "Descrizione"));
-
-		assertThatThrownBy(() -> this.service.delete("it", this.admin, "admin@onepiece.local"))
-			.isInstanceOf(LanguageInUseException.class);
-		assertThat(this.languageRepository.existsById("it")).isTrue();
-	}
-
-	@Test
-	void deleteFailsWhileAPublishedVersionStillReferencesTheLanguage() {
-		var now = Instant.parse("2026-09-22T10:00:00Z");
-		var item = this.itemRepository.save(new DevilFruitTypeItemEntity(UUID.randomUUID(), now));
-		var version = this.contentVersionRepository.save(new ContentVersionEntity(UUID.randomUUID(), item.getId(), 1,
-				"Paramishia", UUID.randomUUID(), "publisher@onepiece.local", now));
-		this.contentVersionTranslationRepository
-			.save(new ContentVersionTranslationEntity(version.getId(), "it", "Paramecia", "Descrizione"));
-
-		assertThatThrownBy(() -> this.service.delete("it", this.admin, "admin@onepiece.local"))
-			.isInstanceOf(LanguageInUseException.class);
-		assertThat(this.languageRepository.existsById("it")).isTrue();
 	}
 
 }

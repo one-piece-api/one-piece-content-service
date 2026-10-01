@@ -1,16 +1,12 @@
 package dev.onepieceapi.contentservice.service;
 
 import dev.onepieceapi.contentservice.domain.Language;
-import dev.onepieceapi.contentservice.persistence.repository.ContentVersionTranslationRepository;
 import dev.onepieceapi.contentservice.persistence.entity.LanguageEntity;
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
-import dev.onepieceapi.contentservice.persistence.repository.TranslationRepository;
 import dev.onepieceapi.contentservice.service.exception.InvalidLanguageCodeException;
 import dev.onepieceapi.contentservice.service.exception.InvalidLanguageNameException;
 import dev.onepieceapi.contentservice.service.exception.LanguageAlreadyExistsException;
-import dev.onepieceapi.contentservice.service.exception.LanguageInUseException;
 import dev.onepieceapi.contentservice.service.exception.LanguageNotFoundException;
-import dev.onepieceapi.contentservice.service.validation.ContentValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -22,15 +18,9 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 
 /**
- * ADMIN-managed language catalog CRUD
- * (docs/user-flows/authentication-and-user-management.md 3.2,
- * docs/implementation-plan-content.md Step 10) - config, not editorial content, so it
- * lives outside {@link DevilFruitTypeService} and is gated on {@code languages:manage}
- * rather than any {@code content:*} permission. Every active language is already read
- * dynamically by {@link ContentValidator} and {@code DevilFruitTypeResponseMapper} via
- * its code, so adding one here needs no further code change for it to become required on
- * the next submission (3.2's own stated consequence) - this service only owns the catalog
- * rows themselves.
+ * ADMIN-managed language catalog CRUD (docs/user-flows/content-editorial-workflow.md 3.2)
+ * - system configuration, not editorial content, so it is gated on
+ * {@code languages:manage} rather than any {@code content:*} permission.
  */
 @Service
 @RequiredArgsConstructor(onConstructor_ = { @Autowired })
@@ -46,10 +36,6 @@ public class LanguageService {
 	private static final int MAX_NAME_LENGTH = 100;
 
 	private final LanguageRepository languageRepository;
-
-	private final TranslationRepository translationRepository;
-
-	private final ContentVersionTranslationRepository contentVersionTranslationRepository;
 
 	private final AuditLogService auditLogService;
 
@@ -79,10 +65,6 @@ public class LanguageService {
 	public void delete(String rawCode, UUID actorId, String actorEmail) {
 		var code = normalizeCode(rawCode);
 		var language = this.languageRepository.findById(code).orElseThrow(() -> new LanguageNotFoundException(code));
-		if (this.translationRepository.existsByIdLanguageCode(code)
-				|| this.contentVersionTranslationRepository.existsByIdLanguageCode(code)) {
-			throw new LanguageInUseException(code);
-		}
 		this.languageRepository.delete(language);
 		this.auditLogService.record(AUDIT_ACTION_DELETE, actorId, actorEmail, null, code, language.getName());
 	}

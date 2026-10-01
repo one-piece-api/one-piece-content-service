@@ -28,40 +28,10 @@ enum SecuredEndpoint {
 	SWAGGER_UI_ENTRY(HttpMethod.GET, ApiPaths.SWAGGER_UI_ENTRY,
 			AuthorizeHttpRequestsConfigurer.AuthorizedUrl::authenticated),
 
-	DEVIL_FRUIT_TYPE_CREATE(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPES, Permission.CONTENT_WRITE),
-	DEVIL_FRUIT_TYPE_UPDATE(HttpMethod.PUT, ApiPaths.DEVIL_FRUIT_TYPE_BY_ID, Permission.CONTENT_WRITE),
-	DEVIL_FRUIT_TYPE_GET(HttpMethod.GET, ApiPaths.DEVIL_FRUIT_TYPE_BY_ID, Permission.CONTENT_WRITE),
-	DEVIL_FRUIT_TYPE_DELETE(HttpMethod.DELETE, ApiPaths.DEVIL_FRUIT_TYPE_BY_ID, Permission.CONTENT_WRITE),
-	DEVIL_FRUIT_TYPE_SUBMIT(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_SUBMIT, Permission.CONTENT_WRITE),
-	DEVIL_FRUIT_TYPE_WITHDRAW(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_WITHDRAW, Permission.CONTENT_WRITE),
-	MY_DRAFTS_LIST(HttpMethod.GET, ApiPaths.MY_DRAFTS, Permission.CONTENT_WRITE),
-
-	DEVIL_FRUIT_TYPE_CLAIM(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_CLAIM, Permission.CONTENT_REVIEW),
-	DEVIL_FRUIT_TYPE_RELEASE(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_RELEASE, Permission.CONTENT_REVIEW),
-	DEVIL_FRUIT_TYPE_APPROVE(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_APPROVE, Permission.CONTENT_REVIEW),
-	DEVIL_FRUIT_TYPE_REJECT(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_REJECT, Permission.CONTENT_REVIEW),
-	REVIEW_QUEUE_LIST(HttpMethod.GET, ApiPaths.REVIEW_QUEUE, Permission.CONTENT_REVIEW),
-	REVIEW_QUEUE_ITEM_GET(HttpMethod.GET, ApiPaths.REVIEW_QUEUE_ITEM, Permission.CONTENT_REVIEW),
-
-	DEVIL_FRUIT_TYPE_PUBLISH(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_PUBLISH, Permission.CONTENT_PUBLISH),
-	DEVIL_FRUIT_TYPE_RETIRE(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_RETIRE, Permission.CONTENT_PUBLISH),
-	ENCYCLOPEDIA_LIST(HttpMethod.GET, ApiPaths.ENCYCLOPEDIA, Permission.CONTENT_READ),
-	ENCYCLOPEDIA_ITEM_GET(HttpMethod.GET, ApiPaths.ENCYCLOPEDIA_ITEM, Permission.CONTENT_READ),
-
-	DEVIL_FRUIT_TYPE_EDIT_PUBLISHED(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_EDIT_PUBLISHED,
-			Permission.CONTENT_WRITE),
-
-	DEVIL_FRUIT_TYPE_VERSIONS_LIST(HttpMethod.GET, ApiPaths.DEVIL_FRUIT_TYPE_VERSIONS, Permission.CONTENT_PUBLISH),
-	DEVIL_FRUIT_TYPE_VERSION_GET(HttpMethod.GET, ApiPaths.DEVIL_FRUIT_TYPE_VERSION_BY_ID, Permission.CONTENT_PUBLISH),
-	DEVIL_FRUIT_TYPE_VERSION_RESTORE(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_VERSION_RESTORE,
-			Permission.CONTENT_PUBLISH),
-
 	/**
-	 * Readable by any authenticated caller, not gated on a {@code content:*}/
-	 * {@code languages:manage} permission: EDITOR/REVIEWER/PUBLISHER each hold a
-	 * different single {@code content:*} permission, yet every one of them needs this
-	 * list to render its own screen's language tabs - no single existing permission
-	 * covers all three.
+	 * Readable by any authenticated caller, not gated on a single permission: every
+	 * content screen renders its language tabs from this list, whichever
+	 * {@code content:*} permission its user holds.
 	 */
 	LANGUAGE_LIST(HttpMethod.GET, ApiPaths.LANGUAGES, AuthorizeHttpRequestsConfigurer.AuthorizedUrl::authenticated),
 	LANGUAGE_CREATE(HttpMethod.POST, ApiPaths.LANGUAGES, Permission.LANGUAGES_MANAGE),

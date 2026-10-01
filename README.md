@@ -1,10 +1,11 @@
 # one-piece-content-service
 
-Backend applicativo (Spring Boot) per il workflow editoriale dei contenuti One Piece — bozze
-private per autore, coda di revisione con presa in carico, pubblicazione con storico
-versioni. Primo caso d'uso concreto: **Devil Fruit Type**.
+Backend applicativo (Spring Boot) per il workflow editoriale dei contenuti One Piece — catena
+lineare di versioni per contenuto, revisione con presa in carico, pubblicazione, ritiro e
+ripristino. Primo caso d'uso concreto: **Devil Fruit Type**. Oggi espone solo il catalogo
+lingue: il modello a versioni arriva con il piano di implementazione qui sotto.
 
-- **Flussi/regole di prodotto:** `docs/user-flows/authentication-and-user-management.md` (repo `one-piece-api`).
+- **Flussi/regole di prodotto:** `docs/user-flows/content-editorial-workflow.md` (repo `one-piece-api`).
 - **Piano di implementazione:** `docs/implementation-plan-content.md` (repo `one-piece-api`).
 - **Stack:** vedi `docs/technology-stack.md` (repo `one-piece-api`).
 - **Decisioni architetturali di questo servizio:** `docs/adr/`.

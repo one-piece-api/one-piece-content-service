@@ -3,7 +3,7 @@ package dev.onepieceapi.contentservice.service.exception;
 import dev.onepieceapi.exception.NotFoundException;
 
 /**
- * Raised by {@code LanguageService#delete} (Step 10) when the code isn't in the catalog.
+ * Raised by {@code LanguageService#delete} when the code isn't in the catalog.
  */
 public class LanguageNotFoundException extends NotFoundException {
 

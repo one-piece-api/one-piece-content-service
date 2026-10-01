@@ -3,8 +3,7 @@ package dev.onepieceapi.contentservice.service.exception;
 import dev.onepieceapi.exception.ConflictException;
 
 /**
- * Raised by {@code LanguageService#create} (Step 10) when the code is already in the
- * catalog.
+ * Raised by {@code LanguageService#create} when the code is already in the catalog.
  */
 public class LanguageAlreadyExistsException extends ConflictException {
 
