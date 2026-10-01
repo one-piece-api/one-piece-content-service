@@ -1,15 +1,17 @@
 package dev.onepieceapi.contentservice.web.security;
 
-import java.util.UUID;
+import dev.onepieceapi.contentservice.domain.security.Permission;
+import dev.onepieceapi.contentservice.domain.security.User;
+
+import java.util.Set;
 
 /**
- * A validated request's identity, resolved once past the raw {@code Jwt} - just the two
- * claims this service ever needs (ownership checks, audit actor). Deliberately not a full
- * {@code User} domain object like {@code one-piece-user-service}'s: no status, username
- * or roles here, since this service never resolves or checks any of those - only
- * permissions (see {@link Permission}) and, for the caller's own working revisions, this
- * id/email.
+ * A validated request's identity, resolved once past the raw {@code Jwt} - just what this
+ * service ever needs of it: who is calling (ownership checks, audit actor) and which of
+ * this service's permissions they hold (what they may see and do, beyond the per-endpoint
+ * gate of {@code SecuredEndpoint}). No status or roles here: this service never resolves
+ * or checks any of those.
  */
-public record AuthenticatedCaller(UUID id, String email) {
+public record AuthenticatedCaller(User user, Set<Permission> permissions) {
 
 }

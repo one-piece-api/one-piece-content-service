@@ -1,4 +1,4 @@
-package dev.onepieceapi.contentservice.domain;
+package dev.onepieceapi.contentservice.domain.language;
 
 /**
  * One entry of the ADMIN-managed language catalog - a code plus its full display name.

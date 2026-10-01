@@ -3,6 +3,7 @@ package dev.onepieceapi.contentservice.persistence.entity;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -16,6 +17,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "language")
 @Getter
 @NoArgsConstructor
+@AllArgsConstructor
 public class LanguageEntity {
 
 	@Id
@@ -23,10 +25,5 @@ public class LanguageEntity {
 
 	/** Full display name (e.g. "English") - shown in the ADMIN catalog screen. */
 	private String name;
-
-	public LanguageEntity(String code, String name) {
-		this.code = code;
-		this.name = name;
-	}
 
 }

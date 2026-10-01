@@ -1,12 +1,23 @@
 package dev.onepieceapi.contentservice.service;
 
-import dev.onepieceapi.contentservice.domain.Language;
+import dev.onepieceapi.contentservice.domain.workflow.EntityType;
+import dev.onepieceapi.contentservice.domain.language.Language;
+import dev.onepieceapi.contentservice.domain.security.User;
+import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
+import dev.onepieceapi.contentservice.persistence.entity.ContentItemEntity;
+import dev.onepieceapi.contentservice.persistence.entity.ContentVersionEntity;
+import dev.onepieceapi.contentservice.persistence.entity.DevilFruitTypeVersionEntity;
+import dev.onepieceapi.contentservice.persistence.entity.TranslationEmbeddable;
+import dev.onepieceapi.contentservice.persistence.mapper.UserMapper;
 import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
+import dev.onepieceapi.contentservice.persistence.repository.DevilFruitTypeVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
 import dev.onepieceapi.contentservice.service.exception.InvalidLanguageCodeException;
 import dev.onepieceapi.contentservice.service.exception.InvalidLanguageNameException;
 import dev.onepieceapi.contentservice.service.exception.LanguageAlreadyExistsException;
+import dev.onepieceapi.contentservice.service.exception.LanguageInUseException;
 import dev.onepieceapi.contentservice.service.exception.LanguageNotFoundException;
+import dev.onepieceapi.contentservice.service.validation.LanguageValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +25,7 @@ import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
+import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -48,15 +60,46 @@ class LanguageServiceIntegrationTest {
 	@Autowired
 	private AuditLogRepository auditLogRepository;
 
+	@Autowired
+	private DevilFruitTypeVersionRepository versionRepository;
+
+	@Autowired
+	private TestEntityManager entityManager;
+
 	private LanguageService service;
 
-	private final UUID admin = UUID.randomUUID();
+	private final User admin = new User(UUID.randomUUID(), "luffy", "admin@onepiece.local");
 
 	@BeforeEach
 	void setUp() {
 		var clock = Clock.fixed(Instant.parse("2026-09-22T10:00:00Z"), ZoneOffset.UTC);
 		var auditLogService = new AuditLogService(this.auditLogRepository, clock);
-		this.service = new LanguageService(this.languageRepository, auditLogService);
+		this.service = new LanguageService(this.languageRepository, this.versionRepository, auditLogService,
+				new LanguageValidator());
+	}
+
+	@Test
+	void deleteIsRefusedWhileAVersionCarriesATranslationInTheLanguage() {
+		var author = new User(UUID.randomUUID(), "nami", "nami@onepiece.local");
+		var item = this.entityManager
+			.persist(new ContentItemEntity(UUID.randomUUID(), EntityType.DEVIL_FRUIT_TYPE, Instant.EPOCH));
+		var workflow = ContentVersionEntity.builder()
+			.itemId(item.getId())
+			.versionNumber(1)
+			.author(UserMapper.toEmbeddable(author))
+			.status(VersionStatus.DRAFT)
+			.createdAt(Instant.EPOCH)
+			.updatedAt(Instant.EPOCH)
+			.build();
+		var draft = new DevilFruitTypeVersionEntity(workflow);
+		draft.getTranslations().put("it", new TranslationEmbeddable("Paramisia", null));
+		this.versionRepository.saveAndFlush(draft);
+
+		assertThatThrownBy(() -> this.service.delete("it", this.admin)).isInstanceOf(LanguageInUseException.class);
+		assertThat(this.languageRepository.existsById("it")).isTrue();
+		// English is in no version: still free to go.
+		this.service.delete("en", this.admin);
+		assertThat(this.languageRepository.existsById("en")).isFalse();
 	}
 
 	@Test
@@ -66,7 +109,7 @@ class LanguageServiceIntegrationTest {
 
 	@Test
 	void createAddsANewLanguageAndNormalizesItsCode() {
-		var created = this.service.create(" FR ", "Français", this.admin, "admin@onepiece.local");
+		var created = this.service.create(" FR ", "Français", this.admin);
 
 		assertThat(created).isEqualTo(new Language("fr", "Français"));
 		assertThat(this.languageRepository.existsById("fr")).isTrue();
@@ -79,41 +122,40 @@ class LanguageServiceIntegrationTest {
 
 	@Test
 	void createRejectsADuplicateCode() {
-		assertThatThrownBy(() -> this.service.create("it", "Italiano", this.admin, "admin@onepiece.local"))
+		assertThatThrownBy(() -> this.service.create("it", "Italiano", this.admin))
 			.isInstanceOf(LanguageAlreadyExistsException.class);
 	}
 
 	@Test
 	void createRejectsAnInvalidCode() {
-		assertThatThrownBy(() -> this.service.create("123", "Numbers", this.admin, "admin@onepiece.local"))
+		assertThatThrownBy(() -> this.service.create("123", "Numbers", this.admin))
 			.isInstanceOf(InvalidLanguageCodeException.class);
-		assertThatThrownBy(() -> this.service.create("fra", "Français", this.admin, "admin@onepiece.local"))
+		assertThatThrownBy(() -> this.service.create("fra", "Français", this.admin))
 			.isInstanceOf(InvalidLanguageCodeException.class);
-		assertThatThrownBy(() -> this.service.create("", "Empty", this.admin, "admin@onepiece.local"))
+		assertThatThrownBy(() -> this.service.create("", "Empty", this.admin))
 			.isInstanceOf(InvalidLanguageCodeException.class);
 	}
 
 	@Test
 	void createRejectsABlankName() {
-		assertThatThrownBy(() -> this.service.create("fr", "  ", this.admin, "admin@onepiece.local"))
+		assertThatThrownBy(() -> this.service.create("fr", "  ", this.admin))
 			.isInstanceOf(InvalidLanguageNameException.class);
-		assertThatThrownBy(() -> this.service.create("fr", null, this.admin, "admin@onepiece.local"))
+		assertThatThrownBy(() -> this.service.create("fr", null, this.admin))
 			.isInstanceOf(InvalidLanguageNameException.class);
 	}
 
 	@Test
 	void deleteRemovesALanguage() {
-		this.service.create("fr", "Français", this.admin, "admin@onepiece.local");
+		this.service.create("fr", "Français", this.admin);
 
-		this.service.delete("fr", this.admin, "admin@onepiece.local");
+		this.service.delete("fr", this.admin);
 
 		assertThat(this.languageRepository.existsById("fr")).isFalse();
 	}
 
 	@Test
 	void deleteFailsForAnUnknownCode() {
-		assertThatThrownBy(() -> this.service.delete("xx", this.admin, "admin@onepiece.local"))
-			.isInstanceOf(LanguageNotFoundException.class);
+		assertThatThrownBy(() -> this.service.delete("xx", this.admin)).isInstanceOf(LanguageNotFoundException.class);
 	}
 
 }

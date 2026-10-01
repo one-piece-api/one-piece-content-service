@@ -1,12 +1,14 @@
 package dev.onepieceapi.contentservice.service;
 
-import dev.onepieceapi.contentservice.domain.Language;
-import dev.onepieceapi.contentservice.persistence.entity.LanguageEntity;
+import dev.onepieceapi.contentservice.domain.language.Language;
+import dev.onepieceapi.contentservice.domain.security.User;
+import dev.onepieceapi.contentservice.persistence.mapper.LanguageMapper;
+import dev.onepieceapi.contentservice.persistence.repository.DevilFruitTypeVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
-import dev.onepieceapi.contentservice.service.exception.InvalidLanguageCodeException;
-import dev.onepieceapi.contentservice.service.exception.InvalidLanguageNameException;
 import dev.onepieceapi.contentservice.service.exception.LanguageAlreadyExistsException;
+import dev.onepieceapi.contentservice.service.exception.LanguageInUseException;
 import dev.onepieceapi.contentservice.service.exception.LanguageNotFoundException;
+import dev.onepieceapi.contentservice.service.validation.LanguageValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -14,8 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Locale;
-import java.util.UUID;
-import java.util.regex.Pattern;
 
 /**
  * ADMIN-managed language catalog CRUD (docs/user-flows/content-editorial-workflow.md 3.2)
@@ -30,51 +30,47 @@ public class LanguageService {
 
 	private static final String AUDIT_ACTION_DELETE = "LANGUAGE_DELETED";
 
-	/** Exactly two lowercase ASCII letters - ISO 639-1 style, e.g. "fr", "es". */
-	private static final Pattern CODE_PATTERN = Pattern.compile("^[a-z]{2}$");
-
-	private static final int MAX_NAME_LENGTH = 100;
-
 	private final LanguageRepository languageRepository;
+
+	private final DevilFruitTypeVersionRepository versionRepository;
 
 	private final AuditLogService auditLogService;
 
+	private final LanguageValidator languageValidator;
+
 	public List<Language> list() {
-		return this.languageRepository.findAllByOrderByCode().stream().map(LanguageService::toDomain).toList();
+		return this.languageRepository.findAllByOrderByCode().stream().map(LanguageMapper::toDomain).toList();
 	}
 
 	@Transactional
-	public Language create(String rawCode, String rawName, UUID actorId, String actorEmail) {
-		var code = normalizeCode(rawCode);
-		if (!CODE_PATTERN.matcher(code).matches()) {
-			throw new InvalidLanguageCodeException(rawCode);
+	public Language create(String rawCode, String rawName, User actor) {
+		var language = new Language(normalizeCode(rawCode), normalizeName(rawName));
+		this.languageValidator.validate(language);
+		if (this.languageRepository.existsById(language.code())) {
+			throw new LanguageAlreadyExistsException(language.code());
 		}
-		var name = rawName == null ? "" : rawName.trim();
-		if (name.isBlank() || name.length() > MAX_NAME_LENGTH) {
-			throw new InvalidLanguageNameException();
-		}
-		if (this.languageRepository.existsById(code)) {
-			throw new LanguageAlreadyExistsException(code);
-		}
-		var language = this.languageRepository.save(new LanguageEntity(code, name));
-		this.auditLogService.record(AUDIT_ACTION_CREATE, actorId, actorEmail, null, code, name);
-		return toDomain(language);
+		var saved = this.languageRepository.save(LanguageMapper.toEntity(language));
+		this.auditLogService.record(AUDIT_ACTION_CREATE, actor, null, language.code(), language.name());
+		return LanguageMapper.toDomain(saved);
 	}
 
 	@Transactional
-	public void delete(String rawCode, UUID actorId, String actorEmail) {
+	public void delete(String rawCode, User actor) {
 		var code = normalizeCode(rawCode);
 		var language = this.languageRepository.findById(code).orElseThrow(() -> new LanguageNotFoundException(code));
+		if (this.versionRepository.existsByLanguage(code)) {
+			throw new LanguageInUseException(code);
+		}
 		this.languageRepository.delete(language);
-		this.auditLogService.record(AUDIT_ACTION_DELETE, actorId, actorEmail, null, code, language.getName());
-	}
-
-	private static Language toDomain(LanguageEntity language) {
-		return new Language(language.getCode(), language.getName());
+		this.auditLogService.record(AUDIT_ACTION_DELETE, actor, null, code, language.getName());
 	}
 
 	private static String normalizeCode(String rawCode) {
 		return rawCode == null ? "" : rawCode.trim().toLowerCase(Locale.ROOT);
+	}
+
+	private static String normalizeName(String rawName) {
+		return rawName == null ? "" : rawName.trim();
 	}
 
 }

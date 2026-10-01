@@ -7,6 +7,186 @@ servers:
 security:
 - keycloak: []
 paths:
+  /devil-fruit-types:
+    get:
+      operationId: devilFruitTypeList
+      parameters:
+      - in: query
+        name: status
+        required: false
+        schema:
+          type: string
+          enum:
+          - DRAFT
+          - IN_REVIEW
+          - REJECTED
+          - READY_TO_PUBLISH
+          - PUBLISHED
+          - ARCHIVED
+          - RETIRED
+          - SUPERSEDED
+      - in: query
+        name: q
+        required: false
+        schema:
+          type: string
+      - in: query
+        name: author
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: updatedWithinDays
+        required: false
+        schema:
+          type: integer
+          format: int32
+          minimum: 0
+      - description: Zero-based page index (0..N)
+        in: query
+        name: page
+        required: false
+        schema:
+          type: integer
+          default: 0
+          minimum: 0
+      - description: The size of the page to be returned
+        in: query
+        name: size
+        required: false
+        schema:
+          type: integer
+          default: 20
+          minimum: 1
+      - description: "Sorting criteria in the format: property,(asc|desc). Default\
+          \ sort order is ascending. Multiple sort criteria are supported."
+        in: query
+        name: sort
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PageResponseContentSummaryResponseDevilFruitTypeNamesResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Devil Fruit Types
+      x-required-permission: content:read
+  /devil-fruit-types/authors:
+    get:
+      operationId: devilFruitTypeAuthors
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Devil Fruit Types
+      x-required-permission: content:read
+  /devil-fruit-types/{id}:
+    get:
+      operationId: devilFruitTypeGet
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContentResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Devil Fruit Types
+      x-required-permission: content:read
+  /devil-fruit-types/{id}/versions/{number}:
+    get:
+      operationId: devilFruitTypeVersion
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseDevilFruitTypeResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Devil Fruit Types
+      x-required-permission: content:read
+  /devil-fruit-types/{id}/versions/{number}/events:
+    get:
+      operationId: devilFruitTypeEvents
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VersionEventResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Devil Fruit Types
+      x-required-permission: content:read
   /languages:
     get:
       operationId: languageList
@@ -83,10 +263,78 @@ components:
             $ref: "#/components/schemas/ProblemDetail"
       description: Unexpected server error
   schemas:
+    ContentResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        onlineVersionNumber:
+          type: integer
+          format: int32
+        versions:
+          type: array
+          items:
+            $ref: "#/components/schemas/VersionSummaryResponse"
+    ContentSummaryResponseDevilFruitTypeNamesResponse:
+      type: object
+      properties:
+        author:
+          $ref: "#/components/schemas/UserResponse"
+        body:
+          $ref: "#/components/schemas/DevilFruitTypeNamesResponse"
+        id:
+          type: string
+          format: uuid
+        onlineVersionNumber:
+          type: integer
+          format: int32
+        status:
+          type: string
+          enum:
+          - DRAFT
+          - IN_REVIEW
+          - REJECTED
+          - READY_TO_PUBLISH
+          - PUBLISHED
+          - ARCHIVED
+          - RETIRED
+          - SUPERSEDED
+        updatedAt:
+          type: string
+          format: date-time
+        versionNumber:
+          type: integer
+          format: int32
     CreateLanguageRequest:
       type: object
       properties:
         code:
+          type: string
+        name:
+          type: string
+    DevilFruitTypeNamesResponse:
+      type: object
+      properties:
+        names:
+          type: object
+          additionalProperties:
+            type: string
+        romaji:
+          type: string
+    DevilFruitTypeResponse:
+      type: object
+      properties:
+        romaji:
+          type: string
+        translations:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/DevilFruitTypeTranslationResponse"
+    DevilFruitTypeTranslationResponse:
+      type: object
+      properties:
+        description:
           type: string
         name:
           type: string
@@ -107,6 +355,25 @@ components:
           type: string
         name:
           type: string
+    PageResponseContentSummaryResponseDevilFruitTypeNamesResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/ContentSummaryResponseDevilFruitTypeNamesResponse"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
     ProblemDetail:
       type: object
       description: "RFC 9457 problem detail, plus this API's own properties"
@@ -142,6 +409,96 @@ components:
       - status
       - title
       - type
+    UserResponse:
+      type: object
+      properties:
+        email:
+          type: string
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+    VersionEventResponse:
+      type: object
+      properties:
+        action:
+          type: string
+        actor:
+          $ref: "#/components/schemas/UserResponse"
+        detail:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
+    VersionResponseDevilFruitTypeResponse:
+      type: object
+      properties:
+        author:
+          $ref: "#/components/schemas/UserResponse"
+        basedOn:
+          type: integer
+          format: int32
+        body:
+          $ref: "#/components/schemas/DevilFruitTypeResponse"
+        claimant:
+          $ref: "#/components/schemas/UserResponse"
+        createdAt:
+          type: string
+          format: date-time
+        everPublished:
+          type: boolean
+        number:
+          type: integer
+          format: int32
+        rejectionReason:
+          type: string
+        status:
+          type: string
+          enum:
+          - DRAFT
+          - IN_REVIEW
+          - REJECTED
+          - READY_TO_PUBLISH
+          - PUBLISHED
+          - ARCHIVED
+          - RETIRED
+          - SUPERSEDED
+        updatedAt:
+          type: string
+          format: date-time
+    VersionSummaryResponse:
+      type: object
+      properties:
+        author:
+          $ref: "#/components/schemas/UserResponse"
+        basedOn:
+          type: integer
+          format: int32
+        claimant:
+          $ref: "#/components/schemas/UserResponse"
+        createdAt:
+          type: string
+          format: date-time
+        everPublished:
+          type: boolean
+        number:
+          type: integer
+          format: int32
+        status:
+          type: string
+          enum:
+          - DRAFT
+          - IN_REVIEW
+          - REJECTED
+          - READY_TO_PUBLISH
+          - PUBLISHED
+          - ARCHIVED
+          - RETIRED
+          - SUPERSEDED
+        updatedAt:
+          type: string
+          format: date-time
   securitySchemes:
     keycloak:
       flows:

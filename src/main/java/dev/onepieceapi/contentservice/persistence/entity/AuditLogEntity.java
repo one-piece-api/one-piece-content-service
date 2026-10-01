@@ -1,11 +1,16 @@
 package dev.onepieceapi.contentservice.persistence.entity;
 
+import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -13,27 +18,30 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * The JPA row behind one audit record - see {@code db/migration/V1__baseline.sql} and
+ * The JPA row behind one audit record - see {@code db/migration/V1__baseline.sql} (and
+ * {@code V2} for the target version and the actor's username) and
  * {@code docs/user-flows/content-editorial-workflow.md} 7.
  */
 @Entity
 @Table(name = "audit_log")
 @Getter
+@Builder
 @NoArgsConstructor
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class AuditLogEntity {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
-	@Column(nullable = false, length = 64)
 	private String action;
 
-	@Column(nullable = false)
-	private UUID actorUserId;
-
-	@Column(nullable = false)
-	private String actorEmail;
+	/** Who acted; the username is missing on the records written before it was stored. */
+	@Embedded
+	@AttributeOverride(name = "userId", column = @Column(name = "actor_user_id"))
+	@AttributeOverride(name = "username", column = @Column(name = "actor_username"))
+	@AttributeOverride(name = "email", column = @Column(name = "actor_email"))
+	private UserEmbeddable actor;
 
 	/**
 	 * Null for an action with no single content item as its target - e.g. the language
@@ -41,22 +49,16 @@ public class AuditLogEntity {
 	 */
 	private UUID targetItemId;
 
+	/**
+	 * Set when the action is about one version of the target item. The id, not the
+	 * number: a number is reused once a draft is deleted, an id never is.
+	 */
+	private UUID targetVersionId;
+
 	private String targetLabel;
 
 	private String detail;
 
-	@Column(nullable = false)
 	private Instant occurredAt;
-
-	public AuditLogEntity(String action, UUID actorUserId, String actorEmail, UUID targetItemId, String targetLabel,
-			String detail, Instant occurredAt) {
-		this.action = action;
-		this.actorUserId = actorUserId;
-		this.actorEmail = actorEmail;
-		this.targetItemId = targetItemId;
-		this.targetLabel = targetLabel;
-		this.detail = detail;
-		this.occurredAt = occurredAt;
-	}
 
 }

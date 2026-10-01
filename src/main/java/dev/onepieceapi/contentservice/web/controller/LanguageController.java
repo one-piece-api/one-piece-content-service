@@ -1,9 +1,10 @@
-package dev.onepieceapi.contentservice.web;
+package dev.onepieceapi.contentservice.web.controller;
 
-import dev.onepieceapi.contentservice.domain.Language;
 import dev.onepieceapi.contentservice.service.LanguageService;
+import dev.onepieceapi.contentservice.web.ApiPaths;
 import dev.onepieceapi.contentservice.web.dto.request.CreateLanguageRequest;
 import dev.onepieceapi.contentservice.web.dto.response.LanguageResponse;
+import dev.onepieceapi.contentservice.web.mapper.LanguageResponseMapper;
 import dev.onepieceapi.contentservice.web.security.AuthenticatedCaller;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -35,24 +36,20 @@ class LanguageController {
 
 	@GetMapping(ApiPaths.LANGUAGES)
 	List<LanguageResponse> list() {
-		return this.service.list().stream().map(LanguageController::toResponse).toList();
+		return this.service.list().stream().map(LanguageResponseMapper::toResponse).toList();
 	}
 
 	@PostMapping(ApiPaths.LANGUAGES)
 	@ResponseStatus(HttpStatus.CREATED)
 	LanguageResponse create(@RequestBody CreateLanguageRequest request,
 			@AuthenticationPrincipal AuthenticatedCaller caller) {
-		return toResponse(this.service.create(request.code(), request.name(), caller.id(), caller.email()));
+		return LanguageResponseMapper.toResponse(this.service.create(request.code(), request.name(), caller.user()));
 	}
 
 	@DeleteMapping(ApiPaths.LANGUAGE_BY_CODE)
 	@ResponseStatus(HttpStatus.NO_CONTENT)
 	void delete(@PathVariable String code, @AuthenticationPrincipal AuthenticatedCaller caller) {
-		this.service.delete(code, caller.id(), caller.email());
-	}
-
-	private static LanguageResponse toResponse(Language language) {
-		return new LanguageResponse(language.code(), language.name());
+		this.service.delete(code, caller.user());
 	}
 
 }

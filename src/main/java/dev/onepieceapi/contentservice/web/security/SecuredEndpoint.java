@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.web.security;
 
+import dev.onepieceapi.contentservice.domain.security.Permission;
 import dev.onepieceapi.contentservice.web.ApiPaths;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -35,7 +36,15 @@ enum SecuredEndpoint {
 	 */
 	LANGUAGE_LIST(HttpMethod.GET, ApiPaths.LANGUAGES, AuthorizeHttpRequestsConfigurer.AuthorizedUrl::authenticated),
 	LANGUAGE_CREATE(HttpMethod.POST, ApiPaths.LANGUAGES, Permission.LANGUAGES_MANAGE),
-	LANGUAGE_DELETE(HttpMethod.DELETE, ApiPaths.LANGUAGE_BY_CODE, Permission.LANGUAGES_MANAGE);
+	LANGUAGE_DELETE(HttpMethod.DELETE, ApiPaths.LANGUAGE_BY_CODE, Permission.LANGUAGES_MANAGE),
+
+	// Reading content only takes content:read: which versions the caller then sees is
+	// decided per status by VisibilityPolicy, inside the service.
+	DEVIL_FRUIT_TYPE_LIST(HttpMethod.GET, ApiPaths.DEVIL_FRUIT_TYPES, Permission.CONTENT_READ),
+	DEVIL_FRUIT_TYPE_AUTHORS(HttpMethod.GET, ApiPaths.DEVIL_FRUIT_TYPE_AUTHORS, Permission.CONTENT_READ),
+	DEVIL_FRUIT_TYPE_GET(HttpMethod.GET, ApiPaths.DEVIL_FRUIT_TYPE_BY_ID, Permission.CONTENT_READ),
+	DEVIL_FRUIT_TYPE_VERSION(HttpMethod.GET, ApiPaths.DEVIL_FRUIT_TYPE_VERSION, Permission.CONTENT_READ),
+	DEVIL_FRUIT_TYPE_VERSION_EVENTS(HttpMethod.GET, ApiPaths.DEVIL_FRUIT_TYPE_VERSION_EVENTS, Permission.CONTENT_READ);
 
 	private final HttpMethod method;
 
