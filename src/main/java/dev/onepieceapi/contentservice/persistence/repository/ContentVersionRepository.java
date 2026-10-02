@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.persistence.repository;
 
+import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.entity.ContentVersionEntity;
 import dev.onepieceapi.contentservice.persistence.projection.OnlineVersion;
 
@@ -33,6 +34,16 @@ public interface ContentVersionRepository extends Repository<ContentVersionEntit
 	default Map<UUID, Integer> onlineVersionNumbers(Collection<UUID> contentIds) {
 		return findOnline(contentIds).stream()
 			.collect(Collectors.toMap(OnlineVersion::contentId, OnlineVersion::versionNumber));
+	}
+
+	boolean existsByContentIdAndStatusIn(UUID contentId, Collection<VersionStatus> statuses);
+
+	/**
+	 * Whether the content has a version still moving through the workflow - whoever may
+	 * see it.
+	 */
+	default boolean hasOpenVersion(UUID contentId) {
+		return existsByContentIdAndStatusIn(contentId, VersionStatus.open());
 	}
 
 }

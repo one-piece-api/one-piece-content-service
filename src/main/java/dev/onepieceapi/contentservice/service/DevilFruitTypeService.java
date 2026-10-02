@@ -7,7 +7,10 @@ import dev.onepieceapi.contentservice.domain.workflow.Content;
 import dev.onepieceapi.contentservice.domain.workflow.ContentFilter;
 import dev.onepieceapi.contentservice.domain.workflow.ContentListSummary;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
+import dev.onepieceapi.contentservice.domain.workflow.TransitionContext;
+import dev.onepieceapi.contentservice.domain.workflow.TransitionPolicy;
 import dev.onepieceapi.contentservice.domain.workflow.Version;
+import dev.onepieceapi.contentservice.domain.workflow.VersionAccess;
 import dev.onepieceapi.contentservice.domain.workflow.VersionEvent;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.domain.workflow.VisibilityPolicy;
@@ -34,7 +37,8 @@ import java.util.UUID;
  * Reads Devil Fruit Types and their versions
  * (docs/user-flows/content-editorial-workflow.md UF-CNT-12, UF-CNT-18). Every method
  * starts from the caller's permissions: {@link VisibilityPolicy} turns them into the
- * statuses they may see, and nothing outside those statuses is ever loaded. Building the
+ * statuses they may see, and nothing outside those statuses is ever loaded;
+ * {@link TransitionPolicy} says what they may do with a version they see. Building the
  * queries, converting rows and validating requests are done elsewhere: this class only
  * decides what to read and for whom.
  */
@@ -100,8 +104,14 @@ public class DevilFruitTypeService {
 		return DevilFruitTypeVersionMapper.toContent(contentId, versions);
 	}
 
-	public Version<DevilFruitType> getVersion(Set<Permission> permissions, UUID contentId, int versionNumber) {
-		return DevilFruitTypeVersionMapper.toDomain(visibleVersion(permissions, contentId, versionNumber));
+	/** One visible version with what it says, and what the caller may do with it. */
+	public VersionAccess<DevilFruitType> getVersion(Set<Permission> permissions, User caller, UUID contentId,
+			int versionNumber) {
+		DevilFruitTypeVersionEntity entity = visibleVersion(permissions, contentId, versionNumber);
+		Version<DevilFruitType> version = DevilFruitTypeVersionMapper.toDomain(entity);
+		boolean hasOpenVersion = this.contentVersionRepository.hasOpenVersion(contentId);
+		var context = new TransitionContext(version, hasOpenVersion, caller, permissions);
+		return new VersionAccess<>(version, TransitionPolicy.allowedActions(context));
 	}
 
 	/** The history of a version the caller sees, oldest first. */

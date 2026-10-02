@@ -79,8 +79,8 @@ class DevilFruitTypeController {
 	@GetMapping(ApiPaths.DEVIL_FRUIT_TYPE_VERSION)
 	VersionResponse<DevilFruitTypeResponse> version(@PathVariable UUID id, @PathVariable int number,
 			@AuthenticationPrincipal AuthenticatedCaller caller) {
-		return DevilFruitTypeResponseMapper
-			.toVersionResponse(this.service.getVersion(caller.permissions(), id, number));
+		var version = this.service.getVersion(caller.permissions(), caller.user(), id, number);
+		return DevilFruitTypeResponseMapper.toVersionResponse(version);
 	}
 
 	@GetMapping(ApiPaths.DEVIL_FRUIT_TYPE_VERSION_EVENTS)

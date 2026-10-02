@@ -5,6 +5,7 @@ import dev.onepieceapi.contentservice.domain.workflow.Content;
 import dev.onepieceapi.contentservice.domain.workflow.ContentListSummary;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
 import dev.onepieceapi.contentservice.domain.workflow.Version;
+import dev.onepieceapi.contentservice.domain.workflow.VersionAccess;
 import dev.onepieceapi.contentservice.domain.workflow.VersionEvent;
 import dev.onepieceapi.contentservice.web.dto.response.ContentListSummaryResponse;
 import dev.onepieceapi.contentservice.web.dto.response.ContentResponse;
@@ -52,10 +53,11 @@ public class ContentResponseMapper {
 	}
 
 	/**
-	 * A version with what it says.
+	 * A version with what it says and what the caller may do with it.
 	 * @param toBody how to turn what the version says into its response body
 	 */
-	public <T, R> VersionResponse<R> toVersionResponse(Version<T> version, Function<T, R> toBody) {
+	public <T, R> VersionResponse<R> toVersionResponse(VersionAccess<T> access, Function<T, R> toBody) {
+		Version<T> version = access.version();
 		return VersionResponse.<R>builder()
 			.number(version.number())
 			.status(version.status())
@@ -65,6 +67,7 @@ public class ContentResponseMapper {
 			.everPublished(version.everPublished())
 			.rejectionReason(version.rejectionReason())
 			.body(toBody.apply(version.body()))
+			.allowedActions(List.copyOf(access.allowedActions()))
 			.createdAt(version.createdAt())
 			.updatedAt(version.updatedAt())
 			.build();

@@ -1,5 +1,10 @@
 package dev.onepieceapi.contentservice.domain.workflow;
 
+import java.util.Arrays;
+import java.util.EnumSet;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 /**
  * Where a version stands in the editorial lifecycle
  * (docs/user-flows/content-editorial-workflow.md 4.2).
@@ -36,6 +41,18 @@ public enum VersionStatus {
 	 */
 	public boolean isOpen() {
 		return this == DRAFT || this == IN_REVIEW || this == REJECTED || this == READY_TO_PUBLISH;
+	}
+
+	/** The statuses of a version still moving through the workflow. */
+	public static Set<VersionStatus> open() {
+		return Arrays.stream(values())
+			.filter(VersionStatus::isOpen)
+			.collect(Collectors.toCollection(() -> EnumSet.noneOf(VersionStatus.class)));
+	}
+
+	/** The statuses of a version that has left the workflow. */
+	public static Set<VersionStatus> closed() {
+		return EnumSet.complementOf(EnumSet.copyOf(open()));
 	}
 
 	/**

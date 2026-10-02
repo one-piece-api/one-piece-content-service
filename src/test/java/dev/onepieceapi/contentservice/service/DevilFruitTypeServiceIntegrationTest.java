@@ -7,6 +7,7 @@ import dev.onepieceapi.contentservice.domain.security.Permission;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitTypeTranslation;
 import dev.onepieceapi.contentservice.domain.security.User;
 import dev.onepieceapi.contentservice.domain.workflow.Version;
+import dev.onepieceapi.contentservice.domain.workflow.VersionAction;
 import dev.onepieceapi.contentservice.domain.workflow.VersionEvent;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.entity.AuditLogEntity;
@@ -46,6 +47,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.IntStream;
 
+import static dev.onepieceapi.contentservice.domain.workflow.VersionStatus.ARCHIVED;
 import static dev.onepieceapi.contentservice.domain.workflow.VersionStatus.DRAFT;
 import static dev.onepieceapi.contentservice.domain.workflow.VersionStatus.IN_REVIEW;
 import static dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED;
@@ -376,27 +378,80 @@ class DevilFruitTypeServiceIntegrationTest {
 
 	@Test
 	void aVersionIsReadWithItsContentOnlyByWhoSeesItsStatus() {
-		var review = this.service.getVersion(REVIEWER, this.zoan, 2);
+		var review = this.service.getVersion(REVIEWER, this.zoro, this.zoan, 2).version();
 
 		assertThat(review.status()).isEqualTo(IN_REVIEW);
 		assertThat(review.author()).isEqualTo(this.chopper);
 		assertThat(review.claimant()).isNull();
 		assertThat(review.body().romaji()).isEqualTo("Dōbutsu-kei");
 		assertThat(review.body().translations().get("it").name()).isEqualTo("Zoo Zoo");
-		assertThatThrownBy(() -> this.service.getVersion(PUBLISHER, this.zoan, 2))
+		assertThatThrownBy(() -> this.service.getVersion(PUBLISHER, this.zoro, this.zoan, 2))
 			.isInstanceOf(VersionNotFoundException.class);
-		assertThatThrownBy(() -> this.service.getVersion(EDITOR, this.zoan, 9))
+		assertThatThrownBy(() -> this.service.getVersion(EDITOR, this.nami, this.zoan, 9))
 			.isInstanceOf(VersionNotFoundException.class);
 	}
 
 	@Test
 	void aVersionInReviewShowsWhoHoldsIt() {
-		var held = this.versionRepository.findVisible(this.zoan, 2, Set.of(IN_REVIEW)).orElseThrow();
-		held.getVersion().setClaimant(UserMapper.toEmbeddable(this.zoro));
+		var inReview = this.versionRepository.findVisible(this.zoan, 2, Set.of(IN_REVIEW)).orElseThrow();
+		inReview.getVersion().setClaimant(UserMapper.toEmbeddable(this.zoro));
 		this.entityManager.flush();
 		this.entityManager.clear();
 
-		assertThat(this.service.getVersion(REVIEWER, this.zoan, 2).claimant()).isEqualTo(this.zoro);
+		var held = this.service.getVersion(REVIEWER, this.zoro, this.zoan, 2).version();
+
+		assertThat(held.claimant()).isEqualTo(this.zoro);
+	}
+
+	@Test
+	void aVersionComesWithWhatItsCallerMayDoWithIt() {
+		var forItsAuthor = this.service.getVersion(EDITOR, this.chopper, this.paramecia, 3);
+		var forAnotherEditor = this.service.getVersion(EDITOR, this.nami, this.paramecia, 3);
+		var forAReviewer = this.service.getVersion(REVIEWER, this.zoro, this.zoan, 2);
+
+		assertThat(forItsAuthor.allowedActions()).containsExactly(VersionAction.EDIT, VersionAction.DELETE,
+				VersionAction.SUBMIT);
+		assertThat(forAnotherEditor.allowedActions()).isEmpty();
+		assertThat(forAReviewer.allowedActions()).containsExactly(VersionAction.CLAIM);
+	}
+
+	@Test
+	void anOpenVersionBlocksANewDraftOfItsContent() {
+		// Paramecia has a draft open, so its online version cannot start another one.
+		var online = this.service.getVersion(EDITOR, this.nami, this.paramecia, 2);
+
+		assertThat(online.allowedActions()).isEmpty();
+	}
+
+	@Test
+	void anOpenVersionBlocksARecoveryEvenFromWhoCannotSeeIt() {
+		UUID free = content();
+		version(free, 1, ARCHIVED, this.nami, 5, names("Free", "Libero", "Free"));
+		UUID busy = content();
+		version(busy, 1, ARCHIVED, this.nami, 5, names("Busy", "Occupato", "Busy"));
+		version(busy, 2, DRAFT, this.chopper, 1, names("Busy", "Occupato", "Busy"));
+		this.entityManager.flush();
+		this.entityManager.clear();
+
+		// A publisher does not see the draft of the second content, yet it counts.
+		assertThat(this.service.get(PUBLISHER, busy).versions()).hasSize(1);
+		assertThat(this.service.getVersion(PUBLISHER, this.zoro, free, 1).allowedActions())
+			.containsExactly(VersionAction.RECOVER);
+		assertThat(this.service.getVersion(PUBLISHER, this.zoro, busy, 1).allowedActions()).isEmpty();
+	}
+
+	@Test
+	void aContentHasAnOpenVersionWhileOneIsStillMovingThroughTheWorkflow() {
+		UUID closed = content();
+		version(closed, 1, SUPERSEDED, this.nami, 9, names("Closed", "Chiuso", "Closed"));
+		version(closed, 2, PUBLISHED, this.nami, 5, names("Closed", "Chiuso", "Closed"));
+		this.entityManager.flush();
+
+		assertThat(this.contentVersionRepository.hasOpenVersion(this.paramecia)).isTrue();
+		assertThat(this.contentVersionRepository.hasOpenVersion(this.zoan)).isTrue();
+		assertThat(this.contentVersionRepository.hasOpenVersion(this.kodaiZoan)).isTrue();
+		assertThat(this.contentVersionRepository.hasOpenVersion(closed)).isFalse();
+		assertThat(this.contentVersionRepository.hasOpenVersion(UUID.randomUUID())).isFalse();
 	}
 
 	@Test

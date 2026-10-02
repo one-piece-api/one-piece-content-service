@@ -9,6 +9,8 @@ import dev.onepieceapi.contentservice.domain.workflow.ContentFilter;
 import dev.onepieceapi.contentservice.domain.workflow.ContentListSummary;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
 import dev.onepieceapi.contentservice.domain.workflow.Version;
+import dev.onepieceapi.contentservice.domain.workflow.VersionAccess;
+import dev.onepieceapi.contentservice.domain.workflow.VersionAction;
 import dev.onepieceapi.contentservice.domain.workflow.VersionEvent;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.web.dto.request.ContentListRequest;
@@ -50,7 +52,9 @@ class ResponseMappersTest {
 
 	@Test
 	void aVersionResponseCarriesTheWorkflowAndTheBodyTheCallerMapped() {
-		var response = ContentResponseMapper.toVersionResponse(rejected(2), devilFruitType -> "the body");
+		var access = new VersionAccess<>(rejected(2), EnumSet.of(VersionAction.RETURN_TO_DRAFT));
+
+		var response = ContentResponseMapper.toVersionResponse(access, devilFruitType -> "the body");
 
 		assertThat(response.number()).isEqualTo(2);
 		assertThat(response.status()).isEqualTo(VersionStatus.REJECTED);
@@ -60,6 +64,7 @@ class ResponseMappersTest {
 		assertThat(response.everPublished()).isFalse();
 		assertThat(response.rejectionReason()).isEqualTo("Too short");
 		assertThat(response.body()).isEqualTo("the body");
+		assertThat(response.allowedActions()).containsExactly(VersionAction.RETURN_TO_DRAFT);
 		assertThat(response.createdAt()).isEqualTo(CREATED);
 		assertThat(response.updatedAt()).isEqualTo(UPDATED);
 	}
@@ -133,7 +138,8 @@ class ResponseMappersTest {
 
 	@Test
 	void theDevilFruitTypeMapperPlugsItsBodiesIntoTheSharedResponses() {
-		var version = DevilFruitTypeResponseMapper.toVersionResponse(rejected(2));
+		var access = new VersionAccess<>(rejected(2), EnumSet.noneOf(VersionAction.class));
+		var version = DevilFruitTypeResponseMapper.toVersionResponse(access);
 		var row = DevilFruitTypeResponseMapper.toSummaryResponse(new ContentSummary<>(CONTENT_ID, rejected(2), null));
 
 		assertThat(version.body().translations()).containsKeys("en", "it");

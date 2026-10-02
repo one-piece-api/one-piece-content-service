@@ -47,6 +47,9 @@ examples:
         type: json
         data: |-
           {
+            "allowedActions": [
+              "EDIT"
+            ],
             "author": {
               "email": "",
               "id": "",

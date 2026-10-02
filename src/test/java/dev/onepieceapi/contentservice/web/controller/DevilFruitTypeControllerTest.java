@@ -9,6 +9,8 @@ import dev.onepieceapi.contentservice.domain.security.Permission;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitTypeTranslation;
 import dev.onepieceapi.contentservice.domain.security.User;
 import dev.onepieceapi.contentservice.domain.workflow.Version;
+import dev.onepieceapi.contentservice.domain.workflow.VersionAccess;
+import dev.onepieceapi.contentservice.domain.workflow.VersionAction;
 import dev.onepieceapi.contentservice.domain.workflow.VersionEvent;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.service.DevilFruitTypeService;
@@ -232,13 +234,16 @@ class DevilFruitTypeControllerTest {
 
 	@Test
 	void aVersionComesWithItsContent() throws Exception {
-		when(this.service.getVersion(Set.of(Permission.CONTENT_READ), CONTENT_ID, 2))
-			.thenReturn(version(2, VersionStatus.IN_REVIEW));
+		var access = new VersionAccess<>(version(2, VersionStatus.IN_REVIEW), EnumSet.of(VersionAction.PULL_BACK));
+		when(this.service.getVersion(eq(Set.of(Permission.CONTENT_READ)), any(), eq(CONTENT_ID), eq(2)))
+			.thenReturn(access);
 
 		this.mockMvc
 			.perform(get("/devil-fruit-types/" + CONTENT_ID + "/versions/2").with(callerWith(Permission.CONTENT_READ)))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.number").value(2))
+			.andExpect(jsonPath("$.allowedActions.length()").value(1))
+			.andExpect(jsonPath("$.allowedActions[0]").value("PULL_BACK"))
 			.andExpect(jsonPath("$.body.romaji").value("Zoan"))
 			.andExpect(jsonPath("$.body.translations.it.name").value("Zoo Zoo"))
 			.andExpect(jsonPath("$.body.translations.it.description").value("Trasforma in animale"))
@@ -248,7 +253,7 @@ class DevilFruitTypeControllerTest {
 
 	@Test
 	void aVersionTheCallerDoesNotSeeIsNotFound() throws Exception {
-		when(this.service.getVersion(any(), eq(CONTENT_ID), eq(3)))
+		when(this.service.getVersion(any(), any(), eq(CONTENT_ID), eq(3)))
 			.thenThrow(new VersionNotFoundException(CONTENT_ID, 3));
 
 		this.mockMvc

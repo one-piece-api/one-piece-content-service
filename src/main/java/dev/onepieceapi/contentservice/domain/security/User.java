@@ -12,4 +12,9 @@ import java.util.UUID;
  */
 public record User(UUID id, String username, String email) {
 
+	/** Whether the two are the same account - told by the id alone. */
+	public boolean isSameAs(User other) {
+		return this.id.equals(other.id);
+	}
+
 }

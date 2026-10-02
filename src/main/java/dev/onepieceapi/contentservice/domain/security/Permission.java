@@ -28,6 +28,8 @@ public enum Permission {
 
 	CONTENT_PUBLISH("content:publish"),
 
+	CONTENT_RETIRE("content:retire"),
+
 	/**
 	 * ADMIN-only (2.2/3.2): manage the supported-language catalog - distinct from the
 	 * {@code content:*} family since it is system configuration, not editorial content.

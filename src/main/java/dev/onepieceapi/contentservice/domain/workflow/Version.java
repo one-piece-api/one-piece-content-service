@@ -30,4 +30,17 @@ public record Version<T>(int number, Integer basedOn, VersionStatus status, User
 		return this.status == VersionStatus.PUBLISHED;
 	}
 
+	public boolean isAuthoredBy(User user) {
+		return this.author.isSameAs(user);
+	}
+
+	/** Whether a reviewer holds this version. */
+	public boolean isClaimed() {
+		return this.claimant != null;
+	}
+
+	public boolean isClaimedBy(User user) {
+		return isClaimed() && this.claimant.isSameAs(user);
+	}
+
 }

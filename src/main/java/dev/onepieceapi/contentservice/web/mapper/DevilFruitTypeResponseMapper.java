@@ -3,7 +3,7 @@ package dev.onepieceapi.contentservice.web.mapper;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitType;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitTypeTranslation;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
-import dev.onepieceapi.contentservice.domain.workflow.Version;
+import dev.onepieceapi.contentservice.domain.workflow.VersionAccess;
 import dev.onepieceapi.contentservice.web.dto.response.ContentSummaryResponse;
 import dev.onepieceapi.contentservice.web.dto.response.DevilFruitTypeNamesResponse;
 import dev.onepieceapi.contentservice.web.dto.response.DevilFruitTypeResponse;
@@ -21,9 +21,11 @@ import java.util.TreeMap;
 @UtilityClass
 public class DevilFruitTypeResponseMapper {
 
-	/** A version of a Devil Fruit Type, with everything it says. */
-	public VersionResponse<DevilFruitTypeResponse> toVersionResponse(Version<DevilFruitType> version) {
-		return ContentResponseMapper.toVersionResponse(version, DevilFruitTypeResponseMapper::toResponse);
+	/**
+	 * A version of a Devil Fruit Type as its caller meets it, with everything it says.
+	 */
+	public VersionResponse<DevilFruitTypeResponse> toVersionResponse(VersionAccess<DevilFruitType> access) {
+		return ContentResponseMapper.toVersionResponse(access, DevilFruitTypeResponseMapper::toResponse);
 	}
 
 	/** A row of the list of Devil Fruit Types. */
