@@ -35,7 +35,6 @@ paths:
         required: false
         schema:
           type: string
-          format: uuid
       - in: query
         name: updatedWithinDays
         required: false
@@ -93,6 +92,23 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/UserResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Devil Fruit Types
+      x-required-permission: content:read
+  /devil-fruit-types/summary:
+    get:
+      operationId: devilFruitTypeSummary
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContentListSummaryResponse"
           description: OK
         "4XX":
           $ref: "#/components/responses/ClientError"
@@ -263,6 +279,28 @@ components:
             $ref: "#/components/schemas/ProblemDetail"
       description: Unexpected server error
   schemas:
+    ContentListSummaryResponse:
+      type: object
+      properties:
+        mine:
+          type: integer
+          format: int64
+        statuses:
+          type: array
+          items:
+            type: string
+            enum:
+            - DRAFT
+            - IN_REVIEW
+            - REJECTED
+            - READY_TO_PUBLISH
+            - PUBLISHED
+            - ARCHIVED
+            - RETIRED
+            - SUPERSEDED
+        total:
+          type: integer
+          format: int64
     ContentResponse:
       type: object
       properties:

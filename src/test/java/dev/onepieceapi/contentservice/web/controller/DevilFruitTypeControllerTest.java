@@ -3,6 +3,7 @@ package dev.onepieceapi.contentservice.web.controller;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitType;
 import dev.onepieceapi.contentservice.domain.workflow.Content;
 import dev.onepieceapi.contentservice.domain.workflow.ContentFilter;
+import dev.onepieceapi.contentservice.domain.workflow.ContentListSummary;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
 import dev.onepieceapi.contentservice.domain.security.Permission;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitTypeTranslation;
@@ -29,6 +30,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.Instant;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -104,7 +106,7 @@ class DevilFruitTypeControllerTest {
 		var request = get("/devil-fruit-types").with(callerWith(Permission.CONTENT_READ, Permission.CONTENT_REVIEW))
 			.param("status", "IN_REVIEW")
 			.param("q", "zoan")
-			.param("author", NAMI.id().toString())
+			.param("author", "nami")
 			.param("updatedWithinDays", "7")
 			.param("page", "2")
 			.param("size", "5")
@@ -113,7 +115,7 @@ class DevilFruitTypeControllerTest {
 
 		var pageable = ArgumentCaptor.forClass(Pageable.class);
 		verify(this.service).list(eq(Set.of(Permission.CONTENT_READ, Permission.CONTENT_REVIEW)),
-				eq(new ContentFilter(VersionStatus.IN_REVIEW, "zoan", NAMI.id(), 7)), pageable.capture());
+				eq(new ContentFilter(VersionStatus.IN_REVIEW, "zoan", "nami", 7)), pageable.capture());
 		assertThat(pageable.getValue().getPageNumber()).isEqualTo(2);
 		assertThat(pageable.getValue().getPageSize()).isEqualTo(5);
 		assertThat(pageable.getValue().getSort().getOrderFor("romaji")).isNotNull();
@@ -135,7 +137,6 @@ class DevilFruitTypeControllerTest {
 	@CsvSource(delimiter = '|', textBlock = """
 			/devil-fruit-types?updatedWithinDays=-1 | updatedWithinDays | must be greater than or equal to 0
 			/devil-fruit-types?status=NOPE          | status            | invalid value
-			/devil-fruit-types?author=not-a-uuid    | author            | invalid value
 			/devil-fruit-types?sort=authorEmail     | pageable          | can only be sorted by [romaji, updatedAt]
 			/devil-fruit-types/not-a-uuid           | id                | invalid value
 			/devil-fruit-types/not-a-uuid/versions/1| id                | invalid value
@@ -158,6 +159,35 @@ class DevilFruitTypeControllerTest {
 			.param("sort", "updatedAt,desc")
 			.param("sort", "romaji,asc");
 		this.mockMvc.perform(request).andExpect(status().isOk());
+	}
+
+	@Test
+	void theSummaryGivesTheTotalsAndTheStatusesTheCallerMayFilterBy() throws Exception {
+		var summary = new ContentListSummary(20, 3, EnumSet.of(VersionStatus.IN_REVIEW, VersionStatus.PUBLISHED));
+		when(this.service.summary(eq(Set.of(Permission.CONTENT_READ, Permission.CONTENT_REVIEW)), any()))
+			.thenReturn(summary);
+
+		var request = get("/devil-fruit-types/summary")
+			.with(callerWith(Permission.CONTENT_READ, Permission.CONTENT_REVIEW));
+		this.mockMvc.perform(request)
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.total").value(20))
+			.andExpect(jsonPath("$.mine").value(3))
+			.andExpect(jsonPath("$.statuses[0]").value("IN_REVIEW"))
+			.andExpect(jsonPath("$.statuses[1]").value("PUBLISHED"))
+			.andExpect(jsonPath("$.statuses.length()").value(2));
+	}
+
+	@Test
+	void theSummaryIsComputedForTheCallerItself() throws Exception {
+		when(this.service.summary(any(), any())).thenReturn(new ContentListSummary(0, 0, Set.of()));
+		var caller = ArgumentCaptor.forClass(User.class);
+
+		this.mockMvc.perform(get("/devil-fruit-types/summary").with(callerWith(Permission.CONTENT_READ)))
+			.andExpect(status().isOk());
+
+		verify(this.service).summary(any(), caller.capture());
+		assertThat(caller.getValue().username()).isEqualTo("crewmate");
 	}
 
 	@Test
@@ -260,8 +290,8 @@ class DevilFruitTypeControllerTest {
 
 	private static List<String> readPaths() {
 		var content = "/devil-fruit-types/" + CONTENT_ID;
-		return List.of("/devil-fruit-types", "/devil-fruit-types/authors", content, content + "/versions/1",
-				content + "/versions/1/events");
+		return List.of("/devil-fruit-types", "/devil-fruit-types/authors", "/devil-fruit-types/summary", content,
+				content + "/versions/1", content + "/versions/1/events");
 	}
 
 	/** Version 1 is the first one; any later one is based on it and held by zoro. */

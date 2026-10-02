@@ -18,6 +18,16 @@ class ContentFilterTest {
 	private static final Set<VersionStatus> SEEN_BY_A_REVIEWER = EnumSet.of(IN_REVIEW, PUBLISHED);
 
 	@Test
+	void noFilterFiltersOnNothing() {
+		assertThat(ContentFilter.none()).isEqualTo(new ContentFilter(null, null, null, null));
+	}
+
+	@Test
+	void theAuthorFilterIsByUsernameAndNothingElse() {
+		assertThat(ContentFilter.authoredBy("nami")).isEqualTo(new ContentFilter(null, null, "nami", null));
+	}
+
+	@Test
 	void withoutAStatusEveryVisibleStatusIsListed() {
 		assertThat(filter(null, null, null).statusesAmong(SEEN_BY_A_REVIEWER)).isEqualTo(SEEN_BY_A_REVIEWER);
 	}

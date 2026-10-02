@@ -32,6 +32,8 @@ public final class ApiPaths {
 
 	public static final String DEVIL_FRUIT_TYPE_AUTHORS = DEVIL_FRUIT_TYPES + "/authors";
 
+	public static final String DEVIL_FRUIT_TYPE_SUMMARY = DEVIL_FRUIT_TYPES + "/summary";
+
 	public static final String DEVIL_FRUIT_TYPE_BY_ID = DEVIL_FRUIT_TYPES + "/{id}";
 
 	public static final String DEVIL_FRUIT_TYPE_VERSION = DEVIL_FRUIT_TYPE_BY_ID + "/versions/{number}";

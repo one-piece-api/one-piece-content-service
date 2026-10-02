@@ -6,6 +6,7 @@ import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
 import dev.onepieceapi.contentservice.service.DevilFruitTypeService;
 import dev.onepieceapi.contentservice.web.ApiPaths;
 import dev.onepieceapi.contentservice.web.dto.request.ContentListRequest;
+import dev.onepieceapi.contentservice.web.dto.response.ContentListSummaryResponse;
 import dev.onepieceapi.contentservice.web.dto.response.ContentResponse;
 import dev.onepieceapi.contentservice.web.dto.response.ContentSummaryResponse;
 import dev.onepieceapi.contentservice.web.dto.response.DevilFruitTypeNamesResponse;
@@ -62,6 +63,12 @@ class DevilFruitTypeController {
 	@GetMapping(ApiPaths.DEVIL_FRUIT_TYPE_AUTHORS)
 	List<UserResponse> authors(@AuthenticationPrincipal AuthenticatedCaller caller) {
 		return this.service.authors(caller.permissions()).stream().map(ContentResponseMapper::toUserResponse).toList();
+	}
+
+	/** The totals and the status options the list shows around its rows. */
+	@GetMapping(ApiPaths.DEVIL_FRUIT_TYPE_SUMMARY)
+	ContentListSummaryResponse summary(@AuthenticationPrincipal AuthenticatedCaller caller) {
+		return ContentResponseMapper.toListSummaryResponse(this.service.summary(caller.permissions(), caller.user()));
 	}
 
 	@GetMapping(ApiPaths.DEVIL_FRUIT_TYPE_BY_ID)

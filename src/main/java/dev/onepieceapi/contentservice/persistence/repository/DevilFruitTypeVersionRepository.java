@@ -38,6 +38,13 @@ public interface DevilFruitTypeVersionRepository extends JpaRepository<DevilFrui
 		return findAll(specification, DevilFruitTypeSorting.resolve(pageable));
 	}
 
+	/**
+	 * How many contents the list would show in all, with the same statuses and filters.
+	 */
+	default long count(Collection<VersionStatus> statuses, ContentFilter filter, Clock clock) {
+		return count(DevilFruitTypeVersionSpecifications.listOf(statuses, filter, clock));
+	}
+
 	/** The visible versions of one content, oldest first. */
 	@Query("""
 			select d from DevilFruitTypeVersionEntity d join fetch d.version v

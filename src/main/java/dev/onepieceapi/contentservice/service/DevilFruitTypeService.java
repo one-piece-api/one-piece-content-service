@@ -5,6 +5,7 @@ import dev.onepieceapi.contentservice.domain.security.Permission;
 import dev.onepieceapi.contentservice.domain.security.User;
 import dev.onepieceapi.contentservice.domain.workflow.Content;
 import dev.onepieceapi.contentservice.domain.workflow.ContentFilter;
+import dev.onepieceapi.contentservice.domain.workflow.ContentListSummary;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
 import dev.onepieceapi.contentservice.domain.workflow.Version;
 import dev.onepieceapi.contentservice.domain.workflow.VersionEvent;
@@ -73,6 +74,21 @@ public class DevilFruitTypeService {
 	 */
 	public List<User> authors(Set<Permission> permissions) {
 		return this.versionRepository.findAuthors(VisibilityPolicy.visibleStatuses(permissions));
+	}
+
+	/**
+	 * What surrounds the list, whatever filter is on: how many contents the caller sees,
+	 * how many of those are shown by a version of their own, and the statuses they may
+	 * filter by.
+	 */
+	public ContentListSummary summary(Set<Permission> permissions, User caller) {
+		Set<VersionStatus> statuses = VisibilityPolicy.visibleStatuses(permissions);
+		if (statuses.isEmpty()) {
+			return new ContentListSummary(0, 0, statuses);
+		}
+		long total = this.versionRepository.count(statuses, ContentFilter.none(), this.clock);
+		long mine = this.versionRepository.count(statuses, ContentFilter.authoredBy(caller.username()), this.clock);
+		return new ContentListSummary(total, mine, statuses);
 	}
 
 	public Content<DevilFruitType> get(Set<Permission> permissions, UUID contentId) {

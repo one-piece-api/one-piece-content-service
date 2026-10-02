@@ -7,7 +7,6 @@ import java.time.ZoneOffset;
 import java.util.EnumSet;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 import java.util.function.Predicate;
 
 /**
@@ -18,10 +17,20 @@ import java.util.function.Predicate;
  * @param status only contents having a visible version in this status, represented by it
  * @param query text to look for in what the version says; where exactly is up to each
  * kind of content
- * @param author the id of the author of the version
+ * @param author the username of the author of the version
  * @param updatedWithinDays updated today (0) or in the last N days
  */
-public record ContentFilter(VersionStatus status, String query, UUID author, Integer updatedWithinDays) {
+public record ContentFilter(VersionStatus status, String query, String author, Integer updatedWithinDays) {
+
+	/** No filter at all: every content the caller sees. */
+	public static ContentFilter none() {
+		return new ContentFilter(null, null, null, null);
+	}
+
+	/** Only the contents shown by a version of this author. */
+	public static ContentFilter authoredBy(String username) {
+		return new ContentFilter(null, null, username, null);
+	}
 
 	/**
 	 * The statuses a list may show: the ones the caller sees, narrowed to the one being

@@ -2,9 +2,11 @@ package dev.onepieceapi.contentservice.web.mapper;
 
 import dev.onepieceapi.contentservice.domain.security.User;
 import dev.onepieceapi.contentservice.domain.workflow.Content;
+import dev.onepieceapi.contentservice.domain.workflow.ContentListSummary;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
 import dev.onepieceapi.contentservice.domain.workflow.Version;
 import dev.onepieceapi.contentservice.domain.workflow.VersionEvent;
+import dev.onepieceapi.contentservice.web.dto.response.ContentListSummaryResponse;
 import dev.onepieceapi.contentservice.web.dto.response.ContentResponse;
 import dev.onepieceapi.contentservice.web.dto.response.ContentSummaryResponse;
 import dev.onepieceapi.contentservice.web.dto.response.UserResponse;
@@ -79,6 +81,10 @@ public class ContentResponseMapper {
 			.createdAt(version.createdAt())
 			.updatedAt(version.updatedAt())
 			.build();
+	}
+
+	public ContentListSummaryResponse toListSummaryResponse(ContentListSummary summary) {
+		return new ContentListSummaryResponse(summary.total(), summary.mine(), List.copyOf(summary.statuses()));
 	}
 
 	public VersionEventResponse toEventResponse(VersionEvent event) {

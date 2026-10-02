@@ -235,7 +235,7 @@ class DevilFruitTypeServiceIntegrationTest {
 
 	@Test
 	void theAuthorFilterLooksAtTheVersionShown() {
-		var byChopper = new ContentFilter(null, null, this.chopper.id(), null);
+		var byChopper = new ContentFilter(null, null, this.chopper.username(), null);
 
 		assertThat(idsOf(EDITOR, byChopper)).containsExactly(this.paramecia, this.zoan, this.kodaiZoan);
 		// For a publisher Paramecia and Zoan are shown by nami's online versions.
@@ -258,7 +258,7 @@ class DevilFruitTypeServiceIntegrationTest {
 		assertThat(this.service.list(EDITOR, NO_FILTER, firstOfTwo).getTotalElements()).isEqualTo(4);
 		assertThat(this.service.list(EDITOR, NO_FILTER, firstOfTwo).getTotalPages()).isEqualTo(2);
 		assertThat(this.service.list(REVIEWER, NO_FILTER, firstOfTwo).getTotalElements()).isEqualTo(3);
-		var byChopper = new ContentFilter(null, null, this.chopper.id(), null);
+		var byChopper = new ContentFilter(null, null, this.chopper.username(), null);
 		assertThat(this.service.list(PUBLISHER, byChopper, firstOfTwo).getTotalElements()).isEqualTo(1);
 	}
 
@@ -281,7 +281,7 @@ class DevilFruitTypeServiceIntegrationTest {
 			.forEach(i -> version(content(), 1, SUPERSEDED, this.zoro, 5, names("Tie " + i, "Pari " + i, "Tie " + i)));
 		this.entityManager.flush();
 		this.entityManager.clear();
-		var byZoro = new ContentFilter(null, null, this.zoro.id(), null);
+		var byZoro = new ContentFilter(null, null, this.zoro.username(), null);
 
 		var seen = IntStream.range(0, 3)
 			.mapToObj(page -> idsOf(PUBLISHER, byZoro, PageRequest.of(page, 2)))
@@ -296,6 +296,54 @@ class DevilFruitTypeServiceIntegrationTest {
 		var byRomaji = PageRequest.of(0, 20, Sort.by("romaji"));
 
 		assertThat(idsOf(PUBLISHER, NO_FILTER, byRomaji)).containsExactly(this.kodaiZoan, this.paramecia, this.zoan);
+	}
+
+	@Test
+	void theSummaryCountsWhatTheCallerSeesAndHowMuchOfItIsTheirs() {
+		var forNami = this.service.summary(EDITOR, this.nami);
+		var forChopper = this.service.summary(EDITOR, this.chopper);
+
+		assertThat(forNami.total()).isEqualTo(4);
+		// Only Logia is shown by a version of nami: Paramecia and Zoan by chopper's.
+		assertThat(forNami.mine()).isEqualTo(1);
+		assertThat(forChopper.total()).isEqualTo(4);
+		assertThat(forChopper.mine()).isEqualTo(3);
+		assertThat(forNami.statuses()).containsExactly(VersionStatus.values());
+	}
+
+	@Test
+	void theSummaryOfAReviewerLeavesOutDraftsAndRejectedVersions() {
+		var summary = this.service.summary(REVIEWER, this.zoro);
+
+		assertThat(summary.total()).isEqualTo(3);
+		assertThat(summary.mine()).isZero();
+		assertThat(summary.statuses()).doesNotContain(DRAFT, VersionStatus.REJECTED).hasSize(6);
+	}
+
+	@Test
+	void theShareOfTheCallerFollowsTheVersionsTheirPermissionsShow() {
+		// With a publisher's permissions Paramecia and Zoan fall back to nami's online
+		// versions.
+		assertThat(this.service.summary(PUBLISHER, this.nami).mine()).isEqualTo(2);
+		assertThat(this.service.summary(PUBLISHER, this.chopper).mine()).isEqualTo(1);
+	}
+
+	@Test
+	void theSummaryOfACallerWhoSeesNothingIsEmpty() {
+		var summary = this.service.summary(Set.of(), this.nami);
+
+		assertThat(summary.total()).isZero();
+		assertThat(summary.mine()).isZero();
+		assertThat(summary.statuses()).isEmpty();
+	}
+
+	@Test
+	void theMineCountIsWhatTheAuthorFilterWouldList() {
+		var byChopper = ContentFilter.authoredBy(this.chopper.username());
+
+		var listed = this.service.list(EDITOR, byChopper, FIRST_PAGE).getTotalElements();
+
+		assertThat(this.service.summary(EDITOR, this.chopper).mine()).isEqualTo(listed);
 	}
 
 	@Test

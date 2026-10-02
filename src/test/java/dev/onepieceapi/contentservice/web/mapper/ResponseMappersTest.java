@@ -6,6 +6,7 @@ import dev.onepieceapi.contentservice.domain.language.Language;
 import dev.onepieceapi.contentservice.domain.security.User;
 import dev.onepieceapi.contentservice.domain.workflow.Content;
 import dev.onepieceapi.contentservice.domain.workflow.ContentFilter;
+import dev.onepieceapi.contentservice.domain.workflow.ContentListSummary;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
 import dev.onepieceapi.contentservice.domain.workflow.Version;
 import dev.onepieceapi.contentservice.domain.workflow.VersionEvent;
@@ -18,6 +19,7 @@ import dev.onepieceapi.contentservice.web.dto.response.VersionSummaryResponse;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -140,11 +142,22 @@ class ResponseMappersTest {
 	}
 
 	@Test
+	void aListSummaryResponseKeepsTheStatusesInWorkflowOrder() {
+		var summary = new ContentListSummary(24, 8, EnumSet.of(VersionStatus.PUBLISHED, VersionStatus.DRAFT));
+
+		var response = ContentResponseMapper.toListSummaryResponse(summary);
+
+		assertThat(response.total()).isEqualTo(24);
+		assertThat(response.mine()).isEqualTo(8);
+		assertThat(response.statuses()).containsExactly(VersionStatus.DRAFT, VersionStatus.PUBLISHED);
+	}
+
+	@Test
 	void theListRequestBecomesTheFilterFieldByField() {
-		var request = new ContentListRequest(VersionStatus.DRAFT, "zoan", NAMI.id(), 7);
+		var request = new ContentListRequest(VersionStatus.DRAFT, "zoan", "nami", 7);
 
 		assertThat(ContentRequestMapper.toFilter(request))
-			.isEqualTo(new ContentFilter(VersionStatus.DRAFT, "zoan", NAMI.id(), 7));
+			.isEqualTo(new ContentFilter(VersionStatus.DRAFT, "zoan", "nami", 7));
 	}
 
 	@Test
