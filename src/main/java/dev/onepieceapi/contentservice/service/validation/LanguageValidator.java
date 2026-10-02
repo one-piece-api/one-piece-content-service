@@ -24,7 +24,8 @@ public class LanguageValidator {
 		if (!CODE_PATTERN.matcher(language.code()).matches()) {
 			throw new InvalidLanguageCodeException(language.code());
 		}
-		if (language.name().isBlank() || language.name().length() > MAX_NAME_LENGTH) {
+		String name = language.name();
+		if (name.isBlank() || name.length() > MAX_NAME_LENGTH) {
 			throw new InvalidLanguageNameException();
 		}
 	}

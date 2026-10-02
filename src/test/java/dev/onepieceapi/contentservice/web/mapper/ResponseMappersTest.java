@@ -14,6 +14,7 @@ import dev.onepieceapi.contentservice.web.dto.request.ContentListRequest;
 import dev.onepieceapi.contentservice.web.dto.response.DevilFruitTypeTranslationResponse;
 import dev.onepieceapi.contentservice.web.dto.response.LanguageResponse;
 import dev.onepieceapi.contentservice.web.dto.response.UserResponse;
+import dev.onepieceapi.contentservice.web.dto.response.VersionSummaryResponse;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -70,7 +71,8 @@ class ResponseMappersTest {
 
 		assertThat(response.id()).isEqualTo(CONTENT_ID);
 		assertThat(response.onlineVersionNumber()).isEqualTo(2);
-		assertThat(response.versions()).extracting(summary -> summary.number(), summary -> summary.everPublished())
+		assertThat(response.versions())
+			.extracting(VersionSummaryResponse::number, VersionSummaryResponse::everPublished)
 			.containsExactly(tuple(1, true), tuple(2, true), tuple(3, false));
 		assertThat(response.versions().get(0).claimant()).isNull();
 		assertThat(response.versions().get(2).claimant().username()).isEqualTo("zoro");

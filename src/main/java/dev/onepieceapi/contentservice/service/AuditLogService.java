@@ -31,11 +31,11 @@ public class AuditLogService {
 
 	private final Clock clock;
 
-	public void record(String action, User actor, UUID targetItemId, String targetLabel, String detail) {
+	public void record(String action, User actor, UUID targetContentId, String targetLabel, String detail) {
 		var entity = AuditLogEntity.builder()
 			.action(action)
 			.actor(UserMapper.toEmbeddable(actor))
-			.targetItemId(targetItemId)
+			.targetContentId(targetContentId)
 			.targetLabel(targetLabel)
 			.detail(detail)
 			.occurredAt(this.clock.instant())

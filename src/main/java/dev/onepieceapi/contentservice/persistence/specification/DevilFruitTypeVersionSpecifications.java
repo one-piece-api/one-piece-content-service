@@ -29,7 +29,7 @@ import java.util.UUID;
  * The building blocks of the Devil Fruit Type list query (UF-CNT-18), following the
  * Specification pattern: each method is one condition, and the caller ANDs together the
  * ones it needs - so a page and its total always come from the same predicate. The
- * conditions are about one row per item, then about that row: its workflow (the shared
+ * conditions are about one row per content, then about that row: its workflow (the shared
  * version) or what it says.
  */
 @UtilityClass
@@ -38,7 +38,7 @@ public class DevilFruitTypeVersionSpecifications {
 	private static final char LIKE_ESCAPE = '\\';
 
 	/**
-	 * The whole list query: one row per item among {@code statuses}, then each filter
+	 * The whole list query: one row per content among {@code statuses}, then each filter
 	 * that was actually given.
 	 */
 	public Specification<DevilFruitTypeVersionEntity> listOf(Collection<VersionStatus> statuses, ContentFilter filter,
@@ -54,20 +54,20 @@ public class DevilFruitTypeVersionSpecifications {
 	}
 
 	/**
-	 * Keeps, for each item, only its highest-numbered version among {@code statuses} -
-	 * the one representing the item in the list. One row per item, so counting the rows
-	 * counts the items.
+	 * Keeps, for each content, only its highest-numbered version among {@code statuses} -
+	 * the one representing the content in the list. One row per content, so counting the
+	 * rows counts the contents.
 	 */
 	public Specification<DevilFruitTypeVersionEntity> mostRecentIn(Collection<VersionStatus> statuses) {
 		return (root, query, cb) -> {
 			Path<ContentVersionEntity> version = workflowOf(root);
 			Subquery<Integer> mostRecent = query.subquery(Integer.class);
 			Root<ContentVersionEntity> other = mostRecent.from(ContentVersionEntity.class);
-			Predicate sameItem = cb.equal(other.get(ContentVersionEntity.Fields.itemId),
-					version.get(ContentVersionEntity.Fields.itemId));
+			Predicate sameContent = cb.equal(other.get(ContentVersionEntity.Fields.contentId),
+					version.get(ContentVersionEntity.Fields.contentId));
 			Predicate eligible = other.get(ContentVersionEntity.Fields.status).in(statuses);
 			mostRecent.select(cb.max(other.<Integer>get(ContentVersionEntity.Fields.versionNumber)))
-				.where(sameItem, eligible);
+				.where(sameContent, eligible);
 			return cb.equal(version.get(ContentVersionEntity.Fields.versionNumber), mostRecent);
 		};
 	}

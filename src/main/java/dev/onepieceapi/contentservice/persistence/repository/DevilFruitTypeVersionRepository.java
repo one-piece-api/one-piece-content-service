@@ -29,7 +29,7 @@ public interface DevilFruitTypeVersionRepository extends JpaRepository<DevilFrui
 		JpaSpecificationExecutor<DevilFruitTypeVersionEntity> {
 
 	/**
-	 * One page of the list: one row per item, by its most recent version among
+	 * One page of the list: one row per content, by its most recent version among
 	 * {@code statuses}, filtered and sorted as asked.
 	 */
 	default Page<DevilFruitTypeVersionEntity> search(Collection<VersionStatus> statuses, ContentFilter filter,
@@ -38,17 +38,17 @@ public interface DevilFruitTypeVersionRepository extends JpaRepository<DevilFrui
 		return findAll(specification, DevilFruitTypeSorting.resolve(pageable));
 	}
 
-	/** The visible versions of one item, oldest first. */
+	/** The visible versions of one content, oldest first. */
 	@Query("""
 			select d from DevilFruitTypeVersionEntity d join fetch d.version v
-			where v.itemId = :itemId and v.status in :statuses
+			where v.contentId = :contentId and v.status in :statuses
 			order by v.versionNumber""")
-	List<DevilFruitTypeVersionEntity> findVisible(UUID itemId, Collection<VersionStatus> statuses);
+	List<DevilFruitTypeVersionEntity> findVisible(UUID contentId, Collection<VersionStatus> statuses);
 
 	@Query("""
 			select d from DevilFruitTypeVersionEntity d join fetch d.version v
-			where v.itemId = :itemId and v.versionNumber = :versionNumber and v.status in :statuses""")
-	Optional<DevilFruitTypeVersionEntity> findVisible(UUID itemId, int versionNumber,
+			where v.contentId = :contentId and v.versionNumber = :versionNumber and v.status in :statuses""")
+	Optional<DevilFruitTypeVersionEntity> findVisible(UUID contentId, int versionNumber,
 			Collection<VersionStatus> statuses);
 
 	@Query("""

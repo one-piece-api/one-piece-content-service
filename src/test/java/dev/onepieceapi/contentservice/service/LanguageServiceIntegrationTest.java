@@ -4,7 +4,7 @@ import dev.onepieceapi.contentservice.domain.workflow.EntityType;
 import dev.onepieceapi.contentservice.domain.language.Language;
 import dev.onepieceapi.contentservice.domain.security.User;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
-import dev.onepieceapi.contentservice.persistence.entity.ContentItemEntity;
+import dev.onepieceapi.contentservice.persistence.entity.ContentEntity;
 import dev.onepieceapi.contentservice.persistence.entity.ContentVersionEntity;
 import dev.onepieceapi.contentservice.persistence.entity.DevilFruitTypeVersionEntity;
 import dev.onepieceapi.contentservice.persistence.entity.TranslationEmbeddable;
@@ -81,10 +81,10 @@ class LanguageServiceIntegrationTest {
 	@Test
 	void deleteIsRefusedWhileAVersionCarriesATranslationInTheLanguage() {
 		var author = new User(UUID.randomUUID(), "nami", "nami@onepiece.local");
-		var item = this.entityManager
-			.persist(new ContentItemEntity(UUID.randomUUID(), EntityType.DEVIL_FRUIT_TYPE, Instant.EPOCH));
+		var content = this.entityManager
+			.persist(new ContentEntity(UUID.randomUUID(), EntityType.DEVIL_FRUIT_TYPE, Instant.EPOCH));
 		var workflow = ContentVersionEntity.builder()
-			.itemId(item.getId())
+			.contentId(content.getId())
 			.versionNumber(1)
 			.author(UserMapper.toEmbeddable(author))
 			.status(VersionStatus.DRAFT)
@@ -116,7 +116,7 @@ class LanguageServiceIntegrationTest {
 		assertThat(this.auditLogRepository.findAll()).anySatisfy(entry -> {
 			assertThat(entry.getAction()).isEqualTo("LANGUAGE_CREATED");
 			assertThat(entry.getTargetLabel()).isEqualTo("fr");
-			assertThat(entry.getTargetItemId()).isNull();
+			assertThat(entry.getTargetContentId()).isNull();
 		});
 	}
 

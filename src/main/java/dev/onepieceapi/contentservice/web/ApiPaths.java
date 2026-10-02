@@ -27,7 +27,7 @@ public final class ApiPaths {
 
 	public static final String LANGUAGE_BY_CODE = "/languages/{code}";
 
-	/** Content-keyed: an item, then one of its versions by number. */
+	/** Content-keyed: a content, then one of its versions by number. */
 	public static final String DEVIL_FRUIT_TYPES = "/devil-fruit-types";
 
 	public static final String DEVIL_FRUIT_TYPE_AUTHORS = DEVIL_FRUIT_TYPES + "/authors";

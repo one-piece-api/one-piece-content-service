@@ -2,6 +2,7 @@ package dev.onepieceapi.contentservice.persistence.mapper;
 
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitTypeTranslation;
 import dev.onepieceapi.contentservice.domain.security.User;
+import dev.onepieceapi.contentservice.domain.workflow.Version;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.entity.ContentVersionEntity;
 import dev.onepieceapi.contentservice.persistence.entity.DevilFruitTypeVersionEntity;
@@ -78,7 +79,7 @@ class DevilFruitTypeVersionMapperTest {
 				List.of(version(1, VersionStatus.PUBLISHED), version(2, VersionStatus.DRAFT)));
 
 		assertThat(content.id()).isEqualTo(CONTENT_ID);
-		assertThat(content.versions()).extracting(version -> version.number()).containsExactly(1, 2);
+		assertThat(content.versions()).extracting(Version::number).containsExactly(1, 2);
 		assertThat(content.onlineVersionNumber()).contains(1);
 	}
 
@@ -96,7 +97,7 @@ class DevilFruitTypeVersionMapperTest {
 	private static DevilFruitTypeVersionEntity version(int number, VersionStatus status) {
 		var author = new UserEmbeddable(CHOPPER.id(), CHOPPER.username(), CHOPPER.email());
 		var workflow = ContentVersionEntity.builder()
-			.itemId(CONTENT_ID)
+			.contentId(CONTENT_ID)
 			.versionNumber(number)
 			.basedOnNumber(number == 1 ? null : number - 1)
 			.author(author)

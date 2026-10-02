@@ -20,4 +20,14 @@ import java.time.Instant;
 public record Version<T>(int number, Integer basedOn, VersionStatus status, User author, User claimant,
 		String rejectionReason, T body, Instant createdAt, Instant updatedAt) {
 
+	/** Whether this version has been online at some point. */
+	public boolean everPublished() {
+		return this.status.everPublished();
+	}
+
+	/** Whether this version is the one currently online. */
+	public boolean isOnline() {
+		return this.status == VersionStatus.PUBLISHED;
+	}
+
 }

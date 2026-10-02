@@ -47,7 +47,7 @@ public class DevilFruitTypeVersionMapper {
 	 * @param onlineVersionNumber the version of that content currently online, or null
 	 */
 	public ContentSummary<DevilFruitType> toSummary(DevilFruitTypeVersionEntity version, Integer onlineVersionNumber) {
-		return new ContentSummary<>(version.getVersion().getItemId(), toDomain(version), onlineVersionNumber);
+		return new ContentSummary<>(version.getContentId(), toDomain(version), onlineVersionNumber);
 	}
 
 	/** Sorted by language code, so the same version always reads the same way. */

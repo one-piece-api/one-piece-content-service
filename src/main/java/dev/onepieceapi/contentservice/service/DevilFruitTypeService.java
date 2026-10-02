@@ -63,7 +63,7 @@ public class DevilFruitTypeService {
 		Page<DevilFruitTypeVersionEntity> page = this.versionRepository.search(statuses, filter, this.clock, pageable);
 		Map<UUID, Integer> onlineNumbers = this.contentVersionRepository.onlineVersionNumbers(contentIdsOf(page));
 		return page.map(version -> {
-			Integer onlineNumber = onlineNumbers.get(version.getVersion().getItemId());
+			Integer onlineNumber = onlineNumbers.get(version.getContentId());
 			return DevilFruitTypeVersionMapper.toSummary(version, onlineNumber);
 		});
 	}
@@ -101,7 +101,7 @@ public class DevilFruitTypeService {
 	}
 
 	private static List<UUID> contentIdsOf(Page<DevilFruitTypeVersionEntity> page) {
-		return page.getContent().stream().map(version -> version.getVersion().getItemId()).toList();
+		return page.getContent().stream().map(DevilFruitTypeVersionEntity::getContentId).toList();
 	}
 
 }

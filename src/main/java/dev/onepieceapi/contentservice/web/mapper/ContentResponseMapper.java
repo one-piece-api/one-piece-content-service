@@ -60,7 +60,7 @@ public class ContentResponseMapper {
 			.author(toUserResponse(version.author()))
 			.basedOn(version.basedOn())
 			.claimant(toUserResponse(version.claimant()))
-			.everPublished(version.status().everPublished())
+			.everPublished(version.everPublished())
 			.rejectionReason(version.rejectionReason())
 			.body(toBody.apply(version.body()))
 			.createdAt(version.createdAt())
@@ -75,7 +75,7 @@ public class ContentResponseMapper {
 			.author(toUserResponse(version.author()))
 			.basedOn(version.basedOn())
 			.claimant(toUserResponse(version.claimant()))
-			.everPublished(version.status().everPublished())
+			.everPublished(version.everPublished())
 			.createdAt(version.createdAt())
 			.updatedAt(version.updatedAt())
 			.build();

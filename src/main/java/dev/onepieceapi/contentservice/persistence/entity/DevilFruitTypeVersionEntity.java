@@ -56,4 +56,9 @@ public class DevilFruitTypeVersionEntity {
 	@MapKeyColumn(name = "language_code")
 	private Map<String, TranslationEmbeddable> translations = new HashMap<>();
 
+	/** The content this version belongs to. */
+	public UUID getContentId() {
+		return this.version.getContentId();
+	}
+
 }

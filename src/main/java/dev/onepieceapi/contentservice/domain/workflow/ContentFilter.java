@@ -8,6 +8,7 @@ import java.util.EnumSet;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Predicate;
 
 /**
  * The combinable filters of an entity section (UF-CNT-18). Every field is optional - null
@@ -36,7 +37,7 @@ public record ContentFilter(VersionStatus status, String query, UUID author, Int
 
 	/** The text to look for, trimmed; empty when there is none worth searching. */
 	public Optional<String> text() {
-		return Optional.ofNullable(this.query).map(String::trim).filter(text -> !text.isEmpty());
+		return Optional.ofNullable(this.query).map(String::trim).filter(Predicate.not(String::isEmpty));
 	}
 
 	/**

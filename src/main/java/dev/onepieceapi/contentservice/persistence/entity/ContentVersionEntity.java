@@ -21,8 +21,8 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * The workflow side of one numbered revision of a content item, of whatever entity type:
- * born with its draft and carrying its own status
+ * The workflow side of one numbered revision of a content, of whatever entity type: born
+ * with its draft and carrying its own status
  * (docs/user-flows/content-editorial-workflow.md 4.1). What the version says is in its
  * entity's own table, e.g. {@link DevilFruitTypeVersionEntity}. See
  * {@code db/migration/V2__content_versions.sql} for the invariants the database enforces
@@ -41,7 +41,7 @@ public class ContentVersionEntity {
 	@Builder.Default
 	private UUID id = UUID.randomUUID();
 
-	private UUID itemId;
+	private UUID contentId;
 
 	private int versionNumber;
 

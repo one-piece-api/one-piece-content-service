@@ -20,18 +20,19 @@ import java.util.stream.Collectors;
 public interface ContentVersionRepository extends Repository<ContentVersionEntity, UUID> {
 
 	@Query("""
-			select new dev.onepieceapi.contentservice.persistence.projection.OnlineVersion(v.itemId, v.versionNumber)
+			select new dev.onepieceapi.contentservice.persistence.projection.OnlineVersion(v.contentId, v.versionNumber)
 			from ContentVersionEntity v
 			where v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED
-				and v.itemId in :itemIds""")
-	List<OnlineVersion> findOnline(Collection<UUID> itemIds);
+				and v.contentId in :contentIds""")
+	List<OnlineVersion> findOnline(Collection<UUID> contentIds);
 
 	/**
-	 * For each of the given items that has something online, the number of that version.
+	 * For each of the given contents that has something online, the number of that
+	 * version.
 	 */
-	default Map<UUID, Integer> onlineVersionNumbers(Collection<UUID> itemIds) {
-		return findOnline(itemIds).stream()
-			.collect(Collectors.toMap(OnlineVersion::itemId, OnlineVersion::versionNumber));
+	default Map<UUID, Integer> onlineVersionNumbers(Collection<UUID> contentIds) {
+		return findOnline(contentIds).stream()
+			.collect(Collectors.toMap(OnlineVersion::contentId, OnlineVersion::versionNumber));
 	}
 
 }

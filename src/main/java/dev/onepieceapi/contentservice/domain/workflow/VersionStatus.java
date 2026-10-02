@@ -31,7 +31,7 @@ public enum VersionStatus {
 	SUPERSEDED;
 
 	/**
-	 * Still moving through the workflow. An item has at most one open version; every
+	 * Still moving through the workflow. A content has at most one open version; every
 	 * other status is closed, its content immutable (4.1).
 	 */
 	public boolean isOpen() {

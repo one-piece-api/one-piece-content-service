@@ -19,11 +19,11 @@ import java.util.UUID;
  * lives on its versions, see {@link ContentVersionEntity}.
  */
 @Entity
-@Table(name = "content_item")
+@Table(name = "content")
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-public class ContentItemEntity {
+public class ContentEntity {
 
 	@Id
 	private UUID id;

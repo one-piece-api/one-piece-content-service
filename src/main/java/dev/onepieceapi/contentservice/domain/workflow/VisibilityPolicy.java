@@ -18,8 +18,8 @@ import static dev.onepieceapi.contentservice.domain.security.Permission.CONTENT_
 /**
  * Which statuses a caller sees, given their permissions - the table of
  * docs/user-flows/content-editorial-workflow.md 4.3, as data. Everything a caller reads
- * of an item (lists, detail, history, filters, counters) is restricted to the versions in
- * these statuses, so an item with no visible version does not exist for them.
+ * of a content (lists, detail, history, filters, counters) is restricted to the versions
+ * in these statuses, so a content with no visible version does not exist for them.
  */
 @UtilityClass
 public class VisibilityPolicy {

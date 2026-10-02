@@ -15,10 +15,7 @@ public record Content<T>(UUID id, List<Version<T>> versions) {
 
 	/** The number of the version currently online, if any and if the caller sees it. */
 	public Optional<Integer> onlineVersionNumber() {
-		return this.versions.stream()
-			.filter(version -> version.status() == VersionStatus.PUBLISHED)
-			.map(Version::number)
-			.findFirst();
+		return this.versions.stream().filter(Version::isOnline).map(Version::number).findFirst();
 	}
 
 }

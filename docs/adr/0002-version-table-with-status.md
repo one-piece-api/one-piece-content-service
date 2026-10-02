@@ -5,7 +5,7 @@
 Revision 3 of the editorial workflow (`docs/user-flows/content-editorial-workflow.md` in
 `one-piece-api`, §4) makes the **version** the unit of work: it is born with its draft,
 keeps one number for life, and is published, superseded, retired, archived or restored by
-changing status. An item has at most one open version and at most one online version.
+changing status. A content has at most one open version and at most one online version.
 
 The previous model kept two things apart: a mutable working revision per author, and an
 immutable snapshot written at publication. That cannot express a version that was approved
@@ -17,8 +17,8 @@ Fruits, Characters, …). What a version says is not: each entity has its own fi
 ## Decision
 
 - **Workflow in two tables shared by every entity:**
-  - `content_item` — the item: an id and its `entity_type`;
-  - `content_version` — every version of every item, workflow only: number, based-on
+  - `content` — the content: an id and its `entity_type`;
+  - `content_version` — every version of every content, workflow only: number, based-on
     number, author, status, claimant, rejection reason, dates.
 - **Content in the tables of its entity, with real, typed columns, keyed by version.** For
   Devil Fruit Type:
@@ -27,11 +27,11 @@ Fruits, Characters, …). What a version says is not: each entity has its own fi
     referencing the language catalog.
 
   The next entity adds its own pair (the translation one only if it has translated
-  fields); relations between items get a foreign key to `content_item`.
+  fields); relations between contents get a foreign key to `content`.
 - The invariants are constraints, not application checks alone:
-  - `UNIQUE (item_id, version_number)`;
-  - a partial unique index on `item_id` over the open statuses: one open version per item;
-  - a partial unique index on `item_id` where `status = 'PUBLISHED'`: one online version;
+  - `UNIQUE (content_id, version_number)`;
+  - a partial unique index on `content_id` over the open statuses: one open version per content;
+  - a partial unique index on `content_id` where `status = 'PUBLISHED'`: one online version;
   - `CHECK` on the status values, on the entity types and on
     `based_on_number < version_number`.
 - "Has it ever been online" is derived from the status (`PUBLISHED`, `RETIRED`,
@@ -86,3 +86,9 @@ Fruits, Characters, …). What a version says is not: each entity has its own fi
 - Author and claimant are stored as id, username and e-mail, as they were on the token: this
   service has no user directory to resolve an id against, and neither value can change for
   an account. The audit log gains the actor's username for the same reason.
+
+## Naming
+
+The entry is called a **content**, never an "item": table `content`, column `content_id`,
+`audit_log.target_content_id`. The first migration of this model (`V2`) used `content_item`
+and `item_id`; `V3` renames them.

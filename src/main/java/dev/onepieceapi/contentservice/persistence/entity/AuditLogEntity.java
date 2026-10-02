@@ -44,13 +44,13 @@ public class AuditLogEntity {
 	private UserEmbeddable actor;
 
 	/**
-	 * Null for an action with no single content item as its target - e.g. the language
-	 * catalog, which is system configuration rather than a content item.
+	 * Null for an action with no single content as its target - e.g. the language
+	 * catalog, which is system configuration rather than a content.
 	 */
-	private UUID targetItemId;
+	private UUID targetContentId;
 
 	/**
-	 * Set when the action is about one version of the target item. The id, not the
+	 * Set when the action is about one version of the target content. The id, not the
 	 * number: a number is reused once a draft is deleted, an id never is.
 	 */
 	private UUID targetVersionId;

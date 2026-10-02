@@ -37,7 +37,7 @@ public class DevilFruitTypeSorting {
 	/**
 	 * Always appended, so that rows with equal values keep a stable order across pages.
 	 */
-	private static final Sort TIE_BREAKER = Sort.by(WORKFLOW + ContentVersionEntity.Fields.itemId);
+	private static final Sort TIE_BREAKER = Sort.by(WORKFLOW + ContentVersionEntity.Fields.contentId);
 
 	/** The same page, sorted the way the query understands. */
 	public Pageable resolve(Pageable requested) {
@@ -46,8 +46,13 @@ public class DevilFruitTypeSorting {
 	}
 
 	private static Sort toPaths(Sort requested) {
-		List<Sort.Order> orders = requested.stream().map(order -> order.withProperty(pathOf(order))).toList();
+		List<Sort.Order> orders = requested.stream().map(DevilFruitTypeSorting::toPathOrder).toList();
 		return Sort.by(orders);
+	}
+
+	/** The same order, on the entity path of its field. */
+	private static Sort.Order toPathOrder(Sort.Order order) {
+		return order.withProperty(pathOf(order));
 	}
 
 	/** The field has been validated on the way in: an unknown one here is a bug. */

@@ -21,7 +21,7 @@ class DevilFruitTypeSortingTest {
 		assertThat(resolved.getPageSize()).isEqualTo(10);
 		assertThat(resolved.getSort()).extracting(Sort.Order::getProperty, Sort.Order::getDirection)
 			.containsExactly(tuple("version.updatedAt", Sort.Direction.DESC),
-					tuple("version.itemId", Sort.Direction.ASC));
+					tuple("version.contentId", Sort.Direction.ASC));
 	}
 
 	@Test
@@ -32,7 +32,7 @@ class DevilFruitTypeSortingTest {
 
 		assertThat(resolved.getSort()).extracting(Sort.Order::getProperty, Sort.Order::getDirection)
 			.containsExactly(tuple("romaji", Sort.Direction.ASC), tuple("version.updatedAt", Sort.Direction.DESC),
-					tuple("version.itemId", Sort.Direction.ASC));
+					tuple("version.contentId", Sort.Direction.ASC));
 	}
 
 	@Test
