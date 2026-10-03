@@ -50,6 +50,7 @@ public class ContentResponseMapper {
 			.onlineVersionNumber(summary.onlineVersionNumber())
 			.body(toBody.apply(version.body()))
 			.allowedActions(List.copyOf(summary.allowedActions()))
+			.overrideActions(List.copyOf(summary.overrideActions()))
 			.build();
 	}
 
@@ -69,6 +70,7 @@ public class ContentResponseMapper {
 			.rejectionReason(version.rejectionReason())
 			.body(toBody.apply(version.body()))
 			.allowedActions(List.copyOf(access.allowedActions()))
+			.overrideActions(List.copyOf(access.overrideActions()))
 			.createdAt(version.createdAt())
 			.updatedAt(version.updatedAt())
 			.build();
@@ -85,6 +87,7 @@ public class ContentResponseMapper {
 			.claimant(toUserResponse(version.claimant()))
 			.everPublished(version.everPublished())
 			.allowedActions(List.copyOf(access.allowedActions()))
+			.overrideActions(List.copyOf(access.overrideActions()))
 			.createdAt(version.createdAt())
 			.updatedAt(version.updatedAt())
 			.build();
@@ -95,8 +98,13 @@ public class ContentResponseMapper {
 	}
 
 	public VersionEventResponse toEventResponse(VersionEvent event) {
-		UserResponse actor = toUserResponse(event.actor());
-		return new VersionEventResponse(event.action(), actor, event.detail(), event.occurredAt());
+		return VersionEventResponse.builder()
+			.action(event.action())
+			.actor(toUserResponse(event.actor()))
+			.detail(event.detail())
+			.override(event.override())
+			.occurredAt(event.occurredAt())
+			.build();
 	}
 
 	/** Null stays null: a version nobody holds has no claimant. */

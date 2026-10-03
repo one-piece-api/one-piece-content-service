@@ -60,6 +60,11 @@ public record Version<T>(int number, Integer basedOn, VersionStatus status, User
 		return isClaimed() && this.claimant.isSameAs(user);
 	}
 
+	/** Who holds this version, by name; null when nobody does. */
+	public String claimantUsername() {
+		return isClaimed() ? this.claimant.username() : null;
+	}
+
 	/** Whether this version says exactly that - every field, case included. */
 	public boolean says(T otherBody) {
 		return Objects.equals(this.body, otherBody);

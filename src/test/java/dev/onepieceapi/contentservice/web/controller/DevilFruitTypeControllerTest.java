@@ -283,7 +283,7 @@ class DevilFruitTypeControllerTest {
 
 	@Test
 	void theEventsOfAVersionAreItsTimeline() throws Exception {
-		var rejected = new VersionEvent("VERSION_REJECTED", ZORO, "Too short", UPDATED);
+		var rejected = new VersionEvent("VERSION_REJECTED", ZORO, "Too short", false, UPDATED);
 		when(this.service.events(Set.of(Permission.CONTENT_READ), CONTENT_ID, 2)).thenReturn(List.of(rejected));
 
 		var request = get("/devil-fruit-types/" + CONTENT_ID + "/versions/2/events")

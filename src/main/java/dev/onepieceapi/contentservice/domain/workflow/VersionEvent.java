@@ -1,6 +1,7 @@
 package dev.onepieceapi.contentservice.domain.workflow;
 
 import dev.onepieceapi.contentservice.domain.security.User;
+import lombok.Builder;
 
 import java.time.Instant;
 
@@ -9,7 +10,10 @@ import java.time.Instant;
  * (docs/user-flows/content-editorial-workflow.md 7): who did what and when.
  *
  * @param detail what the action carried with it, e.g. a rejection reason
+ * @param override whether the actor could act only through {@code content:admin}, on
+ * someone else's version or claim (2.3)
  */
-public record VersionEvent(String action, User actor, String detail, Instant occurredAt) {
+@Builder
+public record VersionEvent(String action, User actor, String detail, boolean override, Instant occurredAt) {
 
 }

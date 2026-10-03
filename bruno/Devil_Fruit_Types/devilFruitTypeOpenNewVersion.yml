@@ -74,6 +74,9 @@ examples:
             "createdAt": "",
             "everPublished": false,
             "number": 0,
+            "overrideActions": [
+              "EDIT"
+            ],
             "rejectionReason": "",
             "status": "DRAFT",
             "updatedAt": ""

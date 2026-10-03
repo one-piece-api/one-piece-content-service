@@ -165,6 +165,9 @@ examples:
                 },
                 "id": "",
                 "onlineVersionNumber": 0,
+                "overrideActions": [
+                  "EDIT"
+                ],
                 "status": "DRAFT",
                 "updatedAt": "",
                 "versionNumber": 0

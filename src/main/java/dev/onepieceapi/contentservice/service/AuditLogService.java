@@ -36,25 +36,13 @@ public class AuditLogService {
 				entry(action, actor).targetContentId(targetContentId).targetLabel(targetLabel).detail(detail).build());
 	}
 
-	/**
-	 * A record about one version of a content - what the history of that version is read
-	 * from.
-	 * @param label what the version was called when the action happened
-	 */
-	public void recordOnVersion(String action, User actor, UUID contentId, UUID versionId, String label) {
-		recordOnVersion(action, actor, contentId, versionId, label, null);
-	}
-
-	/**
-	 * A record about one version that carries something with it, e.g. the reason of a
-	 * rejection.
-	 */
-	public void recordOnVersion(String action, User actor, UUID contentId, UUID versionId, String label,
-			String detail) {
-		this.repository.save(entry(action, actor).targetContentId(contentId)
-			.targetVersionId(versionId)
-			.targetLabel(label)
-			.detail(detail)
+	/** A record about one version of a content. */
+	public void recordOnVersion(VersionAuditRecord record) {
+		this.repository.save(entry(record.action(), record.actor()).targetContentId(record.contentId())
+			.targetVersionId(record.versionId())
+			.targetLabel(record.label())
+			.detail(record.detail())
+			.override(record.override())
 			.build());
 	}
 

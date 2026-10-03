@@ -18,9 +18,12 @@ import java.util.UUID;
  * when nothing is online
  * @param body what the row shows of the version
  * @param allowedActions what the caller may do with the version shown
+ * @param overrideActions those of the allowed actions the caller may perform only through
+ * {@code content:admin}
  */
 @Builder
 public record ContentSummaryResponse<T>(UUID id, int versionNumber, VersionStatus status, UserResponse author,
-		Instant updatedAt, Integer onlineVersionNumber, T body, List<VersionAction> allowedActions) {
+		Instant updatedAt, Integer onlineVersionNumber, T body, List<VersionAction> allowedActions,
+		List<VersionAction> overrideActions) {
 
 }

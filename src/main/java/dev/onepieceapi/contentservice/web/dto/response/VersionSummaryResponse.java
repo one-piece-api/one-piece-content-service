@@ -15,10 +15,12 @@ import java.util.List;
  * @param claimant the reviewer holding it, if any
  * @param everPublished whether it has been online at some point
  * @param allowedActions what the caller may do with this version
+ * @param overrideActions those of the allowed actions the caller may perform only through
+ * {@code content:admin}
  */
 @Builder
 public record VersionSummaryResponse(int number, VersionStatus status, UserResponse author, Integer basedOn,
-		UserResponse claimant, boolean everPublished, List<VersionAction> allowedActions, Instant createdAt,
-		Instant updatedAt) {
+		UserResponse claimant, boolean everPublished, List<VersionAction> allowedActions,
+		List<VersionAction> overrideActions, Instant createdAt, Instant updatedAt) {
 
 }

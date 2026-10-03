@@ -825,6 +825,26 @@ components:
         onlineVersionNumber:
           type: integer
           format: int32
+        overrideActions:
+          type: array
+          items:
+            type: string
+            enum:
+            - EDIT
+            - DELETE
+            - SUBMIT
+            - PULL_BACK
+            - CLAIM
+            - RELEASE
+            - APPROVE
+            - REJECT
+            - RETURN_TO_DRAFT
+            - PUBLISH
+            - ARCHIVE
+            - RECOVER
+            - RETIRE
+            - RESTORE
+            - OPEN_NEW_VERSION
         status:
           type: string
           enum:
@@ -1007,6 +1027,8 @@ components:
         occurredAt:
           type: string
           format: date-time
+        override:
+          type: boolean
     VersionResponseDevilFruitTypeResponse:
       type: object
       properties:
@@ -1047,6 +1069,26 @@ components:
         number:
           type: integer
           format: int32
+        overrideActions:
+          type: array
+          items:
+            type: string
+            enum:
+            - EDIT
+            - DELETE
+            - SUBMIT
+            - PULL_BACK
+            - CLAIM
+            - RELEASE
+            - APPROVE
+            - REJECT
+            - RETURN_TO_DRAFT
+            - PUBLISH
+            - ARCHIVE
+            - RECOVER
+            - RETIRE
+            - RESTORE
+            - OPEN_NEW_VERSION
         rejectionReason:
           type: string
         status:
@@ -1101,6 +1143,26 @@ components:
         number:
           type: integer
           format: int32
+        overrideActions:
+          type: array
+          items:
+            type: string
+            enum:
+            - EDIT
+            - DELETE
+            - SUBMIT
+            - PULL_BACK
+            - CLAIM
+            - RELEASE
+            - APPROVE
+            - REJECT
+            - RETURN_TO_DRAFT
+            - PUBLISH
+            - ARCHIVE
+            - RECOVER
+            - RETIRE
+            - RESTORE
+            - OPEN_NEW_VERSION
         status:
           type: string
           enum:

@@ -10,8 +10,13 @@ public class AuditLogMapper {
 
 	/** An audit record about a version, as one step of that version's history. */
 	public VersionEvent toVersionEvent(AuditLogEntity entity) {
-		var actor = UserMapper.toDomain(entity.getActor());
-		return new VersionEvent(entity.getAction(), actor, entity.getDetail(), entity.getOccurredAt());
+		return VersionEvent.builder()
+			.action(entity.getAction())
+			.actor(UserMapper.toDomain(entity.getActor()))
+			.detail(entity.getDetail())
+			.override(entity.isOverride())
+			.occurredAt(entity.getOccurredAt())
+			.build();
 	}
 
 }

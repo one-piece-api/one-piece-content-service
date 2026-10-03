@@ -26,6 +26,12 @@ enum TransitionCondition {
 	UNCLAIMED(Predicate.not(TransitionContext::isClaimed), CONFLICT),
 
 	/**
+	 * A reviewer holds the version - implied by {@link #CLAIMANT}, and what is left of it
+	 * once {@code content:admin} lifts that one: there must be a claim to release.
+	 */
+	CLAIMED(TransitionContext::isClaimed, CONFLICT),
+
+	/**
 	 * The caller is the reviewer holding the version: whoever decides holds the claim.
 	 */
 	CLAIMANT(TransitionContext::callerIsClaimant, FORBIDDEN),

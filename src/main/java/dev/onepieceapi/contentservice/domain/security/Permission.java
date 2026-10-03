@@ -31,6 +31,12 @@ public enum Permission {
 	CONTENT_RETIRE("content:retire"),
 
 	/**
+	 * Lifts the conditions on who the caller is - author, claimant, not the author -
+	 * where the transition table allows it (2.3). Grants no action by itself.
+	 */
+	CONTENT_ADMIN("content:admin"),
+
+	/**
 	 * ADMIN-only (2.2/3.2): manage the supported-language catalog - distinct from the
 	 * {@code content:*} family since it is system configuration, not editorial content.
 	 */

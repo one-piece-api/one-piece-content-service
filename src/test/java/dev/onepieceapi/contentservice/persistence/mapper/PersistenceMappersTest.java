@@ -40,6 +40,7 @@ class PersistenceMappersTest {
 			.action("VERSION_REJECTED")
 			.actor(UserMapper.toEmbeddable(ZORO))
 			.detail("Too short")
+			.override(true)
 			.occurredAt(occurredAt)
 			.build();
 
@@ -48,6 +49,7 @@ class PersistenceMappersTest {
 		assertThat(event.action()).isEqualTo("VERSION_REJECTED");
 		assertThat(event.actor()).isEqualTo(ZORO);
 		assertThat(event.detail()).isEqualTo("Too short");
+		assertThat(event.override()).isTrue();
 		assertThat(event.occurredAt()).isEqualTo(occurredAt);
 	}
 

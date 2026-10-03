@@ -12,8 +12,16 @@ import java.util.UUID;
  * null when nothing is online
  * @param allowedActions what the caller may do with the version shown, decided by
  * {@link TransitionPolicy}
+ * @param overrideActions those of the allowed actions the caller may perform only through
+ * {@code content:admin}
  */
 public record ContentSummary<T>(UUID contentId, Version<T> version, Integer onlineVersionNumber,
-		Set<VersionAction> allowedActions) {
+		Set<VersionAction> allowedActions, Set<VersionAction> overrideActions) {
+
+	/** A caller allowed nothing through an override. */
+	public ContentSummary(UUID contentId, Version<T> version, Integer onlineVersionNumber,
+			Set<VersionAction> allowedActions) {
+		this(contentId, version, onlineVersionNumber, allowedActions, Set.of());
+	}
 
 }

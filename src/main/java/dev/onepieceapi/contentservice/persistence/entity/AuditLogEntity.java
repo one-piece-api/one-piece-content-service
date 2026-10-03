@@ -59,6 +59,11 @@ public class AuditLogEntity {
 
 	private String detail;
 
+	/**
+	 * Whether the actor could act only through {@code content:admin} - see {@code V5}.
+	 */
+	private boolean override;
+
 	private Instant occurredAt;
 
 }

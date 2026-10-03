@@ -52,9 +52,10 @@ import java.util.UUID;
  * (UF-CNT-13, UF-CNT-14), approving or rejecting it, and its author taking a rejected one
  * back to draft (UF-CNT-05, UF-CNT-06, UF-CNT-15), putting it online (UF-CNT-07), setting
  * it aside and back (UF-CNT-16, UF-CNT-17), taking it offline and back online (UF-CNT-10,
- * UF-CNT-09), opening the next version from a closed one (UF-CNT-08). Every method starts
- * from the caller: {@link VisibilityPolicy} turns their permissions into the statuses
- * they may see, and nothing outside those statuses is ever loaded;
+ * UF-CNT-09), opening the next version from a closed one (UF-CNT-08) - and an
+ * administrator doing so in someone else's place (UF-CNT-20), recorded as such. Every
+ * method starts from the caller: {@link VisibilityPolicy} turns their permissions into
+ * the statuses they may see, and nothing outside those statuses is ever loaded;
  * {@link TransitionPolicy} says what they may do with a version they see, and the same
  * answer guards each change. Building the queries, converting rows and validating what is
  * saved are done elsewhere: this class only decides what to read or change, and for whom.
@@ -127,7 +128,9 @@ public class DevilFruitTypeService {
 			Version<DevilFruitType> version = DevilFruitTypeVersionMapper.toDomain(entity);
 			var context = new TransitionContext(version, withOpenVersion.contains(contentId), caller, permissions);
 			Set<VersionAction> allowedActions = TransitionPolicy.allowedActions(context);
-			return new ContentSummary<>(contentId, version, onlineNumbers.get(contentId), allowedActions);
+			Set<VersionAction> overrideActions = TransitionPolicy.overrideActions(context);
+			Integer onlineNumber = onlineNumbers.get(contentId);
+			return new ContentSummary<>(contentId, version, onlineNumber, allowedActions, overrideActions);
 		});
 	}
 
@@ -195,8 +198,7 @@ public class DevilFruitTypeService {
 		this.contentRepository.save(new ContentEntity(contentId, EntityType.DEVIL_FRUIT_TYPE, now));
 		var draft = DevilFruitTypeVersionMapper.toFirstDraft(contentId, caller, body, now);
 		DevilFruitTypeVersionEntity saved = this.versionRepository.save(draft);
-		UUID versionId = saved.getVersionId();
-		this.auditLogService.recordOnVersion(AUDIT_ACTION_CREATED, caller, contentId, versionId, body.romaji());
+		this.auditLogService.recordOnVersion(auditRecord(AUDIT_ACTION_CREATED, caller, saved).build());
 		Version<DevilFruitType> version = DevilFruitTypeVersionMapper.toDomain(saved);
 		var context = new TransitionContext(version, true, caller, permissions);
 		return new Content<>(contentId, List.of(accessTo(version, context)));
@@ -216,8 +218,9 @@ public class DevilFruitTypeService {
 		DevilFruitType body = written.normalized();
 		this.validator.validateDraft(contentId, body);
 		DevilFruitTypeVersionMapper.rewrite(entity, body, this.clock.instant());
-		UUID versionId = entity.getVersionId();
-		this.auditLogService.recordOnVersion(AUDIT_ACTION_EDITED, caller, contentId, versionId, body.romaji());
+		this.auditLogService.recordOnVersion(auditRecord(AUDIT_ACTION_EDITED, caller, entity)
+			.override(TransitionPolicy.overrides(VersionAction.EDIT, context))
+			.build());
 		return accessTo(DevilFruitTypeVersionMapper.toDomain(entity), context);
 	}
 
@@ -230,14 +233,15 @@ public class DevilFruitTypeService {
 	public void delete(Set<Permission> permissions, User caller, UUID contentId, int versionNumber) {
 		DevilFruitTypeVersionEntity entity = visibleVersion(permissions, contentId, versionNumber);
 		Version<DevilFruitType> version = DevilFruitTypeVersionMapper.toDomain(entity);
-		require(VersionAction.DELETE, contextOf(version, contentId, caller, permissions));
+		TransitionContext context = contextOf(version, contentId, caller, permissions);
+		require(VersionAction.DELETE, context);
 		this.versionRepository.delete(entity);
 		if (version.isFirst()) {
 			this.contentRepository.deleteById(contentId);
 		}
-		UUID versionId = entity.getVersionId();
-		String label = version.body().romaji();
-		this.auditLogService.recordOnVersion(AUDIT_ACTION_DELETED, caller, contentId, versionId, label);
+		this.auditLogService.recordOnVersion(auditRecord(AUDIT_ACTION_DELETED, caller, entity)
+			.override(TransitionPolicy.overrides(VersionAction.DELETE, context))
+			.build());
 	}
 
 	/**
@@ -253,7 +257,7 @@ public class DevilFruitTypeService {
 		require(VersionAction.SUBMIT, context);
 		this.validator.validateSubmission(contentId, versionNumber, current.body());
 		entity.submit(this.clock.instant());
-		return recorded(entity, context, AUDIT_ACTION_SUBMITTED);
+		return recorded(entity, context, VersionAction.SUBMIT, AUDIT_ACTION_SUBMITTED);
 	}
 
 	/**
@@ -268,7 +272,7 @@ public class DevilFruitTypeService {
 		TransitionContext context = contextOf(current, contentId, caller, permissions);
 		require(VersionAction.PULL_BACK, context);
 		entity.moveTo(VersionStatus.DRAFT, this.clock.instant());
-		return recorded(entity, context, AUDIT_ACTION_PULLED_BACK);
+		return recorded(entity, context, VersionAction.PULL_BACK, AUDIT_ACTION_PULLED_BACK);
 	}
 
 	/**
@@ -283,12 +287,13 @@ public class DevilFruitTypeService {
 		TransitionContext context = contextOf(current, contentId, caller, permissions);
 		require(VersionAction.CLAIM, context);
 		entity.claimBy(UserMapper.toEmbeddable(caller));
-		return recorded(entity, context, AUDIT_ACTION_CLAIMED);
+		return recorded(entity, context, VersionAction.CLAIM, AUDIT_ACTION_CLAIMED);
 	}
 
 	/**
 	 * The reviewer holding a version lets it go (UF-CNT-14): unclaimed again, available
-	 * to any reviewer.
+	 * to any reviewer. An administrator may release someone else's claim (2.3); its
+	 * record then says whose claim it was.
 	 */
 	@Transactional
 	public VersionAccess<DevilFruitType> release(Set<Permission> permissions, User caller, UUID contentId,
@@ -297,8 +302,10 @@ public class DevilFruitTypeService {
 		Version<DevilFruitType> current = DevilFruitTypeVersionMapper.toDomain(entity);
 		TransitionContext context = contextOf(current, contentId, caller, permissions);
 		require(VersionAction.RELEASE, context);
+		boolean forced = TransitionPolicy.overrides(VersionAction.RELEASE, context);
+		String heldBy = forced ? current.claimantUsername() : null;
 		entity.release();
-		return recorded(entity, context, AUDIT_ACTION_RELEASED);
+		return recorded(entity, context, VersionAction.RELEASE, AUDIT_ACTION_RELEASED, heldBy);
 	}
 
 	/**
@@ -313,7 +320,7 @@ public class DevilFruitTypeService {
 		TransitionContext context = contextOf(current, contentId, caller, permissions);
 		require(VersionAction.APPROVE, context);
 		entity.approve(this.clock.instant());
-		return recorded(entity, context, AUDIT_ACTION_APPROVED);
+		return recorded(entity, context, VersionAction.APPROVE, AUDIT_ACTION_APPROVED);
 	}
 
 	/**
@@ -328,7 +335,7 @@ public class DevilFruitTypeService {
 		TransitionContext context = contextOf(current, contentId, caller, permissions);
 		require(VersionAction.REJECT, context);
 		entity.reject(reason, this.clock.instant());
-		return recorded(entity, context, AUDIT_ACTION_REJECTED, reason);
+		return recorded(entity, context, VersionAction.REJECT, AUDIT_ACTION_REJECTED, reason);
 	}
 
 	/**
@@ -343,7 +350,7 @@ public class DevilFruitTypeService {
 		TransitionContext context = contextOf(current, contentId, caller, permissions);
 		require(VersionAction.RETURN_TO_DRAFT, context);
 		entity.moveTo(VersionStatus.DRAFT, this.clock.instant());
-		return recorded(entity, context, AUDIT_ACTION_RETURNED_TO_DRAFT);
+		return recorded(entity, context, VersionAction.RETURN_TO_DRAFT, AUDIT_ACTION_RETURNED_TO_DRAFT);
 	}
 
 	/**
@@ -358,7 +365,7 @@ public class DevilFruitTypeService {
 		TransitionContext context = contextOf(current, contentId, caller, permissions);
 		require(VersionAction.PUBLISH, context);
 		putOnline(entity, versionNumber, VersionAction.PUBLISH, caller);
-		return recorded(entity, context, AUDIT_ACTION_PUBLISHED);
+		return recorded(entity, context, VersionAction.PUBLISH, AUDIT_ACTION_PUBLISHED);
 	}
 
 	/**
@@ -373,7 +380,7 @@ public class DevilFruitTypeService {
 		TransitionContext context = contextOf(current, contentId, caller, permissions);
 		require(VersionAction.ARCHIVE, context);
 		entity.moveTo(VersionStatus.ARCHIVED, this.clock.instant());
-		return recorded(entity, context, AUDIT_ACTION_ARCHIVED);
+		return recorded(entity, context, VersionAction.ARCHIVE, AUDIT_ACTION_ARCHIVED);
 	}
 
 	/**
@@ -397,7 +404,7 @@ public class DevilFruitTypeService {
 		catch (DataIntegrityViolationException ex) {
 			throw new VersionActionConflictException(VersionAction.RECOVER);
 		}
-		return recorded(entity, context, AUDIT_ACTION_RECOVERED);
+		return recorded(entity, context, VersionAction.RECOVER, AUDIT_ACTION_RECOVERED);
 	}
 
 	/**
@@ -412,7 +419,7 @@ public class DevilFruitTypeService {
 		TransitionContext context = contextOf(current, contentId, caller, permissions);
 		require(VersionAction.RETIRE, context);
 		entity.moveTo(VersionStatus.RETIRED, this.clock.instant());
-		return recorded(entity, context, AUDIT_ACTION_RETIRED);
+		return recorded(entity, context, VersionAction.RETIRE, AUDIT_ACTION_RETIRED);
 	}
 
 	/**
@@ -428,7 +435,7 @@ public class DevilFruitTypeService {
 		TransitionContext context = contextOf(current, contentId, caller, permissions);
 		require(VersionAction.RESTORE, context);
 		putOnline(entity, versionNumber, VersionAction.RESTORE, caller);
-		return recorded(entity, context, AUDIT_ACTION_RESTORED);
+		return recorded(entity, context, VersionAction.RESTORE, AUDIT_ACTION_RESTORED);
 	}
 
 	/**
@@ -454,8 +461,8 @@ public class DevilFruitTypeService {
 		catch (DataIntegrityViolationException ex) {
 			throw new VersionActionConflictException(VersionAction.OPEN_NEW_VERSION);
 		}
-		this.auditLogService.recordOnVersion(AUDIT_ACTION_CREATED, caller, contentId, saved.getVersionId(),
-				saved.getRomaji(), String.valueOf(basedOn));
+		this.auditLogService
+			.recordOnVersion(auditRecord(AUDIT_ACTION_CREATED, caller, saved).detail(String.valueOf(basedOn)).build());
 		Version<DevilFruitType> opened = DevilFruitTypeVersionMapper.toDomain(saved);
 		return accessTo(opened, new TransitionContext(opened, true, caller, permissions));
 	}
@@ -489,26 +496,40 @@ public class DevilFruitTypeService {
 	private void supersede(DevilFruitTypeVersionEntity online, int replacedBy, User caller, Instant now) {
 		online.moveTo(VersionStatus.SUPERSEDED, now);
 		this.versionRepository.flush();
-		this.auditLogService.recordOnVersion(AUDIT_ACTION_SUPERSEDED, caller, online.getContentId(),
-				online.getVersionId(), online.getRomaji(), String.valueOf(replacedBy));
+		String detail = String.valueOf(replacedBy);
+		this.auditLogService
+			.recordOnVersion(auditRecord(AUDIT_ACTION_SUPERSEDED, caller, online).detail(detail).build());
 	}
 
 	private VersionAccess<DevilFruitType> recorded(DevilFruitTypeVersionEntity entity, TransitionContext before,
-			String auditAction) {
-		return recorded(entity, before, auditAction, null);
+			VersionAction action, String auditAction) {
+		return recorded(entity, before, action, auditAction, null);
 	}
 
 	/**
-	 * Records a change the rules already allowed and answers with the version as it now
-	 * is, with what the caller may do with it next.
+	 * Records a change the rules already allowed - saying whether only
+	 * {@code content:admin} allowed it - and answers with the version as it now is, with
+	 * what the caller may do with it next.
 	 * @param detail what the action carries with it, e.g. a rejection reason
 	 */
 	private VersionAccess<DevilFruitType> recorded(DevilFruitTypeVersionEntity entity, TransitionContext before,
-			String auditAction, String detail) {
+			VersionAction action, String auditAction, String detail) {
+		this.auditLogService.recordOnVersion(auditRecord(auditAction, before.caller(), entity).detail(detail)
+			.override(TransitionPolicy.overrides(action, before))
+			.build());
 		Version<DevilFruitType> moved = DevilFruitTypeVersionMapper.toDomain(entity);
-		this.auditLogService.recordOnVersion(auditAction, before.caller(), entity.getContentId(), entity.getVersionId(),
-				moved.body().romaji(), detail);
 		return accessTo(moved, before.after(moved));
+	}
+
+	/** A record of an action on the version, named as the version is now named. */
+	private static VersionAuditRecord.VersionAuditRecordBuilder auditRecord(String auditAction, User actor,
+			DevilFruitTypeVersionEntity entity) {
+		return VersionAuditRecord.builder()
+			.action(auditAction)
+			.actor(actor)
+			.contentId(entity.getContentId())
+			.versionId(entity.getVersionId())
+			.label(entity.getRomaji());
 	}
 
 	private DevilFruitTypeVersionEntity visibleVersion(Set<Permission> permissions, UUID contentId, int versionNumber) {
@@ -524,7 +545,8 @@ public class DevilFruitTypeService {
 
 	/** The version with what the transition rules let the caller do with it. */
 	private static <T> VersionAccess<T> accessTo(Version<T> version, TransitionContext context) {
-		return new VersionAccess<>(version, TransitionPolicy.allowedActions(context));
+		return new VersionAccess<>(version, TransitionPolicy.allowedActions(context),
+				TransitionPolicy.overrideActions(context));
 	}
 
 	/** Stops an action the transition rules refuse, telling the two refusals apart. */

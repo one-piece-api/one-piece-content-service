@@ -94,14 +94,19 @@ class ResponseMappersTest {
 			.body(ZOAN)
 			.build();
 		var allowed = EnumSet.of(VersionAction.EDIT, VersionAction.SUBMIT);
-		var content = new Content<>(CONTENT_ID, List.of(new VersionAccess<>(draft, allowed)));
-		var summary = new ContentSummary<>(CONTENT_ID, draft, null, allowed);
+		var overrides = EnumSet.of(VersionAction.EDIT);
+		var access = new VersionAccess<>(draft, allowed, overrides);
+		var content = new Content<>(CONTENT_ID, List.of(access));
+		var summary = new ContentSummary<>(CONTENT_ID, draft, null, allowed, overrides);
 
 		var link = ContentResponseMapper.toContentResponse(content).versions().getFirst();
 		var row = ContentResponseMapper.toSummaryResponse(summary, DevilFruitType::romaji);
+		var version = ContentResponseMapper.toVersionResponse(access, DevilFruitType::romaji);
 
 		assertThat(link.allowedActions()).containsExactly(VersionAction.EDIT, VersionAction.SUBMIT);
 		assertThat(row.allowedActions()).containsExactly(VersionAction.EDIT, VersionAction.SUBMIT);
+		assertThat(List.of(link.overrideActions(), row.overrideActions(), version.overrideActions()))
+			.containsOnly(List.of(VersionAction.EDIT));
 	}
 
 	@Test
@@ -129,12 +134,20 @@ class ResponseMappersTest {
 	@Test
 	void anEventResponseTellsWhoDidWhatAndWhen() {
 		var response = ContentResponseMapper
-			.toEventResponse(new VersionEvent("VERSION_REJECTED", ZORO, "Too short", UPDATED));
+			.toEventResponse(new VersionEvent("VERSION_REJECTED", ZORO, "Too short", false, UPDATED));
 
 		assertThat(response.action()).isEqualTo("VERSION_REJECTED");
 		assertThat(response.actor().username()).isEqualTo("zoro");
 		assertThat(response.detail()).isEqualTo("Too short");
+		assertThat(response.override()).isFalse();
 		assertThat(response.occurredAt()).isEqualTo(UPDATED);
+	}
+
+	@Test
+	void anEventResponseSaysWhenTheActorActedThroughTheOverride() {
+		var forcedRelease = new VersionEvent("VERSION_RELEASED", NAMI, "zoro", true, UPDATED);
+
+		assertThat(ContentResponseMapper.toEventResponse(forcedRelease).override()).isTrue();
 	}
 
 	@Test

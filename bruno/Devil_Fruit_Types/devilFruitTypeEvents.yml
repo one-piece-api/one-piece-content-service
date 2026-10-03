@@ -55,7 +55,8 @@ examples:
                 "username": ""
               },
               "detail": "",
-              "occurredAt": ""
+              "occurredAt": "",
+              "override": false
             }
           ]
   - name: 4XX Response

@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+import static dev.onepieceapi.contentservice.domain.security.Permission.CONTENT_ADMIN;
 import static dev.onepieceapi.contentservice.domain.security.Permission.CONTENT_PUBLISH;
 import static dev.onepieceapi.contentservice.domain.security.Permission.CONTENT_READ;
 import static dev.onepieceapi.contentservice.domain.security.Permission.CONTENT_RETIRE;
@@ -45,7 +46,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * The transition table of docs/user-flows/content-editorial-workflow.md 4.2, read status
  * by status: what each of the default roles may do to a version written by nami, and how
- * an action they may not perform is refused.
+ * an action they may not perform is refused - then again for luffy, holding
+ * {@code content:admin} (2.3).
  */
 class TransitionPolicyTest {
 
@@ -66,6 +68,11 @@ class TransitionPolicyTest {
 	private static final Set<Permission> PUBLISHER = Set.of(CONTENT_READ, CONTENT_PUBLISH, CONTENT_RETIRE);
 
 	private static final Set<Permission> EDITOR_AND_REVIEWER = Set.of(CONTENT_READ, CONTENT_WRITE, CONTENT_REVIEW);
+
+	private static final User LUFFY = user("luffy");
+
+	private static final Set<Permission> ADMIN = Set.of(CONTENT_READ, CONTENT_WRITE, CONTENT_REVIEW, CONTENT_PUBLISH,
+			CONTENT_RETIRE, CONTENT_ADMIN);
 
 	@Test
 	void theAuthorOfADraftMayEditDeleteAndSubmitIt() {
@@ -179,6 +186,84 @@ class TransitionPolicyTest {
 		assertThat(TransitionPolicy.decide(RECOVER, recover)).isEqualTo(CONFLICT);
 	}
 
+	@Test
+	void anAdministratorActsOnSomeoneElsesDraftAsItsAuthorWould() {
+		assertThat(allowed(version(DRAFT), LUFFY, ADMIN)).containsExactly(EDIT, DELETE, SUBMIT);
+		assertThat(overrides(version(DRAFT), LUFFY, ADMIN)).containsExactly(EDIT, DELETE, SUBMIT);
+		assertThat(allowed(version(REJECTED), LUFFY, ADMIN)).containsExactly(RETURN_TO_DRAFT);
+		assertThat(overrides(version(REJECTED), LUFFY, ADMIN)).containsExactly(RETURN_TO_DRAFT);
+	}
+
+	@Test
+	void anAdministratorPullsBackSomeoneElsesSubmissionOnlyWhileNobodyHoldsIt() {
+		assertThat(allowed(version(IN_REVIEW), LUFFY, ADMIN)).containsExactly(PULL_BACK, CLAIM);
+		assertThat(overrides(version(IN_REVIEW), LUFFY, ADMIN)).containsExactly(PULL_BACK);
+		assertThat(decide(PULL_BACK, claimedBy(ZORO), LUFFY, ADMIN)).isEqualTo(CONFLICT);
+	}
+
+	@Test
+	void anAdministratorReleasesSomeoneElsesClaimButNeverDecidesOnIt() {
+		assertThat(allowed(claimedBy(ZORO), LUFFY, ADMIN)).containsExactly(RELEASE);
+		assertThat(overrides(claimedBy(ZORO), LUFFY, ADMIN)).containsExactly(RELEASE);
+		assertThat(decide(APPROVE, claimedBy(ZORO), LUFFY, ADMIN)).isEqualTo(FORBIDDEN);
+		assertThat(decide(REJECT, claimedBy(ZORO), LUFFY, ADMIN)).isEqualTo(FORBIDDEN);
+	}
+
+	@Test
+	void thereMustBeAClaimToRelease() {
+		assertThat(decide(RELEASE, version(IN_REVIEW), LUFFY, ADMIN)).isEqualTo(CONFLICT);
+		assertThat(decide(RELEASE, version(IN_REVIEW), ZORO, REVIEWER)).isEqualTo(FORBIDDEN);
+	}
+
+	@Test
+	void anAdministratorReviewsTheirOwnVersionAndDecidesOnceHoldingIt() {
+		var ownSubmission = Version.<String>builder().number(1).status(IN_REVIEW).author(LUFFY).build();
+		assertThat(allowed(ownSubmission, LUFFY, ADMIN)).containsExactly(PULL_BACK, CLAIM);
+		assertThat(overrides(ownSubmission, LUFFY, ADMIN)).containsExactly(CLAIM);
+
+		var ownClaimed = Version.<String>builder().number(1).status(IN_REVIEW).author(LUFFY).claimant(LUFFY).build();
+		assertThat(allowed(ownClaimed, LUFFY, ADMIN)).containsExactly(RELEASE, APPROVE, REJECT);
+		assertThat(overrides(ownClaimed, LUFFY, ADMIN)).isEmpty();
+	}
+
+	@Test
+	void theOverrideGrantsNoActionByItself() {
+		var adminWithoutReview = Set.of(CONTENT_READ, CONTENT_WRITE, CONTENT_ADMIN);
+		var ownSubmission = Version.<String>builder().number(1).status(IN_REVIEW).author(LUFFY).build();
+		assertThat(decide(CLAIM, ownSubmission, LUFFY, adminWithoutReview)).isEqualTo(FORBIDDEN);
+		assertThat(decide(RELEASE, claimedBy(ZORO), LUFFY, adminWithoutReview)).isEqualTo(FORBIDDEN);
+		assertThat(decide(EDIT, version(DRAFT), LUFFY, Set.of(CONTENT_READ, CONTENT_REVIEW, CONTENT_ADMIN)))
+			.isEqualTo(FORBIDDEN);
+		for (VersionStatus status : VersionStatus.values()) {
+			assertThat(allowed(version(status), LUFFY, Set.of(CONTENT_READ, CONTENT_ADMIN))).isEmpty();
+		}
+	}
+
+	@Test
+	void theOverrideLiftsNoConditionOnTheState() {
+		assertThat(decide(EDIT, version(PUBLISHED), LUFFY, ADMIN)).isEqualTo(CONFLICT);
+		assertThat(decide(DELETE, version(REJECTED), LUFFY, ADMIN)).isEqualTo(CONFLICT);
+		assertThat(decide(CLAIM, claimedBy(ZORO), LUFFY, ADMIN)).isEqualTo(CONFLICT);
+		var recover = new TransitionContext(version(ARCHIVED), true, LUFFY, ADMIN);
+		assertThat(TransitionPolicy.decide(RECOVER, recover)).isEqualTo(CONFLICT);
+	}
+
+	@ParameterizedTest
+	@EnumSource(VersionStatus.class)
+	void withoutTheOverrideNothingIsAnOverrideAndWithItOnlyWhatIsAllowed(VersionStatus status) {
+		for (Version<?> version : List.of(version(status), claimedBy(ZORO))) {
+			assertThat(overrides(version, LAW, EDITOR_AND_REVIEWER)).isEmpty();
+			assertThat(allowed(version, LUFFY, ADMIN)).containsAll(overrides(version, LUFFY, ADMIN));
+		}
+	}
+
+	@ParameterizedTest
+	@EnumSource(VersionStatus.class)
+	void anAdministratorsOwnWorkIsNoOverride(VersionStatus status) {
+		var own = Version.<String>builder().number(1).status(status).author(LUFFY).build();
+		assertThat(overrides(own, LUFFY, ADMIN)).isSubsetOf(CLAIM);
+	}
+
 	@ParameterizedTest
 	@EnumSource(VersionStatus.class)
 	void whatIsOfferedIsExactlyWhatIsDecidedAllowed(VersionStatus status) {
@@ -218,6 +303,10 @@ class TransitionPolicyTest {
 			Set<Permission> permissions) {
 		var context = new TransitionContext(version, contentHasOpenVersion, caller, permissions);
 		return TransitionPolicy.allowedActions(context);
+	}
+
+	private static Set<VersionAction> overrides(Version<?> version, User caller, Set<Permission> permissions) {
+		return TransitionPolicy.overrideActions(new TransitionContext(version, false, caller, permissions));
 	}
 
 	private static TransitionDecision decide(VersionAction action, Version<?> version, User caller,

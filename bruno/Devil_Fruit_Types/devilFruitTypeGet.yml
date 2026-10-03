@@ -62,6 +62,9 @@ examples:
                 "createdAt": "",
                 "everPublished": false,
                 "number": 0,
+                "overrideActions": [
+                  "EDIT"
+                ],
                 "status": "DRAFT",
                 "updatedAt": ""
               }
