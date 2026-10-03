@@ -14,12 +14,19 @@ import java.util.Objects;
  * @param <T> what a version of this kind of content says, e.g. a {@code DevilFruitType}
  * @param basedOn the version it was opened from; null for the first one
  * @param claimant the reviewer holding it while {@code IN_REVIEW}, if any
- * @param rejectionReason why the last review failed, while {@code REJECTED}
+ * @param rejectionReason why the last review failed: kept from the rejection until the
+ * version is submitted again, so that its author still reads what to fix once it is back
+ * in draft
  * @param body what this version says
  */
 @Builder
 public record Version<T>(int number, Integer basedOn, VersionStatus status, User author, User claimant,
 		String rejectionReason, T body, Instant createdAt, Instant updatedAt) {
+
+	/** A rejection reason says what to fix: at least a short sentence (UF-CNT-06). */
+	public static final int REJECTION_REASON_MIN_LENGTH = 8;
+
+	public static final int REJECTION_REASON_MAX_LENGTH = 2000;
 
 	/** Whether this version has been online at some point. */
 	public boolean everPublished() {

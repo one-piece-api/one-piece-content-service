@@ -253,6 +253,36 @@ paths:
       tags:
       - Devil Fruit Types
       x-required-permission: content:write
+  /devil-fruit-types/{id}/versions/{number}/approve:
+    post:
+      operationId: devilFruitTypeApprove
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseDevilFruitTypeResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Devil Fruit Types
+      x-required-permission: content:review
   /devil-fruit-types/{id}/versions/{number}/claim:
     post:
       operationId: devilFruitTypeClaim
@@ -345,6 +375,42 @@ paths:
       tags:
       - Devil Fruit Types
       x-required-permission: content:write
+  /devil-fruit-types/{id}/versions/{number}/reject:
+    post:
+      operationId: devilFruitTypeReject
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RejectVersionRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseDevilFruitTypeResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Devil Fruit Types
+      x-required-permission: content:review
   /devil-fruit-types/{id}/versions/{number}/release:
     post:
       operationId: devilFruitTypeRelease
@@ -375,6 +441,36 @@ paths:
       tags:
       - Devil Fruit Types
       x-required-permission: content:review
+  /devil-fruit-types/{id}/versions/{number}/return-to-draft:
+    post:
+      operationId: devilFruitTypeReturnToDraft
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseDevilFruitTypeResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Devil Fruit Types
+      x-required-permission: content:write
   /devil-fruit-types/{id}/versions/{number}/submit:
     post:
       operationId: devilFruitTypeSubmit
@@ -691,6 +787,15 @@ components:
       - status
       - title
       - type
+    RejectVersionRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          maxLength: 2000
+          minLength: 8
+      required:
+      - reason
     UserResponse:
       type: object
       properties:

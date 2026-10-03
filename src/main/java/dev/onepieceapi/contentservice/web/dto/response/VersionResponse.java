@@ -12,7 +12,8 @@ import java.util.List;
  *
  * @param <T> what a version of this kind of content says, e.g. a
  * {@link DevilFruitTypeResponse}
- * @param rejectionReason why the last review failed, while rejected
+ * @param rejectionReason why the last review failed: from the rejection until the version
+ * is submitted again
  * @param body what this version says
  * @param allowedActions what the caller may do with this version, decided by the same
  * rules that guard the endpoints - the client offers these and nothing else

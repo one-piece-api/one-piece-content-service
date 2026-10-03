@@ -76,6 +76,21 @@ public class DevilFruitTypeVersionEntity {
 		this.version.moveTo(newStatus, now);
 	}
 
+	/** Sends the version to review, leaving any earlier rejection behind. */
+	public void submit(Instant now) {
+		this.version.submit(now);
+	}
+
+	/** The claimant passes the review. */
+	public void approve(Instant now) {
+		this.version.approve(now);
+	}
+
+	/** The claimant fails the review, saying why. */
+	public void reject(String reason, Instant now) {
+		this.version.reject(reason, now);
+	}
+
 	/** A reviewer takes the version. */
 	public void claimBy(UserEmbeddable reviewer) {
 		this.version.claimBy(reviewer);

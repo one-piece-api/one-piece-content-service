@@ -40,7 +40,10 @@ public final class ApiPaths {
 
 	public static final String DEVIL_FRUIT_TYPE_VERSION_EVENTS = DEVIL_FRUIT_TYPE_VERSION + "/events";
 
-	/** Workflow actions: one path per transition, posted with no body. */
+	/**
+	 * Workflow actions: one path per transition, posted with no body - except a
+	 * rejection, which carries its reason.
+	 */
 	public static final String DEVIL_FRUIT_TYPE_VERSION_SUBMIT = DEVIL_FRUIT_TYPE_VERSION + "/submit";
 
 	public static final String DEVIL_FRUIT_TYPE_VERSION_PULL_BACK = DEVIL_FRUIT_TYPE_VERSION + "/pull-back";
@@ -48,6 +51,12 @@ public final class ApiPaths {
 	public static final String DEVIL_FRUIT_TYPE_VERSION_CLAIM = DEVIL_FRUIT_TYPE_VERSION + "/claim";
 
 	public static final String DEVIL_FRUIT_TYPE_VERSION_RELEASE = DEVIL_FRUIT_TYPE_VERSION + "/release";
+
+	public static final String DEVIL_FRUIT_TYPE_VERSION_APPROVE = DEVIL_FRUIT_TYPE_VERSION + "/approve";
+
+	public static final String DEVIL_FRUIT_TYPE_VERSION_REJECT = DEVIL_FRUIT_TYPE_VERSION + "/reject";
+
+	public static final String DEVIL_FRUIT_TYPE_VERSION_RETURN_TO_DRAFT = DEVIL_FRUIT_TYPE_VERSION + "/return-to-draft";
 
 	private ApiPaths() {
 	}

@@ -92,6 +92,31 @@ public class ContentVersionEntity {
 	}
 
 	/**
+	 * Sends the version to review, unclaimed. The reason of an earlier rejection was
+	 * about the round that failed, not this one: it goes.
+	 */
+	public void submit(Instant now) {
+		moveTo(VersionStatus.IN_REVIEW, now);
+		this.rejectionReason = null;
+	}
+
+	/** The claimant passes the review, which ends their claim. */
+	public void approve(Instant now) {
+		moveTo(VersionStatus.READY_TO_PUBLISH, now);
+		release();
+	}
+
+	/**
+	 * The claimant fails the review, which ends their claim. The reason stays until the
+	 * version is submitted again.
+	 */
+	public void reject(String reason, Instant now) {
+		moveTo(VersionStatus.REJECTED, now);
+		this.rejectionReason = reason;
+		release();
+	}
+
+	/**
 	 * A reviewer takes the version. Not a change to what it says, so its update time
 	 * stays.
 	 */

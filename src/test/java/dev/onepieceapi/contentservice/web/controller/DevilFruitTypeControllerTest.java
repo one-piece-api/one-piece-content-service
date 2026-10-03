@@ -30,6 +30,7 @@ import dev.onepieceapi.exception.web.FieldViolation;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -48,6 +49,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import static dev.onepieceapi.contentservice.web.controller.TestCallers.callerWith;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -633,9 +635,128 @@ class DevilFruitTypeControllerTest {
 			.andExpect(jsonPath("$.identicalTo").value(1));
 	}
 
+	@Test
+	void approvingAnswersWithTheVersionNowReadyToPublish() throws Exception {
+		var approved = new VersionAccess<>(version(1, VersionStatus.READY_TO_PUBLISH), Set.<VersionAction>of());
+		when(this.service.approve(eq(Set.of(Permission.CONTENT_REVIEW)), any(), eq(CONTENT_ID), eq(1)))
+			.thenReturn(approved);
+
+		this.mockMvc.perform(workflow("approve").with(callerWith(Permission.CONTENT_REVIEW)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.status").value("READY_TO_PUBLISH"));
+	}
+
+	@Test
+	void rejectingPassesOnTheReasonWithoutTheSpaceAroundIt() throws Exception {
+		var rejected = new VersionAccess<>(version(1, VersionStatus.REJECTED), Set.<VersionAction>of());
+		when(this.service.reject(eq(Set.of(Permission.CONTENT_REVIEW)), any(), eq(CONTENT_ID), eq(1),
+				eq("Missing a source")))
+			.thenReturn(rejected);
+
+		this.mockMvc.perform(reject("  Missing a source \\n").with(callerWith(Permission.CONTENT_REVIEW)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.status").value("REJECTED"));
+	}
+
+	@ParameterizedTest(name = "[{index}] {0}")
+	@MethodSource("reasonsOfTheWrongShape")
+	void aRejectionWithoutAProperReasonIsABadRequestNamingIt(String body) throws Exception {
+		this.mockMvc
+			.perform(workflow("reject").contentType("application/json")
+				.content(body)
+				.with(callerWith(Permission.CONTENT_REVIEW)))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.errorCode").value("VALIDATION_FAILED"))
+			.andExpect(jsonPath("$.errors[0].field").value("reason"));
+		verifyNoInteractions(this.service);
+	}
+
+	static Stream<String> reasonsOfTheWrongShape() {
+		return Stream.of("{}", "{\"reason\":null}", "{\"reason\":\"   short   \"}",
+				"{\"reason\":\"%s\"}".formatted("x".repeat(2001)));
+	}
+
+	@Test
+	void aReasonAsShortOrAsLongAsItsLimitsIsAccepted() throws Exception {
+		var rejected = new VersionAccess<>(version(1, VersionStatus.REJECTED), Set.<VersionAction>of());
+		when(this.service.reject(any(), any(), any(), eq(1), any())).thenReturn(rejected);
+
+		this.mockMvc.perform(reject("x".repeat(8)).with(callerWith(Permission.CONTENT_REVIEW)))
+			.andExpect(status().isOk());
+		this.mockMvc.perform(reject("x".repeat(2000)).with(callerWith(Permission.CONTENT_REVIEW)))
+			.andExpect(status().isOk());
+	}
+
+	@Test
+	void returningToDraftAnswersWithTheVersionNowADraft() throws Exception {
+		var draft = new VersionAccess<>(version(1, VersionStatus.DRAFT), EnumSet.of(VersionAction.EDIT));
+		when(this.service.returnToDraft(eq(Set.of(Permission.CONTENT_WRITE)), any(), eq(CONTENT_ID), eq(1)))
+			.thenReturn(draft);
+
+		this.mockMvc.perform(workflow("return-to-draft").with(callerWith(Permission.CONTENT_WRITE)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.status").value("DRAFT"));
+	}
+
+	@Test
+	void decidingIsForbiddenWithoutContentReviewAndUnauthorizedWithoutAToken() throws Exception {
+		var editor = callerWith(Permission.CONTENT_READ, Permission.CONTENT_WRITE);
+		this.mockMvc.perform(workflow("approve").with(editor)).andExpect(status().isForbidden());
+		this.mockMvc.perform(reject("Missing a source").with(editor)).andExpect(status().isForbidden());
+		this.mockMvc.perform(workflow("approve")).andExpect(status().isUnauthorized());
+		this.mockMvc.perform(reject("Missing a source")).andExpect(status().isUnauthorized());
+		verifyNoInteractions(this.service);
+	}
+
+	@Test
+	void returningToDraftIsForbiddenWithoutContentWriteAndUnauthorizedWithoutAToken() throws Exception {
+		this.mockMvc
+			.perform(workflow("return-to-draft").with(callerWith(Permission.CONTENT_READ, Permission.CONTENT_REVIEW)))
+			.andExpect(status().isForbidden());
+		this.mockMvc.perform(workflow("return-to-draft")).andExpect(status().isUnauthorized());
+		verifyNoInteractions(this.service);
+	}
+
+	@ParameterizedTest
+	@CsvSource({ "approve, NOT_FOUND, 404, CONTENT_VERSION_NOT_FOUND",
+			"approve, FORBIDDEN, 403, CONTENT_VERSION_ACTION_FORBIDDEN",
+			"approve, CONCURRENT, 409, CONCURRENT_MODIFICATION", "reject, NOT_FOUND, 404, CONTENT_VERSION_NOT_FOUND",
+			"reject, FORBIDDEN, 403, CONTENT_VERSION_ACTION_FORBIDDEN",
+			"reject, CONCURRENT, 409, CONCURRENT_MODIFICATION",
+			"return-to-draft, NOT_FOUND, 404, CONTENT_VERSION_NOT_FOUND",
+			"return-to-draft, FORBIDDEN, 403, CONTENT_VERSION_ACTION_FORBIDDEN",
+			"return-to-draft, CONFLICT, 409, CONTENT_VERSION_ACTION_CONFLICT" })
+	void aRefusedDecisionOrReturnAnswersWithItsStatusAndCode(String action, String refusal, int status,
+			String errorCode) throws Exception {
+		VersionAction versionAction = switch (action) {
+			case "approve" -> VersionAction.APPROVE;
+			case "reject" -> VersionAction.REJECT;
+			default -> VersionAction.RETURN_TO_DRAFT;
+		};
+		RuntimeException refused = switch (refusal) {
+			case "NOT_FOUND" -> new VersionNotFoundException(CONTENT_ID, 1);
+			case "FORBIDDEN" -> new VersionActionForbiddenException(versionAction);
+			case "CONFLICT" -> new VersionActionConflictException(versionAction);
+			default -> new ObjectOptimisticLockingFailureException(ContentVersionEntity.class, CONTENT_ID);
+		};
+		when(this.service.approve(any(), any(), any(), eq(1))).thenThrow(refused);
+		when(this.service.reject(any(), any(), any(), eq(1), any())).thenThrow(refused);
+		when(this.service.returnToDraft(any(), any(), any(), eq(1))).thenThrow(refused);
+
+		var request = "reject".equals(action) ? reject("Missing a source") : workflow(action);
+		this.mockMvc.perform(request.with(callerWith(Permission.CONTENT_WRITE, Permission.CONTENT_REVIEW)))
+			.andExpect(status().is(status))
+			.andExpect(jsonPath("$.errorCode").value(errorCode));
+	}
+
 	/** A workflow action on version 1 of the content, not signed in yet. */
 	private static MockHttpServletRequestBuilder workflow(String action) {
 		return post("/devil-fruit-types/" + CONTENT_ID + "/versions/1/" + action);
+	}
+
+	/** A rejection of version 1 of the content with that reason, not signed in yet. */
+	private static MockHttpServletRequestBuilder reject(String reason) {
+		return workflow("reject").contentType("application/json").content("{\"reason\":\"" + reason + "\"}");
 	}
 
 	private static MockHttpServletRequestBuilder discard() {

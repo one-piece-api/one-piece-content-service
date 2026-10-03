@@ -42,8 +42,20 @@ public class AuditLogService {
 	 * @param label what the version was called when the action happened
 	 */
 	public void recordOnVersion(String action, User actor, UUID contentId, UUID versionId, String label) {
-		this.repository.save(
-				entry(action, actor).targetContentId(contentId).targetVersionId(versionId).targetLabel(label).build());
+		recordOnVersion(action, actor, contentId, versionId, label, null);
+	}
+
+	/**
+	 * A record about one version that carries something with it, e.g. the reason of a
+	 * rejection.
+	 */
+	public void recordOnVersion(String action, User actor, UUID contentId, UUID versionId, String label,
+			String detail) {
+		this.repository.save(entry(action, actor).targetContentId(contentId)
+			.targetVersionId(versionId)
+			.targetLabel(label)
+			.detail(detail)
+			.build());
 	}
 
 	private AuditLogEntity.AuditLogEntityBuilder entry(String action, User actor) {

@@ -7,6 +7,7 @@ import dev.onepieceapi.contentservice.service.DevilFruitTypeService;
 import dev.onepieceapi.contentservice.web.ApiPaths;
 import dev.onepieceapi.contentservice.web.dto.request.ContentListRequest;
 import dev.onepieceapi.contentservice.web.dto.request.DevilFruitTypeRequest;
+import dev.onepieceapi.contentservice.web.dto.request.RejectVersionRequest;
 import dev.onepieceapi.contentservice.web.dto.response.ContentListSummaryResponse;
 import dev.onepieceapi.contentservice.web.dto.response.ContentResponse;
 import dev.onepieceapi.contentservice.web.dto.response.ContentSummaryResponse;
@@ -47,11 +48,13 @@ import java.util.UUID;
  * The Devil Fruit Type section. Reading (UF-CNT-12, UF-CNT-18) - the paginated list, a
  * content with its version chain, one version with what it says, and its history - takes
  * {@code content:read}; creating a content, editing its draft, discarding it, sending it
- * to review and taking it back (UF-CNT-01 to 04, UF-CNT-11) take {@code content:write}
- * (see {@code SecuredEndpoint}). What a caller then finds is limited to the statuses
- * their permissions make visible: whatever is not visible answers {@code 404} like
- * something that does not exist, a visible version the caller may not change {@code 403},
- * one that is not in a state for it {@code 409}.
+ * to review and taking it back, returning a rejected one to draft (UF-CNT-01 to 04,
+ * UF-CNT-11, UF-CNT-15) take {@code content:write}; claiming, releasing, approving and
+ * rejecting (UF-CNT-05, 06, 13, 14) {@code content:review} (see {@code SecuredEndpoint}).
+ * What a caller then finds is limited to the statuses their permissions make visible:
+ * whatever is not visible answers {@code 404} like something that does not exist, a
+ * visible version the caller may not change {@code 403}, one that is not in a state for
+ * it {@code 409}.
  */
 @RestController
 @Tag(name = "Devil Fruit Types")
@@ -169,6 +172,30 @@ class DevilFruitTypeController {
 	VersionResponse<DevilFruitTypeResponse> release(@PathVariable UUID id, @PathVariable int number,
 			@AuthenticationPrincipal AuthenticatedCaller caller) {
 		var version = this.service.release(caller.permissions(), caller.user(), id, number);
+		return DevilFruitTypeResponseMapper.toVersionResponse(version);
+	}
+
+	/** Passes the review of a version the caller holds (UF-CNT-05). */
+	@PostMapping(ApiPaths.DEVIL_FRUIT_TYPE_VERSION_APPROVE)
+	VersionResponse<DevilFruitTypeResponse> approve(@PathVariable UUID id, @PathVariable int number,
+			@AuthenticationPrincipal AuthenticatedCaller caller) {
+		var version = this.service.approve(caller.permissions(), caller.user(), id, number);
+		return DevilFruitTypeResponseMapper.toVersionResponse(version);
+	}
+
+	/** Fails the review of a version the caller holds, saying why (UF-CNT-06). */
+	@PostMapping(ApiPaths.DEVIL_FRUIT_TYPE_VERSION_REJECT)
+	VersionResponse<DevilFruitTypeResponse> reject(@PathVariable UUID id, @PathVariable int number,
+			@RequestBody @Valid RejectVersionRequest request, @AuthenticationPrincipal AuthenticatedCaller caller) {
+		var version = this.service.reject(caller.permissions(), caller.user(), id, number, request.reason());
+		return DevilFruitTypeResponseMapper.toVersionResponse(version);
+	}
+
+	/** Takes a rejected version of the caller back to draft (UF-CNT-15). */
+	@PostMapping(ApiPaths.DEVIL_FRUIT_TYPE_VERSION_RETURN_TO_DRAFT)
+	VersionResponse<DevilFruitTypeResponse> returnToDraft(@PathVariable UUID id, @PathVariable int number,
+			@AuthenticationPrincipal AuthenticatedCaller caller) {
+		var version = this.service.returnToDraft(caller.permissions(), caller.user(), id, number);
 		return DevilFruitTypeResponseMapper.toVersionResponse(version);
 	}
 

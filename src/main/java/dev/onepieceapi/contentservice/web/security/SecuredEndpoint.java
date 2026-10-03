@@ -56,12 +56,18 @@ enum SecuredEndpoint {
 			Permission.CONTENT_WRITE),
 	DEVIL_FRUIT_TYPE_VERSION_PULL_BACK(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_VERSION_PULL_BACK,
 			Permission.CONTENT_WRITE),
+	DEVIL_FRUIT_TYPE_VERSION_RETURN_TO_DRAFT(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_VERSION_RETURN_TO_DRAFT,
+			Permission.CONTENT_WRITE),
 
 	// Reviewing takes content:review; whether this caller may take or let go this version
 	// -
 	// not its author, not held by someone else - is decided by TransitionPolicy.
 	DEVIL_FRUIT_TYPE_VERSION_CLAIM(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_VERSION_CLAIM, Permission.CONTENT_REVIEW),
 	DEVIL_FRUIT_TYPE_VERSION_RELEASE(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_VERSION_RELEASE,
+			Permission.CONTENT_REVIEW),
+	DEVIL_FRUIT_TYPE_VERSION_APPROVE(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_VERSION_APPROVE,
+			Permission.CONTENT_REVIEW),
+	DEVIL_FRUIT_TYPE_VERSION_REJECT(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_VERSION_REJECT,
 			Permission.CONTENT_REVIEW);
 
 	private final HttpMethod method;

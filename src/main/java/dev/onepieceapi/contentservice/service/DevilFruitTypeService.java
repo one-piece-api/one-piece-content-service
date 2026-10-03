@@ -48,12 +48,13 @@ import java.util.UUID;
  * (docs/user-flows/content-editorial-workflow.md UF-CNT-12, UF-CNT-18), creating one,
  * editing its draft and discarding it (UF-CNT-01, UF-CNT-02, UF-CNT-11), sending it to
  * review and taking it back (UF-CNT-03, UF-CNT-04), a reviewer claiming and releasing it
- * (UF-CNT-13, UF-CNT-14). Every method starts from the caller: {@link VisibilityPolicy}
- * turns their permissions into the statuses they may see, and nothing outside those
- * statuses is ever loaded; {@link TransitionPolicy} says what they may do with a version
- * they see, and the same answer guards each change. Building the queries, converting rows
- * and validating what is saved are done elsewhere: this class only decides what to read
- * or change, and for whom.
+ * (UF-CNT-13, UF-CNT-14), approving or rejecting it, and its author taking a rejected one
+ * back to draft (UF-CNT-05, UF-CNT-06, UF-CNT-15). Every method starts from the caller:
+ * {@link VisibilityPolicy} turns their permissions into the statuses they may see, and
+ * nothing outside those statuses is ever loaded; {@link TransitionPolicy} says what they
+ * may do with a version they see, and the same answer guards each change. Building the
+ * queries, converting rows and validating what is saved are done elsewhere: this class
+ * only decides what to read or change, and for whom.
  */
 @Service
 @Transactional(readOnly = true)
@@ -73,6 +74,12 @@ public class DevilFruitTypeService {
 	private static final String AUDIT_ACTION_CLAIMED = "VERSION_CLAIMED";
 
 	private static final String AUDIT_ACTION_RELEASED = "VERSION_RELEASED";
+
+	private static final String AUDIT_ACTION_APPROVED = "VERSION_APPROVED";
+
+	private static final String AUDIT_ACTION_REJECTED = "VERSION_REJECTED";
+
+	private static final String AUDIT_ACTION_RETURNED_TO_DRAFT = "VERSION_RETURNED_TO_DRAFT";
 
 	private final DevilFruitTypeVersionRepository versionRepository;
 
@@ -230,7 +237,8 @@ public class DevilFruitTypeService {
 		TransitionContext context = contextOf(current, contentId, caller, permissions);
 		require(VersionAction.SUBMIT, context);
 		this.validator.validateSubmission(contentId, versionNumber, current.body());
-		return moveTo(VersionStatus.IN_REVIEW, entity, context, AUDIT_ACTION_SUBMITTED);
+		entity.submit(this.clock.instant());
+		return recorded(entity, context, AUDIT_ACTION_SUBMITTED);
 	}
 
 	/**
@@ -244,7 +252,8 @@ public class DevilFruitTypeService {
 		Version<DevilFruitType> current = DevilFruitTypeVersionMapper.toDomain(entity);
 		TransitionContext context = contextOf(current, contentId, caller, permissions);
 		require(VersionAction.PULL_BACK, context);
-		return moveTo(VersionStatus.DRAFT, entity, context, AUDIT_ACTION_PULLED_BACK);
+		entity.moveTo(VersionStatus.DRAFT, this.clock.instant());
+		return recorded(entity, context, AUDIT_ACTION_PULLED_BACK);
 	}
 
 	/**
@@ -278,26 +287,68 @@ public class DevilFruitTypeService {
 	}
 
 	/**
-	 * Takes a version the rules already let move to another status, records it, and
-	 * answers with the version as it now is. Whether the content has an open version is
-	 * unchanged: both submitting and pulling back go from one open status to another.
+	 * The claimant passes the review (UF-CNT-05): the version is ready to publish, and
+	 * nobody holds it any more.
 	 */
-	private VersionAccess<DevilFruitType> moveTo(VersionStatus status, DevilFruitTypeVersionEntity entity,
-			TransitionContext before, String auditAction) {
-		entity.moveTo(status, this.clock.instant());
-		return recorded(entity, before, auditAction);
+	@Transactional
+	public VersionAccess<DevilFruitType> approve(Set<Permission> permissions, User caller, UUID contentId,
+			int versionNumber) {
+		DevilFruitTypeVersionEntity entity = visibleVersion(permissions, contentId, versionNumber);
+		Version<DevilFruitType> current = DevilFruitTypeVersionMapper.toDomain(entity);
+		TransitionContext context = contextOf(current, contentId, caller, permissions);
+		require(VersionAction.APPROVE, context);
+		entity.approve(this.clock.instant());
+		return recorded(entity, context, AUDIT_ACTION_APPROVED);
+	}
+
+	/**
+	 * The claimant fails the review, saying why (UF-CNT-06): the version is frozen until
+	 * its author takes it back to draft, and the reason stays on it and in its history.
+	 */
+	@Transactional
+	public VersionAccess<DevilFruitType> reject(Set<Permission> permissions, User caller, UUID contentId,
+			int versionNumber, String reason) {
+		DevilFruitTypeVersionEntity entity = visibleVersion(permissions, contentId, versionNumber);
+		Version<DevilFruitType> current = DevilFruitTypeVersionMapper.toDomain(entity);
+		TransitionContext context = contextOf(current, contentId, caller, permissions);
+		require(VersionAction.REJECT, context);
+		entity.reject(reason, this.clock.instant());
+		return recorded(entity, context, AUDIT_ACTION_REJECTED, reason);
+	}
+
+	/**
+	 * The author takes a rejected version back (UF-CNT-15): a draft again, editable,
+	 * still showing why it was rejected until it is submitted again.
+	 */
+	@Transactional
+	public VersionAccess<DevilFruitType> returnToDraft(Set<Permission> permissions, User caller, UUID contentId,
+			int versionNumber) {
+		DevilFruitTypeVersionEntity entity = visibleVersion(permissions, contentId, versionNumber);
+		Version<DevilFruitType> current = DevilFruitTypeVersionMapper.toDomain(entity);
+		TransitionContext context = contextOf(current, contentId, caller, permissions);
+		require(VersionAction.RETURN_TO_DRAFT, context);
+		entity.moveTo(VersionStatus.DRAFT, this.clock.instant());
+		return recorded(entity, context, AUDIT_ACTION_RETURNED_TO_DRAFT);
+	}
+
+	private VersionAccess<DevilFruitType> recorded(DevilFruitTypeVersionEntity entity, TransitionContext before,
+			String auditAction) {
+		return recorded(entity, before, auditAction, null);
 	}
 
 	/**
 	 * Records a change the rules already allowed and answers with the version as it now
-	 * is, with what the caller may do with it next.
+	 * is, with what the caller may do with it next. Whether the content has an open
+	 * version is unchanged: every change recorded here goes from one open status to
+	 * another.
+	 * @param detail what the action carries with it, e.g. a rejection reason
 	 */
 	private VersionAccess<DevilFruitType> recorded(DevilFruitTypeVersionEntity entity, TransitionContext before,
-			String auditAction) {
+			String auditAction, String detail) {
 		Version<DevilFruitType> moved = DevilFruitTypeVersionMapper.toDomain(entity);
 		User caller = before.caller();
 		this.auditLogService.recordOnVersion(auditAction, caller, entity.getContentId(), entity.getVersionId(),
-				moved.body().romaji());
+				moved.body().romaji(), detail);
 		var after = new TransitionContext(moved, before.contentHasOpenVersion(), caller, before.permissions());
 		return accessTo(moved, after);
 	}
