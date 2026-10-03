@@ -59,6 +59,15 @@ public interface DevilFruitTypeVersionRepository extends JpaRepository<DevilFrui
 			Collection<VersionStatus> statuses);
 
 	/**
+	 * The content's online version, if it has one - whether or not the caller sees it.
+	 */
+	@Query("""
+			select d from DevilFruitTypeVersionEntity d join fetch d.version v
+			where v.contentId = :contentId
+				and v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED""")
+	Optional<DevilFruitTypeVersionEntity> findOnline(UUID contentId);
+
+	/**
 	 * Every version of the content but one, in any status, oldest first - whether or not
 	 * the caller sees them.
 	 */

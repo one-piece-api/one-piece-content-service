@@ -68,7 +68,13 @@ enum SecuredEndpoint {
 	DEVIL_FRUIT_TYPE_VERSION_APPROVE(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_VERSION_APPROVE,
 			Permission.CONTENT_REVIEW),
 	DEVIL_FRUIT_TYPE_VERSION_REJECT(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_VERSION_REJECT,
-			Permission.CONTENT_REVIEW);
+			Permission.CONTENT_REVIEW),
+
+	// Publishing takes content:publish; whether this version is ready for it is decided
+	// by
+	// TransitionPolicy.
+	DEVIL_FRUIT_TYPE_VERSION_PUBLISH(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_VERSION_PUBLISH,
+			Permission.CONTENT_PUBLISH);
 
 	private final HttpMethod method;
 

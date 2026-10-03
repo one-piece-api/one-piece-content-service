@@ -749,6 +749,45 @@ class DevilFruitTypeControllerTest {
 			.andExpect(jsonPath("$.errorCode").value(errorCode));
 	}
 
+	@Test
+	void publishingAnswersWithTheVersionNowOnline() throws Exception {
+		var published = new VersionAccess<>(version(1, VersionStatus.PUBLISHED), EnumSet.of(VersionAction.RETIRE));
+		when(this.service.publish(eq(Set.of(Permission.CONTENT_PUBLISH)), any(), eq(CONTENT_ID), eq(1)))
+			.thenReturn(published);
+
+		this.mockMvc.perform(workflow("publish").with(callerWith(Permission.CONTENT_PUBLISH)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.status").value("PUBLISHED"))
+			.andExpect(jsonPath("$.allowedActions[0]").value("RETIRE"));
+	}
+
+	@Test
+	void publishingIsForbiddenWithoutContentPublishAndUnauthorizedWithoutAToken() throws Exception {
+		this.mockMvc
+			.perform(workflow("publish")
+				.with(callerWith(Permission.CONTENT_READ, Permission.CONTENT_WRITE, Permission.CONTENT_REVIEW)))
+			.andExpect(status().isForbidden());
+		this.mockMvc.perform(workflow("publish")).andExpect(status().isUnauthorized());
+		verifyNoInteractions(this.service);
+	}
+
+	@ParameterizedTest
+	@CsvSource({ "NOT_FOUND, 404, CONTENT_VERSION_NOT_FOUND", "FORBIDDEN, 403, CONTENT_VERSION_ACTION_FORBIDDEN",
+			"CONFLICT, 409, CONTENT_VERSION_ACTION_CONFLICT", "CONCURRENT, 409, CONCURRENT_MODIFICATION" })
+	void aRefusedPublicationAnswersWithItsStatusAndCode(String refusal, int status, String errorCode) throws Exception {
+		RuntimeException refused = switch (refusal) {
+			case "NOT_FOUND" -> new VersionNotFoundException(CONTENT_ID, 1);
+			case "FORBIDDEN" -> new VersionActionForbiddenException(VersionAction.PUBLISH);
+			case "CONFLICT" -> new VersionActionConflictException(VersionAction.PUBLISH);
+			default -> new ObjectOptimisticLockingFailureException(ContentVersionEntity.class, CONTENT_ID);
+		};
+		when(this.service.publish(any(), any(), any(), eq(1))).thenThrow(refused);
+
+		this.mockMvc.perform(workflow("publish").with(callerWith(Permission.CONTENT_PUBLISH)))
+			.andExpect(status().is(status))
+			.andExpect(jsonPath("$.errorCode").value(errorCode));
+	}
+
 	/** A workflow action on version 1 of the content, not signed in yet. */
 	private static MockHttpServletRequestBuilder workflow(String action) {
 		return post("/devil-fruit-types/" + CONTENT_ID + "/versions/1/" + action);

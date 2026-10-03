@@ -49,12 +49,12 @@ import java.util.UUID;
  * editing its draft and discarding it (UF-CNT-01, UF-CNT-02, UF-CNT-11), sending it to
  * review and taking it back (UF-CNT-03, UF-CNT-04), a reviewer claiming and releasing it
  * (UF-CNT-13, UF-CNT-14), approving or rejecting it, and its author taking a rejected one
- * back to draft (UF-CNT-05, UF-CNT-06, UF-CNT-15). Every method starts from the caller:
- * {@link VisibilityPolicy} turns their permissions into the statuses they may see, and
- * nothing outside those statuses is ever loaded; {@link TransitionPolicy} says what they
- * may do with a version they see, and the same answer guards each change. Building the
- * queries, converting rows and validating what is saved are done elsewhere: this class
- * only decides what to read or change, and for whom.
+ * back to draft (UF-CNT-05, UF-CNT-06, UF-CNT-15), putting it online (UF-CNT-07). Every
+ * method starts from the caller: {@link VisibilityPolicy} turns their permissions into
+ * the statuses they may see, and nothing outside those statuses is ever loaded;
+ * {@link TransitionPolicy} says what they may do with a version they see, and the same
+ * answer guards each change. Building the queries, converting rows and validating what is
+ * saved are done elsewhere: this class only decides what to read or change, and for whom.
  */
 @Service
 @Transactional(readOnly = true)
@@ -80,6 +80,10 @@ public class DevilFruitTypeService {
 	private static final String AUDIT_ACTION_REJECTED = "VERSION_REJECTED";
 
 	private static final String AUDIT_ACTION_RETURNED_TO_DRAFT = "VERSION_RETURNED_TO_DRAFT";
+
+	private static final String AUDIT_ACTION_PUBLISHED = "VERSION_PUBLISHED";
+
+	private static final String AUDIT_ACTION_SUPERSEDED = "VERSION_SUPERSEDED";
 
 	private final DevilFruitTypeVersionRepository versionRepository;
 
@@ -331,6 +335,36 @@ public class DevilFruitTypeService {
 		return recorded(entity, context, AUDIT_ACTION_RETURNED_TO_DRAFT);
 	}
 
+	/**
+	 * Puts a version ready to publish online (UF-CNT-07). The version online until then,
+	 * if any, is superseded in the same transaction, and its own history says by which.
+	 */
+	@Transactional
+	public VersionAccess<DevilFruitType> publish(Set<Permission> permissions, User caller, UUID contentId,
+			int versionNumber) {
+		DevilFruitTypeVersionEntity entity = visibleVersion(permissions, contentId, versionNumber);
+		Version<DevilFruitType> current = DevilFruitTypeVersionMapper.toDomain(entity);
+		TransitionContext context = contextOf(current, contentId, caller, permissions);
+		require(VersionAction.PUBLISH, context);
+		Instant now = this.clock.instant();
+		this.versionRepository.findOnline(contentId).ifPresent(online -> supersede(online, versionNumber, caller, now));
+		entity.moveTo(VersionStatus.PUBLISHED, now);
+		return recorded(entity, context, AUDIT_ACTION_PUBLISHED);
+	}
+
+	/**
+	 * Takes the online version offline in favour of another, and writes it at once: the
+	 * database allows one online version per content and checks it statement by
+	 * statement, so this one must be gone before the other one arrives.
+	 * @param replacedBy the number of the version going online in its place
+	 */
+	private void supersede(DevilFruitTypeVersionEntity online, int replacedBy, User caller, Instant now) {
+		online.moveTo(VersionStatus.SUPERSEDED, now);
+		this.versionRepository.flush();
+		this.auditLogService.recordOnVersion(AUDIT_ACTION_SUPERSEDED, caller, online.getContentId(),
+				online.getVersionId(), online.getRomaji(), String.valueOf(replacedBy));
+	}
+
 	private VersionAccess<DevilFruitType> recorded(DevilFruitTypeVersionEntity entity, TransitionContext before,
 			String auditAction) {
 		return recorded(entity, before, auditAction, null);
@@ -338,19 +372,15 @@ public class DevilFruitTypeService {
 
 	/**
 	 * Records a change the rules already allowed and answers with the version as it now
-	 * is, with what the caller may do with it next. Whether the content has an open
-	 * version is unchanged: every change recorded here goes from one open status to
-	 * another.
+	 * is, with what the caller may do with it next.
 	 * @param detail what the action carries with it, e.g. a rejection reason
 	 */
 	private VersionAccess<DevilFruitType> recorded(DevilFruitTypeVersionEntity entity, TransitionContext before,
 			String auditAction, String detail) {
 		Version<DevilFruitType> moved = DevilFruitTypeVersionMapper.toDomain(entity);
-		User caller = before.caller();
-		this.auditLogService.recordOnVersion(auditAction, caller, entity.getContentId(), entity.getVersionId(),
+		this.auditLogService.recordOnVersion(auditAction, before.caller(), entity.getContentId(), entity.getVersionId(),
 				moved.body().romaji(), detail);
-		var after = new TransitionContext(moved, before.contentHasOpenVersion(), caller, before.permissions());
-		return accessTo(moved, after);
+		return accessTo(moved, before.after(moved));
 	}
 
 	private DevilFruitTypeVersionEntity visibleVersion(Set<Permission> permissions, UUID contentId, int versionNumber) {

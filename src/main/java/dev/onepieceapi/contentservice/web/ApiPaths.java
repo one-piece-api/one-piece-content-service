@@ -58,6 +58,8 @@ public final class ApiPaths {
 
 	public static final String DEVIL_FRUIT_TYPE_VERSION_RETURN_TO_DRAFT = DEVIL_FRUIT_TYPE_VERSION + "/return-to-draft";
 
+	public static final String DEVIL_FRUIT_TYPE_VERSION_PUBLISH = DEVIL_FRUIT_TYPE_VERSION + "/publish";
+
 	private ApiPaths() {
 	}
 

@@ -50,11 +50,11 @@ import java.util.UUID;
  * {@code content:read}; creating a content, editing its draft, discarding it, sending it
  * to review and taking it back, returning a rejected one to draft (UF-CNT-01 to 04,
  * UF-CNT-11, UF-CNT-15) take {@code content:write}; claiming, releasing, approving and
- * rejecting (UF-CNT-05, 06, 13, 14) {@code content:review} (see {@code SecuredEndpoint}).
- * What a caller then finds is limited to the statuses their permissions make visible:
- * whatever is not visible answers {@code 404} like something that does not exist, a
- * visible version the caller may not change {@code 403}, one that is not in a state for
- * it {@code 409}.
+ * rejecting (UF-CNT-05, 06, 13, 14) {@code content:review}; publishing (UF-CNT-07)
+ * {@code content:publish} (see {@code SecuredEndpoint}). What a caller then finds is
+ * limited to the statuses their permissions make visible: whatever is not visible answers
+ * {@code 404} like something that does not exist, a visible version the caller may not
+ * change {@code 403}, one that is not in a state for it {@code 409}.
  */
 @RestController
 @Tag(name = "Devil Fruit Types")
@@ -196,6 +196,17 @@ class DevilFruitTypeController {
 	VersionResponse<DevilFruitTypeResponse> returnToDraft(@PathVariable UUID id, @PathVariable int number,
 			@AuthenticationPrincipal AuthenticatedCaller caller) {
 		var version = this.service.returnToDraft(caller.permissions(), caller.user(), id, number);
+		return DevilFruitTypeResponseMapper.toVersionResponse(version);
+	}
+
+	/**
+	 * Puts a version ready to publish online (UF-CNT-07), superseding the one online
+	 * until then; answers with it as it now is.
+	 */
+	@PostMapping(ApiPaths.DEVIL_FRUIT_TYPE_VERSION_PUBLISH)
+	VersionResponse<DevilFruitTypeResponse> publish(@PathVariable UUID id, @PathVariable int number,
+			@AuthenticationPrincipal AuthenticatedCaller caller) {
+		var version = this.service.publish(caller.permissions(), caller.user(), id, number);
 		return DevilFruitTypeResponseMapper.toVersionResponse(version);
 	}
 

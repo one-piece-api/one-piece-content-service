@@ -16,6 +16,16 @@ import java.util.Set;
 public record TransitionContext(Version<?> version, boolean contentHasOpenVersion, User caller,
 		Set<Permission> permissions) {
 
+	/**
+	 * The same question asked again once a transition has moved the version. A version
+	 * leaving the open statuses was its content's only open one (4.1), so the content has
+	 * none left; any other move leaves that unchanged.
+	 */
+	public TransitionContext after(Version<?> moved) {
+		boolean closedNow = status().isOpen() && !moved.status().isOpen();
+		return new TransitionContext(moved, this.contentHasOpenVersion && !closedNow, this.caller, this.permissions);
+	}
+
 	VersionStatus status() {
 		return this.version.status();
 	}
