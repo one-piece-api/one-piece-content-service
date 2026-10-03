@@ -2,10 +2,17 @@
 
 Backend applicativo (Spring Boot) per il workflow editoriale dei contenuti One Piece — catena
 lineare di versioni per contenuto, revisione con presa in carico, pubblicazione, ritiro e
-ripristino. Primo caso d'uso concreto: **Devil Fruit Type**. Oggi espone il catalogo
-lingue e la lettura dei Devil Fruit Type (lista paginata, catena di versioni, contenuto e
-cronologia di una versione); le azioni del workflow arrivano con il piano di implementazione
-qui sotto.
+ripristino. Primo caso d'uso concreto: **Devil Fruit Type**. Espone:
+
+- **Catalogo lingue** (`/languages`): lettura, aggiunta, rimozione di una lingua non in uso.
+- **Devil Fruit Type** (`/devil-fruit-types`): lista paginata, catena di versioni,
+  contenuto e cronologia di una versione, bozze (crea, modifica, scarta) e tutte le
+  transizioni del workflow (invio, presa in carico, approvazione, rifiuto, pubblicazione,
+  archiviazione, ritiro, ripristino, nuova versione), con le azioni consentite al chiamante.
+- **Dashboard** (`/dashboard`): contatori per stato, attività recente del chiamante
+  (dall'audit log) e pagine per stato trasversali alle entità.
+
+Visibilità e azioni dipendono dai permessi `content:*` del token, mai dal nome del ruolo.
 
 - **Flussi/regole di prodotto:** `docs/user-flows/content-editorial-workflow.md` (repo `one-piece-api`).
 - **Piano di implementazione:** `docs/implementation-plan-content.md` (repo `one-piece-api`).

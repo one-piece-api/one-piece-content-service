@@ -75,8 +75,10 @@ Fruits, Characters, …). What a version says is not: each entity has its own fi
   an entity have a row in its table, so its queries need no filter by type.
 - A new entity adds its type to the `entity_type` check and its content tables, through a
   migration, plus its own check in "is this language still in use".
-- A list across entities (the dashboard) takes the name of each row from the table of its
-  entity: one join, or one branch of a `UNION`, per entity.
+- A list across entities (the dashboard) pages the shared tables only, then asks each
+  entity for the names of the contents on the page: one `ContentTitleSource` per entity
+  (Strategy), one query per entity type present. Such a list cannot sort or filter by
+  name, which lives in a different table per entity: it sorts by update time.
 - Uniqueness of romaji and name is within an entity type, not across all content.
 - A closed version is immutable by rule, enforced by the service, not by the schema.
 - Transitions that move the online version (publish, restore) must update the old one
