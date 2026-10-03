@@ -48,6 +48,7 @@ import static dev.onepieceapi.contentservice.web.controller.TestCallers.callerWi
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -55,6 +56,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -442,6 +444,41 @@ class DevilFruitTypeControllerTest {
 			.formatted("x".repeat(100), "x".repeat(100), "x".repeat(2000));
 
 		this.mockMvc.perform(edit(body).with(callerWith(Permission.CONTENT_WRITE))).andExpect(status().isOk());
+	}
+
+	@Test
+	void discardingADraftAnswersWithNoContent() throws Exception {
+		this.mockMvc.perform(discard().with(callerWith(Permission.CONTENT_WRITE))).andExpect(status().isNoContent());
+
+		verify(this.service).delete(eq(Set.of(Permission.CONTENT_WRITE)), any(), eq(CONTENT_ID), eq(1));
+	}
+
+	@Test
+	void discardingIsForbiddenWithoutContentWriteAndUnauthorizedWithoutAToken() throws Exception {
+		this.mockMvc.perform(discard().with(callerWith(Permission.CONTENT_READ, Permission.CONTENT_REVIEW)))
+			.andExpect(status().isForbidden());
+		this.mockMvc.perform(discard()).andExpect(status().isUnauthorized());
+		verifyNoInteractions(this.service);
+	}
+
+	@ParameterizedTest
+	@CsvSource({ "NOT_FOUND, 404, CONTENT_VERSION_NOT_FOUND", "FORBIDDEN, 403, CONTENT_VERSION_ACTION_FORBIDDEN",
+			"CONFLICT, 409, CONTENT_VERSION_ACTION_CONFLICT" })
+	void aRefusedDiscardAnswersWithItsStatusAndCode(String refusal, int status, String errorCode) throws Exception {
+		RuntimeException refused = switch (refusal) {
+			case "NOT_FOUND" -> new VersionNotFoundException(CONTENT_ID, 1);
+			case "FORBIDDEN" -> new VersionActionForbiddenException(VersionAction.DELETE);
+			default -> new VersionActionConflictException(VersionAction.DELETE);
+		};
+		doThrow(refused).when(this.service).delete(any(), any(), any(), eq(1));
+
+		this.mockMvc.perform(discard().with(callerWith(Permission.CONTENT_WRITE)))
+			.andExpect(status().is(status))
+			.andExpect(jsonPath("$.errorCode").value(errorCode));
+	}
+
+	private static MockHttpServletRequestBuilder discard() {
+		return delete("/devil-fruit-types/" + CONTENT_ID + "/versions/1");
 	}
 
 	/** A save of version 1 of the content, not signed in yet. */

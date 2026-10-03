@@ -8,10 +8,13 @@ import java.util.UUID;
 
 /**
  * The contents themselves, of whatever entity type. A content says nothing by itself, so
- * all there is to do with one is to create it: everything else goes through its versions.
+ * all there is to do with one is to create it, and to remove it with its first draft:
+ * everything else goes through its versions.
  */
 public interface ContentRepository extends Repository<ContentEntity, UUID> {
 
 	ContentEntity save(ContentEntity content);
+
+	void deleteById(UUID id);
 
 }

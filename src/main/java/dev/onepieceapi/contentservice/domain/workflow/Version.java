@@ -25,6 +25,15 @@ public record Version<T>(int number, Integer basedOn, VersionStatus status, User
 		return this.status.everPublished();
 	}
 
+	/**
+	 * Whether this is the first version of its content. A first version still in draft is
+	 * the only one its content has: a draft is always the latest version, and a later one
+	 * can only be opened from a closed version.
+	 */
+	public boolean isFirst() {
+		return this.number == 1;
+	}
+
 	/** Whether this version is the one currently online. */
 	public boolean isOnline() {
 		return this.status == VersionStatus.PUBLISHED;

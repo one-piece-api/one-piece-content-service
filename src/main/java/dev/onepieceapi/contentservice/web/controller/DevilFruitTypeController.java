@@ -31,6 +31,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -45,11 +46,12 @@ import java.util.UUID;
 /**
  * The Devil Fruit Type section. Reading (UF-CNT-12, UF-CNT-18) - the paginated list, a
  * content with its version chain, one version with what it says, and its history - takes
- * {@code content:read}; creating a content and editing its draft (UF-CNT-01, UF-CNT-02)
- * take {@code content:write} (see {@code SecuredEndpoint}). What a caller then finds is
- * limited to the statuses their permissions make visible: whatever is not visible answers
- * {@code 404} like something that does not exist, a visible version the caller may not
- * change {@code 403}, one that is not in a state for it {@code 409}.
+ * {@code content:read}; creating a content, editing its draft and discarding it
+ * (UF-CNT-01, UF-CNT-02, UF-CNT-11) take {@code content:write} (see
+ * {@code SecuredEndpoint}). What a caller then finds is limited to the statuses their
+ * permissions make visible: whatever is not visible answers {@code 404} like something
+ * that does not exist, a visible version the caller may not change {@code 403}, one that
+ * is not in a state for it {@code 409}.
  */
 @RestController
 @Tag(name = "Devil Fruit Types")
@@ -112,6 +114,13 @@ class DevilFruitTypeController {
 		DevilFruitType written = DevilFruitTypeRequestMapper.toDomain(request);
 		var content = this.service.create(caller.permissions(), caller.user(), written);
 		return ContentResponseMapper.toContentResponse(content);
+	}
+
+	/** Discards a draft (UF-CNT-11) - and its content with it, when it was the first. */
+	@DeleteMapping(ApiPaths.DEVIL_FRUIT_TYPE_VERSION)
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	void delete(@PathVariable UUID id, @PathVariable int number, @AuthenticationPrincipal AuthenticatedCaller caller) {
+		this.service.delete(caller.permissions(), caller.user(), id, number);
 	}
 
 	/** Replaces what a draft says (UF-CNT-02); answers with the version as it now is. */

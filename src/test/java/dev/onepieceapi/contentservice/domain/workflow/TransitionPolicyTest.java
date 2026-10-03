@@ -155,6 +155,15 @@ class TransitionPolicyTest {
 	}
 
 	@Test
+	void onlyItsAuthorDiscardsADraftAndOnlyWhileItIsOne() {
+		assertThat(decide(DELETE, version(DRAFT), NAMI, EDITOR)).isEqualTo(ALLOWED);
+		assertThat(decide(DELETE, version(DRAFT), CHOPPER, EDITOR)).isEqualTo(FORBIDDEN);
+		// A rejected version must be returned to draft first.
+		assertThat(decide(DELETE, version(REJECTED), NAMI, EDITOR)).isEqualTo(CONFLICT);
+		assertThat(decide(DELETE, version(PUBLISHED), NAMI, EDITOR)).isEqualTo(CONFLICT);
+	}
+
+	@Test
 	void whoIsAskingComesBeforeTheStateOfTheVersion() {
 		assertThat(decide(EDIT, version(PUBLISHED), CHOPPER, EDITOR)).isEqualTo(FORBIDDEN);
 		assertThat(decide(CLAIM, claimedBy(ZORO), NAMI, EDITOR_AND_REVIEWER)).isEqualTo(FORBIDDEN);

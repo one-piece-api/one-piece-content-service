@@ -164,6 +164,31 @@ paths:
       - Devil Fruit Types
       x-required-permission: content:read
   /devil-fruit-types/{id}/versions/{number}:
+    delete:
+      operationId: devilFruitTypeDelete
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "204":
+          description: No Content
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Devil Fruit Types
+      x-required-permission: content:write
     get:
       operationId: devilFruitTypeVersion
       parameters:

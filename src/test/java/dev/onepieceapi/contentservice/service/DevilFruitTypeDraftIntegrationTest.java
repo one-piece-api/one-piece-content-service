@@ -70,9 +70,10 @@ import static org.assertj.core.api.Assertions.tuple;
 import static org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase.Replace;
 
 /**
- * Creating a content and editing its draft (UF-CNT-01, UF-CNT-02) against a real
- * PostgreSQL (Testcontainers): what is stored, who may change it, and the uniqueness of
- * romaji and names, which is a query on what every other content says.
+ * Creating a content, editing its draft and discarding it (UF-CNT-01, UF-CNT-02,
+ * UF-CNT-11) against a real PostgreSQL (Testcontainers): what is stored, who may change
+ * it, and the uniqueness of romaji and names, which is a query on what every other
+ * content says.
  * <p>
  * Seeded for every test, both by chopper:
  * <ul>
@@ -337,6 +338,94 @@ class DevilFruitTypeDraftIntegrationTest {
 		var chain = this.service.get(EDITOR, this.nami, this.zoan).versions();
 
 		assertThat(chain).extracting(VersionAccess::allowedActions).containsExactly(Set.of(), Set.of(), Set.of());
+	}
+
+	@Test
+	void discardingAFirstDraftRemovesItsContent() {
+		UUID versionId = versionIdOf(this.logia, 1);
+
+		this.service.delete(EDITOR, this.chopper, this.logia, 1);
+		stored();
+
+		assertThatThrownBy(() -> this.service.get(EDITOR, this.chopper, this.logia))
+			.isInstanceOf(DevilFruitTypeNotFoundException.class);
+		assertThat(this.contentVersionRepository.hasOpenVersion(this.logia)).isFalse();
+		assertThat(this.entityManager.find(ContentEntity.class, this.logia)).isNull();
+		assertThat(this.versionRepository.findById(versionId)).isEmpty();
+	}
+
+	@Test
+	void aDiscardedDraftSurvivesOnlyInTheAuditLog() {
+		UUID versionId = versionIdOf(this.logia, 1);
+
+		this.service.delete(EDITOR, this.chopper, this.logia, 1);
+		stored();
+
+		var records = this.auditLogRepository.findByTargetVersionIdOrderByOccurredAtAscIdAsc(versionId);
+		assertThat(records).hasSize(1);
+		assertThat(records.getFirst().getAction()).isEqualTo("VERSION_DELETED");
+		assertThat(records.getFirst().getTargetContentId()).isEqualTo(this.logia);
+		assertThat(records.getFirst().getTargetLabel()).isEqualTo("Logia");
+		assertThat(records.getFirst().getActor().getUsername()).isEqualTo("chopper");
+	}
+
+	@Test
+	void discardingALaterDraftTakesTheContentBackToItsPreviousVersion() {
+		version(this.zoan, 3, DRAFT, this.chopper, "Dobutsu-kei", "Animale");
+		stored();
+
+		this.service.delete(EDITOR, this.chopper, this.zoan, 3);
+		stored();
+
+		var chain = this.service.get(EDITOR, this.chopper, this.zoan).versions();
+		assertThat(chain).extracting(access -> access.version().number()).containsExactly(1, 2);
+		// Nothing is open any more: a new version may be opened from a closed one.
+		assertThat(chain.getLast().allowedActions()).containsExactly(OPEN_NEW_VERSION);
+	}
+
+	@Test
+	void theNumberOfADiscardedDraftIsTakenByTheNextOne() {
+		version(this.zoan, 3, DRAFT, this.chopper, "Dobutsu-kei", "Animale");
+		stored();
+		this.service.delete(EDITOR, this.chopper, this.zoan, 3);
+		stored();
+
+		version(this.zoan, 3, DRAFT, this.nami, "Dobutsu-kei", "Animale");
+		stored();
+
+		assertThat(this.service.getVersion(EDITOR, this.nami, this.zoan, 3).version().author()).isEqualTo(this.nami);
+	}
+
+	@Test
+	void anotherEditorMayNotDiscardTheDraft() {
+		assertThatThrownBy(() -> this.service.delete(EDITOR, this.nami, this.logia, 1))
+			.isInstanceOf(VersionActionForbiddenException.class);
+		stored();
+
+		assertThat(this.service.get(EDITOR, this.nami, this.logia).versions()).hasSize(1);
+	}
+
+	@Test
+	void aDraftWhoCannotSeeItCannotDiscardIt() {
+		assertThatThrownBy(() -> this.service.delete(REVIEWER, this.zoro, this.logia, 1))
+			.isInstanceOf(VersionNotFoundException.class);
+	}
+
+	@ParameterizedTest
+	@EnumSource(names = { "REJECTED", "PUBLISHED" })
+	void onlyADraftIsDiscarded(VersionStatus status) {
+		UUID other = content();
+		version(other, 1, status, this.nami, "Kodai", "Antico");
+		stored();
+
+		assertThatThrownBy(() -> this.service.delete(EDITOR, this.nami, other, 1))
+			.isInstanceOf(VersionActionConflictException.class);
+	}
+
+	private UUID versionIdOf(UUID contentId, int number) {
+		return this.versionRepository.findVisible(contentId, number, Set.of(VersionStatus.values()))
+			.orElseThrow()
+			.getVersionId();
 	}
 
 	private Map<UUID, Set<VersionAction>> actionsInList(User caller) {

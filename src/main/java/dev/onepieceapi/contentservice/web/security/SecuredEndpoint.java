@@ -50,7 +50,8 @@ enum SecuredEndpoint {
 	// Writing takes content:write; whether this caller may change this version - its
 	// author, while it is a draft - is decided by TransitionPolicy, inside the service.
 	DEVIL_FRUIT_TYPE_CREATE(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPES, Permission.CONTENT_WRITE),
-	DEVIL_FRUIT_TYPE_VERSION_EDIT(HttpMethod.PUT, ApiPaths.DEVIL_FRUIT_TYPE_VERSION, Permission.CONTENT_WRITE);
+	DEVIL_FRUIT_TYPE_VERSION_EDIT(HttpMethod.PUT, ApiPaths.DEVIL_FRUIT_TYPE_VERSION, Permission.CONTENT_WRITE),
+	DEVIL_FRUIT_TYPE_VERSION_DELETE(HttpMethod.DELETE, ApiPaths.DEVIL_FRUIT_TYPE_VERSION, Permission.CONTENT_WRITE);
 
 	private final HttpMethod method;
 

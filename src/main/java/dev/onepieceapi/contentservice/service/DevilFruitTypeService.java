@@ -44,13 +44,13 @@ import java.util.UUID;
 
 /**
  * Devil Fruit Types and their versions: reading them
- * (docs/user-flows/content-editorial-workflow.md UF-CNT-12, UF-CNT-18), creating one and
- * editing its draft (UF-CNT-01, UF-CNT-02). Every method starts from the caller:
- * {@link VisibilityPolicy} turns their permissions into the statuses they may see, and
- * nothing outside those statuses is ever loaded; {@link TransitionPolicy} says what they
- * may do with a version they see, and the same answer guards each change. Building the
- * queries, converting rows and validating what is saved are done elsewhere: this class
- * only decides what to read or change, and for whom.
+ * (docs/user-flows/content-editorial-workflow.md UF-CNT-12, UF-CNT-18), creating one,
+ * editing its draft and discarding it (UF-CNT-01, UF-CNT-02, UF-CNT-11). Every method
+ * starts from the caller: {@link VisibilityPolicy} turns their permissions into the
+ * statuses they may see, and nothing outside those statuses is ever loaded;
+ * {@link TransitionPolicy} says what they may do with a version they see, and the same
+ * answer guards each change. Building the queries, converting rows and validating what is
+ * saved are done elsewhere: this class only decides what to read or change, and for whom.
  */
 @Service
 @Transactional(readOnly = true)
@@ -60,6 +60,8 @@ public class DevilFruitTypeService {
 	private static final String AUDIT_ACTION_CREATED = "VERSION_CREATED";
 
 	private static final String AUDIT_ACTION_EDITED = "VERSION_EDITED";
+
+	private static final String AUDIT_ACTION_DELETED = "VERSION_DELETED";
 
 	private final DevilFruitTypeVersionRepository versionRepository;
 
@@ -184,6 +186,25 @@ public class DevilFruitTypeService {
 		UUID versionId = entity.getVersionId();
 		this.auditLogService.recordOnVersion(AUDIT_ACTION_EDITED, caller, contentId, versionId, body.romaji());
 		return accessTo(DevilFruitTypeVersionMapper.toDomain(entity), context);
+	}
+
+	/**
+	 * Removes a draft for good (UF-CNT-11): the content goes back to its previous version
+	 * and the number is free again. A first version takes its content with it - there is
+	 * nothing left to go back to. Only the audit log remembers it.
+	 */
+	@Transactional
+	public void delete(Set<Permission> permissions, User caller, UUID contentId, int versionNumber) {
+		DevilFruitTypeVersionEntity entity = visibleVersion(permissions, contentId, versionNumber);
+		Version<DevilFruitType> version = DevilFruitTypeVersionMapper.toDomain(entity);
+		require(VersionAction.DELETE, contextOf(version, contentId, caller, permissions));
+		this.versionRepository.delete(entity);
+		if (version.isFirst()) {
+			this.contentRepository.deleteById(contentId);
+		}
+		UUID versionId = entity.getVersionId();
+		String label = version.body().romaji();
+		this.auditLogService.recordOnVersion(AUDIT_ACTION_DELETED, caller, contentId, versionId, label);
 	}
 
 	private DevilFruitTypeVersionEntity visibleVersion(Set<Permission> permissions, UUID contentId, int versionNumber) {
