@@ -224,4 +224,26 @@ class DevilFruitTypeController {
 		return DevilFruitTypeResponseMapper.toVersionResponse(version);
 	}
 
+	/**
+	 * Sets a version ready to publish aside without putting it online (UF-CNT-16);
+	 * answers with it as it now is.
+	 */
+	@PostMapping(ApiPaths.DEVIL_FRUIT_TYPE_VERSION_ARCHIVE)
+	VersionResponse<DevilFruitTypeResponse> archive(@PathVariable UUID id, @PathVariable int number,
+			@AuthenticationPrincipal AuthenticatedCaller caller) {
+		var version = this.service.archive(caller.permissions(), caller.user(), id, number);
+		return DevilFruitTypeResponseMapper.toVersionResponse(version);
+	}
+
+	/**
+	 * Brings an archived version back among those ready to publish (UF-CNT-17); answers
+	 * with it as it now is.
+	 */
+	@PostMapping(ApiPaths.DEVIL_FRUIT_TYPE_VERSION_RECOVER)
+	VersionResponse<DevilFruitTypeResponse> recover(@PathVariable UUID id, @PathVariable int number,
+			@AuthenticationPrincipal AuthenticatedCaller caller) {
+		var version = this.service.recover(caller.permissions(), caller.user(), id, number);
+		return DevilFruitTypeResponseMapper.toVersionResponse(version);
+	}
+
 }

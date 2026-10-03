@@ -9,6 +9,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import java.util.Set;
 import java.util.UUID;
 
+import static dev.onepieceapi.contentservice.domain.workflow.VersionStatus.ARCHIVED;
 import static dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED;
 import static dev.onepieceapi.contentservice.domain.workflow.VersionStatus.READY_TO_PUBLISH;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -32,6 +33,13 @@ class TransitionContextTest {
 		assertThat(after.version().status()).isEqualTo(PUBLISHED);
 		assertThat(after.caller()).isEqualTo(VIVI);
 		assertThat(after.permissions()).isEqualTo(PUBLISHER);
+	}
+
+	@Test
+	void aVersionEnteringTheOpenStatusesIsItsContentsOpenOne() {
+		var before = new TransitionContext(version(ARCHIVED), false, VIVI, PUBLISHER);
+
+		assertThat(before.after(version(READY_TO_PUBLISH)).contentHasOpenVersion()).isTrue();
 	}
 
 	@ParameterizedTest(name = "[{index}] {0} -> {1}, open version before: {2}")

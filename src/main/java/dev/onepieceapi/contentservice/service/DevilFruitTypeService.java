@@ -50,13 +50,14 @@ import java.util.UUID;
  * editing its draft and discarding it (UF-CNT-01, UF-CNT-02, UF-CNT-11), sending it to
  * review and taking it back (UF-CNT-03, UF-CNT-04), a reviewer claiming and releasing it
  * (UF-CNT-13, UF-CNT-14), approving or rejecting it, and its author taking a rejected one
- * back to draft (UF-CNT-05, UF-CNT-06, UF-CNT-15), putting it online (UF-CNT-07), opening
- * the next version from a closed one (UF-CNT-08). Every method starts from the caller:
- * {@link VisibilityPolicy} turns their permissions into the statuses they may see, and
- * nothing outside those statuses is ever loaded; {@link TransitionPolicy} says what they
- * may do with a version they see, and the same answer guards each change. Building the
- * queries, converting rows and validating what is saved are done elsewhere: this class
- * only decides what to read or change, and for whom.
+ * back to draft (UF-CNT-05, UF-CNT-06, UF-CNT-15), putting it online (UF-CNT-07), setting
+ * it aside and back (UF-CNT-16, UF-CNT-17), opening the next version from a closed one
+ * (UF-CNT-08). Every method starts from the caller: {@link VisibilityPolicy} turns their
+ * permissions into the statuses they may see, and nothing outside those statuses is ever
+ * loaded; {@link TransitionPolicy} says what they may do with a version they see, and the
+ * same answer guards each change. Building the queries, converting rows and validating
+ * what is saved are done elsewhere: this class only decides what to read or change, and
+ * for whom.
  */
 @Service
 @Transactional(readOnly = true)
@@ -86,6 +87,10 @@ public class DevilFruitTypeService {
 	private static final String AUDIT_ACTION_PUBLISHED = "VERSION_PUBLISHED";
 
 	private static final String AUDIT_ACTION_SUPERSEDED = "VERSION_SUPERSEDED";
+
+	private static final String AUDIT_ACTION_ARCHIVED = "VERSION_ARCHIVED";
+
+	private static final String AUDIT_ACTION_RECOVERED = "VERSION_RECOVERED";
 
 	private final DevilFruitTypeVersionRepository versionRepository;
 
@@ -352,6 +357,45 @@ public class DevilFruitTypeService {
 		this.versionRepository.findOnline(contentId).ifPresent(online -> supersede(online, versionNumber, caller, now));
 		entity.moveTo(VersionStatus.PUBLISHED, now);
 		return recorded(entity, context, AUDIT_ACTION_PUBLISHED);
+	}
+
+	/**
+	 * Sets a version ready to publish aside without putting it online (UF-CNT-16): it is
+	 * closed from then on, so its content may open a new draft.
+	 */
+	@Transactional
+	public VersionAccess<DevilFruitType> archive(Set<Permission> permissions, User caller, UUID contentId,
+			int versionNumber) {
+		DevilFruitTypeVersionEntity entity = visibleVersion(permissions, contentId, versionNumber);
+		Version<DevilFruitType> current = DevilFruitTypeVersionMapper.toDomain(entity);
+		TransitionContext context = contextOf(current, contentId, caller, permissions);
+		require(VersionAction.ARCHIVE, context);
+		entity.moveTo(VersionStatus.ARCHIVED, this.clock.instant());
+		return recorded(entity, context, AUDIT_ACTION_ARCHIVED);
+	}
+
+	/**
+	 * Brings an archived version back among those ready to publish (UF-CNT-17) - open
+	 * again, so only while its content has no other open version. A new draft opened at
+	 * the same instant passes that check too; the database lets only one of them in (one
+	 * open version per content - see {@code V2}), and the recovery is written at once so
+	 * that, if it is the one left out, it is refused as if it had come second.
+	 */
+	@Transactional
+	public VersionAccess<DevilFruitType> recover(Set<Permission> permissions, User caller, UUID contentId,
+			int versionNumber) {
+		DevilFruitTypeVersionEntity entity = visibleVersion(permissions, contentId, versionNumber);
+		Version<DevilFruitType> current = DevilFruitTypeVersionMapper.toDomain(entity);
+		TransitionContext context = contextOf(current, contentId, caller, permissions);
+		require(VersionAction.RECOVER, context);
+		entity.moveTo(VersionStatus.READY_TO_PUBLISH, this.clock.instant());
+		try {
+			this.versionRepository.flush();
+		}
+		catch (DataIntegrityViolationException ex) {
+			throw new VersionActionConflictException(VersionAction.RECOVER);
+		}
+		return recorded(entity, context, AUDIT_ACTION_RECOVERED);
 	}
 
 	/**

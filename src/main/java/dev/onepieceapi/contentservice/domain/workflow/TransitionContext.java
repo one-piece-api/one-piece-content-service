@@ -17,13 +17,16 @@ public record TransitionContext(Version<?> version, boolean contentHasOpenVersio
 		Set<Permission> permissions) {
 
 	/**
-	 * The same question asked again once a transition has moved the version. A version
-	 * leaving the open statuses was its content's only open one (4.1), so the content has
-	 * none left; any other move leaves that unchanged.
+	 * The same question asked again once a transition has moved the version. A version in
+	 * the open statuses is its content's only open one (4.1): leaving them, it leaves the
+	 * content with none; entering them, as a recovered one does, it is one. Any other
+	 * move leaves that unchanged.
 	 */
 	public TransitionContext after(Version<?> moved) {
-		boolean closedNow = status().isOpen() && !moved.status().isOpen();
-		return new TransitionContext(moved, this.contentHasOpenVersion && !closedNow, this.caller, this.permissions);
+		boolean openNow = moved.status().isOpen();
+		boolean closedNow = status().isOpen() && !openNow;
+		boolean hasOpenVersion = openNow || this.contentHasOpenVersion && !closedNow;
+		return new TransitionContext(moved, hasOpenVersion, this.caller, this.permissions);
 	}
 
 	VersionStatus status() {

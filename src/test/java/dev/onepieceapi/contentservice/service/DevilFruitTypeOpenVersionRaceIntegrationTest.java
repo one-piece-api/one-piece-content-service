@@ -49,25 +49,28 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.AdditionalAnswers.delegatesTo;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase.Replace;
 
 /**
- * Two editors opening a new version of the same content at the same instant (UF-CNT-08),
- * each in their own transaction against a real PostgreSQL (Testcontainers). Both are held
- * right after checking that the content has no open version, so both pass it: the
- * database must then let only one of them in, and the other must be refused as a
- * conflict, not fail with a server error. Not run inside a test transaction: each editor
- * commits, as in production.
+ * Two callers giving the same content an open version at the same instant - two editors
+ * opening a new one (UF-CNT-08), or a publisher recovering an archived one while an
+ * editor opens a new one (UF-CNT-17) - each in their own transaction against a real
+ * PostgreSQL (Testcontainers). Both are held right after checking that the content has no
+ * open version, so both pass it: the database must then let only one of them in, and the
+ * other must be refused as a conflict, not fail with a server error. Not run inside a
+ * test transaction: each caller commits, as in production.
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = Replace.NONE)
 @ImportAutoConfiguration(FlywayAutoConfiguration.class)
 @Testcontainers
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
-class DevilFruitTypeNewVersionRaceIntegrationTest {
+class DevilFruitTypeOpenVersionRaceIntegrationTest {
 
 	@Container
 	@ServiceConnection
@@ -77,11 +80,15 @@ class DevilFruitTypeNewVersionRaceIntegrationTest {
 
 	private static final Set<Permission> EDITOR = Set.of(Permission.CONTENT_READ, Permission.CONTENT_WRITE);
 
+	private static final Set<Permission> PUBLISHER = Set.of(Permission.CONTENT_READ, Permission.CONTENT_PUBLISH);
+
 	private static final long WAIT_SECONDS = 10;
 
 	private final User nami = new User(UUID.randomUUID(), "nami", "nami@onepiece.local");
 
 	private final User chopper = new User(UUID.randomUUID(), "chopper", "chopper@onepiece.local");
+
+	private final User vivi = new User(UUID.randomUUID(), "vivi", "vivi@onepiece.local");
 
 	@Autowired
 	private DevilFruitTypeVersionRepository versionRepository;
@@ -104,18 +111,12 @@ class DevilFruitTypeNewVersionRaceIntegrationTest {
 	@Test
 	void ofTwoEditorsOpeningAtOnceOneGetsTheNewVersionAndTheOtherAConflict() throws Exception {
 		var transaction = new TransactionTemplate(this.transactionManager);
-		UUID logia = transaction.execute(status -> seedOnlineContent());
-		DevilFruitTypeService service = serviceWithBothEditorsHeldAfterTheCheck(logia);
+		UUID logia = transaction.execute(status -> seedContentWithItsOnlyVersion(VersionStatus.PUBLISHED));
+		DevilFruitTypeService service = serviceWithBothCallersHeldAfterTheCheck(logia);
 
-		List<Callable<VersionAccess<DevilFruitType>>> editors = List.of(
+		List<Object> outcomes = race(
 				() -> transaction.execute(status -> service.openNewVersion(EDITOR, this.nami, logia, 1)),
 				() -> transaction.execute(status -> service.openNewVersion(EDITOR, this.chopper, logia, 1)));
-		List<Object> outcomes = new ArrayList<>();
-		try (var executor = Executors.newFixedThreadPool(editors.size())) {
-			for (Future<VersionAccess<DevilFruitType>> future : executor.invokeAll(editors)) {
-				outcomes.add(outcomeOf(future));
-			}
-		}
 
 		assertThat(outcomes).filteredOn(VersionAccess.class::isInstance).hasSize(1);
 		assertThat(outcomes).filteredOn(VersionActionConflictException.class::isInstance).hasSize(1);
@@ -123,11 +124,75 @@ class DevilFruitTypeNewVersionRaceIntegrationTest {
 		assertThat(latest).isEqualTo(2);
 	}
 
+	@Test
+	void ofARecoveryAndANewVersionAtOnceOneGetsInAndTheOtherAConflict() throws Exception {
+		var transaction = new TransactionTemplate(this.transactionManager);
+		UUID zoan = transaction.execute(status -> seedContentWithItsOnlyVersion(VersionStatus.ARCHIVED));
+		DevilFruitTypeService service = serviceWithBothCallersHeldAfterTheCheck(zoan);
+
+		List<Object> outcomes = race(
+				() -> transaction.execute(status -> service.recover(PUBLISHER, this.vivi, zoan, 1)),
+				() -> transaction.execute(status -> service.openNewVersion(EDITOR, this.chopper, zoan, 1)));
+
+		assertThat(outcomes).filteredOn(VersionAccess.class::isInstance).hasSize(1);
+		assertThat(outcomes).filteredOn(VersionActionConflictException.class::isInstance).hasSize(1);
+		Boolean recovered = transaction
+			.execute(status -> this.versionRepository.findVisible(zoan, 1, Set.of(VersionStatus.READY_TO_PUBLISH))
+				.isPresent());
+		Integer latest = transaction.execute(status -> this.contentVersionRepository.findLatestNumber(zoan));
+		assertThat(latest).isEqualTo(Boolean.TRUE.equals(recovered) ? 1 : 2);
+	}
+
+	@Test
+	void aRecoveryThatMissedANewVersionOpenedMeanwhileIsRefusedAsAConflict() {
+		var transaction = new TransactionTemplate(this.transactionManager);
+		UUID zoan = transaction.execute(status -> seedContentWithItsOnlyVersion(VersionStatus.ARCHIVED));
+		transaction
+			.executeWithoutResult(status -> serviceSeeing(zoan, false).openNewVersion(EDITOR, this.chopper, zoan, 1));
+		DevilFruitTypeService late = serviceSeeing(zoan, false);
+
+		assertThatThrownBy(() -> transaction.execute(status -> late.recover(PUBLISHER, this.vivi, zoan, 1)))
+			.isInstanceOf(VersionActionConflictException.class);
+		Boolean stillArchived = transaction
+			.execute(status -> this.versionRepository.findVisible(zoan, 1, Set.of(VersionStatus.ARCHIVED)).isPresent());
+		assertThat(stillArchived).isTrue();
+	}
+
+	/**
+	 * The service, with a view of the versions answering the check for an open version as
+	 * it was read before anyone acted: the same as two callers checking at once, without
+	 * threads - so the one that comes second is always the recovery.
+	 */
+	private DevilFruitTypeService serviceSeeing(UUID contentId, boolean hasOpenVersion) {
+		ContentVersionRepository stale = mock(ContentVersionRepository.class,
+				delegatesTo(this.contentVersionRepository));
+		doReturn(hasOpenVersion).when(stale).hasOpenVersion(contentId);
+		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
+		var validator = new DevilFruitTypeValidator(this.versionRepository, this.languageRepository);
+		return new DevilFruitTypeService(this.versionRepository, stale, this.contentRepository, validator,
+				new AuditLogService(this.auditLogRepository, clock), clock);
+	}
+
+	/**
+	 * Runs the callers at once and gives what each got: its version, or why it was
+	 * refused.
+	 */
+	@SafeVarargs
+	private static List<Object> race(Callable<VersionAccess<DevilFruitType>>... callers) throws InterruptedException {
+		List<Object> outcomes = new ArrayList<>();
+		try (var executor = Executors.newFixedThreadPool(callers.length)) {
+			for (Future<VersionAccess<DevilFruitType>> future : executor.invokeAll(List.of(callers))) {
+				outcomes.add(outcomeOf(future));
+			}
+		}
+		return outcomes;
+	}
+
 	/**
 	 * The service, with its view of the versions holding each caller right after it
 	 * checked for an open version, until both have checked.
 	 */
-	private DevilFruitTypeService serviceWithBothEditorsHeldAfterTheCheck(UUID contentId) {
+	private DevilFruitTypeService serviceWithBothCallersHeldAfterTheCheck(UUID contentId) {
 		var bothChecked = new CyclicBarrier(2);
 		ContentVersionRepository heldAfterCheck = mock(ContentVersionRepository.class,
 				delegatesTo(this.contentVersionRepository));
@@ -142,7 +207,7 @@ class DevilFruitTypeNewVersionRaceIntegrationTest {
 				new AuditLogService(this.auditLogRepository, clock), clock);
 	}
 
-	/** What an editor got: the new version, or why it was refused. */
+	/** What a caller got: the version, or why it was refused. */
 	private static Object outcomeOf(Future<VersionAccess<DevilFruitType>> future) throws InterruptedException {
 		try {
 			return future.get(WAIT_SECONDS, TimeUnit.SECONDS);
@@ -155,20 +220,20 @@ class DevilFruitTypeNewVersionRaceIntegrationTest {
 		}
 	}
 
-	/** Logia, by nami: v1 online, nothing open. */
-	private UUID seedOnlineContent() {
+	/** A content by nami with v1 in the given status, nothing else. */
+	private UUID seedContentWithItsOnlyVersion(VersionStatus status) {
 		UUID contentId = UUID.randomUUID();
 		this.contentRepository.save(new ContentEntity(contentId, EntityType.DEVIL_FRUIT_TYPE, NOW));
 		var workflow = ContentVersionEntity.builder()
 			.contentId(contentId)
 			.versionNumber(1)
 			.author(UserMapper.toEmbeddable(this.nami))
-			.status(VersionStatus.PUBLISHED)
+			.status(status)
 			.createdAt(NOW)
 			.updatedAt(NOW)
 			.build();
 		var version = new DevilFruitTypeVersionEntity(workflow);
-		version.setRomaji("Logia");
+		version.setRomaji("Logia " + contentId);
 		version.getTranslations().put("it", new TranslationEmbeddable("Rogia", "Trasforma in un elemento"));
 		this.versionRepository.save(version);
 		return contentId;

@@ -1,7 +1,7 @@
 info:
   name: devilFruitTypeEvents
   type: http
-  seq: 12
+  seq: 13
   tags:
     - Devil_Fruit_Types
 

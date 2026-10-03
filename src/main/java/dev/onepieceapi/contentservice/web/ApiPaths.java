@@ -63,6 +63,10 @@ public final class ApiPaths {
 
 	public static final String DEVIL_FRUIT_TYPE_VERSION_PUBLISH = DEVIL_FRUIT_TYPE_VERSION + "/publish";
 
+	public static final String DEVIL_FRUIT_TYPE_VERSION_ARCHIVE = DEVIL_FRUIT_TYPE_VERSION + "/archive";
+
+	public static final String DEVIL_FRUIT_TYPE_VERSION_RECOVER = DEVIL_FRUIT_TYPE_VERSION + "/recover";
+
 	private ApiPaths() {
 	}
 

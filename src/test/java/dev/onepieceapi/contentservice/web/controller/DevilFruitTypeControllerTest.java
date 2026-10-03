@@ -31,6 +31,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -784,6 +785,60 @@ class DevilFruitTypeControllerTest {
 		when(this.service.publish(any(), any(), any(), eq(1))).thenThrow(refused);
 
 		this.mockMvc.perform(workflow("publish").with(callerWith(Permission.CONTENT_PUBLISH)))
+			.andExpect(status().is(status))
+			.andExpect(jsonPath("$.errorCode").value(errorCode));
+	}
+
+	@Test
+	void archivingAnswersWithTheVersionSetAside() throws Exception {
+		var archived = new VersionAccess<>(version(1, VersionStatus.ARCHIVED), EnumSet.of(VersionAction.RECOVER));
+		when(this.service.archive(eq(Set.of(Permission.CONTENT_PUBLISH)), any(), eq(CONTENT_ID), eq(1)))
+			.thenReturn(archived);
+
+		this.mockMvc.perform(workflow("archive").with(callerWith(Permission.CONTENT_PUBLISH)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.status").value("ARCHIVED"))
+			.andExpect(jsonPath("$.allowedActions[0]").value("RECOVER"));
+	}
+
+	@Test
+	void recoveringAnswersWithTheVersionReadyToPublishAgain() throws Exception {
+		var recovered = new VersionAccess<>(version(1, VersionStatus.READY_TO_PUBLISH),
+				EnumSet.of(VersionAction.PUBLISH, VersionAction.ARCHIVE));
+		when(this.service.recover(eq(Set.of(Permission.CONTENT_PUBLISH)), any(), eq(CONTENT_ID), eq(1)))
+			.thenReturn(recovered);
+
+		this.mockMvc.perform(workflow("recover").with(callerWith(Permission.CONTENT_PUBLISH)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.status").value("READY_TO_PUBLISH"))
+			.andExpect(jsonPath("$.allowedActions[0]").value("PUBLISH"));
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = { "archive", "recover" })
+	void archivingAndRecoveringAreForbiddenWithoutContentPublishAndUnauthorizedWithoutAToken(String action)
+			throws Exception {
+		this.mockMvc
+			.perform(workflow(action)
+				.with(callerWith(Permission.CONTENT_READ, Permission.CONTENT_WRITE, Permission.CONTENT_REVIEW)))
+			.andExpect(status().isForbidden());
+		this.mockMvc.perform(workflow(action)).andExpect(status().isUnauthorized());
+		verifyNoInteractions(this.service);
+	}
+
+	@ParameterizedTest
+	@CsvSource({ "NOT_FOUND, 404, CONTENT_VERSION_NOT_FOUND", "FORBIDDEN, 403, CONTENT_VERSION_ACTION_FORBIDDEN",
+			"CONFLICT, 409, CONTENT_VERSION_ACTION_CONFLICT", "CONCURRENT, 409, CONCURRENT_MODIFICATION" })
+	void aRefusedRecoveryAnswersWithItsStatusAndCode(String refusal, int status, String errorCode) throws Exception {
+		RuntimeException refused = switch (refusal) {
+			case "NOT_FOUND" -> new VersionNotFoundException(CONTENT_ID, 1);
+			case "FORBIDDEN" -> new VersionActionForbiddenException(VersionAction.RECOVER);
+			case "CONFLICT" -> new VersionActionConflictException(VersionAction.RECOVER);
+			default -> new ObjectOptimisticLockingFailureException(ContentVersionEntity.class, CONTENT_ID);
+		};
+		when(this.service.recover(any(), any(), any(), eq(1))).thenThrow(refused);
+
+		this.mockMvc.perform(workflow("recover").with(callerWith(Permission.CONTENT_PUBLISH)))
 			.andExpect(status().is(status))
 			.andExpect(jsonPath("$.errorCode").value(errorCode));
 	}
