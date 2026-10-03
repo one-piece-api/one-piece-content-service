@@ -37,6 +37,10 @@ public interface ContentVersionRepository extends Repository<ContentVersionEntit
 			.collect(Collectors.toMap(OnlineVersion::contentId, OnlineVersion::versionNumber));
 	}
 
+	/** The highest version number of the content, in any status. */
+	@Query("select max(v.versionNumber) from ContentVersionEntity v where v.contentId = :contentId")
+	int findLatestNumber(UUID contentId);
+
 	boolean existsByContentIdAndStatusIn(UUID contentId, Collection<VersionStatus> statuses);
 
 	/**

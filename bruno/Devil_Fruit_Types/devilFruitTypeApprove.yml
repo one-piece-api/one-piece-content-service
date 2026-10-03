@@ -1,7 +1,7 @@
 info:
   name: devilFruitTypeApprove
   type: http
-  seq: 9
+  seq: 10
   tags:
     - Devil_Fruit_Types
 

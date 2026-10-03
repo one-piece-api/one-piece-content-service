@@ -788,6 +788,59 @@ class DevilFruitTypeControllerTest {
 			.andExpect(jsonPath("$.errorCode").value(errorCode));
 	}
 
+	@Test
+	void openingANewVersionAnswersWithTheNewDraft() throws Exception {
+		var opened = new VersionAccess<>(version(2, VersionStatus.DRAFT), EnumSet.of(VersionAction.EDIT));
+		when(this.service.openNewVersion(eq(Set.of(Permission.CONTENT_WRITE)), any(), eq(CONTENT_ID), eq(1)))
+			.thenReturn(opened);
+
+		this.mockMvc.perform(openNewVersion("{\"basedOn\":1}").with(callerWith(Permission.CONTENT_WRITE)))
+			.andExpect(status().isCreated())
+			.andExpect(jsonPath("$.number").value(2))
+			.andExpect(jsonPath("$.basedOn").value(1))
+			.andExpect(jsonPath("$.status").value("DRAFT"))
+			.andExpect(jsonPath("$.allowedActions[0]").value("EDIT"));
+	}
+
+	@Test
+	void openingANewVersionIsForbiddenWithoutContentWriteAndUnauthorizedWithoutAToken() throws Exception {
+		this.mockMvc
+			.perform(openNewVersion("{\"basedOn\":1}")
+				.with(callerWith(Permission.CONTENT_READ, Permission.CONTENT_REVIEW, Permission.CONTENT_PUBLISH)))
+			.andExpect(status().isForbidden());
+		this.mockMvc.perform(openNewVersion("{\"basedOn\":1}")).andExpect(status().isUnauthorized());
+		verifyNoInteractions(this.service);
+	}
+
+	@ParameterizedTest
+	@CsvSource(delimiter = '|', value = { "{}", "{\"basedOn\":0}", "{\"basedOn\":\"one\"}" })
+	void aNewVersionWithoutAValidBaseIsABadRequest(String body) throws Exception {
+		this.mockMvc.perform(openNewVersion(body).with(callerWith(Permission.CONTENT_WRITE)))
+			.andExpect(status().isBadRequest());
+		verifyNoInteractions(this.service);
+	}
+
+	@ParameterizedTest
+	@CsvSource({ "NOT_FOUND, 404, CONTENT_VERSION_NOT_FOUND", "FORBIDDEN, 403, CONTENT_VERSION_ACTION_FORBIDDEN",
+			"CONFLICT, 409, CONTENT_VERSION_ACTION_CONFLICT" })
+	void aRefusedNewVersionAnswersWithItsStatusAndCode(String refusal, int status, String errorCode) throws Exception {
+		RuntimeException refused = switch (refusal) {
+			case "NOT_FOUND" -> new VersionNotFoundException(CONTENT_ID, 1);
+			case "FORBIDDEN" -> new VersionActionForbiddenException(VersionAction.OPEN_NEW_VERSION);
+			default -> new VersionActionConflictException(VersionAction.OPEN_NEW_VERSION);
+		};
+		when(this.service.openNewVersion(any(), any(), any(), eq(1))).thenThrow(refused);
+
+		this.mockMvc.perform(openNewVersion("{\"basedOn\":1}").with(callerWith(Permission.CONTENT_WRITE)))
+			.andExpect(status().is(status))
+			.andExpect(jsonPath("$.errorCode").value(errorCode));
+	}
+
+	/** A new version of the content asked with that body, not signed in yet. */
+	private static MockHttpServletRequestBuilder openNewVersion(String body) {
+		return post("/devil-fruit-types/" + CONTENT_ID + "/versions").contentType("application/json").content(body);
+	}
+
 	/** A workflow action on version 1 of the content, not signed in yet. */
 	private static MockHttpServletRequestBuilder workflow(String action) {
 		return post("/devil-fruit-types/" + CONTENT_ID + "/versions/1/" + action);

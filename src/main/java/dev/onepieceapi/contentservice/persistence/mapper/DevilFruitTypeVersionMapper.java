@@ -42,9 +42,25 @@ public class DevilFruitTypeVersionMapper {
 	 * The first version of a new content: a draft of its author, saying what was given.
 	 */
 	public DevilFruitTypeVersionEntity toFirstDraft(UUID contentId, User author, DevilFruitType body, Instant now) {
+		return toDraft(contentId, 1, null, author, body, now);
+	}
+
+	/**
+	 * A later version of a content, opened from one of its versions: a draft of its
+	 * author, saying what that one says.
+	 * @param number the number the new version takes
+	 */
+	public DevilFruitTypeVersionEntity toDraftFrom(UUID contentId, int number, Version<DevilFruitType> base,
+			User author, Instant now) {
+		return toDraft(contentId, number, base.number(), author, base.body(), now);
+	}
+
+	private static DevilFruitTypeVersionEntity toDraft(UUID contentId, int number, Integer basedOn, User author,
+			DevilFruitType body, Instant now) {
 		ContentVersionEntity workflow = ContentVersionEntity.builder()
 			.contentId(contentId)
-			.versionNumber(1)
+			.versionNumber(number)
+			.basedOnNumber(basedOn)
 			.author(UserMapper.toEmbeddable(author))
 			.status(VersionStatus.DRAFT)
 			.createdAt(now)

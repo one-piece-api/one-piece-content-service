@@ -92,6 +92,27 @@ class DevilFruitTypeVersionMapperTest {
 	}
 
 	@Test
+	void aLaterDraftIsOfItsOwnAuthorSayingWhatItsBaseSays() {
+		var base = version(1, VersionStatus.PUBLISHED);
+		base.setRomaji("Zoan");
+		base.getTranslations().put("it", new TranslationEmbeddable("Zoo Zoo", "Trasforma in animale"));
+		var later = UPDATED.plusSeconds(60);
+
+		var entity = DevilFruitTypeVersionMapper.toDraftFrom(CONTENT_ID, 3, DevilFruitTypeVersionMapper.toDomain(base),
+				ZORO, later);
+
+		var version = DevilFruitTypeVersionMapper.toDomain(entity);
+		assertThat(entity.getContentId()).isEqualTo(CONTENT_ID);
+		assertThat(version.number()).isEqualTo(3);
+		assertThat(version.basedOn()).isEqualTo(1);
+		assertThat(version.status()).isEqualTo(VersionStatus.DRAFT);
+		assertThat(version.author()).isEqualTo(ZORO);
+		assertThat(version.createdAt()).isEqualTo(later);
+		assertThat(version.updatedAt()).isEqualTo(later);
+		assertThat(version.body()).isEqualTo(DevilFruitTypeVersionMapper.toDomain(base).body());
+	}
+
+	@Test
 	void rewritingAVersionReplacesWhatItSaysAndNotesWhen() {
 		var entity = version(1, VersionStatus.DRAFT);
 		entity.setRomaji("Zoan");

@@ -163,6 +163,36 @@ paths:
       tags:
       - Devil Fruit Types
       x-required-permission: content:read
+  /devil-fruit-types/{id}/versions:
+    post:
+      operationId: devilFruitTypeOpenNewVersion
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewVersionRequest"
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseDevilFruitTypeResponse"
+          description: Created
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Devil Fruit Types
+      x-required-permission: content:write
   /devil-fruit-types/{id}/versions/{number}:
     delete:
       operationId: devilFruitTypeDelete
@@ -763,6 +793,15 @@ components:
           type: string
         name:
           type: string
+    NewVersionRequest:
+      type: object
+      properties:
+        basedOn:
+          type: integer
+          format: int32
+          exclusiveMinimum: 0
+      required:
+      - basedOn
     PageResponseContentSummaryResponseDevilFruitTypeNamesResponse:
       type: object
       properties:

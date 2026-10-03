@@ -31,6 +31,7 @@ import dev.onepieceapi.contentservice.service.exception.VersionNotFoundException
 import dev.onepieceapi.contentservice.service.validation.DevilFruitTypeValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -49,12 +50,13 @@ import java.util.UUID;
  * editing its draft and discarding it (UF-CNT-01, UF-CNT-02, UF-CNT-11), sending it to
  * review and taking it back (UF-CNT-03, UF-CNT-04), a reviewer claiming and releasing it
  * (UF-CNT-13, UF-CNT-14), approving or rejecting it, and its author taking a rejected one
- * back to draft (UF-CNT-05, UF-CNT-06, UF-CNT-15), putting it online (UF-CNT-07). Every
- * method starts from the caller: {@link VisibilityPolicy} turns their permissions into
- * the statuses they may see, and nothing outside those statuses is ever loaded;
- * {@link TransitionPolicy} says what they may do with a version they see, and the same
- * answer guards each change. Building the queries, converting rows and validating what is
- * saved are done elsewhere: this class only decides what to read or change, and for whom.
+ * back to draft (UF-CNT-05, UF-CNT-06, UF-CNT-15), putting it online (UF-CNT-07), opening
+ * the next version from a closed one (UF-CNT-08). Every method starts from the caller:
+ * {@link VisibilityPolicy} turns their permissions into the statuses they may see, and
+ * nothing outside those statuses is ever loaded; {@link TransitionPolicy} says what they
+ * may do with a version they see, and the same answer guards each change. Building the
+ * queries, converting rows and validating what is saved are done elsewhere: this class
+ * only decides what to read or change, and for whom.
  */
 @Service
 @Transactional(readOnly = true)
@@ -350,6 +352,35 @@ public class DevilFruitTypeService {
 		this.versionRepository.findOnline(contentId).ifPresent(online -> supersede(online, versionNumber, caller, now));
 		entity.moveTo(VersionStatus.PUBLISHED, now);
 		return recorded(entity, context, AUDIT_ACTION_PUBLISHED);
+	}
+
+	/**
+	 * Opens the next version of a content from one of its closed versions (UF-CNT-08): a
+	 * draft of the caller, saying what the base says and recording it as its base.
+	 * Nothing else moves - the online version stays online. The rules allow it only while
+	 * the content has no open version; two editors opening one at the same instant both
+	 * pass that check, and the database lets only one of them in (one open version, one
+	 * row per number - see {@code V2}): the other is refused as if it had come second.
+	 */
+	@Transactional
+	public VersionAccess<DevilFruitType> openNewVersion(Set<Permission> permissions, User caller, UUID contentId,
+			int basedOn) {
+		DevilFruitTypeVersionEntity baseEntity = visibleVersion(permissions, contentId, basedOn);
+		Version<DevilFruitType> base = DevilFruitTypeVersionMapper.toDomain(baseEntity);
+		require(VersionAction.OPEN_NEW_VERSION, contextOf(base, contentId, caller, permissions));
+		int number = this.contentVersionRepository.findLatestNumber(contentId) + 1;
+		var draft = DevilFruitTypeVersionMapper.toDraftFrom(contentId, number, base, caller, this.clock.instant());
+		DevilFruitTypeVersionEntity saved;
+		try {
+			saved = this.versionRepository.saveAndFlush(draft);
+		}
+		catch (DataIntegrityViolationException ex) {
+			throw new VersionActionConflictException(VersionAction.OPEN_NEW_VERSION);
+		}
+		this.auditLogService.recordOnVersion(AUDIT_ACTION_CREATED, caller, contentId, saved.getVersionId(),
+				saved.getRomaji(), String.valueOf(basedOn));
+		Version<DevilFruitType> opened = DevilFruitTypeVersionMapper.toDomain(saved);
+		return accessTo(opened, new TransitionContext(opened, true, caller, permissions));
 	}
 
 	/**

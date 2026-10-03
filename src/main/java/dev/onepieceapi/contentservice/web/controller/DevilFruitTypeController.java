@@ -7,6 +7,7 @@ import dev.onepieceapi.contentservice.service.DevilFruitTypeService;
 import dev.onepieceapi.contentservice.web.ApiPaths;
 import dev.onepieceapi.contentservice.web.dto.request.ContentListRequest;
 import dev.onepieceapi.contentservice.web.dto.request.DevilFruitTypeRequest;
+import dev.onepieceapi.contentservice.web.dto.request.NewVersionRequest;
 import dev.onepieceapi.contentservice.web.dto.request.RejectVersionRequest;
 import dev.onepieceapi.contentservice.web.dto.response.ContentListSummaryResponse;
 import dev.onepieceapi.contentservice.web.dto.response.ContentResponse;
@@ -48,13 +49,14 @@ import java.util.UUID;
  * The Devil Fruit Type section. Reading (UF-CNT-12, UF-CNT-18) - the paginated list, a
  * content with its version chain, one version with what it says, and its history - takes
  * {@code content:read}; creating a content, editing its draft, discarding it, sending it
- * to review and taking it back, returning a rejected one to draft (UF-CNT-01 to 04,
- * UF-CNT-11, UF-CNT-15) take {@code content:write}; claiming, releasing, approving and
- * rejecting (UF-CNT-05, 06, 13, 14) {@code content:review}; publishing (UF-CNT-07)
- * {@code content:publish} (see {@code SecuredEndpoint}). What a caller then finds is
- * limited to the statuses their permissions make visible: whatever is not visible answers
- * {@code 404} like something that does not exist, a visible version the caller may not
- * change {@code 403}, one that is not in a state for it {@code 409}.
+ * to review and taking it back, returning a rejected one to draft, opening a new version
+ * (UF-CNT-01 to 04, UF-CNT-08, UF-CNT-11, UF-CNT-15) take {@code content:write};
+ * claiming, releasing, approving and rejecting (UF-CNT-05, 06, 13, 14)
+ * {@code content:review}; publishing (UF-CNT-07) {@code content:publish} (see
+ * {@code SecuredEndpoint}). What a caller then finds is limited to the statuses their
+ * permissions make visible: whatever is not visible answers {@code 404} like something
+ * that does not exist, a visible version the caller may not change {@code 403}, one that
+ * is not in a state for it {@code 409}.
  */
 @RestController
 @Tag(name = "Devil Fruit Types")
@@ -117,6 +119,18 @@ class DevilFruitTypeController {
 		DevilFruitType written = DevilFruitTypeRequestMapper.toDomain(request);
 		var content = this.service.create(caller.permissions(), caller.user(), written);
 		return ContentResponseMapper.toContentResponse(content);
+	}
+
+	/**
+	 * Opens the next version of a content from one of its closed versions (UF-CNT-08): a
+	 * draft of the caller, saying what that one says. Answers with the new version.
+	 */
+	@PostMapping(ApiPaths.DEVIL_FRUIT_TYPE_VERSIONS)
+	@ResponseStatus(HttpStatus.CREATED)
+	VersionResponse<DevilFruitTypeResponse> openNewVersion(@PathVariable UUID id,
+			@RequestBody @Valid NewVersionRequest request, @AuthenticationPrincipal AuthenticatedCaller caller) {
+		var version = this.service.openNewVersion(caller.permissions(), caller.user(), id, request.basedOn());
+		return DevilFruitTypeResponseMapper.toVersionResponse(version);
 	}
 
 	/** Discards a draft (UF-CNT-11) - and its content with it, when it was the first. */
