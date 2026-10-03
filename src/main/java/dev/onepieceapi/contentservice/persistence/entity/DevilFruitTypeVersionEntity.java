@@ -18,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.FieldNameConstants;
 
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -59,6 +60,14 @@ public class DevilFruitTypeVersionEntity {
 	/** The content this version belongs to. */
 	public UUID getContentId() {
 		return this.version.getContentId();
+	}
+
+	/** Replaces everything the version says, and notes when. */
+	public void rewrite(String newRomaji, Map<String, TranslationEmbeddable> newTranslations, Instant now) {
+		this.romaji = newRomaji;
+		this.translations.clear();
+		this.translations.putAll(newTranslations);
+		this.version.setUpdatedAt(now);
 	}
 
 }

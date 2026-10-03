@@ -32,15 +32,25 @@ public class AuditLogService {
 	private final Clock clock;
 
 	public void record(String action, User actor, UUID targetContentId, String targetLabel, String detail) {
-		var entity = AuditLogEntity.builder()
+		this.repository.save(
+				entry(action, actor).targetContentId(targetContentId).targetLabel(targetLabel).detail(detail).build());
+	}
+
+	/**
+	 * A record about one version of a content - what the history of that version is read
+	 * from.
+	 * @param label what the version was called when the action happened
+	 */
+	public void recordOnVersion(String action, User actor, UUID contentId, UUID versionId, String label) {
+		this.repository.save(
+				entry(action, actor).targetContentId(contentId).targetVersionId(versionId).targetLabel(label).build());
+	}
+
+	private AuditLogEntity.AuditLogEntityBuilder entry(String action, User actor) {
+		return AuditLogEntity.builder()
 			.action(action)
 			.actor(UserMapper.toEmbeddable(actor))
-			.targetContentId(targetContentId)
-			.targetLabel(targetLabel)
-			.detail(detail)
-			.occurredAt(this.clock.instant())
-			.build();
-		this.repository.save(entity);
+			.occurredAt(this.clock.instant());
 	}
 
 	/**

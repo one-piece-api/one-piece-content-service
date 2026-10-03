@@ -15,9 +15,14 @@ import dev.onepieceapi.contentservice.domain.workflow.VersionEvent;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.service.DevilFruitTypeService;
 import dev.onepieceapi.contentservice.service.exception.DevilFruitTypeNotFoundException;
+import dev.onepieceapi.contentservice.service.exception.TranslationLanguageUnknownException;
+import dev.onepieceapi.contentservice.service.exception.ValueAlreadyUsedException;
+import dev.onepieceapi.contentservice.service.exception.VersionActionConflictException;
+import dev.onepieceapi.contentservice.service.exception.VersionActionForbiddenException;
 import dev.onepieceapi.contentservice.service.exception.VersionNotFoundException;
 import dev.onepieceapi.contentservice.web.security.SecurityConfig;
 import dev.onepieceapi.exception.web.ApplicationExceptionHandler;
+import dev.onepieceapi.exception.web.FieldViolation;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -30,6 +35,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 import java.time.Instant;
 import java.util.EnumSet;
@@ -47,13 +53,16 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Imports the real {@link SecurityConfig}: every read takes {@code content:read}, the
- * caller's own permissions are what the service decides visibility from, and what is not
- * found or not valid comes back with its status and error code.
+ * Imports the real {@link SecurityConfig}: every read takes {@code content:read} and
+ * every write {@code content:write}, the caller's own permissions are what the service
+ * decides from, and what is not found, not allowed or not valid comes back with its
+ * status and error code.
  */
 @WebMvcTest(DevilFruitTypeController.class)
 @Import({ SecurityConfig.class, ApplicationExceptionHandler.class })
@@ -79,8 +88,8 @@ class DevilFruitTypeControllerTest {
 
 	@Test
 	void theListReturnsOnePageOfRows() throws Exception {
-		var row = new ContentSummary<>(CONTENT_ID, version(2, VersionStatus.IN_REVIEW), 1);
-		when(this.service.list(any(), any(), any()))
+		var row = new ContentSummary<>(CONTENT_ID, version(2, VersionStatus.IN_REVIEW), 1, Set.of());
+		when(this.service.list(any(), any(), any(), any()))
 			.thenReturn(new PageImpl<>(List.of(row), PageRequest.of(0, 20), 41));
 
 		this.mockMvc.perform(get("/devil-fruit-types").with(callerWith(Permission.CONTENT_READ)))
@@ -103,7 +112,7 @@ class DevilFruitTypeControllerTest {
 
 	@Test
 	void theListPassesTheCallersPermissionsFiltersAndPageToTheService() throws Exception {
-		when(this.service.list(any(), any(), any())).thenReturn(new PageImpl<>(List.of()));
+		when(this.service.list(any(), any(), any(), any())).thenReturn(new PageImpl<>(List.of()));
 
 		var request = get("/devil-fruit-types").with(callerWith(Permission.CONTENT_READ, Permission.CONTENT_REVIEW))
 			.param("status", "IN_REVIEW")
@@ -116,7 +125,7 @@ class DevilFruitTypeControllerTest {
 		this.mockMvc.perform(request).andExpect(status().isOk());
 
 		var pageable = ArgumentCaptor.forClass(Pageable.class);
-		verify(this.service).list(eq(Set.of(Permission.CONTENT_READ, Permission.CONTENT_REVIEW)),
+		verify(this.service).list(eq(Set.of(Permission.CONTENT_READ, Permission.CONTENT_REVIEW)), any(),
 				eq(new ContentFilter(VersionStatus.IN_REVIEW, "zoan", "nami", 7)), pageable.capture());
 		assertThat(pageable.getValue().getPageNumber()).isEqualTo(2);
 		assertThat(pageable.getValue().getPageSize()).isEqualTo(5);
@@ -125,13 +134,13 @@ class DevilFruitTypeControllerTest {
 
 	@Test
 	void thePageSizeHasADefaultAndIsCapped() throws Exception {
-		when(this.service.list(any(), any(), any())).thenReturn(new PageImpl<>(List.of()));
+		when(this.service.list(any(), any(), any(), any())).thenReturn(new PageImpl<>(List.of()));
 		var pageable = ArgumentCaptor.forClass(Pageable.class);
 
 		this.mockMvc.perform(get("/devil-fruit-types").with(callerWith(Permission.CONTENT_READ)));
 		this.mockMvc.perform(get("/devil-fruit-types").with(callerWith(Permission.CONTENT_READ)).param("size", "5000"));
 
-		verify(this.service, times(2)).list(any(), any(), pageable.capture());
+		verify(this.service, times(2)).list(any(), any(), any(), pageable.capture());
 		assertThat(pageable.getAllValues()).extracting(Pageable::getPageSize).containsExactly(20, 100);
 	}
 
@@ -155,7 +164,7 @@ class DevilFruitTypeControllerTest {
 
 	@Test
 	void theListCanBeSortedByEitherSortableFieldInAnyDirection() throws Exception {
-		when(this.service.list(any(), any(), any())).thenReturn(new PageImpl<>(List.of()));
+		when(this.service.list(any(), any(), any(), any())).thenReturn(new PageImpl<>(List.of()));
 
 		var request = get("/devil-fruit-types").with(callerWith(Permission.CONTENT_READ))
 			.param("sort", "updatedAt,desc")
@@ -205,8 +214,8 @@ class DevilFruitTypeControllerTest {
 	@Test
 	void aContentComesWithItsVersionChain() throws Exception {
 		var content = new Content<>(CONTENT_ID,
-				List.of(version(1, VersionStatus.PUBLISHED), version(2, VersionStatus.IN_REVIEW)));
-		when(this.service.get(Set.of(Permission.CONTENT_READ), CONTENT_ID)).thenReturn(content);
+				List.of(readOnly(version(1, VersionStatus.PUBLISHED)), readOnly(version(2, VersionStatus.IN_REVIEW))));
+		when(this.service.get(eq(Set.of(Permission.CONTENT_READ)), any(), eq(CONTENT_ID))).thenReturn(content);
 
 		this.mockMvc.perform(get("/devil-fruit-types/" + CONTENT_ID).with(callerWith(Permission.CONTENT_READ)))
 			.andExpect(status().isOk())
@@ -225,7 +234,7 @@ class DevilFruitTypeControllerTest {
 
 	@Test
 	void aContentTheCallerDoesNotSeeIsNotFound() throws Exception {
-		when(this.service.get(any(), eq(CONTENT_ID))).thenThrow(new DevilFruitTypeNotFoundException(CONTENT_ID));
+		when(this.service.get(any(), any(), eq(CONTENT_ID))).thenThrow(new DevilFruitTypeNotFoundException(CONTENT_ID));
 
 		this.mockMvc.perform(get("/devil-fruit-types/" + CONTENT_ID).with(callerWith(Permission.CONTENT_READ)))
 			.andExpect(status().isNotFound())
@@ -293,6 +302,153 @@ class DevilFruitTypeControllerTest {
 		}
 	}
 
+	@Test
+	void creatingAContentAnswersWithItAndPassesOnWhatWasWrittenAsTyped() throws Exception {
+		var draft = new VersionAccess<>(version(1, VersionStatus.DRAFT), EnumSet.of(VersionAction.EDIT));
+		when(this.service.create(any(), any(), any())).thenReturn(new Content<>(CONTENT_ID, List.of(draft)));
+
+		var request = post("/devil-fruit-types").with(callerWith(Permission.CONTENT_WRITE))
+			.contentType("application/json")
+			.content("{\"romaji\":\" Zoan \",\"translations\":{\"it\":{\"name\":\"Zoo Zoo\"}}}");
+		this.mockMvc.perform(request)
+			.andExpect(status().isCreated())
+			.andExpect(jsonPath("$.id").value(CONTENT_ID.toString()))
+			.andExpect(jsonPath("$.versions[0].number").value(1))
+			.andExpect(jsonPath("$.versions[0].allowedActions[0]").value("EDIT"));
+
+		var written = ArgumentCaptor.forClass(DevilFruitType.class);
+		verify(this.service).create(eq(Set.of(Permission.CONTENT_WRITE)), any(), written.capture());
+		assertThat(written.getValue().romaji()).isEqualTo(" Zoan ");
+		assertThat(written.getValue().translations().get("it"))
+			.isEqualTo(new DevilFruitTypeTranslation("Zoo Zoo", null));
+	}
+
+	@Test
+	void editingADraftAnswersWithTheVersionAsItNowIs() throws Exception {
+		var draft = new VersionAccess<>(version(1, VersionStatus.DRAFT), EnumSet.of(VersionAction.EDIT));
+		when(this.service.edit(any(), any(), eq(CONTENT_ID), eq(1), any())).thenReturn(draft);
+
+		this.mockMvc.perform(edit("{\"romaji\":\"Zoan\"}").with(callerWith(Permission.CONTENT_WRITE)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.number").value(1))
+			.andExpect(jsonPath("$.body.romaji").value("Zoan"))
+			.andExpect(jsonPath("$.allowedActions[0]").value("EDIT"));
+	}
+
+	@Test
+	void aDraftMayBeSavedWithNothingInIt() throws Exception {
+		var draft = new VersionAccess<>(version(1, VersionStatus.DRAFT), EnumSet.of(VersionAction.EDIT));
+		when(this.service.edit(any(), any(), any(), eq(1), any())).thenReturn(draft);
+
+		this.mockMvc.perform(edit("{}").with(callerWith(Permission.CONTENT_WRITE))).andExpect(status().isOk());
+	}
+
+	@Test
+	void writingIsForbiddenWithoutContentWrite() throws Exception {
+		var readOnly = callerWith(Permission.CONTENT_READ, Permission.CONTENT_REVIEW);
+		var create = post("/devil-fruit-types").contentType("application/json").content("{}");
+
+		this.mockMvc.perform(create.with(readOnly)).andExpect(status().isForbidden());
+		this.mockMvc.perform(edit("{}").with(readOnly)).andExpect(status().isForbidden());
+		verifyNoInteractions(this.service);
+	}
+
+	@Test
+	void writingIsUnauthorizedWithoutAToken() throws Exception {
+		var create = post("/devil-fruit-types").contentType("application/json").content("{}");
+
+		this.mockMvc.perform(create).andExpect(status().isUnauthorized());
+		this.mockMvc.perform(edit("{}")).andExpect(status().isUnauthorized());
+	}
+
+	@Test
+	void aDraftTheCallerDoesNotSeeIsNotFound() throws Exception {
+		when(this.service.edit(any(), any(), any(), eq(1), any()))
+			.thenThrow(new VersionNotFoundException(CONTENT_ID, 1));
+
+		this.mockMvc.perform(edit("{}").with(callerWith(Permission.CONTENT_WRITE)))
+			.andExpect(status().isNotFound())
+			.andExpect(jsonPath("$.errorCode").value("CONTENT_VERSION_NOT_FOUND"));
+	}
+
+	@Test
+	void aDraftOfSomeoneElseIsForbidden() throws Exception {
+		when(this.service.edit(any(), any(), any(), eq(1), any()))
+			.thenThrow(new VersionActionForbiddenException(VersionAction.EDIT));
+
+		this.mockMvc.perform(edit("{}").with(callerWith(Permission.CONTENT_WRITE)))
+			.andExpect(status().isForbidden())
+			.andExpect(jsonPath("$.errorCode").value("CONTENT_VERSION_ACTION_FORBIDDEN"));
+	}
+
+	@Test
+	void aVersionThatIsNoLongerADraftIsAConflict() throws Exception {
+		when(this.service.edit(any(), any(), any(), eq(1), any()))
+			.thenThrow(new VersionActionConflictException(VersionAction.EDIT));
+
+		this.mockMvc.perform(edit("{}").with(callerWith(Permission.CONTENT_WRITE)))
+			.andExpect(status().isConflict())
+			.andExpect(jsonPath("$.errorCode").value("CONTENT_VERSION_ACTION_CONFLICT"));
+	}
+
+	@Test
+	void aValueAlreadyUsedIsUnprocessableAndNamesItsFields() throws Exception {
+		var taken = List.of(new FieldViolation("romaji", "is already used by another content"),
+				new FieldViolation("translations[it].name", "is already used by another content"));
+		when(this.service.create(any(), any(), any())).thenThrow(new ValueAlreadyUsedException(taken));
+
+		var request = post("/devil-fruit-types").with(callerWith(Permission.CONTENT_WRITE))
+			.contentType("application/json")
+			.content("{\"romaji\":\"Zoan\"}");
+		this.mockMvc.perform(request)
+			.andExpect(status().isUnprocessableEntity())
+			.andExpect(jsonPath("$.errorCode").value("CONTENT_VALUE_ALREADY_USED"))
+			.andExpect(jsonPath("$.errors[0].field").value("romaji"))
+			.andExpect(jsonPath("$.errors[1].field").value("translations[it].name"));
+	}
+
+	@Test
+	void aLanguageOutsideTheCatalogIsUnprocessable() throws Exception {
+		when(this.service.edit(any(), any(), any(), eq(1), any()))
+			.thenThrow(new TranslationLanguageUnknownException(List.of("fr")));
+
+		this.mockMvc.perform(edit("{}").with(callerWith(Permission.CONTENT_WRITE)))
+			.andExpect(status().isUnprocessableEntity())
+			.andExpect(jsonPath("$.errorCode").value("CONTENT_TRANSLATION_LANGUAGE_UNKNOWN"))
+			.andExpect(jsonPath("$.languages[0]").value("fr"));
+	}
+
+	@Test
+	void aTextLongerThanItsLimitIsABadRequestNamingItsField() throws Exception {
+		var tooLong = "x".repeat(101);
+		var body = "{\"romaji\":\"%s\",\"translations\":{\"it\":{\"name\":\"%s\",\"description\":\"%s\"}}}"
+			.formatted(tooLong, tooLong, "x".repeat(2001));
+
+		var result = this.mockMvc.perform(edit(body).with(callerWith(Permission.CONTENT_WRITE)))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.errorCode").value("VALIDATION_FAILED"))
+			.andReturn();
+
+		assertThat(result.getResponse().getContentAsString()).contains("\"romaji\"", "translations[it].name",
+				"translations[it].description");
+		verifyNoInteractions(this.service);
+	}
+
+	@Test
+	void aTextAsLongAsItsLimitIsAccepted() throws Exception {
+		var draft = new VersionAccess<>(version(1, VersionStatus.DRAFT), EnumSet.of(VersionAction.EDIT));
+		when(this.service.edit(any(), any(), any(), eq(1), any())).thenReturn(draft);
+		var body = "{\"romaji\":\"%s\",\"translations\":{\"it\":{\"name\":\"%s\",\"description\":\"%s\"}}}"
+			.formatted("x".repeat(100), "x".repeat(100), "x".repeat(2000));
+
+		this.mockMvc.perform(edit(body).with(callerWith(Permission.CONTENT_WRITE))).andExpect(status().isOk());
+	}
+
+	/** A save of version 1 of the content, not signed in yet. */
+	private static MockHttpServletRequestBuilder edit(String body) {
+		return put("/devil-fruit-types/" + CONTENT_ID + "/versions/1").contentType("application/json").content(body);
+	}
+
 	private static List<String> readPaths() {
 		var content = "/devil-fruit-types/" + CONTENT_ID;
 		return List.of("/devil-fruit-types", "/devil-fruit-types/authors", "/devil-fruit-types/summary", content,
@@ -300,6 +456,10 @@ class DevilFruitTypeControllerTest {
 	}
 
 	/** Version 1 is the first one; any later one is based on it and held by zoro. */
+	private static VersionAccess<DevilFruitType> readOnly(Version<DevilFruitType> version) {
+		return new VersionAccess<>(version, Set.of());
+	}
+
 	private static Version<DevilFruitType> version(int number, VersionStatus status) {
 		var translations = Map.of("it", new DevilFruitTypeTranslation("Zoo Zoo", "Trasforma in animale"), "en",
 				new DevilFruitTypeTranslation(null, "Turns into an animal"));

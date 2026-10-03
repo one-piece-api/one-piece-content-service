@@ -66,6 +66,18 @@ public class TransitionPolicy {
 			new TransitionRule(RESTORE, Set.of(SUPERSEDED, RETIRED), CONTENT_PUBLISH),
 			new TransitionRule(OPEN_NEW_VERSION, VersionStatus.closed(), CONTENT_WRITE, Set.of(NO_OPEN_VERSION)));
 
+	/**
+	 * Whether the caller may perform the action on the version and, if not, why - what
+	 * guards the endpoint of that action.
+	 */
+	public TransitionDecision decide(VersionAction action, TransitionContext context) {
+		return ruleOf(action).decide(context);
+	}
+
+	private static TransitionRule ruleOf(VersionAction action) {
+		return RULES.stream().filter(rule -> rule.action() == action).findFirst().orElseThrow();
+	}
+
 	/** The actions the caller may perform on the version, in the order of the enum. */
 	public Set<VersionAction> allowedActions(TransitionContext context) {
 		return RULES.stream()

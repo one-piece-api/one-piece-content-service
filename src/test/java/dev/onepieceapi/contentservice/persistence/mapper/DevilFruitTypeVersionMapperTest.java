@@ -1,8 +1,8 @@
 package dev.onepieceapi.contentservice.persistence.mapper;
 
+import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitType;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitTypeTranslation;
 import dev.onepieceapi.contentservice.domain.security.User;
-import dev.onepieceapi.contentservice.domain.workflow.Version;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.entity.ContentVersionEntity;
 import dev.onepieceapi.contentservice.persistence.entity.DevilFruitTypeVersionEntity;
@@ -11,7 +11,7 @@ import dev.onepieceapi.contentservice.persistence.entity.UserEmbeddable;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
-import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -74,24 +74,37 @@ class DevilFruitTypeVersionMapperTest {
 	}
 
 	@Test
-	void aContentKeepsItsVersionsInTheOrderTheyWereLoaded() {
-		var content = DevilFruitTypeVersionMapper.toContent(CONTENT_ID,
-				List.of(version(1, VersionStatus.PUBLISHED), version(2, VersionStatus.DRAFT)));
+	void theFirstDraftOfAContentIsVersionOneOfItsAuthorSayingWhatWasWritten() {
+		var body = new DevilFruitType("Zoan", Map.of("it", new DevilFruitTypeTranslation("Zoo Zoo", null)));
 
-		assertThat(content.id()).isEqualTo(CONTENT_ID);
-		assertThat(content.versions()).extracting(Version::number).containsExactly(1, 2);
-		assertThat(content.onlineVersionNumber()).contains(1);
+		var entity = DevilFruitTypeVersionMapper.toFirstDraft(CONTENT_ID, CHOPPER, body, UPDATED);
+
+		var version = DevilFruitTypeVersionMapper.toDomain(entity);
+		assertThat(entity.getContentId()).isEqualTo(CONTENT_ID);
+		assertThat(version.number()).isEqualTo(1);
+		assertThat(version.basedOn()).isNull();
+		assertThat(version.status()).isEqualTo(VersionStatus.DRAFT);
+		assertThat(version.author()).isEqualTo(CHOPPER);
+		assertThat(version.claimant()).isNull();
+		assertThat(version.createdAt()).isEqualTo(UPDATED);
+		assertThat(version.updatedAt()).isEqualTo(UPDATED);
+		assertThat(version.body()).isEqualTo(body);
 	}
 
 	@Test
-	void aListRowNamesTheContentOfItsVersionAndWhatIsOnline() {
-		var summary = DevilFruitTypeVersionMapper.toSummary(version(3, VersionStatus.DRAFT), 2);
+	void rewritingAVersionReplacesWhatItSaysAndNotesWhen() {
+		var entity = version(1, VersionStatus.DRAFT);
+		entity.setRomaji("Zoan");
+		entity.getTranslations().put("it", new TranslationEmbeddable("Zoo Zoo", "Trasforma in animale"));
+		var body = new DevilFruitType("Dobutsu-kei", Map.of("en", new DevilFruitTypeTranslation("Zoan", null)));
+		var later = UPDATED.plusSeconds(60);
 
-		assertThat(summary.contentId()).isEqualTo(CONTENT_ID);
-		assertThat(summary.version().number()).isEqualTo(3);
-		assertThat(summary.onlineVersionNumber()).isEqualTo(2);
-		assertThat(DevilFruitTypeVersionMapper.toSummary(version(1, VersionStatus.DRAFT), null).onlineVersionNumber())
-			.isNull();
+		DevilFruitTypeVersionMapper.rewrite(entity, body, later);
+
+		var version = DevilFruitTypeVersionMapper.toDomain(entity);
+		assertThat(version.body()).isEqualTo(body);
+		assertThat(version.createdAt()).isEqualTo(CREATED);
+		assertThat(version.updatedAt()).isEqualTo(later);
 	}
 
 	private static DevilFruitTypeVersionEntity version(int number, VersionStatus status) {

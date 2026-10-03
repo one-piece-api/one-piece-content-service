@@ -7,4 +7,17 @@ package dev.onepieceapi.contentservice.domain.devilfruittype;
  */
 public record DevilFruitTypeTranslation(String name, String description) {
 
+	public static final int NAME_MAX_LENGTH = 100;
+
+	public static final int DESCRIPTION_MAX_LENGTH = 2000;
+
+	DevilFruitTypeTranslation normalized() {
+		return new DevilFruitTypeTranslation(Text.stripToNull(this.name), Text.stripToNull(this.description));
+	}
+
+	/** Nothing written in this language. */
+	boolean isEmpty() {
+		return this.name == null && this.description == null;
+	}
+
 }

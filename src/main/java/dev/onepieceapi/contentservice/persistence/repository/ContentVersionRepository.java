@@ -10,6 +10,7 @@ import org.springframework.data.repository.Repository;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -44,6 +45,16 @@ public interface ContentVersionRepository extends Repository<ContentVersionEntit
 	 */
 	default boolean hasOpenVersion(UUID contentId) {
 		return existsByContentIdAndStatusIn(contentId, VersionStatus.open());
+	}
+
+	@Query("""
+			select distinct v.contentId from ContentVersionEntity v
+			where v.contentId in :contentIds and v.status in :statuses""")
+	Set<UUID> findContentIdsByStatusIn(Collection<UUID> contentIds, Collection<VersionStatus> statuses);
+
+	/** Which of the given contents have a version still moving through the workflow. */
+	default Set<UUID> withOpenVersion(Collection<UUID> contentIds) {
+		return findContentIdsByStatusIn(contentIds, VersionStatus.open());
 	}
 
 }

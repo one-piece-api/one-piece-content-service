@@ -81,6 +81,28 @@ paths:
       tags:
       - Devil Fruit Types
       x-required-permission: content:read
+    post:
+      operationId: devilFruitTypeCreate
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DevilFruitTypeRequest"
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContentResponse"
+          description: Created
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Devil Fruit Types
+      x-required-permission: content:write
   /devil-fruit-types/authors:
     get:
       operationId: devilFruitTypeAuthors
@@ -171,6 +193,41 @@ paths:
       tags:
       - Devil Fruit Types
       x-required-permission: content:read
+    put:
+      operationId: devilFruitTypeEdit
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DevilFruitTypeRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseDevilFruitTypeResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Devil Fruit Types
+      x-required-permission: content:write
   /devil-fruit-types/{id}/versions/{number}/events:
     get:
       operationId: devilFruitTypeEvents
@@ -317,6 +374,26 @@ components:
     ContentSummaryResponseDevilFruitTypeNamesResponse:
       type: object
       properties:
+        allowedActions:
+          type: array
+          items:
+            type: string
+            enum:
+            - EDIT
+            - DELETE
+            - SUBMIT
+            - PULL_BACK
+            - CLAIM
+            - RELEASE
+            - APPROVE
+            - REJECT
+            - RETURN_TO_DRAFT
+            - PUBLISH
+            - ARCHIVE
+            - RECOVER
+            - RETIRE
+            - RESTORE
+            - OPEN_NEW_VERSION
         author:
           $ref: "#/components/schemas/UserResponse"
         body:
@@ -360,6 +437,17 @@ components:
             type: string
         romaji:
           type: string
+    DevilFruitTypeRequest:
+      type: object
+      properties:
+        romaji:
+          type: string
+          maxLength: 100
+          minLength: 0
+        translations:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/DevilFruitTypeTranslationRequest"
     DevilFruitTypeResponse:
       type: object
       properties:
@@ -369,6 +457,17 @@ components:
           type: object
           additionalProperties:
             $ref: "#/components/schemas/DevilFruitTypeTranslationResponse"
+    DevilFruitTypeTranslationRequest:
+      type: object
+      properties:
+        description:
+          type: string
+          maxLength: 2000
+          minLength: 0
+        name:
+          type: string
+          maxLength: 100
+          minLength: 0
     DevilFruitTypeTranslationResponse:
       type: object
       properties:
@@ -528,6 +627,26 @@ components:
     VersionSummaryResponse:
       type: object
       properties:
+        allowedActions:
+          type: array
+          items:
+            type: string
+            enum:
+            - EDIT
+            - DELETE
+            - SUBMIT
+            - PULL_BACK
+            - CLAIM
+            - RELEASE
+            - APPROVE
+            - REJECT
+            - RETURN_TO_DRAFT
+            - PUBLISH
+            - ARCHIVE
+            - RECOVER
+            - RETIRE
+            - RESTORE
+            - OPEN_NEW_VERSION
         author:
           $ref: "#/components/schemas/UserResponse"
         basedOn:

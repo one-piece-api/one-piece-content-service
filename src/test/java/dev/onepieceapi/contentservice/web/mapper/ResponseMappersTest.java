@@ -71,8 +71,8 @@ class ResponseMappersTest {
 
 	@Test
 	void aContentResponseListsTheChainWithoutBodiesAndTheOnlineVersion() {
-		var content = new Content<>(CONTENT_ID,
-				List.of(version(1, VersionStatus.SUPERSEDED), version(2, VersionStatus.PUBLISHED), rejected(3)));
+		var content = new Content<>(CONTENT_ID, List.of(readOnly(version(1, VersionStatus.SUPERSEDED)),
+				readOnly(version(2, VersionStatus.PUBLISHED)), readOnly(rejected(3))));
 
 		var response = ContentResponseMapper.toContentResponse(content);
 
@@ -86,15 +86,34 @@ class ResponseMappersTest {
 	}
 
 	@Test
+	void rowsAndChainLinksSayWhatTheCallerMayDo() {
+		var draft = Version.<DevilFruitType>builder()
+			.number(1)
+			.status(VersionStatus.DRAFT)
+			.author(NAMI)
+			.body(ZOAN)
+			.build();
+		var allowed = EnumSet.of(VersionAction.EDIT, VersionAction.SUBMIT);
+		var content = new Content<>(CONTENT_ID, List.of(new VersionAccess<>(draft, allowed)));
+		var summary = new ContentSummary<>(CONTENT_ID, draft, null, allowed);
+
+		var link = ContentResponseMapper.toContentResponse(content).versions().getFirst();
+		var row = ContentResponseMapper.toSummaryResponse(summary, DevilFruitType::romaji);
+
+		assertThat(link.allowedActions()).containsExactly(VersionAction.EDIT, VersionAction.SUBMIT);
+		assertThat(row.allowedActions()).containsExactly(VersionAction.EDIT, VersionAction.SUBMIT);
+	}
+
+	@Test
 	void aContentWithNothingOnlineSaysSoWithNull() {
-		var content = new Content<>(CONTENT_ID, List.of(version(1, VersionStatus.DRAFT)));
+		var content = new Content<>(CONTENT_ID, List.of(readOnly(version(1, VersionStatus.DRAFT))));
 
 		assertThat(ContentResponseMapper.toContentResponse(content).onlineVersionNumber()).isNull();
 	}
 
 	@Test
 	void aSummaryResponseIsTheRowOfTheContentShownByItsVersion() {
-		var summary = new ContentSummary<>(CONTENT_ID, rejected(3), 2);
+		var summary = new ContentSummary<>(CONTENT_ID, rejected(3), 2, EnumSet.noneOf(VersionAction.class));
 
 		var response = ContentResponseMapper.toSummaryResponse(summary, DevilFruitType::romaji);
 
@@ -140,7 +159,8 @@ class ResponseMappersTest {
 	void theDevilFruitTypeMapperPlugsItsBodiesIntoTheSharedResponses() {
 		var access = new VersionAccess<>(rejected(2), EnumSet.noneOf(VersionAction.class));
 		var version = DevilFruitTypeResponseMapper.toVersionResponse(access);
-		var row = DevilFruitTypeResponseMapper.toSummaryResponse(new ContentSummary<>(CONTENT_ID, rejected(2), null));
+		var row = DevilFruitTypeResponseMapper
+			.toSummaryResponse(new ContentSummary<>(CONTENT_ID, rejected(2), null, access.allowedActions()));
 
 		assertThat(version.body().translations()).containsKeys("en", "it");
 		assertThat(row.body().names()).containsOnlyKeys("it");
@@ -170,6 +190,10 @@ class ResponseMappersTest {
 	void aLanguageResponseIsItsCodeAndName() {
 		assertThat(LanguageResponseMapper.toResponse(new Language("fr", "Français")))
 			.isEqualTo(new LanguageResponse("fr", "Français"));
+	}
+
+	private static VersionAccess<DevilFruitType> readOnly(Version<DevilFruitType> version) {
+		return new VersionAccess<>(version, EnumSet.noneOf(VersionAction.class));
 	}
 
 	private static Version<DevilFruitType> version(int number, VersionStatus status) {

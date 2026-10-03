@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.domain.workflow;
 
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -9,7 +10,10 @@ import java.util.UUID;
  * @param <T> what a version of this kind of content says, e.g. a {@code DevilFruitType}
  * @param onlineVersionNumber the version currently online, which may be a different one;
  * null when nothing is online
+ * @param allowedActions what the caller may do with the version shown, decided by
+ * {@link TransitionPolicy}
  */
-public record ContentSummary<T>(UUID contentId, Version<T> version, Integer onlineVersionNumber) {
+public record ContentSummary<T>(UUID contentId, Version<T> version, Integer onlineVersionNumber,
+		Set<VersionAction> allowedActions) {
 
 }

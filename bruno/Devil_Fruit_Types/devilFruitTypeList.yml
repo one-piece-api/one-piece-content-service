@@ -151,6 +151,9 @@ examples:
           {
             "content": [
               {
+                "allowedActions": [
+                  "EDIT"
+                ],
                 "author": {
                   "email": "",
                   "id": "",

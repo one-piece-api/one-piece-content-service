@@ -16,6 +16,9 @@ import static dev.onepieceapi.contentservice.domain.security.Permission.CONTENT_
 import static dev.onepieceapi.contentservice.domain.security.Permission.CONTENT_RETIRE;
 import static dev.onepieceapi.contentservice.domain.security.Permission.CONTENT_REVIEW;
 import static dev.onepieceapi.contentservice.domain.security.Permission.CONTENT_WRITE;
+import static dev.onepieceapi.contentservice.domain.workflow.TransitionDecision.ALLOWED;
+import static dev.onepieceapi.contentservice.domain.workflow.TransitionDecision.CONFLICT;
+import static dev.onepieceapi.contentservice.domain.workflow.TransitionDecision.FORBIDDEN;
 import static dev.onepieceapi.contentservice.domain.workflow.VersionAction.APPROVE;
 import static dev.onepieceapi.contentservice.domain.workflow.VersionAction.ARCHIVE;
 import static dev.onepieceapi.contentservice.domain.workflow.VersionAction.CLAIM;
@@ -41,7 +44,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * The transition table of docs/user-flows/content-editorial-workflow.md 4.2, read status
- * by status: what each of the default roles may do to a version written by nami.
+ * by status: what each of the default roles may do to a version written by nami, and how
+ * an action they may not perform is refused.
  */
 class TransitionPolicyTest {
 
@@ -141,6 +145,49 @@ class TransitionPolicyTest {
 	}
 
 	@Test
+	void aRefusalIsAboutTheCallerOrAboutTheState() {
+		assertThat(decide(EDIT, version(DRAFT), NAMI, EDITOR)).isEqualTo(ALLOWED);
+		// Not theirs to edit, or no permission to write at all: someone else must act.
+		assertThat(decide(EDIT, version(DRAFT), CHOPPER, EDITOR)).isEqualTo(FORBIDDEN);
+		assertThat(decide(EDIT, version(DRAFT), ZORO, REVIEWER)).isEqualTo(FORBIDDEN);
+		// Theirs, but no longer a draft: the version must move first.
+		assertThat(decide(EDIT, version(PUBLISHED), NAMI, EDITOR)).isEqualTo(CONFLICT);
+	}
+
+	@Test
+	void whoIsAskingComesBeforeTheStateOfTheVersion() {
+		assertThat(decide(EDIT, version(PUBLISHED), CHOPPER, EDITOR)).isEqualTo(FORBIDDEN);
+		assertThat(decide(CLAIM, claimedBy(ZORO), NAMI, EDITOR_AND_REVIEWER)).isEqualTo(FORBIDDEN);
+	}
+
+	@Test
+	void aConditionOnTheStateRefusesAsAConflictAndOneOnTheCallerAsForbidden() {
+		assertThat(decide(PULL_BACK, claimedBy(ZORO), NAMI, EDITOR)).isEqualTo(CONFLICT);
+		assertThat(decide(CLAIM, claimedBy(ZORO), LAW, EDITOR_AND_REVIEWER)).isEqualTo(CONFLICT);
+		assertThat(decide(CLAIM, version(IN_REVIEW), NAMI, EDITOR_AND_REVIEWER)).isEqualTo(FORBIDDEN);
+		assertThat(decide(APPROVE, claimedBy(ZORO), LAW, EDITOR_AND_REVIEWER)).isEqualTo(FORBIDDEN);
+		var recover = new TransitionContext(version(ARCHIVED), true, VIVI, PUBLISHER);
+		assertThat(TransitionPolicy.decide(RECOVER, recover)).isEqualTo(CONFLICT);
+	}
+
+	@ParameterizedTest
+	@EnumSource(VersionStatus.class)
+	void whatIsOfferedIsExactlyWhatIsDecidedAllowed(VersionStatus status) {
+		var everyPermission = EnumSet.allOf(Permission.class);
+		for (User caller : List.of(NAMI, ZORO)) {
+			var context = new TransitionContext(version(status), false, caller, everyPermission);
+			var decidedAllowed = EnumSet.noneOf(VersionAction.class);
+			for (VersionAction action : VersionAction.values()) {
+				if (TransitionPolicy.decide(action, context) == ALLOWED) {
+					decidedAllowed.add(action);
+				}
+			}
+
+			assertThat(TransitionPolicy.allowedActions(context)).isEqualTo(decidedAllowed);
+		}
+	}
+
+	@Test
 	void everyActionHasARule() {
 		var everyPermission = EnumSet.allOf(Permission.class);
 		var reachable = EnumSet.noneOf(VersionAction.class);
@@ -162,6 +209,11 @@ class TransitionPolicyTest {
 			Set<Permission> permissions) {
 		var context = new TransitionContext(version, contentHasOpenVersion, caller, permissions);
 		return TransitionPolicy.allowedActions(context);
+	}
+
+	private static TransitionDecision decide(VersionAction action, Version<?> version, User caller,
+			Set<Permission> permissions) {
+		return TransitionPolicy.decide(action, new TransitionContext(version, false, caller, permissions));
 	}
 
 	/** A version written by nami, held by nobody. */

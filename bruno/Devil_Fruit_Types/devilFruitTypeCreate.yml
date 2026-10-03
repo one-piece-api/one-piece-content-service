@@ -1,13 +1,20 @@
 info:
-  name: devilFruitTypeAuthors
+  name: devilFruitTypeCreate
   type: http
-  seq: 3
+  seq: 2
   tags:
     - Devil_Fruit_Types
 
 http:
-  method: GET
-  url: "{{baseUrl}}/devil-fruit-types/authors"
+  method: POST
+  url: "{{baseUrl}}/devil-fruit-types"
+  body:
+    type: json
+    data: |-
+      {
+        "romaji": "",
+        "translations": {}
+      }
   auth: inherit
 
 settings:
@@ -18,32 +25,66 @@ settings:
   forwardAuthorizationHeader: true
 
 examples:
-  - name: 200 Response
-    description: OK
+  - name: 201 Response
+    description: Created
     request:
-      url: "{{baseUrl}}/devil-fruit-types/authors"
-      method: GET
+      url: "{{baseUrl}}/devil-fruit-types"
+      method: POST
+      body:
+        type: json
+        data: |-
+          {
+            "romaji": "",
+            "translations": {}
+          }
     response:
-      status: 200
-      statusText: OK
+      status: 201
+      statusText: Created
       headers:
         - name: Content-Type
           value: application/json
       body:
         type: json
         data: |-
-          [
-            {
-              "email": "",
-              "id": "",
-              "username": ""
-            }
-          ]
+          {
+            "id": "",
+            "onlineVersionNumber": 0,
+            "versions": [
+              {
+                "allowedActions": [
+                  "EDIT"
+                ],
+                "author": {
+                  "email": "",
+                  "id": "",
+                  "username": ""
+                },
+                "basedOn": 0,
+                "claimant": {
+                  "email": "",
+                  "id": "",
+                  "username": ""
+                },
+                "createdAt": "",
+                "everPublished": false,
+                "number": 0,
+                "status": "DRAFT",
+                "updatedAt": ""
+              }
+            ]
+          }
   - name: 4XX Response
     description: Client error - a problem detail, except a 401/403 rejected by the security filter chain before reaching the application, which has no body
     request:
-      url: "{{baseUrl}}/devil-fruit-types/authors"
-      method: GET
+      url: "{{baseUrl}}/devil-fruit-types"
+      method: POST
+      body:
+        type: json
+        data: |-
+          {
+            "romaji": "",
+            "translations": {}
+          }
     response:
       headers:
         - name: Content-Type
@@ -70,8 +111,15 @@ examples:
   - name: 5XX Response
     description: Unexpected server error
     request:
-      url: "{{baseUrl}}/devil-fruit-types/authors"
-      method: GET
+      url: "{{baseUrl}}/devil-fruit-types"
+      method: POST
+      body:
+        type: json
+        data: |-
+          {
+            "romaji": "",
+            "translations": {}
+          }
     response:
       headers:
         - name: Content-Type

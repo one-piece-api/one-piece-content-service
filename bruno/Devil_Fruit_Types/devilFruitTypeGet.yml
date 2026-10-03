@@ -1,7 +1,7 @@
 info:
   name: devilFruitTypeGet
   type: http
-  seq: 4
+  seq: 5
   tags:
     - Devil_Fruit_Types
 
@@ -45,6 +45,9 @@ examples:
             "onlineVersionNumber": 0,
             "versions": [
               {
+                "allowedActions": [
+                  "EDIT"
+                ],
                 "author": {
                   "email": "",
                   "id": "",

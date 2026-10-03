@@ -7,6 +7,7 @@ import dev.onepieceapi.contentservice.domain.security.Permission;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitTypeTranslation;
 import dev.onepieceapi.contentservice.domain.security.User;
 import dev.onepieceapi.contentservice.domain.workflow.Version;
+import dev.onepieceapi.contentservice.domain.workflow.VersionAccess;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAction;
 import dev.onepieceapi.contentservice.domain.workflow.VersionEvent;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
@@ -17,10 +18,13 @@ import dev.onepieceapi.contentservice.persistence.entity.DevilFruitTypeVersionEn
 import dev.onepieceapi.contentservice.persistence.entity.TranslationEmbeddable;
 import dev.onepieceapi.contentservice.persistence.mapper.UserMapper;
 import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
+import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitTypeVersionRepository;
+import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
 import dev.onepieceapi.contentservice.service.exception.DevilFruitTypeNotFoundException;
 import dev.onepieceapi.contentservice.service.exception.VersionNotFoundException;
+import dev.onepieceapi.contentservice.service.validation.DevilFruitTypeValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -107,6 +111,12 @@ class DevilFruitTypeServiceIntegrationTest {
 	private ContentVersionRepository contentVersionRepository;
 
 	@Autowired
+	private ContentRepository contentRepository;
+
+	@Autowired
+	private LanguageRepository languageRepository;
+
+	@Autowired
 	private AuditLogRepository auditLogRepository;
 
 	@Autowired
@@ -126,8 +136,9 @@ class DevilFruitTypeServiceIntegrationTest {
 	void setUp() {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
 		var auditLogService = new AuditLogService(this.auditLogRepository, clock);
-		this.service = new DevilFruitTypeService(this.versionRepository, this.contentVersionRepository, auditLogService,
-				clock);
+		var validator = new DevilFruitTypeValidator(this.versionRepository, this.languageRepository);
+		this.service = new DevilFruitTypeService(this.versionRepository, this.contentVersionRepository,
+				this.contentRepository, validator, auditLogService, clock);
 
 		this.paramecia = content();
 		version(this.paramecia, 1, SUPERSEDED, this.nami, 60, names("Paramecia", "Paramisia", "Paramecia"));
@@ -148,7 +159,7 @@ class DevilFruitTypeServiceIntegrationTest {
 
 	@Test
 	void anEditorSeesEveryContentByItsMostRecentVersionNewestFirst() {
-		var page = this.service.list(EDITOR, NO_FILTER, FIRST_PAGE);
+		var page = this.service.list(EDITOR, this.nami, NO_FILTER, FIRST_PAGE);
 
 		assertThat(page.getContent())
 			.extracting(ContentSummary::contentId, row -> row.version().number(), row -> row.version().status(),
@@ -159,7 +170,7 @@ class DevilFruitTypeServiceIntegrationTest {
 
 	@Test
 	void aReviewerSeesNoDraftSoAContentFallsBackToItsLatestVisibleVersion() {
-		var page = this.service.list(REVIEWER, NO_FILTER, FIRST_PAGE);
+		var page = this.service.list(REVIEWER, this.nami, NO_FILTER, FIRST_PAGE);
 
 		assertThat(page.getContent())
 			.extracting(ContentSummary::contentId, row -> row.version().number(), row -> row.version().status())
@@ -169,7 +180,7 @@ class DevilFruitTypeServiceIntegrationTest {
 
 	@Test
 	void aPublisherSeesNothingBeforeReadyToPublish() {
-		var page = this.service.list(PUBLISHER, NO_FILTER, FIRST_PAGE);
+		var page = this.service.list(PUBLISHER, this.nami, NO_FILTER, FIRST_PAGE);
 
 		assertThat(page.getContent())
 			.extracting(ContentSummary::contentId, row -> row.version().number(), row -> row.version().status())
@@ -179,7 +190,7 @@ class DevilFruitTypeServiceIntegrationTest {
 
 	@Test
 	void aRowCarriesTheContentOfItsVersion() {
-		var row = this.service.list(EDITOR, new ContentFilter(null, "kodai", null, null), FIRST_PAGE)
+		var row = this.service.list(EDITOR, this.nami, new ContentFilter(null, "kodai", null, null), FIRST_PAGE)
 			.getContent()
 			.get(0);
 
@@ -193,8 +204,10 @@ class DevilFruitTypeServiceIntegrationTest {
 
 	@Test
 	void theStatusFilterShowsEachContentByItsVersionInThatStatus() {
-		var superseded = this.service.list(EDITOR, new ContentFilter(SUPERSEDED, null, null, null), FIRST_PAGE);
-		var published = this.service.list(EDITOR, new ContentFilter(PUBLISHED, null, null, null), FIRST_PAGE);
+		var superseded = this.service.list(EDITOR, this.nami, new ContentFilter(SUPERSEDED, null, null, null),
+				FIRST_PAGE);
+		var published = this.service.list(EDITOR, this.nami, new ContentFilter(PUBLISHED, null, null, null),
+				FIRST_PAGE);
 
 		assertThat(superseded.getContent())
 			.extracting(ContentSummary::contentId, row -> row.version().number(), ContentSummary::onlineVersionNumber)
@@ -207,9 +220,9 @@ class DevilFruitTypeServiceIntegrationTest {
 	void theStatusFilterIsLimitedToTheStatusesTheCallerSees() {
 		var drafts = new ContentFilter(DRAFT, null, null, null);
 
-		assertThat(this.service.list(EDITOR, drafts, FIRST_PAGE).getTotalElements()).isEqualTo(2);
-		assertThat(this.service.list(REVIEWER, drafts, FIRST_PAGE).getTotalElements()).isZero();
-		assertThat(this.service.list(REVIEWER, drafts, FIRST_PAGE).getContent()).isEmpty();
+		assertThat(this.service.list(EDITOR, this.nami, drafts, FIRST_PAGE).getTotalElements()).isEqualTo(2);
+		assertThat(this.service.list(REVIEWER, this.nami, drafts, FIRST_PAGE).getTotalElements()).isZero();
+		assertThat(this.service.list(REVIEWER, this.nami, drafts, FIRST_PAGE).getContent()).isEmpty();
 	}
 
 	@Test
@@ -257,11 +270,11 @@ class DevilFruitTypeServiceIntegrationTest {
 		var firstOfTwo = PageRequest.of(0, 2);
 
 		// Seven versions, four contents.
-		assertThat(this.service.list(EDITOR, NO_FILTER, firstOfTwo).getTotalElements()).isEqualTo(4);
-		assertThat(this.service.list(EDITOR, NO_FILTER, firstOfTwo).getTotalPages()).isEqualTo(2);
-		assertThat(this.service.list(REVIEWER, NO_FILTER, firstOfTwo).getTotalElements()).isEqualTo(3);
+		assertThat(this.service.list(EDITOR, this.nami, NO_FILTER, firstOfTwo).getTotalElements()).isEqualTo(4);
+		assertThat(this.service.list(EDITOR, this.nami, NO_FILTER, firstOfTwo).getTotalPages()).isEqualTo(2);
+		assertThat(this.service.list(REVIEWER, this.nami, NO_FILTER, firstOfTwo).getTotalElements()).isEqualTo(3);
 		var byChopper = new ContentFilter(null, null, this.chopper.username(), null);
-		assertThat(this.service.list(PUBLISHER, byChopper, firstOfTwo).getTotalElements()).isEqualTo(1);
+		assertThat(this.service.list(PUBLISHER, this.nami, byChopper, firstOfTwo).getTotalElements()).isEqualTo(1);
 	}
 
 	@Test
@@ -269,7 +282,7 @@ class DevilFruitTypeServiceIntegrationTest {
 		assertThat(idsOf(EDITOR, NO_FILTER, PageRequest.of(0, 2))).containsExactly(this.paramecia, this.zoan);
 		assertThat(idsOf(EDITOR, NO_FILTER, PageRequest.of(1, 2))).containsExactly(this.logia, this.kodaiZoan);
 
-		var beyond = this.service.list(EDITOR, NO_FILTER, PageRequest.of(2, 2));
+		var beyond = this.service.list(EDITOR, this.nami, NO_FILTER, PageRequest.of(2, 2));
 		assertThat(beyond.getContent()).isEmpty();
 		assertThat(beyond.getTotalElements()).isEqualTo(4);
 	}
@@ -343,7 +356,7 @@ class DevilFruitTypeServiceIntegrationTest {
 	void theMineCountIsWhatTheAuthorFilterWouldList() {
 		var byChopper = ContentFilter.authoredBy(this.chopper.username());
 
-		var listed = this.service.list(EDITOR, byChopper, FIRST_PAGE).getTotalElements();
+		var listed = this.service.list(EDITOR, this.nami, byChopper, FIRST_PAGE).getTotalElements();
 
 		assertThat(this.service.summary(EDITOR, this.chopper).mine()).isEqualTo(listed);
 	}
@@ -358,21 +371,24 @@ class DevilFruitTypeServiceIntegrationTest {
 
 	@Test
 	void aContentComesWithItsVisibleVersionsOldestFirst() {
-		var forEditor = this.service.get(EDITOR, this.paramecia);
-		var forReviewer = this.service.get(REVIEWER, this.paramecia);
+		var forEditor = this.service.get(EDITOR, this.nami, this.paramecia);
+		var forReviewer = this.service.get(REVIEWER, this.nami, this.paramecia);
 
-		assertThat(forEditor.versions()).extracting(Version::number, Version::status, Version::basedOn)
+		assertThat(forEditor.versions()).extracting(VersionAccess::version)
+			.extracting(Version::number, Version::status, Version::basedOn)
 			.containsExactly(tuple(1, SUPERSEDED, null), tuple(2, PUBLISHED, 1), tuple(3, DRAFT, 2));
 		assertThat(forEditor.onlineVersionNumber()).contains(2);
-		assertThat(forReviewer.versions()).extracting(Version::number).containsExactly(1, 2);
+		assertThat(forReviewer.versions()).extracting(VersionAccess::version)
+			.extracting(Version::number)
+			.containsExactly(1, 2);
 	}
 
 	@Test
 	void aContentWithOnlyADraftDoesNotExistForAReviewer() {
-		assertThat(this.service.get(EDITOR, this.logia).onlineVersionNumber()).isEmpty();
-		assertThatThrownBy(() -> this.service.get(REVIEWER, this.logia))
+		assertThat(this.service.get(EDITOR, this.nami, this.logia).onlineVersionNumber()).isEmpty();
+		assertThatThrownBy(() -> this.service.get(REVIEWER, this.nami, this.logia))
 			.isInstanceOf(DevilFruitTypeNotFoundException.class);
-		assertThatThrownBy(() -> this.service.get(EDITOR, UUID.randomUUID()))
+		assertThatThrownBy(() -> this.service.get(EDITOR, this.nami, UUID.randomUUID()))
 			.isInstanceOf(DevilFruitTypeNotFoundException.class);
 	}
 
@@ -434,7 +450,7 @@ class DevilFruitTypeServiceIntegrationTest {
 		this.entityManager.clear();
 
 		// A publisher does not see the draft of the second content, yet it counts.
-		assertThat(this.service.get(PUBLISHER, busy).versions()).hasSize(1);
+		assertThat(this.service.get(PUBLISHER, this.nami, busy).versions()).hasSize(1);
 		assertThat(this.service.getVersion(PUBLISHER, this.zoro, free, 1).allowedActions())
 			.containsExactly(VersionAction.RECOVER);
 		assertThat(this.service.getVersion(PUBLISHER, this.zoro, busy, 1).allowedActions()).isEmpty();
@@ -537,9 +553,9 @@ class DevilFruitTypeServiceIntegrationTest {
 			.executeUpdate();
 		this.entityManager.clear();
 
-		assertThatThrownBy(() -> this.service.get(EDITOR, this.paramecia))
+		assertThatThrownBy(() -> this.service.get(EDITOR, this.nami, this.paramecia))
 			.isInstanceOf(DevilFruitTypeNotFoundException.class);
-		assertThat(this.service.list(EDITOR, NO_FILTER, FIRST_PAGE).getTotalElements()).isEqualTo(3);
+		assertThat(this.service.list(EDITOR, this.nami, NO_FILTER, FIRST_PAGE).getTotalElements()).isEqualTo(3);
 	}
 
 	private List<UUID> idsOf(Set<Permission> permissions, ContentFilter filter) {
@@ -547,7 +563,7 @@ class DevilFruitTypeServiceIntegrationTest {
 	}
 
 	private List<UUID> idsOf(Set<Permission> permissions, ContentFilter filter, Pageable pageable) {
-		return this.service.list(permissions, filter, pageable).map(ContentSummary::contentId).getContent();
+		return this.service.list(permissions, this.nami, filter, pageable).map(ContentSummary::contentId).getContent();
 	}
 
 	private UUID content() {

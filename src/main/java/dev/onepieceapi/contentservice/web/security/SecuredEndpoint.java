@@ -45,7 +45,12 @@ enum SecuredEndpoint {
 	DEVIL_FRUIT_TYPE_SUMMARY(HttpMethod.GET, ApiPaths.DEVIL_FRUIT_TYPE_SUMMARY, Permission.CONTENT_READ),
 	DEVIL_FRUIT_TYPE_GET(HttpMethod.GET, ApiPaths.DEVIL_FRUIT_TYPE_BY_ID, Permission.CONTENT_READ),
 	DEVIL_FRUIT_TYPE_VERSION(HttpMethod.GET, ApiPaths.DEVIL_FRUIT_TYPE_VERSION, Permission.CONTENT_READ),
-	DEVIL_FRUIT_TYPE_VERSION_EVENTS(HttpMethod.GET, ApiPaths.DEVIL_FRUIT_TYPE_VERSION_EVENTS, Permission.CONTENT_READ);
+	DEVIL_FRUIT_TYPE_VERSION_EVENTS(HttpMethod.GET, ApiPaths.DEVIL_FRUIT_TYPE_VERSION_EVENTS, Permission.CONTENT_READ),
+
+	// Writing takes content:write; whether this caller may change this version - its
+	// author, while it is a draft - is decided by TransitionPolicy, inside the service.
+	DEVIL_FRUIT_TYPE_CREATE(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPES, Permission.CONTENT_WRITE),
+	DEVIL_FRUIT_TYPE_VERSION_EDIT(HttpMethod.PUT, ApiPaths.DEVIL_FRUIT_TYPE_VERSION, Permission.CONTENT_WRITE);
 
 	private final HttpMethod method;
 

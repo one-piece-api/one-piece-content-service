@@ -49,6 +49,7 @@ public class ContentResponseMapper {
 			.updatedAt(version.updatedAt())
 			.onlineVersionNumber(summary.onlineVersionNumber())
 			.body(toBody.apply(version.body()))
+			.allowedActions(List.copyOf(summary.allowedActions()))
 			.build();
 	}
 
@@ -73,7 +74,9 @@ public class ContentResponseMapper {
 			.build();
 	}
 
-	public VersionSummaryResponse toVersionSummaryResponse(Version<?> version) {
+	/** A link of the chain: the workflow of a version, without what it says. */
+	public VersionSummaryResponse toVersionSummaryResponse(VersionAccess<?> access) {
+		Version<?> version = access.version();
 		return VersionSummaryResponse.builder()
 			.number(version.number())
 			.status(version.status())
@@ -81,6 +84,7 @@ public class ContentResponseMapper {
 			.basedOn(version.basedOn())
 			.claimant(toUserResponse(version.claimant()))
 			.everPublished(version.everPublished())
+			.allowedActions(List.copyOf(access.allowedActions()))
 			.createdAt(version.createdAt())
 			.updatedAt(version.updatedAt())
 			.build();

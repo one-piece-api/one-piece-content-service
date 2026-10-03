@@ -71,4 +71,22 @@ public interface DevilFruitTypeVersionRepository extends JpaRepository<DevilFrui
 			where key(t) = :languageCode""")
 	boolean existsByLanguage(String languageCode);
 
+	/**
+	 * Whether a version of another content, in any status, has this romaji - whatever the
+	 * case it is written in.
+	 */
+	@Query("""
+			select count(d) > 0 from DevilFruitTypeVersionEntity d join d.version v
+			where lower(d.romaji) = lower(:romaji) and v.contentId <> :contentId""")
+	boolean romajiIsTakenByAnother(String romaji, UUID contentId);
+
+	/**
+	 * Whether a version of another content, in any status, has this name in this language
+	 * - whatever the case it is written in.
+	 */
+	@Query("""
+			select count(d) > 0 from DevilFruitTypeVersionEntity d join d.version v join d.translations t
+			where key(t) = :languageCode and lower(t.name) = lower(:name) and v.contentId <> :contentId""")
+	boolean nameIsTakenByAnother(String languageCode, String name, UUID contentId);
+
 }
