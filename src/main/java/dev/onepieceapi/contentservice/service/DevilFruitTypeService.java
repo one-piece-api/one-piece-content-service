@@ -51,13 +51,13 @@ import java.util.UUID;
  * review and taking it back (UF-CNT-03, UF-CNT-04), a reviewer claiming and releasing it
  * (UF-CNT-13, UF-CNT-14), approving or rejecting it, and its author taking a rejected one
  * back to draft (UF-CNT-05, UF-CNT-06, UF-CNT-15), putting it online (UF-CNT-07), setting
- * it aside and back (UF-CNT-16, UF-CNT-17), opening the next version from a closed one
- * (UF-CNT-08). Every method starts from the caller: {@link VisibilityPolicy} turns their
- * permissions into the statuses they may see, and nothing outside those statuses is ever
- * loaded; {@link TransitionPolicy} says what they may do with a version they see, and the
- * same answer guards each change. Building the queries, converting rows and validating
- * what is saved are done elsewhere: this class only decides what to read or change, and
- * for whom.
+ * it aside and back (UF-CNT-16, UF-CNT-17), taking it offline and back online (UF-CNT-10,
+ * UF-CNT-09), opening the next version from a closed one (UF-CNT-08). Every method starts
+ * from the caller: {@link VisibilityPolicy} turns their permissions into the statuses
+ * they may see, and nothing outside those statuses is ever loaded;
+ * {@link TransitionPolicy} says what they may do with a version they see, and the same
+ * answer guards each change. Building the queries, converting rows and validating what is
+ * saved are done elsewhere: this class only decides what to read or change, and for whom.
  */
 @Service
 @Transactional(readOnly = true)
@@ -91,6 +91,10 @@ public class DevilFruitTypeService {
 	private static final String AUDIT_ACTION_ARCHIVED = "VERSION_ARCHIVED";
 
 	private static final String AUDIT_ACTION_RECOVERED = "VERSION_RECOVERED";
+
+	private static final String AUDIT_ACTION_RETIRED = "VERSION_RETIRED";
+
+	private static final String AUDIT_ACTION_RESTORED = "VERSION_RESTORED";
 
 	private final DevilFruitTypeVersionRepository versionRepository;
 
@@ -353,9 +357,7 @@ public class DevilFruitTypeService {
 		Version<DevilFruitType> current = DevilFruitTypeVersionMapper.toDomain(entity);
 		TransitionContext context = contextOf(current, contentId, caller, permissions);
 		require(VersionAction.PUBLISH, context);
-		Instant now = this.clock.instant();
-		this.versionRepository.findOnline(contentId).ifPresent(online -> supersede(online, versionNumber, caller, now));
-		entity.moveTo(VersionStatus.PUBLISHED, now);
+		putOnline(entity, versionNumber, VersionAction.PUBLISH, caller);
 		return recorded(entity, context, AUDIT_ACTION_PUBLISHED);
 	}
 
@@ -399,6 +401,37 @@ public class DevilFruitTypeService {
 	}
 
 	/**
+	 * Takes the online version offline (UF-CNT-10): its content has nothing online until
+	 * a version is restored or published. Nothing is deleted.
+	 */
+	@Transactional
+	public VersionAccess<DevilFruitType> retire(Set<Permission> permissions, User caller, UUID contentId,
+			int versionNumber) {
+		DevilFruitTypeVersionEntity entity = visibleVersion(permissions, contentId, versionNumber);
+		Version<DevilFruitType> current = DevilFruitTypeVersionMapper.toDomain(entity);
+		TransitionContext context = contextOf(current, contentId, caller, permissions);
+		require(VersionAction.RETIRE, context);
+		entity.moveTo(VersionStatus.RETIRED, this.clock.instant());
+		return recorded(entity, context, AUDIT_ACTION_RETIRED);
+	}
+
+	/**
+	 * Puts a version that was online back online as it was (UF-CNT-09): no new version,
+	 * no review, whatever version of its content is open meanwhile. The version online
+	 * until then, if any, is superseded in the same transaction, as by a publication.
+	 */
+	@Transactional
+	public VersionAccess<DevilFruitType> restore(Set<Permission> permissions, User caller, UUID contentId,
+			int versionNumber) {
+		DevilFruitTypeVersionEntity entity = visibleVersion(permissions, contentId, versionNumber);
+		Version<DevilFruitType> current = DevilFruitTypeVersionMapper.toDomain(entity);
+		TransitionContext context = contextOf(current, contentId, caller, permissions);
+		require(VersionAction.RESTORE, context);
+		putOnline(entity, versionNumber, VersionAction.RESTORE, caller);
+		return recorded(entity, context, AUDIT_ACTION_RESTORED);
+	}
+
+	/**
 	 * Opens the next version of a content from one of its closed versions (UF-CNT-08): a
 	 * draft of the caller, saying what the base says and recording it as its base.
 	 * Nothing else moves - the online version stays online. The rules allow it only while
@@ -425,6 +458,26 @@ public class DevilFruitTypeService {
 				saved.getRomaji(), String.valueOf(basedOn));
 		Version<DevilFruitType> opened = DevilFruitTypeVersionMapper.toDomain(saved);
 		return accessTo(opened, new TransitionContext(opened, true, caller, permissions));
+	}
+
+	/**
+	 * Puts a version online in place of the one online until then, if any, and writes it
+	 * at once. Another version going online at the same instant - published or restored -
+	 * is stopped by the lock on the version both supersede; with nothing online to
+	 * supersede, only by the database (one online version per content - see {@code V2}):
+	 * the one left out is refused as if it had come second.
+	 */
+	private void putOnline(DevilFruitTypeVersionEntity entity, int versionNumber, VersionAction action, User caller) {
+		Instant now = this.clock.instant();
+		this.versionRepository.findOnline(entity.getContentId())
+			.ifPresent(online -> supersede(online, versionNumber, caller, now));
+		entity.moveTo(VersionStatus.PUBLISHED, now);
+		try {
+			this.versionRepository.flush();
+		}
+		catch (DataIntegrityViolationException ex) {
+			throw new VersionActionConflictException(action);
+		}
 	}
 
 	/**

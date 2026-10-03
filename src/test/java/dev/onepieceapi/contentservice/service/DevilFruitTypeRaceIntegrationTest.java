@@ -57,20 +57,24 @@ import static org.mockito.Mockito.mock;
 import static org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase.Replace;
 
 /**
- * Two callers giving the same content an open version at the same instant - two editors
- * opening a new one (UF-CNT-08), or a publisher recovering an archived one while an
- * editor opens a new one (UF-CNT-17) - each in their own transaction against a real
- * PostgreSQL (Testcontainers). Both are held right after checking that the content has no
- * open version, so both pass it: the database must then let only one of them in, and the
- * other must be refused as a conflict, not fail with a server error. Not run inside a
- * test transaction: each caller commits, as in production.
+ * Two callers changing the same content at the same instant, each in their own
+ * transaction against a real PostgreSQL (Testcontainers), where only the database can
+ * tell them apart. Giving the content an open version: two editors opening a new one
+ * (UF-CNT-08), or a publisher recovering an archived one while an editor opens a new one
+ * (UF-CNT-17) - both held right after checking that the content has no open version.
+ * Putting a version online while nothing is: two publishers restoring different versions
+ * (UF-CNT-09), or one restoring while another publishes (UF-CNT-07) - both held right
+ * after finding nothing online to supersede. Either way both pass the check: the database
+ * must then let only one of them in, and the other must be refused as a conflict, not
+ * fail with a server error. Not run inside a test transaction: each caller commits, as in
+ * production.
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = Replace.NONE)
 @ImportAutoConfiguration(FlywayAutoConfiguration.class)
 @Testcontainers
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
-class DevilFruitTypeOpenVersionRaceIntegrationTest {
+class DevilFruitTypeRaceIntegrationTest {
 
 	@Container
 	@ServiceConnection
@@ -89,6 +93,8 @@ class DevilFruitTypeOpenVersionRaceIntegrationTest {
 	private final User chopper = new User(UUID.randomUUID(), "chopper", "chopper@onepiece.local");
 
 	private final User vivi = new User(UUID.randomUUID(), "vivi", "vivi@onepiece.local");
+
+	private final User luffy = new User(UUID.randomUUID(), "luffy", "luffy@onepiece.local");
 
 	@Autowired
 	private DevilFruitTypeVersionRepository versionRepository;
@@ -111,15 +117,14 @@ class DevilFruitTypeOpenVersionRaceIntegrationTest {
 	@Test
 	void ofTwoEditorsOpeningAtOnceOneGetsTheNewVersionAndTheOtherAConflict() throws Exception {
 		var transaction = new TransactionTemplate(this.transactionManager);
-		UUID logia = transaction.execute(status -> seedContentWithItsOnlyVersion(VersionStatus.PUBLISHED));
-		DevilFruitTypeService service = serviceWithBothCallersHeldAfterTheCheck(logia);
+		UUID logia = transaction.execute(status -> seedContent(VersionStatus.PUBLISHED));
+		DevilFruitTypeService service = serviceWithBothCallersHeldAfterTheOpenVersionCheck(logia);
 
 		List<Object> outcomes = race(
 				() -> transaction.execute(status -> service.openNewVersion(EDITOR, this.nami, logia, 1)),
 				() -> transaction.execute(status -> service.openNewVersion(EDITOR, this.chopper, logia, 1)));
 
-		assertThat(outcomes).filteredOn(VersionAccess.class::isInstance).hasSize(1);
-		assertThat(outcomes).filteredOn(VersionActionConflictException.class::isInstance).hasSize(1);
+		assertOneGotInAndTheOtherAConflict(outcomes);
 		Integer latest = transaction.execute(status -> this.contentVersionRepository.findLatestNumber(logia));
 		assertThat(latest).isEqualTo(2);
 	}
@@ -127,15 +132,14 @@ class DevilFruitTypeOpenVersionRaceIntegrationTest {
 	@Test
 	void ofARecoveryAndANewVersionAtOnceOneGetsInAndTheOtherAConflict() throws Exception {
 		var transaction = new TransactionTemplate(this.transactionManager);
-		UUID zoan = transaction.execute(status -> seedContentWithItsOnlyVersion(VersionStatus.ARCHIVED));
-		DevilFruitTypeService service = serviceWithBothCallersHeldAfterTheCheck(zoan);
+		UUID zoan = transaction.execute(status -> seedContent(VersionStatus.ARCHIVED));
+		DevilFruitTypeService service = serviceWithBothCallersHeldAfterTheOpenVersionCheck(zoan);
 
 		List<Object> outcomes = race(
 				() -> transaction.execute(status -> service.recover(PUBLISHER, this.vivi, zoan, 1)),
 				() -> transaction.execute(status -> service.openNewVersion(EDITOR, this.chopper, zoan, 1)));
 
-		assertThat(outcomes).filteredOn(VersionAccess.class::isInstance).hasSize(1);
-		assertThat(outcomes).filteredOn(VersionActionConflictException.class::isInstance).hasSize(1);
+		assertOneGotInAndTheOtherAConflict(outcomes);
 		Boolean recovered = transaction
 			.execute(status -> this.versionRepository.findVisible(zoan, 1, Set.of(VersionStatus.READY_TO_PUBLISH))
 				.isPresent());
@@ -146,10 +150,10 @@ class DevilFruitTypeOpenVersionRaceIntegrationTest {
 	@Test
 	void aRecoveryThatMissedANewVersionOpenedMeanwhileIsRefusedAsAConflict() {
 		var transaction = new TransactionTemplate(this.transactionManager);
-		UUID zoan = transaction.execute(status -> seedContentWithItsOnlyVersion(VersionStatus.ARCHIVED));
-		transaction
-			.executeWithoutResult(status -> serviceSeeing(zoan, false).openNewVersion(EDITOR, this.chopper, zoan, 1));
-		DevilFruitTypeService late = serviceSeeing(zoan, false);
+		UUID zoan = transaction.execute(status -> seedContent(VersionStatus.ARCHIVED));
+		transaction.executeWithoutResult(
+				status -> serviceSeeingNoOpenVersion(zoan).openNewVersion(EDITOR, this.chopper, zoan, 1));
+		DevilFruitTypeService late = serviceSeeingNoOpenVersion(zoan);
 
 		assertThatThrownBy(() -> transaction.execute(status -> late.recover(PUBLISHER, this.vivi, zoan, 1)))
 			.isInstanceOf(VersionActionConflictException.class);
@@ -158,19 +162,39 @@ class DevilFruitTypeOpenVersionRaceIntegrationTest {
 		assertThat(stillArchived).isTrue();
 	}
 
-	/**
-	 * The service, with a view of the versions answering the check for an open version as
-	 * it was read before anyone acted: the same as two callers checking at once, without
-	 * threads - so the one that comes second is always the recovery.
-	 */
-	private DevilFruitTypeService serviceSeeing(UUID contentId, boolean hasOpenVersion) {
-		ContentVersionRepository stale = mock(ContentVersionRepository.class,
-				delegatesTo(this.contentVersionRepository));
-		doReturn(hasOpenVersion).when(stale).hasOpenVersion(contentId);
-		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
-		var validator = new DevilFruitTypeValidator(this.versionRepository, this.languageRepository);
-		return new DevilFruitTypeService(this.versionRepository, stale, this.contentRepository, validator,
-				new AuditLogService(this.auditLogRepository, clock), clock);
+	@Test
+	void ofTwoVersionsRestoredAtOnceWithNothingOnlineOneGoesOnlineAndTheOtherGetsAConflict() throws Exception {
+		var transaction = new TransactionTemplate(this.transactionManager);
+		UUID kodai = transaction.execute(status -> seedContent(VersionStatus.RETIRED, VersionStatus.SUPERSEDED));
+		DevilFruitTypeService service = serviceWithBothCallersHeldAfterLookingForTheOnlineVersion(kodai);
+
+		List<Object> outcomes = race(
+				() -> transaction.execute(status -> service.restore(PUBLISHER, this.vivi, kodai, 1)),
+				() -> transaction.execute(status -> service.restore(PUBLISHER, this.luffy, kodai, 2)));
+
+		assertOneGotInAndTheOtherAConflict(outcomes);
+		Boolean online = transaction.execute(status -> this.versionRepository.findOnline(kodai).isPresent());
+		assertThat(online).isTrue();
+	}
+
+	@Test
+	void ofARestoreAndAPublicationAtOnceWithNothingOnlineOneGoesOnlineAndTheOtherGetsAConflict() throws Exception {
+		var transaction = new TransactionTemplate(this.transactionManager);
+		UUID kodai = transaction.execute(status -> seedContent(VersionStatus.RETIRED, VersionStatus.READY_TO_PUBLISH));
+		DevilFruitTypeService service = serviceWithBothCallersHeldAfterLookingForTheOnlineVersion(kodai);
+
+		List<Object> outcomes = race(
+				() -> transaction.execute(status -> service.restore(PUBLISHER, this.vivi, kodai, 1)),
+				() -> transaction.execute(status -> service.publish(PUBLISHER, this.luffy, kodai, 2)));
+
+		assertOneGotInAndTheOtherAConflict(outcomes);
+		Boolean online = transaction.execute(status -> this.versionRepository.findOnline(kodai).isPresent());
+		assertThat(online).isTrue();
+	}
+
+	private static void assertOneGotInAndTheOtherAConflict(List<Object> outcomes) {
+		assertThat(outcomes).filteredOn(VersionAccess.class::isInstance).hasSize(1);
+		assertThat(outcomes).filteredOn(VersionActionConflictException.class::isInstance).hasSize(1);
 	}
 
 	/**
@@ -189,10 +213,22 @@ class DevilFruitTypeOpenVersionRaceIntegrationTest {
 	}
 
 	/**
+	 * The service, with a view of the versions answering that the content has no open
+	 * version, as read before anyone acted: the same as two callers checking at once,
+	 * without threads - so the one that comes second is always the late one.
+	 */
+	private DevilFruitTypeService serviceSeeingNoOpenVersion(UUID contentId) {
+		ContentVersionRepository stale = mock(ContentVersionRepository.class,
+				delegatesTo(this.contentVersionRepository));
+		doReturn(false).when(stale).hasOpenVersion(contentId);
+		return service(this.versionRepository, stale);
+	}
+
+	/**
 	 * The service, with its view of the versions holding each caller right after it
 	 * checked for an open version, until both have checked.
 	 */
-	private DevilFruitTypeService serviceWithBothCallersHeldAfterTheCheck(UUID contentId) {
+	private DevilFruitTypeService serviceWithBothCallersHeldAfterTheOpenVersionCheck(UUID contentId) {
 		var bothChecked = new CyclicBarrier(2);
 		ContentVersionRepository heldAfterCheck = mock(ContentVersionRepository.class,
 				delegatesTo(this.contentVersionRepository));
@@ -201,9 +237,30 @@ class DevilFruitTypeOpenVersionRaceIntegrationTest {
 			bothChecked.await(WAIT_SECONDS, TimeUnit.SECONDS);
 			return open;
 		}).when(heldAfterCheck).hasOpenVersion(contentId);
+		return service(this.versionRepository, heldAfterCheck);
+	}
+
+	/**
+	 * The service, with its view of the versions holding each caller right after it
+	 * looked for the online version to supersede, until both have looked.
+	 */
+	private DevilFruitTypeService serviceWithBothCallersHeldAfterLookingForTheOnlineVersion(UUID contentId) {
+		var bothLooked = new CyclicBarrier(2);
+		DevilFruitTypeVersionRepository heldAfterLooking = mock(DevilFruitTypeVersionRepository.class,
+				delegatesTo(this.versionRepository));
+		doAnswer(invocation -> {
+			var online = this.versionRepository.findOnline(contentId);
+			bothLooked.await(WAIT_SECONDS, TimeUnit.SECONDS);
+			return online;
+		}).when(heldAfterLooking).findOnline(contentId);
+		return service(heldAfterLooking, this.contentVersionRepository);
+	}
+
+	private DevilFruitTypeService service(DevilFruitTypeVersionRepository versions,
+			ContentVersionRepository contentVersions) {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
 		var validator = new DevilFruitTypeValidator(this.versionRepository, this.languageRepository);
-		return new DevilFruitTypeService(this.versionRepository, heldAfterCheck, this.contentRepository, validator,
+		return new DevilFruitTypeService(versions, contentVersions, this.contentRepository, validator,
 				new AuditLogService(this.auditLogRepository, clock), clock);
 	}
 
@@ -220,22 +277,24 @@ class DevilFruitTypeOpenVersionRaceIntegrationTest {
 		}
 	}
 
-	/** A content by nami with v1 in the given status, nothing else. */
-	private UUID seedContentWithItsOnlyVersion(VersionStatus status) {
+	/** A content by nami with a version in each of the given statuses, v1 first. */
+	private UUID seedContent(VersionStatus... statuses) {
 		UUID contentId = UUID.randomUUID();
 		this.contentRepository.save(new ContentEntity(contentId, EntityType.DEVIL_FRUIT_TYPE, NOW));
-		var workflow = ContentVersionEntity.builder()
-			.contentId(contentId)
-			.versionNumber(1)
-			.author(UserMapper.toEmbeddable(this.nami))
-			.status(status)
-			.createdAt(NOW)
-			.updatedAt(NOW)
-			.build();
-		var version = new DevilFruitTypeVersionEntity(workflow);
-		version.setRomaji("Logia " + contentId);
-		version.getTranslations().put("it", new TranslationEmbeddable("Rogia", "Trasforma in un elemento"));
-		this.versionRepository.save(version);
+		for (int index = 0; index < statuses.length; index++) {
+			var workflow = ContentVersionEntity.builder()
+				.contentId(contentId)
+				.versionNumber(index + 1)
+				.author(UserMapper.toEmbeddable(this.nami))
+				.status(statuses[index])
+				.createdAt(NOW)
+				.updatedAt(NOW)
+				.build();
+			var version = new DevilFruitTypeVersionEntity(workflow);
+			version.setRomaji("Logia " + contentId + " v" + (index + 1));
+			version.getTranslations().put("it", new TranslationEmbeddable("Rogia", "Trasforma in un elemento"));
+			this.versionRepository.save(version);
+		}
 		return contentId;
 	}
 

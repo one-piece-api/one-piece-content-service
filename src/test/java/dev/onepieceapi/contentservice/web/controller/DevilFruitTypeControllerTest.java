@@ -844,6 +844,82 @@ class DevilFruitTypeControllerTest {
 	}
 
 	@Test
+	void retiringAnswersWithTheVersionTakenOffline() throws Exception {
+		var retired = new VersionAccess<>(version(1, VersionStatus.RETIRED), EnumSet.of(VersionAction.RESTORE));
+		when(this.service.retire(eq(Set.of(Permission.CONTENT_RETIRE)), any(), eq(CONTENT_ID), eq(1)))
+			.thenReturn(retired);
+
+		this.mockMvc.perform(workflow("retire").with(callerWith(Permission.CONTENT_RETIRE)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.status").value("RETIRED"))
+			.andExpect(jsonPath("$.allowedActions[0]").value("RESTORE"));
+	}
+
+	@Test
+	void retiringIsForbiddenWithContentPublishAloneAndUnauthorizedWithoutAToken() throws Exception {
+		this.mockMvc
+			.perform(workflow("retire").with(callerWith(Permission.CONTENT_READ, Permission.CONTENT_WRITE,
+					Permission.CONTENT_REVIEW, Permission.CONTENT_PUBLISH)))
+			.andExpect(status().isForbidden());
+		this.mockMvc.perform(workflow("retire")).andExpect(status().isUnauthorized());
+		verifyNoInteractions(this.service);
+	}
+
+	@Test
+	void restoringAnswersWithTheVersionBackOnline() throws Exception {
+		var restored = new VersionAccess<>(version(1, VersionStatus.PUBLISHED), EnumSet.of(VersionAction.RETIRE));
+		when(this.service.restore(eq(Set.of(Permission.CONTENT_PUBLISH)), any(), eq(CONTENT_ID), eq(1)))
+			.thenReturn(restored);
+
+		this.mockMvc.perform(workflow("restore").with(callerWith(Permission.CONTENT_PUBLISH)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.status").value("PUBLISHED"))
+			.andExpect(jsonPath("$.allowedActions[0]").value("RETIRE"));
+	}
+
+	@Test
+	void restoringIsForbiddenWithoutContentPublishAndUnauthorizedWithoutAToken() throws Exception {
+		this.mockMvc
+			.perform(workflow("restore").with(callerWith(Permission.CONTENT_READ, Permission.CONTENT_WRITE,
+					Permission.CONTENT_REVIEW, Permission.CONTENT_RETIRE)))
+			.andExpect(status().isForbidden());
+		this.mockMvc.perform(workflow("restore")).andExpect(status().isUnauthorized());
+		verifyNoInteractions(this.service);
+	}
+
+	@ParameterizedTest
+	@CsvSource({ "NOT_FOUND, 404, CONTENT_VERSION_NOT_FOUND", "CONFLICT, 409, CONTENT_VERSION_ACTION_CONFLICT",
+			"CONCURRENT, 409, CONCURRENT_MODIFICATION" })
+	void aRefusedRetirementAnswersWithItsStatusAndCode(String refusal, int status, String errorCode) throws Exception {
+		when(this.service.retire(any(), any(), any(), eq(1))).thenThrow(refusal(refusal, VersionAction.RETIRE));
+
+		this.mockMvc.perform(workflow("retire").with(callerWith(Permission.CONTENT_RETIRE)))
+			.andExpect(status().is(status))
+			.andExpect(jsonPath("$.errorCode").value(errorCode));
+	}
+
+	@ParameterizedTest
+	@CsvSource({ "NOT_FOUND, 404, CONTENT_VERSION_NOT_FOUND", "FORBIDDEN, 403, CONTENT_VERSION_ACTION_FORBIDDEN",
+			"CONFLICT, 409, CONTENT_VERSION_ACTION_CONFLICT", "CONCURRENT, 409, CONCURRENT_MODIFICATION" })
+	void aRefusedRestorationAnswersWithItsStatusAndCode(String refusal, int status, String errorCode) throws Exception {
+		when(this.service.restore(any(), any(), any(), eq(1))).thenThrow(refusal(refusal, VersionAction.RESTORE));
+
+		this.mockMvc.perform(workflow("restore").with(callerWith(Permission.CONTENT_PUBLISH)))
+			.andExpect(status().is(status))
+			.andExpect(jsonPath("$.errorCode").value(errorCode));
+	}
+
+	/** Why the service refuses an action, by its name in the test cases. */
+	private static RuntimeException refusal(String refusal, VersionAction action) {
+		return switch (refusal) {
+			case "NOT_FOUND" -> new VersionNotFoundException(CONTENT_ID, 1);
+			case "FORBIDDEN" -> new VersionActionForbiddenException(action);
+			case "CONFLICT" -> new VersionActionConflictException(action);
+			default -> new ObjectOptimisticLockingFailureException(ContentVersionEntity.class, CONTENT_ID);
+		};
+	}
+
+	@Test
 	void openingANewVersionAnswersWithTheNewDraft() throws Exception {
 		var opened = new VersionAccess<>(version(2, VersionStatus.DRAFT), EnumSet.of(VersionAction.EDIT));
 		when(this.service.openNewVersion(eq(Set.of(Permission.CONTENT_WRITE)), any(), eq(CONTENT_ID), eq(1)))

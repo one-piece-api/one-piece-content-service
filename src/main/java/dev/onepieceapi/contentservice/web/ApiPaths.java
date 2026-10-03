@@ -67,6 +67,10 @@ public final class ApiPaths {
 
 	public static final String DEVIL_FRUIT_TYPE_VERSION_RECOVER = DEVIL_FRUIT_TYPE_VERSION + "/recover";
 
+	public static final String DEVIL_FRUIT_TYPE_VERSION_RETIRE = DEVIL_FRUIT_TYPE_VERSION + "/retire";
+
+	public static final String DEVIL_FRUIT_TYPE_VERSION_RESTORE = DEVIL_FRUIT_TYPE_VERSION + "/restore";
+
 	private ApiPaths() {
 	}
 

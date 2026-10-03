@@ -246,4 +246,25 @@ class DevilFruitTypeController {
 		return DevilFruitTypeResponseMapper.toVersionResponse(version);
 	}
 
+	/**
+	 * Takes the online version offline (UF-CNT-10); answers with it as it now is.
+	 */
+	@PostMapping(ApiPaths.DEVIL_FRUIT_TYPE_VERSION_RETIRE)
+	VersionResponse<DevilFruitTypeResponse> retire(@PathVariable UUID id, @PathVariable int number,
+			@AuthenticationPrincipal AuthenticatedCaller caller) {
+		var version = this.service.retire(caller.permissions(), caller.user(), id, number);
+		return DevilFruitTypeResponseMapper.toVersionResponse(version);
+	}
+
+	/**
+	 * Puts a version that was online back online as it was (UF-CNT-09), superseding the
+	 * one online until then; answers with it as it now is.
+	 */
+	@PostMapping(ApiPaths.DEVIL_FRUIT_TYPE_VERSION_RESTORE)
+	VersionResponse<DevilFruitTypeResponse> restore(@PathVariable UUID id, @PathVariable int number,
+			@AuthenticationPrincipal AuthenticatedCaller caller) {
+		var version = this.service.restore(caller.permissions(), caller.user(), id, number);
+		return DevilFruitTypeResponseMapper.toVersionResponse(version);
+	}
+
 }

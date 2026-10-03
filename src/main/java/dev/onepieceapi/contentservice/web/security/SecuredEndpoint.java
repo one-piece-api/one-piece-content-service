@@ -71,14 +71,18 @@ enum SecuredEndpoint {
 	DEVIL_FRUIT_TYPE_VERSION_REJECT(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_VERSION_REJECT,
 			Permission.CONTENT_REVIEW),
 
-	// Publishing, archiving and recovering take content:publish; whether this version is
-	// in the right status for it - and, to recover, its content has no open version - is
-	// decided by TransitionPolicy.
+	// Publishing, archiving, recovering and restoring take content:publish, retiring
+	// content:retire; whether this version is in the right status for it - and, to
+	// recover, its content has no open version - is decided by TransitionPolicy.
 	DEVIL_FRUIT_TYPE_VERSION_PUBLISH(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_VERSION_PUBLISH,
 			Permission.CONTENT_PUBLISH),
 	DEVIL_FRUIT_TYPE_VERSION_ARCHIVE(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_VERSION_ARCHIVE,
 			Permission.CONTENT_PUBLISH),
 	DEVIL_FRUIT_TYPE_VERSION_RECOVER(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_VERSION_RECOVER,
+			Permission.CONTENT_PUBLISH),
+	DEVIL_FRUIT_TYPE_VERSION_RETIRE(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_VERSION_RETIRE,
+			Permission.CONTENT_RETIRE),
+	DEVIL_FRUIT_TYPE_VERSION_RESTORE(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_VERSION_RESTORE,
 			Permission.CONTENT_PUBLISH);
 
 	private final HttpMethod method;
