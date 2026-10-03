@@ -7,6 +7,42 @@ servers:
 security:
 - keycloak: []
 paths:
+  /dashboard:
+    get:
+      operationId: dashboardStatusCounts
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Dashboard
+      x-required-permission: content:read
+  /dashboard/activity:
+    get:
+      operationId: dashboardActivity
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Dashboard
+      x-required-permission: content:read
   /devil-fruit-types:
     get:
       operationId: devilFruitTypeList
@@ -757,6 +793,28 @@ components:
             $ref: "#/components/schemas/ProblemDetail"
       description: Unexpected server error
   schemas:
+    ActivityResponse:
+      type: object
+      properties:
+        action:
+          type: string
+        contentId:
+          type: string
+          format: uuid
+        entityType:
+          type: string
+          enum:
+          - DEVIL_FRUIT_TYPE
+        label:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
+        title:
+          $ref: "#/components/schemas/ContentTitleResponse"
+        versionNumber:
+          type: integer
+          format: int32
     ContentListSummaryResponse:
       type: object
       properties:
@@ -862,6 +920,15 @@ components:
         versionNumber:
           type: integer
           format: int32
+    ContentTitleResponse:
+      type: object
+      properties:
+        fallback:
+          type: string
+        names:
+          type: object
+          additionalProperties:
+            type: string
     CreateLanguageRequest:
       type: object
       properties:
@@ -869,6 +936,13 @@ components:
           type: string
         name:
           type: string
+    DashboardResponse:
+      type: object
+      properties:
+        statuses:
+          type: array
+          items:
+            $ref: "#/components/schemas/StatusCountResponse"
     DevilFruitTypeNamesResponse:
       type: object
       properties:
@@ -1005,6 +1079,26 @@ components:
           minLength: 8
       required:
       - reason
+    StatusCountResponse:
+      type: object
+      properties:
+        count:
+          type: integer
+          format: int64
+        mine:
+          type: integer
+          format: int64
+        status:
+          type: string
+          enum:
+          - DRAFT
+          - IN_REVIEW
+          - REJECTED
+          - READY_TO_PUBLISH
+          - PUBLISHED
+          - ARCHIVED
+          - RETIRED
+          - SUPERSEDED
     UserResponse:
       type: object
       properties:

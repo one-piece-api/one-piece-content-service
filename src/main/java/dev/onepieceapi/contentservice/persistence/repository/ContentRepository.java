@@ -4,6 +4,8 @@ import dev.onepieceapi.contentservice.persistence.entity.ContentEntity;
 
 import org.springframework.data.repository.Repository;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -16,5 +18,7 @@ public interface ContentRepository extends Repository<ContentEntity, UUID> {
 	ContentEntity save(ContentEntity content);
 
 	void deleteById(UUID id);
+
+	List<ContentEntity> findByIdIn(Collection<UUID> ids);
 
 }

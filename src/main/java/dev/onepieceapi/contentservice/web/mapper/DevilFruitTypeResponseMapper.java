@@ -44,13 +44,7 @@ public class DevilFruitTypeResponseMapper {
 
 	/** What a list row shows: the names, for the languages that have one. */
 	public DevilFruitTypeNamesResponse toNamesResponse(DevilFruitType devilFruitType) {
-		Map<String, String> names = new TreeMap<>();
-		devilFruitType.translations().forEach((language, translation) -> {
-			if (translation.name() != null) {
-				names.put(language, translation.name());
-			}
-		});
-		return new DevilFruitTypeNamesResponse(devilFruitType.romaji(), names);
+		return new DevilFruitTypeNamesResponse(devilFruitType.romaji(), devilFruitType.names());
 	}
 
 	private static DevilFruitTypeTranslationResponse toTranslationResponse(DevilFruitTypeTranslation translation) {

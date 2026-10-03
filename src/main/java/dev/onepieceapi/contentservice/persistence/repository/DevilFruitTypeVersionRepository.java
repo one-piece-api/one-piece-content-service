@@ -45,6 +45,16 @@ public interface DevilFruitTypeVersionRepository extends JpaRepository<DevilFrui
 		return count(DevilFruitTypeVersionSpecifications.listOf(statuses, filter, clock));
 	}
 
+	/**
+	 * For each of the given contents, its most recent version among {@code statuses} -
+	 * what it is called where it is listed.
+	 */
+	default List<DevilFruitTypeVersionEntity> findMostRecent(Collection<UUID> contentIds,
+			Collection<VersionStatus> statuses) {
+		return findAll(DevilFruitTypeVersionSpecifications.mostRecentIn(statuses)
+			.and(DevilFruitTypeVersionSpecifications.ofContents(contentIds)));
+	}
+
 	/** The visible versions of one content, oldest first. */
 	@Query("""
 			select d from DevilFruitTypeVersionEntity d join fetch d.version v

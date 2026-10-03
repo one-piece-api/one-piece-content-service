@@ -23,6 +23,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * The building blocks of the Devil Fruit Type list query (UF-CNT-18), following the
@@ -69,6 +70,10 @@ public class DevilFruitTypeVersionSpecifications {
 				.where(sameContent, eligible);
 			return cb.equal(version.get(ContentVersionEntity.Fields.versionNumber), mostRecent);
 		};
+	}
+
+	public Specification<DevilFruitTypeVersionEntity> ofContents(Collection<UUID> contentIds) {
+		return (root, query, cb) -> workflowOf(root).get(ContentVersionEntity.Fields.contentId).in(contentIds);
 	}
 
 	public Specification<DevilFruitTypeVersionEntity> authoredBy(String username) {

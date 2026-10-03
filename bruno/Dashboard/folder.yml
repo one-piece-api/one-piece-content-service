@@ -1,0 +1,6 @@
+info:
+  name: Dashboard
+  type: folder
+
+request:
+  auth: inherit

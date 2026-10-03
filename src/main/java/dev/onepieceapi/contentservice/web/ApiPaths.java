@@ -27,6 +27,11 @@ public final class ApiPaths {
 
 	public static final String LANGUAGE_BY_CODE = "/languages/{code}";
 
+	/** Across entity types: the counters per status, and the caller's latest actions. */
+	public static final String DASHBOARD = "/dashboard";
+
+	public static final String DASHBOARD_ACTIVITY = DASHBOARD + "/activity";
+
 	/** Content-keyed: a content, then one of its versions by number. */
 	public static final String DEVIL_FRUIT_TYPES = "/devil-fruit-types";
 

@@ -28,6 +28,17 @@ public record DevilFruitType(String romaji, Map<String, DevilFruitTypeTranslatio
 		return new DevilFruitType(Text.stripToNull(this.romaji), written);
 	}
 
+	/** The name per language code, for the languages that have one. */
+	public Map<String, String> names() {
+		Map<String, String> names = new TreeMap<>();
+		this.translations.forEach((language, translation) -> {
+			if (translation.name() != null) {
+				names.put(language, translation.name());
+			}
+		});
+		return names;
+	}
+
 	/**
 	 * What it says in this language - nothing at all, when no translation was written.
 	 */

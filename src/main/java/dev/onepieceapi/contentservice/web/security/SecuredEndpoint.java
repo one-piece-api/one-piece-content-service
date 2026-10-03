@@ -40,6 +40,8 @@ enum SecuredEndpoint {
 
 	// Reading content only takes content:read: which versions the caller then sees is
 	// decided per status by VisibilityPolicy, inside the service.
+	DASHBOARD(HttpMethod.GET, ApiPaths.DASHBOARD, Permission.CONTENT_READ),
+	DASHBOARD_ACTIVITY(HttpMethod.GET, ApiPaths.DASHBOARD_ACTIVITY, Permission.CONTENT_READ),
 	DEVIL_FRUIT_TYPE_LIST(HttpMethod.GET, ApiPaths.DEVIL_FRUIT_TYPES, Permission.CONTENT_READ),
 	DEVIL_FRUIT_TYPE_AUTHORS(HttpMethod.GET, ApiPaths.DEVIL_FRUIT_TYPE_AUTHORS, Permission.CONTENT_READ),
 	DEVIL_FRUIT_TYPE_SUMMARY(HttpMethod.GET, ApiPaths.DEVIL_FRUIT_TYPE_SUMMARY, Permission.CONTENT_READ),
