@@ -24,18 +24,8 @@ import java.util.UUID;
 public class DevilFruitTypeVersionMapper {
 
 	public Version<DevilFruitType> toDomain(DevilFruitTypeVersionEntity entity) {
-		ContentVersionEntity workflow = entity.getVersion();
-		return Version.<DevilFruitType>builder()
-			.number(workflow.getVersionNumber())
-			.basedOn(workflow.getBasedOnNumber())
-			.status(workflow.getStatus())
-			.author(UserMapper.toDomain(workflow.getAuthor()))
-			.claimant(UserMapper.toDomain(workflow.getClaimant()))
-			.rejectionReason(workflow.getRejectionReason())
-			.body(new DevilFruitType(entity.getRomaji(), toDomain(entity.getTranslations())))
-			.createdAt(workflow.getCreatedAt())
-			.updatedAt(workflow.getUpdatedAt())
-			.build();
+		var body = new DevilFruitType(entity.getRomaji(), toDomain(entity.getTranslations()));
+		return ContentVersionMapper.toDomain(entity.getVersion(), body);
 	}
 
 	/**

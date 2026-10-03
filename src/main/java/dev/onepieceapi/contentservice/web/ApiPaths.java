@@ -32,6 +32,11 @@ public final class ApiPaths {
 
 	public static final String DASHBOARD_ACTIVITY = DASHBOARD + "/activity";
 
+	/** One status across entity types: its contents, one page at a time. */
+	public static final String DASHBOARD_STATUS = DASHBOARD + "/statuses/{status}";
+
+	public static final String DASHBOARD_STATUS_AUTHORS = DASHBOARD_STATUS + "/authors";
+
 	/** Content-keyed: a content, then one of its versions by number. */
 	public static final String DEVIL_FRUIT_TYPES = "/devil-fruit-types";
 

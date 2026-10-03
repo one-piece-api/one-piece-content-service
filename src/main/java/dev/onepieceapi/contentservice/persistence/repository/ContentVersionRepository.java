@@ -1,9 +1,16 @@
 package dev.onepieceapi.contentservice.persistence.repository;
 
+import dev.onepieceapi.contentservice.domain.security.User;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.entity.ContentVersionEntity;
 import dev.onepieceapi.contentservice.persistence.projection.OnlineVersion;
 import dev.onepieceapi.contentservice.persistence.projection.StatusTally;
+import dev.onepieceapi.contentservice.persistence.specification.ContentVersionSorting;
+import dev.onepieceapi.contentservice.persistence.specification.ContentVersionSpecifications;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
@@ -20,7 +27,8 @@ import java.util.stream.Collectors;
  * Reading a version with its content goes through its entity's own repository, e.g.
  * {@link DevilFruitTypeVersionRepository}.
  */
-public interface ContentVersionRepository extends Repository<ContentVersionEntity, UUID> {
+public interface ContentVersionRepository
+		extends Repository<ContentVersionEntity, UUID>, JpaSpecificationExecutor<ContentVersionEntity> {
 
 	@Query("""
 			select new dev.onepieceapi.contentservice.persistence.projection.OnlineVersion(v.contentId, v.versionNumber)
@@ -73,18 +81,35 @@ public interface ContentVersionRepository extends Repository<ContentVersionEntit
 			group by v.status""")
 	List<StatusTally> countContentsByStatus(Collection<VersionStatus> statuses);
 
-	/**
-	 * How many versions in this status the user wrote - one per content, for an open
-	 * status.
-	 */
-	long countByStatusAndAuthorUserId(VersionStatus status, UUID userId);
-
-	/**
-	 * How many versions in this status the user holds - only a version in review has a
-	 * claimant.
-	 */
-	long countByStatusAndClaimantUserId(VersionStatus status, UUID userId);
-
 	List<ContentVersionEntity> findByIdIn(Collection<UUID> ids);
+
+	/**
+	 * One page of a dashboard status page: one row per content - its most recent version
+	 * in {@code status} - narrowed by {@code filters}, sorted as asked.
+	 */
+	default Page<ContentVersionEntity> searchStatus(VersionStatus status, Specification<ContentVersionEntity> filters,
+			Pageable pageable) {
+		return findAll(ContentVersionSpecifications.mostRecentIn(Set.of(status)).and(filters),
+				ContentVersionSorting.resolve(pageable));
+	}
+
+	/** How many contents a status page would list in all, with the same filters. */
+	default long countStatus(VersionStatus status, Specification<ContentVersionEntity> filters) {
+		return count(ContentVersionSpecifications.mostRecentIn(Set.of(status)).and(filters));
+	}
+
+	/**
+	 * The distinct authors of the rows of a status page - the versions representing their
+	 * content there - for its author filter.
+	 */
+	@Query("""
+			select distinct new dev.onepieceapi.contentservice.domain.security.User(
+				v.author.userId, v.author.username, v.author.email)
+			from ContentVersionEntity v
+			where v.status = :status
+				and v.versionNumber = (select max(o.versionNumber) from ContentVersionEntity o
+					where o.contentId = v.contentId and o.status = :status)
+			order by v.author.username""")
+	List<User> findAuthorsOfStatus(VersionStatus status);
 
 }

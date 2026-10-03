@@ -59,17 +59,7 @@ public class DevilFruitTypeVersionSpecifications {
 	 * rows counts the contents.
 	 */
 	public Specification<DevilFruitTypeVersionEntity> mostRecentIn(Collection<VersionStatus> statuses) {
-		return (root, query, cb) -> {
-			Path<ContentVersionEntity> version = workflowOf(root);
-			Subquery<Integer> mostRecent = query.subquery(Integer.class);
-			Root<ContentVersionEntity> other = mostRecent.from(ContentVersionEntity.class);
-			Predicate sameContent = cb.equal(other.get(ContentVersionEntity.Fields.contentId),
-					version.get(ContentVersionEntity.Fields.contentId));
-			Predicate eligible = other.get(ContentVersionEntity.Fields.status).in(statuses);
-			mostRecent.select(cb.max(other.<Integer>get(ContentVersionEntity.Fields.versionNumber)))
-				.where(sameContent, eligible);
-			return cb.equal(version.get(ContentVersionEntity.Fields.versionNumber), mostRecent);
-		};
+		return (root, query, cb) -> ContentVersionSpecifications.mostRecentIn(workflowOf(root), statuses, query, cb);
 	}
 
 	public Specification<DevilFruitTypeVersionEntity> ofContents(Collection<UUID> contentIds) {

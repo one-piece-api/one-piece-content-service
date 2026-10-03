@@ -3,11 +3,14 @@ package dev.onepieceapi.contentservice.service;
 import dev.onepieceapi.contentservice.config.DashboardProperties;
 import dev.onepieceapi.contentservice.domain.dashboard.Activity;
 import dev.onepieceapi.contentservice.domain.dashboard.StatusCount;
+import dev.onepieceapi.contentservice.domain.dashboard.StatusFilter;
+import dev.onepieceapi.contentservice.domain.dashboard.StatusRow;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitType;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitTypeTranslation;
 import dev.onepieceapi.contentservice.domain.security.Permission;
 import dev.onepieceapi.contentservice.domain.security.User;
 import dev.onepieceapi.contentservice.domain.workflow.EntityType;
+import dev.onepieceapi.contentservice.domain.workflow.VersionAction;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.entity.AuditLogEntity;
 import dev.onepieceapi.contentservice.persistence.entity.ContentEntity;
@@ -19,6 +22,7 @@ import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitTypeVersionRepository;
+import dev.onepieceapi.contentservice.service.exception.StatusNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +32,8 @@ import org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
@@ -48,6 +54,7 @@ import static dev.onepieceapi.contentservice.domain.workflow.VersionStatus.REJEC
 import static dev.onepieceapi.contentservice.domain.workflow.VersionStatus.RETIRED;
 import static dev.onepieceapi.contentservice.domain.workflow.VersionStatus.SUPERSEDED;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase.Replace;
 
 /**
@@ -75,6 +82,10 @@ class DashboardServiceIntegrationTest {
 	private static final Instant EARLIER = Instant.parse("2026-10-01T10:00:00Z");
 
 	private static final int ACTIVITY_SIZE = 3;
+
+	private static final StatusFilter NO_FILTER = new StatusFilter(null, null, false);
+
+	private static final Pageable FIRST_PAGE = PageRequest.of(0, 10);
 
 	private static final Set<Permission> EDITOR = Set.of(Permission.CONTENT_READ, Permission.CONTENT_WRITE);
 
@@ -238,6 +249,110 @@ class DashboardServiceIntegrationTest {
 		assertThat(deleted.versionNumber()).isNull();
 		assertThat(deleted.title()).isNull();
 		assertThat(deleted.label()).isEqualTo("Paramecia");
+	}
+
+	@Test
+	void aStatusPageListsEachContentByItsVersionThereWithWhatTheCallerMayDo() {
+		var page = this.service.statusPage(REVIEWER, this.zoro, IN_REVIEW, NO_FILTER, FIRST_PAGE);
+
+		assertThat(page.rows().getContent()).extracting(StatusRow::contentId)
+			.containsExactlyInAnyOrder(this.logia, this.kodai);
+		var held = row(page, this.logia);
+		assertThat(held.entityType()).isEqualTo(EntityType.DEVIL_FRUIT_TYPE);
+		assertThat(held.version().number()).isEqualTo(3);
+		assertThat(held.version().claimant()).isEqualTo(this.zoro);
+		assertThat(held.onlineVersionNumber()).isEqualTo(2);
+		assertThat(row(page, this.kodai).onlineVersionNumber()).isNull();
+		assertThat(held.version().body().names()).containsEntry("it", "Logia Prime IT");
+		assertThat(held.allowedActions()).contains(VersionAction.APPROVE, VersionAction.REJECT, VersionAction.RELEASE);
+		assertThat(row(page, this.kodai).allowedActions()).containsExactly(VersionAction.CLAIM);
+	}
+
+	@Test
+	void mineNarrowsTheReviewsToTheOnesHeldWhileTheCountersStayOnTheWholeStatus() {
+		var page = this.service.statusPage(REVIEWER, this.zoro, IN_REVIEW, new StatusFilter(null, null, true),
+				FIRST_PAGE);
+
+		assertThat(page.rows().getContent()).extracting(StatusRow::contentId).containsExactly(this.logia);
+		assertThat(page.all()).isEqualTo(2);
+		assertThat(page.mine()).isEqualTo(1);
+	}
+
+	@Test
+	void mineNarrowsTheDraftsToTheCallersOwn() {
+		var asAuthor = this.service.statusPage(EDITOR, this.nami, DRAFT, new StatusFilter(null, null, true),
+				FIRST_PAGE);
+		var asOther = this.service.statusPage(EDITOR, this.chopper, DRAFT, new StatusFilter(null, null, true),
+				FIRST_PAGE);
+
+		assertThat(asAuthor.rows().getTotalElements()).isEqualTo(1);
+		assertThat(asOther.rows().getTotalElements()).isZero();
+		assertThat(asOther.all()).isEqualTo(1);
+	}
+
+	@Test
+	void aStatusWithNoMineHasNoMineCounterAndIgnoresTheFilter() {
+		var page = this.service.statusPage(READER, this.nami, ARCHIVED, new StatusFilter(null, null, true), FIRST_PAGE);
+
+		assertThat(page.mine()).isNull();
+		assertThat(page.rows().getTotalElements()).isEqualTo(1);
+	}
+
+	@Test
+	void aContentWithSeveralVersionsInTheStatusIsOneRowByTheMostRecent() {
+		var page = this.service.statusPage(READER, this.nami, ARCHIVED, NO_FILTER, FIRST_PAGE);
+
+		assertThat(page.rows().getContent()).singleElement()
+			.satisfies(only -> assertThat(only.version().number()).isEqualTo(2));
+	}
+
+	@Test
+	void theRowsAreFilteredByAuthorAndByKind() {
+		assertThat(this.service
+			.statusPage(REVIEWER, this.zoro, IN_REVIEW, new StatusFilter(null, "chopper", false), FIRST_PAGE)
+			.rows()
+			.getTotalElements()).isEqualTo(2);
+		assertThat(this.service
+			.statusPage(REVIEWER, this.zoro, IN_REVIEW, new StatusFilter(null, "nami", false), FIRST_PAGE)
+			.rows()
+			.getTotalElements()).isZero();
+		assertThat(this.service
+			.statusPage(REVIEWER, this.zoro, IN_REVIEW, new StatusFilter(EntityType.DEVIL_FRUIT_TYPE, null, false),
+					FIRST_PAGE)
+			.rows()
+			.getTotalElements()).isEqualTo(2);
+	}
+
+	@Test
+	void pagesAreStableAndAddUpToTheCounter() {
+		var first = this.service.statusPage(REVIEWER, this.zoro, IN_REVIEW, NO_FILTER, PageRequest.of(0, 1));
+		var second = this.service.statusPage(REVIEWER, this.zoro, IN_REVIEW, NO_FILTER, PageRequest.of(1, 1));
+
+		assertThat(first.rows().getTotalElements()).isEqualTo(first.all());
+		assertThat(first.rows().getTotalPages()).isEqualTo(2);
+		assertThat(first.rows().getContent().getFirst().contentId())
+			.isNotEqualTo(second.rows().getContent().getFirst().contentId());
+	}
+
+	@Test
+	void aStatusTheCallerDoesNotSeeOrWithNoPageIsNotFound() {
+		assertThatThrownBy(() -> this.service.statusPage(REVIEWER, this.zoro, DRAFT, NO_FILTER, FIRST_PAGE))
+			.isInstanceOf(StatusNotFoundException.class);
+		assertThatThrownBy(() -> this.service.statusPage(EDITOR, this.nami, SUPERSEDED, NO_FILTER, FIRST_PAGE))
+			.isInstanceOf(StatusNotFoundException.class);
+		assertThatThrownBy(() -> this.service.statusAuthors(READER, IN_REVIEW))
+			.isInstanceOf(StatusNotFoundException.class);
+	}
+
+	@Test
+	void theAuthorsOfAStatusAreThoseOfItsRows() {
+		assertThat(this.service.statusAuthors(REVIEWER, IN_REVIEW)).extracting(User::username)
+			.containsExactly("chopper");
+		assertThat(this.service.statusAuthors(READER, ARCHIVED)).extracting(User::username).containsExactly("nami");
+	}
+
+	private static StatusRow row(StatusPage page, UUID contentId) {
+		return page.rows().stream().filter(row -> row.contentId().equals(contentId)).findFirst().orElseThrow();
 	}
 
 	private static StatusCount count(List<StatusCount> counts, VersionStatus status) {

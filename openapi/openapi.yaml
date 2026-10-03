@@ -43,6 +43,114 @@ paths:
       tags:
       - Dashboard
       x-required-permission: content:read
+  /dashboard/statuses/{status}:
+    get:
+      operationId: dashboardStatusPage
+      parameters:
+      - in: path
+        name: status
+        required: true
+        schema:
+          type: string
+          enum:
+          - DRAFT
+          - IN_REVIEW
+          - REJECTED
+          - READY_TO_PUBLISH
+          - PUBLISHED
+          - ARCHIVED
+          - RETIRED
+          - SUPERSEDED
+      - in: query
+        name: entity
+        required: false
+        schema:
+          type: string
+          enum:
+          - DEVIL_FRUIT_TYPE
+      - in: query
+        name: author
+        required: false
+        schema:
+          type: string
+      - in: query
+        name: mine
+        required: false
+        schema:
+          type: boolean
+      - description: Zero-based page index (0..N)
+        in: query
+        name: page
+        required: false
+        schema:
+          type: integer
+          default: 0
+          minimum: 0
+      - description: The size of the page to be returned
+        in: query
+        name: size
+        required: false
+        schema:
+          type: integer
+          default: 20
+          minimum: 1
+      - description: "Sorting criteria in the format: property,(asc|desc). Default\
+          \ sort order is ascending. Multiple sort criteria are supported."
+        in: query
+        name: sort
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusPageResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Dashboard
+      x-required-permission: content:read
+  /dashboard/statuses/{status}/authors:
+    get:
+      operationId: dashboardStatusAuthors
+      parameters:
+      - in: path
+        name: status
+        required: true
+        schema:
+          type: string
+          enum:
+          - DRAFT
+          - IN_REVIEW
+          - REJECTED
+          - READY_TO_PUBLISH
+          - PUBLISHED
+          - ARCHIVED
+          - RETIRED
+          - SUPERSEDED
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Dashboard
+      x-required-permission: content:read
   /devil-fruit-types:
     get:
       operationId: devilFruitTypeList
@@ -1035,6 +1143,25 @@ components:
         totalPages:
           type: integer
           format: int32
+    PageResponseStatusRowResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/StatusRowResponse"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
     ProblemDetail:
       type: object
       description: "RFC 9457 problem detail, plus this API's own properties"
@@ -1099,6 +1226,93 @@ components:
           - ARCHIVED
           - RETIRED
           - SUPERSEDED
+    StatusPageResponse:
+      type: object
+      properties:
+        all:
+          type: integer
+          format: int64
+        mine:
+          type: integer
+          format: int64
+        rows:
+          $ref: "#/components/schemas/PageResponseStatusRowResponse"
+    StatusRowResponse:
+      type: object
+      properties:
+        allowedActions:
+          type: array
+          items:
+            type: string
+            enum:
+            - EDIT
+            - DELETE
+            - SUBMIT
+            - PULL_BACK
+            - CLAIM
+            - RELEASE
+            - APPROVE
+            - REJECT
+            - RETURN_TO_DRAFT
+            - PUBLISH
+            - ARCHIVE
+            - RECOVER
+            - RETIRE
+            - RESTORE
+            - OPEN_NEW_VERSION
+        author:
+          $ref: "#/components/schemas/UserResponse"
+        claimant:
+          $ref: "#/components/schemas/UserResponse"
+        contentId:
+          type: string
+          format: uuid
+        entityType:
+          type: string
+          enum:
+          - DEVIL_FRUIT_TYPE
+        onlineVersionNumber:
+          type: integer
+          format: int32
+        overrideActions:
+          type: array
+          items:
+            type: string
+            enum:
+            - EDIT
+            - DELETE
+            - SUBMIT
+            - PULL_BACK
+            - CLAIM
+            - RELEASE
+            - APPROVE
+            - REJECT
+            - RETURN_TO_DRAFT
+            - PUBLISH
+            - ARCHIVE
+            - RECOVER
+            - RETIRE
+            - RESTORE
+            - OPEN_NEW_VERSION
+        status:
+          type: string
+          enum:
+          - DRAFT
+          - IN_REVIEW
+          - REJECTED
+          - READY_TO_PUBLISH
+          - PUBLISHED
+          - ARCHIVED
+          - RETIRED
+          - SUPERSEDED
+        title:
+          $ref: "#/components/schemas/ContentTitleResponse"
+        updatedAt:
+          type: string
+          format: date-time
+        versionNumber:
+          type: integer
+          format: int32
     UserResponse:
       type: object
       properties:
