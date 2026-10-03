@@ -151,4 +151,25 @@ class DevilFruitTypeController {
 		return DevilFruitTypeResponseMapper.toVersionResponse(version);
 	}
 
+	/**
+	 * Takes a version in review for the caller to decide on (UF-CNT-13); answers with it
+	 * as it now is.
+	 */
+	@PostMapping(ApiPaths.DEVIL_FRUIT_TYPE_VERSION_CLAIM)
+	VersionResponse<DevilFruitTypeResponse> claim(@PathVariable UUID id, @PathVariable int number,
+			@AuthenticationPrincipal AuthenticatedCaller caller) {
+		var version = this.service.claim(caller.permissions(), caller.user(), id, number);
+		return DevilFruitTypeResponseMapper.toVersionResponse(version);
+	}
+
+	/**
+	 * Lets go of a version the caller holds (UF-CNT-14); answers with it as it now is.
+	 */
+	@PostMapping(ApiPaths.DEVIL_FRUIT_TYPE_VERSION_RELEASE)
+	VersionResponse<DevilFruitTypeResponse> release(@PathVariable UUID id, @PathVariable int number,
+			@AuthenticationPrincipal AuthenticatedCaller caller) {
+		var version = this.service.release(caller.permissions(), caller.user(), id, number);
+		return DevilFruitTypeResponseMapper.toVersionResponse(version);
+	}
+
 }

@@ -45,6 +45,10 @@ public final class ApiPaths {
 
 	public static final String DEVIL_FRUIT_TYPE_VERSION_PULL_BACK = DEVIL_FRUIT_TYPE_VERSION + "/pull-back";
 
+	public static final String DEVIL_FRUIT_TYPE_VERSION_CLAIM = DEVIL_FRUIT_TYPE_VERSION + "/claim";
+
+	public static final String DEVIL_FRUIT_TYPE_VERSION_RELEASE = DEVIL_FRUIT_TYPE_VERSION + "/release";
+
 	private ApiPaths() {
 	}
 

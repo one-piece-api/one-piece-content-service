@@ -13,6 +13,7 @@ import dev.onepieceapi.contentservice.domain.workflow.VersionAccess;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAction;
 import dev.onepieceapi.contentservice.domain.workflow.VersionEvent;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
+import dev.onepieceapi.contentservice.persistence.entity.ContentVersionEntity;
 import dev.onepieceapi.contentservice.service.DevilFruitTypeService;
 import dev.onepieceapi.contentservice.service.exception.DevilFruitTypeNotFoundException;
 import dev.onepieceapi.contentservice.service.exception.TranslationLanguageUnknownException;
@@ -24,6 +25,7 @@ import dev.onepieceapi.contentservice.service.exception.VersionIncompleteExcepti
 import dev.onepieceapi.contentservice.service.exception.VersionNotFoundException;
 import dev.onepieceapi.contentservice.web.security.SecurityConfig;
 import dev.onepieceapi.exception.web.ApplicationExceptionHandler;
+import dev.onepieceapi.exception.web.ConcurrentModificationExceptionHandler;
 import dev.onepieceapi.exception.web.FieldViolation;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -35,6 +37,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -69,7 +72,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * status and error code.
  */
 @WebMvcTest(DevilFruitTypeController.class)
-@Import({ SecurityConfig.class, ApplicationExceptionHandler.class })
+@Import({ SecurityConfig.class, ApplicationExceptionHandler.class, ConcurrentModificationExceptionHandler.class })
 class DevilFruitTypeControllerTest {
 
 	private static final UUID CONTENT_ID = UUID.fromString("7b0e6c1a-3f52-4d0c-9a52-1f2f3d4e5a6b");
@@ -524,6 +527,68 @@ class DevilFruitTypeControllerTest {
 		when(this.service.pullBack(any(), any(), any(), eq(1))).thenThrow(refused);
 
 		this.mockMvc.perform(workflow("pull-back").with(callerWith(Permission.CONTENT_WRITE)))
+			.andExpect(status().is(status))
+			.andExpect(jsonPath("$.errorCode").value(errorCode));
+	}
+
+	@Test
+	void claimingAnswersWithTheVersionHeldByTheCaller() throws Exception {
+		var held = new VersionAccess<>(version(2, VersionStatus.IN_REVIEW), EnumSet.of(VersionAction.RELEASE));
+		when(this.service.claim(eq(Set.of(Permission.CONTENT_REVIEW)), any(), eq(CONTENT_ID), eq(1))).thenReturn(held);
+
+		this.mockMvc.perform(workflow("claim").with(callerWith(Permission.CONTENT_REVIEW)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.claimant.username").value("zoro"))
+			.andExpect(jsonPath("$.allowedActions[0]").value("RELEASE"));
+	}
+
+	@Test
+	void releasingAnswersWithTheVersionUnclaimed() throws Exception {
+		var free = new VersionAccess<>(version(1, VersionStatus.IN_REVIEW), EnumSet.of(VersionAction.CLAIM));
+		when(this.service.release(eq(Set.of(Permission.CONTENT_REVIEW)), any(), eq(CONTENT_ID), eq(1)))
+			.thenReturn(free);
+
+		this.mockMvc.perform(workflow("release").with(callerWith(Permission.CONTENT_REVIEW)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.claimant").doesNotExist())
+			.andExpect(jsonPath("$.allowedActions[0]").value("CLAIM"));
+	}
+
+	@ParameterizedTest
+	@CsvSource({ "claim", "release" })
+	void claimingAndReleasingAreForbiddenWithoutContentReviewAndUnauthorizedWithoutAToken(String action)
+			throws Exception {
+		this.mockMvc.perform(workflow(action).with(callerWith(Permission.CONTENT_READ, Permission.CONTENT_WRITE)))
+			.andExpect(status().isForbidden());
+		this.mockMvc.perform(workflow(action)).andExpect(status().isUnauthorized());
+		verifyNoInteractions(this.service);
+	}
+
+	@ParameterizedTest
+	@CsvSource({ "NOT_FOUND, 404, CONTENT_VERSION_NOT_FOUND", "FORBIDDEN, 403, CONTENT_VERSION_ACTION_FORBIDDEN",
+			"CONFLICT, 409, CONTENT_VERSION_ACTION_CONFLICT", "CONCURRENT, 409, CONCURRENT_MODIFICATION" })
+	void aRefusedClaimAnswersWithItsStatusAndCode(String refusal, int status, String errorCode) throws Exception {
+		RuntimeException refused = switch (refusal) {
+			case "NOT_FOUND" -> new VersionNotFoundException(CONTENT_ID, 1);
+			case "FORBIDDEN" -> new VersionActionForbiddenException(VersionAction.CLAIM);
+			case "CONFLICT" -> new VersionActionConflictException(VersionAction.CLAIM);
+			default -> new ObjectOptimisticLockingFailureException(ContentVersionEntity.class, CONTENT_ID);
+		};
+		when(this.service.claim(any(), any(), any(), eq(1))).thenThrow(refused);
+
+		this.mockMvc.perform(workflow("claim").with(callerWith(Permission.CONTENT_REVIEW)))
+			.andExpect(status().is(status))
+			.andExpect(jsonPath("$.errorCode").value(errorCode));
+	}
+
+	@ParameterizedTest
+	@CsvSource({ "NOT_FOUND, 404, CONTENT_VERSION_NOT_FOUND", "FORBIDDEN, 403, CONTENT_VERSION_ACTION_FORBIDDEN" })
+	void aRefusedReleaseAnswersWithItsStatusAndCode(String refusal, int status, String errorCode) throws Exception {
+		RuntimeException refused = "NOT_FOUND".equals(refusal) ? new VersionNotFoundException(CONTENT_ID, 1)
+				: new VersionActionForbiddenException(VersionAction.RELEASE);
+		when(this.service.release(any(), any(), any(), eq(1))).thenThrow(refused);
+
+		this.mockMvc.perform(workflow("release").with(callerWith(Permission.CONTENT_REVIEW)))
 			.andExpect(status().is(status))
 			.andExpect(jsonPath("$.errorCode").value(errorCode));
 	}

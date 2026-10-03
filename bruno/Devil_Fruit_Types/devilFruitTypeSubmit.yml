@@ -1,7 +1,7 @@
 info:
   name: devilFruitTypeSubmit
   type: http
-  seq: 11
+  seq: 13
   tags:
     - Devil_Fruit_Types
 

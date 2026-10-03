@@ -20,6 +20,7 @@ import dev.onepieceapi.contentservice.domain.workflow.VisibilityPolicy;
 import dev.onepieceapi.contentservice.persistence.entity.ContentEntity;
 import dev.onepieceapi.contentservice.persistence.entity.DevilFruitTypeVersionEntity;
 import dev.onepieceapi.contentservice.persistence.mapper.DevilFruitTypeVersionMapper;
+import dev.onepieceapi.contentservice.persistence.mapper.UserMapper;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitTypeVersionRepository;
@@ -46,12 +47,13 @@ import java.util.UUID;
  * Devil Fruit Types and their versions: reading them
  * (docs/user-flows/content-editorial-workflow.md UF-CNT-12, UF-CNT-18), creating one,
  * editing its draft and discarding it (UF-CNT-01, UF-CNT-02, UF-CNT-11), sending it to
- * review and taking it back (UF-CNT-03, UF-CNT-04). Every method starts from the caller:
- * {@link VisibilityPolicy} turns their permissions into the statuses they may see, and
- * nothing outside those statuses is ever loaded; {@link TransitionPolicy} says what they
- * may do with a version they see, and the same answer guards each change. Building the
- * queries, converting rows and validating what is saved are done elsewhere: this class
- * only decides what to read or change, and for whom.
+ * review and taking it back (UF-CNT-03, UF-CNT-04), a reviewer claiming and releasing it
+ * (UF-CNT-13, UF-CNT-14). Every method starts from the caller: {@link VisibilityPolicy}
+ * turns their permissions into the statuses they may see, and nothing outside those
+ * statuses is ever loaded; {@link TransitionPolicy} says what they may do with a version
+ * they see, and the same answer guards each change. Building the queries, converting rows
+ * and validating what is saved are done elsewhere: this class only decides what to read
+ * or change, and for whom.
  */
 @Service
 @Transactional(readOnly = true)
@@ -67,6 +69,10 @@ public class DevilFruitTypeService {
 	private static final String AUDIT_ACTION_SUBMITTED = "VERSION_SUBMITTED";
 
 	private static final String AUDIT_ACTION_PULLED_BACK = "VERSION_PULLED_BACK";
+
+	private static final String AUDIT_ACTION_CLAIMED = "VERSION_CLAIMED";
+
+	private static final String AUDIT_ACTION_RELEASED = "VERSION_RELEASED";
 
 	private final DevilFruitTypeVersionRepository versionRepository;
 
@@ -242,6 +248,36 @@ public class DevilFruitTypeService {
 	}
 
 	/**
+	 * A reviewer takes a version in review (UF-CNT-13): from then on only they can decide
+	 * on it, and everyone who sees it sees who holds it. Never the version's own author.
+	 */
+	@Transactional
+	public VersionAccess<DevilFruitType> claim(Set<Permission> permissions, User caller, UUID contentId,
+			int versionNumber) {
+		DevilFruitTypeVersionEntity entity = visibleVersion(permissions, contentId, versionNumber);
+		Version<DevilFruitType> current = DevilFruitTypeVersionMapper.toDomain(entity);
+		TransitionContext context = contextOf(current, contentId, caller, permissions);
+		require(VersionAction.CLAIM, context);
+		entity.claimBy(UserMapper.toEmbeddable(caller));
+		return recorded(entity, context, AUDIT_ACTION_CLAIMED);
+	}
+
+	/**
+	 * The reviewer holding a version lets it go (UF-CNT-14): unclaimed again, available
+	 * to any reviewer.
+	 */
+	@Transactional
+	public VersionAccess<DevilFruitType> release(Set<Permission> permissions, User caller, UUID contentId,
+			int versionNumber) {
+		DevilFruitTypeVersionEntity entity = visibleVersion(permissions, contentId, versionNumber);
+		Version<DevilFruitType> current = DevilFruitTypeVersionMapper.toDomain(entity);
+		TransitionContext context = contextOf(current, contentId, caller, permissions);
+		require(VersionAction.RELEASE, context);
+		entity.release();
+		return recorded(entity, context, AUDIT_ACTION_RELEASED);
+	}
+
+	/**
 	 * Takes a version the rules already let move to another status, records it, and
 	 * answers with the version as it now is. Whether the content has an open version is
 	 * unchanged: both submitting and pulling back go from one open status to another.
@@ -249,6 +285,15 @@ public class DevilFruitTypeService {
 	private VersionAccess<DevilFruitType> moveTo(VersionStatus status, DevilFruitTypeVersionEntity entity,
 			TransitionContext before, String auditAction) {
 		entity.moveTo(status, this.clock.instant());
+		return recorded(entity, before, auditAction);
+	}
+
+	/**
+	 * Records a change the rules already allowed and answers with the version as it now
+	 * is, with what the caller may do with it next.
+	 */
+	private VersionAccess<DevilFruitType> recorded(DevilFruitTypeVersionEntity entity, TransitionContext before,
+			String auditAction) {
 		Version<DevilFruitType> moved = DevilFruitTypeVersionMapper.toDomain(entity);
 		User caller = before.caller();
 		this.auditLogService.recordOnVersion(auditAction, caller, entity.getContentId(), entity.getVersionId(),

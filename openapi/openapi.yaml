@@ -253,6 +253,36 @@ paths:
       tags:
       - Devil Fruit Types
       x-required-permission: content:write
+  /devil-fruit-types/{id}/versions/{number}/claim:
+    post:
+      operationId: devilFruitTypeClaim
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseDevilFruitTypeResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Devil Fruit Types
+      x-required-permission: content:review
   /devil-fruit-types/{id}/versions/{number}/events:
     get:
       operationId: devilFruitTypeEvents
@@ -315,6 +345,36 @@ paths:
       tags:
       - Devil Fruit Types
       x-required-permission: content:write
+  /devil-fruit-types/{id}/versions/{number}/release:
+    post:
+      operationId: devilFruitTypeRelease
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseDevilFruitTypeResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Devil Fruit Types
+      x-required-permission: content:review
   /devil-fruit-types/{id}/versions/{number}/submit:
     post:
       operationId: devilFruitTypeSubmit

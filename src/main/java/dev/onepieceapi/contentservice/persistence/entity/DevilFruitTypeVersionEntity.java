@@ -76,4 +76,14 @@ public class DevilFruitTypeVersionEntity {
 		this.version.moveTo(newStatus, now);
 	}
 
+	/** A reviewer takes the version. */
+	public void claimBy(UserEmbeddable reviewer) {
+		this.version.claimBy(reviewer);
+	}
+
+	/** Nobody holds the version any more. */
+	public void release() {
+		this.version.release();
+	}
+
 }

@@ -9,6 +9,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -76,10 +77,31 @@ public class ContentVersionEntity {
 	@Setter
 	private Instant updatedAt;
 
+	/**
+	 * Optimistic lock: a change written from an older read of this row fails instead of
+	 * silently overwriting the change made in between (see
+	 * {@code db/migration/V4__content_version_lock.sql}).
+	 */
+	@Version
+	private long lockVersion;
+
 	/** Takes the version to another status, and notes when. */
 	public void moveTo(VersionStatus newStatus, Instant now) {
 		this.status = newStatus;
 		this.updatedAt = now;
+	}
+
+	/**
+	 * A reviewer takes the version. Not a change to what it says, so its update time
+	 * stays.
+	 */
+	public void claimBy(UserEmbeddable reviewer) {
+		this.claimant = reviewer;
+	}
+
+	/** Nobody holds the version any more. */
+	public void release() {
+		this.claimant = null;
 	}
 
 }
