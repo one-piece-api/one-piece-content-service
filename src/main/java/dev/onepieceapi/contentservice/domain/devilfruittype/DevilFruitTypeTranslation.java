@@ -11,6 +11,9 @@ public record DevilFruitTypeTranslation(String name, String description) {
 
 	public static final int DESCRIPTION_MAX_LENGTH = 2000;
 
+	/** A language nothing was written in. */
+	static final DevilFruitTypeTranslation NONE = new DevilFruitTypeTranslation(null, null);
+
 	DevilFruitTypeTranslation normalized() {
 		return new DevilFruitTypeTranslation(Text.stripToNull(this.name), Text.stripToNull(this.description));
 	}

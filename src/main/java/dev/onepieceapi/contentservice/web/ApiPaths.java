@@ -40,6 +40,11 @@ public final class ApiPaths {
 
 	public static final String DEVIL_FRUIT_TYPE_VERSION_EVENTS = DEVIL_FRUIT_TYPE_VERSION + "/events";
 
+	/** Workflow actions: one path per transition, posted with no body. */
+	public static final String DEVIL_FRUIT_TYPE_VERSION_SUBMIT = DEVIL_FRUIT_TYPE_VERSION + "/submit";
+
+	public static final String DEVIL_FRUIT_TYPE_VERSION_PULL_BACK = DEVIL_FRUIT_TYPE_VERSION + "/pull-back";
+
 	private ApiPaths() {
 	}
 

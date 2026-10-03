@@ -19,6 +19,8 @@ import dev.onepieceapi.contentservice.service.exception.TranslationLanguageUnkno
 import dev.onepieceapi.contentservice.service.exception.ValueAlreadyUsedException;
 import dev.onepieceapi.contentservice.service.exception.VersionActionConflictException;
 import dev.onepieceapi.contentservice.service.exception.VersionActionForbiddenException;
+import dev.onepieceapi.contentservice.service.exception.VersionIdenticalException;
+import dev.onepieceapi.contentservice.service.exception.VersionIncompleteException;
 import dev.onepieceapi.contentservice.service.exception.VersionNotFoundException;
 import dev.onepieceapi.contentservice.web.security.SecurityConfig;
 import dev.onepieceapi.exception.web.ApplicationExceptionHandler;
@@ -475,6 +477,100 @@ class DevilFruitTypeControllerTest {
 		this.mockMvc.perform(discard().with(callerWith(Permission.CONTENT_WRITE)))
 			.andExpect(status().is(status))
 			.andExpect(jsonPath("$.errorCode").value(errorCode));
+	}
+
+	@Test
+	void submittingAnswersWithTheVersionNowInReview() throws Exception {
+		var submitted = new VersionAccess<>(version(1, VersionStatus.IN_REVIEW), EnumSet.of(VersionAction.PULL_BACK));
+		when(this.service.submit(eq(Set.of(Permission.CONTENT_WRITE)), any(), eq(CONTENT_ID), eq(1)))
+			.thenReturn(submitted);
+
+		this.mockMvc.perform(workflow("submit").with(callerWith(Permission.CONTENT_WRITE)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.status").value("IN_REVIEW"))
+			.andExpect(jsonPath("$.allowedActions[0]").value("PULL_BACK"));
+	}
+
+	@Test
+	void pullingBackAnswersWithTheVersionNowADraft() throws Exception {
+		var draft = new VersionAccess<>(version(1, VersionStatus.DRAFT), EnumSet.of(VersionAction.EDIT));
+		when(this.service.pullBack(eq(Set.of(Permission.CONTENT_WRITE)), any(), eq(CONTENT_ID), eq(1)))
+			.thenReturn(draft);
+
+		this.mockMvc.perform(workflow("pull-back").with(callerWith(Permission.CONTENT_WRITE)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.status").value("DRAFT"));
+	}
+
+	@ParameterizedTest
+	@CsvSource({ "submit", "pull-back" })
+	void submittingAndPullingBackAreForbiddenWithoutContentWriteAndUnauthorizedWithoutAToken(String action)
+			throws Exception {
+		this.mockMvc.perform(workflow(action).with(callerWith(Permission.CONTENT_READ, Permission.CONTENT_REVIEW)))
+			.andExpect(status().isForbidden());
+		this.mockMvc.perform(workflow(action)).andExpect(status().isUnauthorized());
+		verifyNoInteractions(this.service);
+	}
+
+	@ParameterizedTest
+	@CsvSource({ "NOT_FOUND, 404, CONTENT_VERSION_NOT_FOUND", "FORBIDDEN, 403, CONTENT_VERSION_ACTION_FORBIDDEN",
+			"CONFLICT, 409, CONTENT_VERSION_ACTION_CONFLICT" })
+	void aRefusedPullBackAnswersWithItsStatusAndCode(String refusal, int status, String errorCode) throws Exception {
+		RuntimeException refused = switch (refusal) {
+			case "NOT_FOUND" -> new VersionNotFoundException(CONTENT_ID, 1);
+			case "FORBIDDEN" -> new VersionActionForbiddenException(VersionAction.PULL_BACK);
+			default -> new VersionActionConflictException(VersionAction.PULL_BACK);
+		};
+		when(this.service.pullBack(any(), any(), any(), eq(1))).thenThrow(refused);
+
+		this.mockMvc.perform(workflow("pull-back").with(callerWith(Permission.CONTENT_WRITE)))
+			.andExpect(status().is(status))
+			.andExpect(jsonPath("$.errorCode").value(errorCode));
+	}
+
+	@ParameterizedTest
+	@CsvSource({ "NOT_FOUND, 404, CONTENT_VERSION_NOT_FOUND", "FORBIDDEN, 403, CONTENT_VERSION_ACTION_FORBIDDEN",
+			"CONFLICT, 409, CONTENT_VERSION_ACTION_CONFLICT" })
+	void aRefusedSubmissionAnswersWithItsStatusAndCode(String refusal, int status, String errorCode) throws Exception {
+		RuntimeException refused = switch (refusal) {
+			case "NOT_FOUND" -> new VersionNotFoundException(CONTENT_ID, 1);
+			case "FORBIDDEN" -> new VersionActionForbiddenException(VersionAction.SUBMIT);
+			default -> new VersionActionConflictException(VersionAction.SUBMIT);
+		};
+		when(this.service.submit(any(), any(), any(), eq(1))).thenThrow(refused);
+
+		this.mockMvc.perform(workflow("submit").with(callerWith(Permission.CONTENT_WRITE)))
+			.andExpect(status().is(status))
+			.andExpect(jsonPath("$.errorCode").value(errorCode));
+	}
+
+	@Test
+	void anIncompleteVersionIsUnprocessableAndNamesTheMissingFields() throws Exception {
+		var missing = List.of(new FieldViolation("romaji", "is required for review"),
+				new FieldViolation("translations[en].name", "is required for review"));
+		when(this.service.submit(any(), any(), any(), eq(1))).thenThrow(new VersionIncompleteException(missing));
+
+		this.mockMvc.perform(workflow("submit").with(callerWith(Permission.CONTENT_WRITE)))
+			.andExpect(status().isUnprocessableEntity())
+			.andExpect(jsonPath("$.errorCode").value("CONTENT_VERSION_INCOMPLETE"))
+			.andExpect(jsonPath("$.errors[0].field").value("romaji"))
+			.andExpect(jsonPath("$.errors[1].field").value("translations[en].name"));
+	}
+
+	@Test
+	void aVersionIdenticalToAnotherIsUnprocessableAndNamesIt() throws Exception {
+		when(this.service.submit(any(), any(), any(), eq(2))).thenThrow(new VersionIdenticalException(1));
+
+		var request = post("/devil-fruit-types/" + CONTENT_ID + "/versions/2/submit");
+		this.mockMvc.perform(request.with(callerWith(Permission.CONTENT_WRITE)))
+			.andExpect(status().isUnprocessableEntity())
+			.andExpect(jsonPath("$.errorCode").value("CONTENT_VERSION_IDENTICAL"))
+			.andExpect(jsonPath("$.identicalTo").value(1));
+	}
+
+	/** A workflow action on version 1 of the content, not signed in yet. */
+	private static MockHttpServletRequestBuilder workflow(String action) {
+		return post("/devil-fruit-types/" + CONTENT_ID + "/versions/1/" + action);
 	}
 
 	private static MockHttpServletRequestBuilder discard() {

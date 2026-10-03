@@ -46,12 +46,12 @@ import java.util.UUID;
 /**
  * The Devil Fruit Type section. Reading (UF-CNT-12, UF-CNT-18) - the paginated list, a
  * content with its version chain, one version with what it says, and its history - takes
- * {@code content:read}; creating a content, editing its draft and discarding it
- * (UF-CNT-01, UF-CNT-02, UF-CNT-11) take {@code content:write} (see
- * {@code SecuredEndpoint}). What a caller then finds is limited to the statuses their
- * permissions make visible: whatever is not visible answers {@code 404} like something
- * that does not exist, a visible version the caller may not change {@code 403}, one that
- * is not in a state for it {@code 409}.
+ * {@code content:read}; creating a content, editing its draft, discarding it, sending it
+ * to review and taking it back (UF-CNT-01 to 04, UF-CNT-11) take {@code content:write}
+ * (see {@code SecuredEndpoint}). What a caller then finds is limited to the statuses
+ * their permissions make visible: whatever is not visible answers {@code 404} like
+ * something that does not exist, a visible version the caller may not change {@code 403},
+ * one that is not in a state for it {@code 409}.
  */
 @RestController
 @Tag(name = "Devil Fruit Types")
@@ -129,6 +129,25 @@ class DevilFruitTypeController {
 			@RequestBody @Valid DevilFruitTypeRequest request, @AuthenticationPrincipal AuthenticatedCaller caller) {
 		DevilFruitType written = DevilFruitTypeRequestMapper.toDomain(request);
 		var version = this.service.edit(caller.permissions(), caller.user(), id, number, written);
+		return DevilFruitTypeResponseMapper.toVersionResponse(version);
+	}
+
+	/** Sends a draft to review (UF-CNT-03); answers with the version as it now is. */
+	@PostMapping(ApiPaths.DEVIL_FRUIT_TYPE_VERSION_SUBMIT)
+	VersionResponse<DevilFruitTypeResponse> submit(@PathVariable UUID id, @PathVariable int number,
+			@AuthenticationPrincipal AuthenticatedCaller caller) {
+		var version = this.service.submit(caller.permissions(), caller.user(), id, number);
+		return DevilFruitTypeResponseMapper.toVersionResponse(version);
+	}
+
+	/**
+	 * Takes an unclaimed version back from review (UF-CNT-04); answers with it as it now
+	 * is.
+	 */
+	@PostMapping(ApiPaths.DEVIL_FRUIT_TYPE_VERSION_PULL_BACK)
+	VersionResponse<DevilFruitTypeResponse> pullBack(@PathVariable UUID id, @PathVariable int number,
+			@AuthenticationPrincipal AuthenticatedCaller caller) {
+		var version = this.service.pullBack(caller.permissions(), caller.user(), id, number);
 		return DevilFruitTypeResponseMapper.toVersionResponse(version);
 	}
 

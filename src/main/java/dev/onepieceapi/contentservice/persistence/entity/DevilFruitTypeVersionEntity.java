@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.persistence.entity;
 
+import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.ElementCollection;
@@ -68,6 +69,11 @@ public class DevilFruitTypeVersionEntity {
 		this.translations.clear();
 		this.translations.putAll(newTranslations);
 		this.version.setUpdatedAt(now);
+	}
+
+	/** Takes the version to another status, and notes when. */
+	public void moveTo(VersionStatus newStatus, Instant now) {
+		this.version.moveTo(newStatus, now);
 	}
 
 }

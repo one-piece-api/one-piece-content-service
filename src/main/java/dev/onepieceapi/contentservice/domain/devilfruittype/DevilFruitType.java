@@ -28,4 +28,11 @@ public record DevilFruitType(String romaji, Map<String, DevilFruitTypeTranslatio
 		return new DevilFruitType(Text.stripToNull(this.romaji), written);
 	}
 
+	/**
+	 * What it says in this language - nothing at all, when no translation was written.
+	 */
+	public DevilFruitTypeTranslation translationIn(String language) {
+		return this.translations.getOrDefault(language, DevilFruitTypeTranslation.NONE);
+	}
+
 }

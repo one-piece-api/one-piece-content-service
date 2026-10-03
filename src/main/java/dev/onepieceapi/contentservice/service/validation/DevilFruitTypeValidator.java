@@ -3,10 +3,13 @@ package dev.onepieceapi.contentservice.service.validation;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitType;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitTypeTranslation;
 import dev.onepieceapi.contentservice.persistence.entity.LanguageEntity;
+import dev.onepieceapi.contentservice.persistence.mapper.DevilFruitTypeVersionMapper;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitTypeVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
 import dev.onepieceapi.contentservice.service.exception.TranslationLanguageUnknownException;
 import dev.onepieceapi.contentservice.service.exception.ValueAlreadyUsedException;
+import dev.onepieceapi.contentservice.service.exception.VersionIdenticalException;
+import dev.onepieceapi.contentservice.service.exception.VersionIncompleteException;
 import dev.onepieceapi.exception.web.FieldViolation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,14 +18,16 @@ import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
- * The rules a Devil Fruit Type must meet to be saved as a draft
- * (docs/user-flows/content-editorial-workflow.md 3.3): only languages of the catalog, and
- * a romaji and names no other content has. A draft may be incomplete - what a version
- * needs to be submitted is checked when it is.
+ * The rules a Devil Fruit Type must meet (docs/user-flows/content-editorial-workflow.md
+ * 3.3). To be saved as a draft: only languages of the catalog, and a romaji and names no
+ * other content has - a draft may be incomplete. To be submitted, in this order, stopping
+ * at the first rule broken: complete in every language of the catalog, still unique, and
+ * different from every other version of its content.
  */
 @Component
 @RequiredArgsConstructor(onConstructor_ = { @Autowired })
@@ -30,10 +35,14 @@ public class DevilFruitTypeValidator {
 
 	private static final String ROMAJI_FIELD = "romaji";
 
-	/** Named as request validation names it, so a client reads both the same way. */
+	/** Named as request validation names them, so a client reads both the same way. */
 	private static final String NAME_FIELD = "translations[%s].name";
 
+	private static final String DESCRIPTION_FIELD = "translations[%s].description";
+
 	private static final String ALREADY_USED = "is already used by another content";
+
+	private static final String REQUIRED = "is required for review";
 
 	private final DevilFruitTypeVersionRepository versionRepository;
 
@@ -48,15 +57,55 @@ public class DevilFruitTypeValidator {
 		requireUniqueValues(contentId, body);
 	}
 
+	/**
+	 * Length needs no check here: it is enforced on every save, and nothing longer could
+	 * have been stored. The languages are known for the same reason.
+	 * @param versionNumber the version being submitted, the one not compared with itself
+	 */
+	public void validateSubmission(UUID contentId, int versionNumber, DevilFruitType body) {
+		requireComplete(body);
+		requireUniqueValues(contentId, body);
+		requireDifferentFromOtherVersions(contentId, versionNumber, body);
+	}
+
 	private void requireKnownLanguages(DevilFruitType body) {
-		Set<String> catalog = this.languageRepository.findAll()
-			.stream()
-			.map(LanguageEntity::getCode)
-			.collect(Collectors.toSet());
+		Set<String> catalog = catalogCodes();
 		List<String> unknown = body.translations().keySet().stream().filter(code -> !catalog.contains(code)).toList();
 		if (!unknown.isEmpty()) {
 			throw new TranslationLanguageUnknownException(unknown);
 		}
+	}
+
+	/** The romaji, then a name and a description per language - every one missing. */
+	private void requireComplete(DevilFruitType body) {
+		List<FieldViolation> missing = new ArrayList<>();
+		if (body.romaji() == null) {
+			missing.add(new FieldViolation(ROMAJI_FIELD, REQUIRED));
+		}
+		for (String language : catalogCodes()) {
+			DevilFruitTypeTranslation translation = body.translationIn(language);
+			if (translation.name() == null) {
+				missing.add(new FieldViolation(NAME_FIELD.formatted(language), REQUIRED));
+			}
+			if (translation.description() == null) {
+				missing.add(new FieldViolation(DESCRIPTION_FIELD.formatted(language), REQUIRED));
+			}
+		}
+		if (!missing.isEmpty()) {
+			throw new VersionIncompleteException(missing);
+		}
+	}
+
+	/** Compares what is stored - values without space around them - case included. */
+	private void requireDifferentFromOtherVersions(UUID contentId, int versionNumber, DevilFruitType body) {
+		this.versionRepository.findOthers(contentId, versionNumber)
+			.stream()
+			.map(DevilFruitTypeVersionMapper::toDomain)
+			.filter(other -> other.says(body))
+			.findFirst()
+			.ifPresent(identical -> {
+				throw new VersionIdenticalException(identical.number());
+			});
 	}
 
 	/** Every value at fault is reported, not just the first one found. */
@@ -82,6 +131,14 @@ public class DevilFruitTypeValidator {
 	private boolean nameIsTaken(UUID contentId, String language, DevilFruitTypeTranslation translation) {
 		String name = translation.name();
 		return name != null && this.versionRepository.nameIsTakenByAnother(language, name, contentId);
+	}
+
+	/** The language codes of the catalog, in order. */
+	private Set<String> catalogCodes() {
+		return this.languageRepository.findAll()
+			.stream()
+			.map(LanguageEntity::getCode)
+			.collect(Collectors.toCollection(TreeSet::new));
 	}
 
 }

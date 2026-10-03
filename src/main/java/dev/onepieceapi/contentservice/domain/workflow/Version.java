@@ -4,6 +4,7 @@ import dev.onepieceapi.contentservice.domain.security.User;
 import lombok.Builder;
 
 import java.time.Instant;
+import java.util.Objects;
 
 /**
  * One numbered revision of a {@link Content}
@@ -50,6 +51,11 @@ public record Version<T>(int number, Integer basedOn, VersionStatus status, User
 
 	public boolean isClaimedBy(User user) {
 		return isClaimed() && this.claimant.isSameAs(user);
+	}
+
+	/** Whether this version says exactly that - every field, case included. */
+	public boolean says(T otherBody) {
+		return Objects.equals(this.body, otherBody);
 	}
 
 }

@@ -45,12 +45,13 @@ import java.util.UUID;
 /**
  * Devil Fruit Types and their versions: reading them
  * (docs/user-flows/content-editorial-workflow.md UF-CNT-12, UF-CNT-18), creating one,
- * editing its draft and discarding it (UF-CNT-01, UF-CNT-02, UF-CNT-11). Every method
- * starts from the caller: {@link VisibilityPolicy} turns their permissions into the
- * statuses they may see, and nothing outside those statuses is ever loaded;
- * {@link TransitionPolicy} says what they may do with a version they see, and the same
- * answer guards each change. Building the queries, converting rows and validating what is
- * saved are done elsewhere: this class only decides what to read or change, and for whom.
+ * editing its draft and discarding it (UF-CNT-01, UF-CNT-02, UF-CNT-11), sending it to
+ * review and taking it back (UF-CNT-03, UF-CNT-04). Every method starts from the caller:
+ * {@link VisibilityPolicy} turns their permissions into the statuses they may see, and
+ * nothing outside those statuses is ever loaded; {@link TransitionPolicy} says what they
+ * may do with a version they see, and the same answer guards each change. Building the
+ * queries, converting rows and validating what is saved are done elsewhere: this class
+ * only decides what to read or change, and for whom.
  */
 @Service
 @Transactional(readOnly = true)
@@ -62,6 +63,10 @@ public class DevilFruitTypeService {
 	private static final String AUDIT_ACTION_EDITED = "VERSION_EDITED";
 
 	private static final String AUDIT_ACTION_DELETED = "VERSION_DELETED";
+
+	private static final String AUDIT_ACTION_SUBMITTED = "VERSION_SUBMITTED";
+
+	private static final String AUDIT_ACTION_PULLED_BACK = "VERSION_PULLED_BACK";
 
 	private final DevilFruitTypeVersionRepository versionRepository;
 
@@ -205,6 +210,51 @@ public class DevilFruitTypeService {
 		UUID versionId = entity.getVersionId();
 		String label = version.body().romaji();
 		this.auditLogService.recordOnVersion(AUDIT_ACTION_DELETED, caller, contentId, versionId, label);
+	}
+
+	/**
+	 * Sends a draft to review (UF-CNT-03): from then on reviewers see it, unclaimed. Only
+	 * a version complete, unique and different from the others of its content goes.
+	 */
+	@Transactional
+	public VersionAccess<DevilFruitType> submit(Set<Permission> permissions, User caller, UUID contentId,
+			int versionNumber) {
+		DevilFruitTypeVersionEntity entity = visibleVersion(permissions, contentId, versionNumber);
+		Version<DevilFruitType> current = DevilFruitTypeVersionMapper.toDomain(entity);
+		TransitionContext context = contextOf(current, contentId, caller, permissions);
+		require(VersionAction.SUBMIT, context);
+		this.validator.validateSubmission(contentId, versionNumber, current.body());
+		return moveTo(VersionStatus.IN_REVIEW, entity, context, AUDIT_ACTION_SUBMITTED);
+	}
+
+	/**
+	 * Takes a version back from review while no reviewer holds it (UF-CNT-04): a draft of
+	 * its author again, editable.
+	 */
+	@Transactional
+	public VersionAccess<DevilFruitType> pullBack(Set<Permission> permissions, User caller, UUID contentId,
+			int versionNumber) {
+		DevilFruitTypeVersionEntity entity = visibleVersion(permissions, contentId, versionNumber);
+		Version<DevilFruitType> current = DevilFruitTypeVersionMapper.toDomain(entity);
+		TransitionContext context = contextOf(current, contentId, caller, permissions);
+		require(VersionAction.PULL_BACK, context);
+		return moveTo(VersionStatus.DRAFT, entity, context, AUDIT_ACTION_PULLED_BACK);
+	}
+
+	/**
+	 * Takes a version the rules already let move to another status, records it, and
+	 * answers with the version as it now is. Whether the content has an open version is
+	 * unchanged: both submitting and pulling back go from one open status to another.
+	 */
+	private VersionAccess<DevilFruitType> moveTo(VersionStatus status, DevilFruitTypeVersionEntity entity,
+			TransitionContext before, String auditAction) {
+		entity.moveTo(status, this.clock.instant());
+		Version<DevilFruitType> moved = DevilFruitTypeVersionMapper.toDomain(entity);
+		User caller = before.caller();
+		this.auditLogService.recordOnVersion(auditAction, caller, entity.getContentId(), entity.getVersionId(),
+				moved.body().romaji());
+		var after = new TransitionContext(moved, before.contentHasOpenVersion(), caller, before.permissions());
+		return accessTo(moved, after);
 	}
 
 	private DevilFruitTypeVersionEntity visibleVersion(Set<Permission> permissions, UUID contentId, int versionNumber) {

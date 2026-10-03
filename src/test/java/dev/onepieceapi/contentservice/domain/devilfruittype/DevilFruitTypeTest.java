@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.TreeMap;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
@@ -49,6 +50,26 @@ class DevilFruitTypeTest {
 		var tidy = new DevilFruitType("Zoan", Map.of("en", new DevilFruitTypeTranslation("Zoan", "Animal")));
 
 		assertThat(tidy.normalized()).isEqualTo(tidy);
+	}
+
+	@Test
+	void aLanguageWithoutTranslationSaysNothingInIt() {
+		var english = new DevilFruitTypeTranslation("Zoan", "Animal");
+		var body = new DevilFruitType("Zoan", Map.of("en", english));
+
+		assertThat(body.translationIn("en")).isEqualTo(english);
+		assertThat(body.translationIn("it")).isEqualTo(new DevilFruitTypeTranslation(null, null));
+	}
+
+	@Test
+	void twoBodiesAreTheSameWhateverMapHoldsTheirTranslations() {
+		Map<String, DevilFruitTypeTranslation> translations = new HashMap<>();
+		translations.put("en", new DevilFruitTypeTranslation("Zoan", "Animal"));
+
+		var stored = new DevilFruitType("Zoan", new TreeMap<>(translations));
+
+		assertThat(new DevilFruitType("Zoan", translations)).isEqualTo(stored);
+		assertThat(new DevilFruitType("ZOAN", translations)).isNotEqualTo(stored);
 	}
 
 }

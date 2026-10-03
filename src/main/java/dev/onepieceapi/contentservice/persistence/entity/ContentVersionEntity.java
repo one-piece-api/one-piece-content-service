@@ -76,4 +76,10 @@ public class ContentVersionEntity {
 	@Setter
 	private Instant updatedAt;
 
+	/** Takes the version to another status, and notes when. */
+	public void moveTo(VersionStatus newStatus, Instant now) {
+		this.status = newStatus;
+		this.updatedAt = now;
+	}
+
 }

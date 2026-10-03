@@ -58,6 +58,16 @@ public interface DevilFruitTypeVersionRepository extends JpaRepository<DevilFrui
 	Optional<DevilFruitTypeVersionEntity> findVisible(UUID contentId, int versionNumber,
 			Collection<VersionStatus> statuses);
 
+	/**
+	 * Every version of the content but one, in any status, oldest first - whether or not
+	 * the caller sees them.
+	 */
+	@Query("""
+			select d from DevilFruitTypeVersionEntity d join fetch d.version v
+			where v.contentId = :contentId and v.versionNumber <> :versionNumber
+			order by v.versionNumber""")
+	List<DevilFruitTypeVersionEntity> findOthers(UUID contentId, int versionNumber);
+
 	@Query("""
 			select distinct new dev.onepieceapi.contentservice.domain.security.User(
 				v.author.userId, v.author.username, v.author.email)
