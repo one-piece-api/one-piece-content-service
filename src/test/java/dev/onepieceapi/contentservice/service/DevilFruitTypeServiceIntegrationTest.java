@@ -197,8 +197,11 @@ class DevilFruitTypeServiceIntegrationTest {
 		assertThat(row.version().author()).isEqualTo(this.chopper);
 		assertThat(row.version().body().romaji()).isEqualTo("Kodai Zoan");
 		assertThat(row.version().body().translations()).containsExactly(
-				entry("en", new DevilFruitTypeTranslation("100%", "100% description")),
-				entry("it", new DevilFruitTypeTranslation("Zoo Zoo antico", "Zoo Zoo antico description")));
+				entry("en",
+						new DevilFruitTypeTranslation("100%", "100% description", "100% advantages",
+								"100% disadvantages")),
+				entry("it", new DevilFruitTypeTranslation("Zoo Zoo antico", "Zoo Zoo antico description",
+						"Zoo Zoo antico advantages", "Zoo Zoo antico disadvantages")));
 		assertThat(row.version().updatedAt()).isEqualTo(NOW.minus(Duration.ofDays(40)));
 	}
 
@@ -593,7 +596,7 @@ class DevilFruitTypeServiceIntegrationTest {
 	}
 
 	private static TranslationEmbeddable translation(String name) {
-		return new TranslationEmbeddable(name, name + " description");
+		return new TranslationEmbeddable(name, name + " description", name + " advantages", name + " disadvantages");
 	}
 
 	private void audit(String action, User actor, UUID contentId, int versionNumber, String detail, Instant when) {

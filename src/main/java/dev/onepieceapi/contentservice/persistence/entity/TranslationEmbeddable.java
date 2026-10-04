@@ -7,8 +7,8 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.FieldNameConstants;
 
 /**
- * The name and description of a version in one language - a value owned by its version,
- * with no identity of its own (see
+ * The name, description, advantages and disadvantages of a version in one language - a
+ * value owned by its version, with no identity of its own (see
  * {@link DevilFruitTypeVersionEntity#getTranslations()}).
  */
 @Embeddable
@@ -21,5 +21,9 @@ public class TranslationEmbeddable {
 	private String name;
 
 	private String description;
+
+	private String advantages;
+
+	private String disadvantages;
 
 }

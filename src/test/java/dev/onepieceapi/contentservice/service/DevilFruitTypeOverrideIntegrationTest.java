@@ -232,8 +232,10 @@ class DevilFruitTypeOverrideIntegrationTest {
 
 	/** Complete in both languages of the catalog. */
 	private static DevilFruitType body(String romaji) {
-		return new DevilFruitType(romaji, Map.of("it", new DevilFruitTypeTranslation(romaji + " IT", "descrizione"),
-				"en", new DevilFruitTypeTranslation(romaji + " EN", "description")));
+		return new DevilFruitType(romaji,
+				Map.of("it", new DevilFruitTypeTranslation(romaji + " IT", "descrizione", "vantaggi", "svantaggi"),
+						"en",
+						new DevilFruitTypeTranslation(romaji + " EN", "description", "advantages", "disadvantages")));
 	}
 
 	/** Seeds the first version of a content. */
@@ -252,7 +254,8 @@ class DevilFruitTypeOverrideIntegrationTest {
 		version.setRomaji(body.romaji());
 		body.translations()
 			.forEach((language, translation) -> version.getTranslations()
-				.put(language, new TranslationEmbeddable(translation.name(), translation.description())));
+				.put(language, new TranslationEmbeddable(translation.name(), translation.description(),
+						translation.advantages(), translation.disadvantages())));
 		this.versionRepository.save(version);
 	}
 

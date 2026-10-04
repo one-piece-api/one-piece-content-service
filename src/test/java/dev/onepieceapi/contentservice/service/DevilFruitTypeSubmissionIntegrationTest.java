@@ -173,7 +173,8 @@ class DevilFruitTypeSubmissionIntegrationTest {
 				() -> this.service.submit(EDITOR, this.nami, empty, 1));
 
 		assertThat(fieldsOf(refused)).containsExactly("romaji", "translations[en].name", "translations[en].description",
-				"translations[it].name", "translations[it].description");
+				"translations[en].advantages", "translations[en].disadvantages", "translations[it].name",
+				"translations[it].description", "translations[it].advantages", "translations[it].disadvantages");
 	}
 
 	@Test
@@ -186,8 +187,24 @@ class DevilFruitTypeSubmissionIntegrationTest {
 		var refused = catchThrowableOfType(VersionIncompleteException.class,
 				() -> this.service.submit(EDITOR, this.nami, italianOnly, 1));
 
-		assertThat(fieldsOf(refused)).containsExactly("translations[en].name", "translations[en].description");
+		assertThat(fieldsOf(refused)).containsExactly("translations[en].name", "translations[en].description",
+				"translations[en].advantages", "translations[en].disadvantages");
 		assertStillADraft(italianOnly);
+	}
+
+	@Test
+	void advantagesAndDisadvantagesAreRequiredForReviewInEveryLanguage() {
+		UUID withoutTradeOffs = content();
+		var body = new DevilFruitType("Kodai", Map.of("it", translation("Antico", "Antico descrizione"), "en",
+				new DevilFruitTypeTranslation("Ancient", "Ancient description", null, null)));
+		version(withoutTradeOffs, 1, DRAFT, this.nami, body);
+		stored();
+
+		var refused = catchThrowableOfType(VersionIncompleteException.class,
+				() -> this.service.submit(EDITOR, this.nami, withoutTradeOffs, 1));
+
+		assertThat(fieldsOf(refused)).containsExactly("translations[en].advantages", "translations[en].disadvantages");
+		assertStillADraft(withoutTradeOffs);
 	}
 
 	@Test
@@ -339,8 +356,9 @@ class DevilFruitTypeSubmissionIntegrationTest {
 				translation(name + " EN", name + " description")));
 	}
 
+	/** Advantages and disadvantages filled: a test names only the fields it is about. */
 	private static DevilFruitTypeTranslation translation(String name, String description) {
-		return new DevilFruitTypeTranslation(name, description);
+		return new DevilFruitTypeTranslation(name, description, "Pro", "Contro");
 	}
 
 	/** What was done so far is written and read again from the database. */
@@ -375,7 +393,8 @@ class DevilFruitTypeSubmissionIntegrationTest {
 		version.setRomaji(body.romaji());
 		body.translations()
 			.forEach((language, translation) -> version.getTranslations()
-				.put(language, new TranslationEmbeddable(translation.name(), translation.description())));
+				.put(language, new TranslationEmbeddable(translation.name(), translation.description(),
+						translation.advantages(), translation.disadvantages())));
 		this.versionRepository.save(version);
 	}
 

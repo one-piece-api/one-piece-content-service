@@ -16,13 +16,13 @@ class DevilFruitTypeRequestMapperTest {
 	@Test
 	void aRequestBecomesWhatItSaysAsTyped() {
 		var request = new DevilFruitTypeRequest(" Zoan ",
-				Map.of("it", new DevilFruitTypeTranslationRequest("Zoo Zoo", " ")));
+				Map.of("it", new DevilFruitTypeTranslationRequest("Zoo Zoo", " ", null, null)));
 
 		var devilFruitType = DevilFruitTypeRequestMapper.toDomain(request);
 
 		assertThat(devilFruitType.romaji()).isEqualTo(" Zoan ");
 		assertThat(devilFruitType.translations())
-			.containsExactly(entry("it", new DevilFruitTypeTranslation("Zoo Zoo", " ")));
+			.containsExactly(entry("it", new DevilFruitTypeTranslation("Zoo Zoo", " ", null, null)));
 	}
 
 	@Test
@@ -41,7 +41,7 @@ class DevilFruitTypeRequestMapperTest {
 		var devilFruitType = DevilFruitTypeRequestMapper.toDomain(new DevilFruitTypeRequest("Zoan", translations));
 
 		assertThat(devilFruitType.translations())
-			.containsExactly(entry("en", new DevilFruitTypeTranslation(null, null)));
+			.containsExactly(entry("en", new DevilFruitTypeTranslation(null, null, null, null)));
 	}
 
 }

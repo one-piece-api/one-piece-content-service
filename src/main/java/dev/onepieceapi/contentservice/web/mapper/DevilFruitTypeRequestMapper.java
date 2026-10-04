@@ -25,8 +25,9 @@ public class DevilFruitTypeRequestMapper {
 
 	/** A language sent with nothing in it is a language with nothing written. */
 	private static DevilFruitTypeTranslation toDomain(DevilFruitTypeTranslationRequest translation) {
-		return translation == null ? new DevilFruitTypeTranslation(null, null)
-				: new DevilFruitTypeTranslation(translation.name(), translation.description());
+		return translation == null ? new DevilFruitTypeTranslation(null, null, null, null)
+				: new DevilFruitTypeTranslation(translation.name(), translation.description(), translation.advantages(),
+						translation.disadvantages());
 	}
 
 }

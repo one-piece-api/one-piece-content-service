@@ -40,6 +40,10 @@ public class DevilFruitTypeValidator {
 
 	private static final String DESCRIPTION_FIELD = "translations[%s].description";
 
+	private static final String ADVANTAGES_FIELD = "translations[%s].advantages";
+
+	private static final String DISADVANTAGES_FIELD = "translations[%s].disadvantages";
+
 	private static final String ALREADY_USED = "is already used by another content";
 
 	private static final String REQUIRED = "is required for review";
@@ -76,7 +80,10 @@ public class DevilFruitTypeValidator {
 		}
 	}
 
-	/** The romaji, then a name and a description per language - every one missing. */
+	/**
+	 * The romaji, then a name, a description, advantages and disadvantages per language -
+	 * every one missing.
+	 */
 	private void requireComplete(DevilFruitType body) {
 		List<FieldViolation> missing = new ArrayList<>();
 		if (body.romaji() == null) {
@@ -89,6 +96,12 @@ public class DevilFruitTypeValidator {
 			}
 			if (translation.description() == null) {
 				missing.add(new FieldViolation(DESCRIPTION_FIELD.formatted(language), REQUIRED));
+			}
+			if (translation.advantages() == null) {
+				missing.add(new FieldViolation(ADVANTAGES_FIELD.formatted(language), REQUIRED));
+			}
+			if (translation.disadvantages() == null) {
+				missing.add(new FieldViolation(DISADVANTAGES_FIELD.formatted(language), REQUIRED));
 			}
 		}
 		if (!missing.isEmpty()) {

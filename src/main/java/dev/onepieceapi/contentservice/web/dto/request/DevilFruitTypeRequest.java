@@ -12,8 +12,8 @@ import java.util.Map;
  * are the only limit checked here; whether a value is free to use is for the service to
  * say.
  *
- * @param translations name and description per language code; a language left out, or
- * with nothing written in it, has no translation
+ * @param translations name, description, advantages and disadvantages per language code;
+ * a language left out, or with nothing written in it, has no translation
  */
 public record DevilFruitTypeRequest(@Size(max = DevilFruitType.ROMAJI_MAX_LENGTH) String romaji,
 		Map<String, @Valid DevilFruitTypeTranslationRequest> translations) {

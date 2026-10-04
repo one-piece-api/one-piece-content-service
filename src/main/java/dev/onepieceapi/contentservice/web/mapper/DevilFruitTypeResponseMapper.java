@@ -48,7 +48,8 @@ public class DevilFruitTypeResponseMapper {
 	}
 
 	private static DevilFruitTypeTranslationResponse toTranslationResponse(DevilFruitTypeTranslation translation) {
-		return new DevilFruitTypeTranslationResponse(translation.name(), translation.description());
+		return new DevilFruitTypeTranslationResponse(translation.name(), translation.description(),
+				translation.advantages(), translation.disadvantages());
 	}
 
 }

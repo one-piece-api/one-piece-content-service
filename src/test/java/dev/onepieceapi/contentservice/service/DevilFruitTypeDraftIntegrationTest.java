@@ -149,7 +149,8 @@ class DevilFruitTypeDraftIntegrationTest {
 	@Test
 	void aNewContentIsBornWithADraftOfItsAuthorSayingWhatWasWritten() {
 		var written = new DevilFruitType("  Chojin-kei ",
-				Map.of("it", translation(" Paramisia ", "  "), "en", translation("", null)));
+				Map.of("it", new DevilFruitTypeTranslation(" Paramisia ", "  ", " Forza ", "	"), "en",
+						new DevilFruitTypeTranslation("", null, " ", null)));
 
 		var content = this.service.create(EDITOR, this.nami, written);
 		stored();
@@ -161,7 +162,8 @@ class DevilFruitTypeDraftIntegrationTest {
 		assertThat(version.createdAt()).isEqualTo(NOW);
 		assertThat(version.updatedAt()).isEqualTo(NOW);
 		assertThat(version.body().romaji()).isEqualTo("Chojin-kei");
-		assertThat(version.body().translations()).containsExactly(entry("it", translation("Paramisia", null)));
+		assertThat(version.body().translations())
+			.containsExactly(entry("it", new DevilFruitTypeTranslation("Paramisia", null, "Forza", null)));
 	}
 
 	@Test
@@ -452,7 +454,7 @@ class DevilFruitTypeDraftIntegrationTest {
 	}
 
 	private static DevilFruitTypeTranslation translation(String name, String description) {
-		return new DevilFruitTypeTranslation(name, description);
+		return new DevilFruitTypeTranslation(name, description, null, null);
 	}
 
 	/** What was done so far is written and read again from the database. */
@@ -480,7 +482,8 @@ class DevilFruitTypeDraftIntegrationTest {
 			.build();
 		var version = new DevilFruitTypeVersionEntity(workflow);
 		version.setRomaji(romaji);
-		version.getTranslations().put("it", new TranslationEmbeddable(italianName, italianName + " description"));
+		version.getTranslations()
+			.put("it", new TranslationEmbeddable(italianName, italianName + " description", "Pro", "Contro"));
 		this.versionRepository.save(version);
 	}
 

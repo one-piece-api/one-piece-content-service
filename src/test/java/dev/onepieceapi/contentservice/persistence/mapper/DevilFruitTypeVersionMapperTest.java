@@ -34,7 +34,7 @@ class DevilFruitTypeVersionMapperTest {
 		var entity = version(2, VersionStatus.REJECTED);
 		entity.getVersion().setRejectionReason("Too short");
 		entity.setRomaji("Zoan");
-		entity.getTranslations().put("it", new TranslationEmbeddable("Zoo Zoo", "Trasforma in animale"));
+		entity.getTranslations().put("it", new TranslationEmbeddable("Zoo Zoo", "Trasforma in animale", null, null));
 
 		var version = DevilFruitTypeVersionMapper.toDomain(entity);
 
@@ -47,7 +47,7 @@ class DevilFruitTypeVersionMapperTest {
 		assertThat(version.updatedAt()).isEqualTo(UPDATED);
 		assertThat(version.body().romaji()).isEqualTo("Zoan");
 		assertThat(version.body().translations())
-			.containsExactly(entry("it", new DevilFruitTypeTranslation("Zoo Zoo", "Trasforma in animale")));
+			.containsExactly(entry("it", new DevilFruitTypeTranslation("Zoo Zoo", "Trasforma in animale", null, null)));
 	}
 
 	@Test
@@ -63,19 +63,19 @@ class DevilFruitTypeVersionMapperTest {
 	@Test
 	void translationsAreReadInTheOrderOfTheirLanguageCode() {
 		var entity = version(1, VersionStatus.DRAFT);
-		entity.getTranslations().put("it", new TranslationEmbeddable("Zoo Zoo", null));
-		entity.getTranslations().put("en", new TranslationEmbeddable("Zoan", null));
-		entity.getTranslations().put("fr", new TranslationEmbeddable(null, null));
+		entity.getTranslations().put("it", new TranslationEmbeddable("Zoo Zoo", null, null, null));
+		entity.getTranslations().put("en", new TranslationEmbeddable("Zoan", null, null, null));
+		entity.getTranslations().put("fr", new TranslationEmbeddable(null, null, null, null));
 
 		var translations = DevilFruitTypeVersionMapper.toDomain(entity).body().translations();
 
 		assertThat(translations.keySet()).containsExactly("en", "fr", "it");
-		assertThat(translations.get("fr")).isEqualTo(new DevilFruitTypeTranslation(null, null));
+		assertThat(translations.get("fr")).isEqualTo(new DevilFruitTypeTranslation(null, null, null, null));
 	}
 
 	@Test
 	void theFirstDraftOfAContentIsVersionOneOfItsAuthorSayingWhatWasWritten() {
-		var body = new DevilFruitType("Zoan", Map.of("it", new DevilFruitTypeTranslation("Zoo Zoo", null)));
+		var body = new DevilFruitType("Zoan", Map.of("it", new DevilFruitTypeTranslation("Zoo Zoo", null, null, null)));
 
 		var entity = DevilFruitTypeVersionMapper.toFirstDraft(CONTENT_ID, CHOPPER, body, UPDATED);
 
@@ -95,7 +95,7 @@ class DevilFruitTypeVersionMapperTest {
 	void aLaterDraftIsOfItsOwnAuthorSayingWhatItsBaseSays() {
 		var base = version(1, VersionStatus.PUBLISHED);
 		base.setRomaji("Zoan");
-		base.getTranslations().put("it", new TranslationEmbeddable("Zoo Zoo", "Trasforma in animale"));
+		base.getTranslations().put("it", new TranslationEmbeddable("Zoo Zoo", "Trasforma in animale", null, null));
 		var later = UPDATED.plusSeconds(60);
 
 		var entity = DevilFruitTypeVersionMapper.toDraftFrom(CONTENT_ID, 3, DevilFruitTypeVersionMapper.toDomain(base),
@@ -116,8 +116,9 @@ class DevilFruitTypeVersionMapperTest {
 	void rewritingAVersionReplacesWhatItSaysAndNotesWhen() {
 		var entity = version(1, VersionStatus.DRAFT);
 		entity.setRomaji("Zoan");
-		entity.getTranslations().put("it", new TranslationEmbeddable("Zoo Zoo", "Trasforma in animale"));
-		var body = new DevilFruitType("Dobutsu-kei", Map.of("en", new DevilFruitTypeTranslation("Zoan", null)));
+		entity.getTranslations().put("it", new TranslationEmbeddable("Zoo Zoo", "Trasforma in animale", null, null));
+		var body = new DevilFruitType("Dobutsu-kei",
+				Map.of("en", new DevilFruitTypeTranslation("Zoan", null, null, null)));
 		var later = UPDATED.plusSeconds(60);
 
 		DevilFruitTypeVersionMapper.rewrite(entity, body, later);

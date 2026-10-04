@@ -296,12 +296,15 @@ class DevilFruitTypeRetirementIntegrationTest {
 			.updatedAt(EARLIER)
 			.build();
 		var version = new DevilFruitTypeVersionEntity(workflow);
-		var body = new DevilFruitType(romaji, Map.of("it", new DevilFruitTypeTranslation(romaji + " IT", "descrizione"),
-				"en", new DevilFruitTypeTranslation(romaji + " EN", "description")));
+		var body = new DevilFruitType(romaji,
+				Map.of("it", new DevilFruitTypeTranslation(romaji + " IT", "descrizione", "vantaggi", "svantaggi"),
+						"en",
+						new DevilFruitTypeTranslation(romaji + " EN", "description", "advantages", "disadvantages")));
 		version.setRomaji(body.romaji());
 		body.translations()
 			.forEach((language, translation) -> version.getTranslations()
-				.put(language, new TranslationEmbeddable(translation.name(), translation.description())));
+				.put(language, new TranslationEmbeddable(translation.name(), translation.description(),
+						translation.advantages(), translation.disadvantages())));
 		this.versionRepository.save(version);
 	}
 

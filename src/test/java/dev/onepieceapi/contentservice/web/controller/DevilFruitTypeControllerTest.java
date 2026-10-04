@@ -330,7 +330,7 @@ class DevilFruitTypeControllerTest {
 		verify(this.service).create(eq(Set.of(Permission.CONTENT_WRITE)), any(), written.capture());
 		assertThat(written.getValue().romaji()).isEqualTo(" Zoan ");
 		assertThat(written.getValue().translations().get("it"))
-			.isEqualTo(new DevilFruitTypeTranslation("Zoo Zoo", null));
+			.isEqualTo(new DevilFruitTypeTranslation("Zoo Zoo", null, null, null));
 	}
 
 	@Test
@@ -1003,8 +1003,8 @@ class DevilFruitTypeControllerTest {
 	}
 
 	private static Version<DevilFruitType> version(int number, VersionStatus status) {
-		var translations = Map.of("it", new DevilFruitTypeTranslation("Zoo Zoo", "Trasforma in animale"), "en",
-				new DevilFruitTypeTranslation(null, "Turns into an animal"));
+		var translations = Map.of("it", new DevilFruitTypeTranslation("Zoo Zoo", "Trasforma in animale", null, null),
+				"en", new DevilFruitTypeTranslation(null, "Turns into an animal", null, null));
 		return Version.<DevilFruitType>builder()
 			.number(number)
 			.basedOn(number == 1 ? null : 1)

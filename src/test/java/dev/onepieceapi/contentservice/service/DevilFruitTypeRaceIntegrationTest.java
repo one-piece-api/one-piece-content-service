@@ -292,7 +292,8 @@ class DevilFruitTypeRaceIntegrationTest {
 				.build();
 			var version = new DevilFruitTypeVersionEntity(workflow);
 			version.setRomaji("Logia " + contentId + " v" + (index + 1));
-			version.getTranslations().put("it", new TranslationEmbeddable("Rogia", "Trasforma in un elemento"));
+			version.getTranslations()
+				.put("it", new TranslationEmbeddable("Rogia", "Trasforma in un elemento", null, null));
 			this.versionRepository.save(version);
 		}
 		return contentId;

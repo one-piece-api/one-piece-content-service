@@ -27,8 +27,9 @@ import java.util.UUID;
 /**
  * What one version of a Devil Fruit Type says
  * (docs/user-flows/content-editorial-workflow.md 3.1): its romaji and, per language, its
- * name and description. It shares its id with the {@link ContentVersionEntity} carrying
- * the workflow of that version, and is saved and removed together with it.
+ * name, description, advantages and disadvantages. It shares its id with the
+ * {@link ContentVersionEntity} carrying the workflow of that version, and is saved and
+ * removed together with it.
  */
 @Entity
 @Table(name = "devil_fruit_type_version")
@@ -51,7 +52,7 @@ public class DevilFruitTypeVersionEntity {
 	private String romaji;
 
 	/**
-	 * Name and description per language code; a language nothing was saved for is absent.
+	 * The localized fields per language code; a language nothing was saved for is absent.
 	 */
 	@ElementCollection
 	@CollectionTable(name = "devil_fruit_type_version_translation", joinColumns = @JoinColumn(name = "version_id"))

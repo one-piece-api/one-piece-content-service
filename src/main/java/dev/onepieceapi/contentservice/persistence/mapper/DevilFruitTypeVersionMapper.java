@@ -74,7 +74,8 @@ public class DevilFruitTypeVersionMapper {
 	}
 
 	private static DevilFruitTypeTranslation toDomain(TranslationEmbeddable translation) {
-		return new DevilFruitTypeTranslation(translation.getName(), translation.getDescription());
+		return new DevilFruitTypeTranslation(translation.getName(), translation.getDescription(),
+				translation.getAdvantages(), translation.getDisadvantages());
 	}
 
 	private static Map<String, TranslationEmbeddable> toEmbeddables(
@@ -85,7 +86,8 @@ public class DevilFruitTypeVersionMapper {
 	}
 
 	private static TranslationEmbeddable toEmbeddable(DevilFruitTypeTranslation translation) {
-		return new TranslationEmbeddable(translation.name(), translation.description());
+		return new TranslationEmbeddable(translation.name(), translation.description(), translation.advantages(),
+				translation.disadvantages());
 	}
 
 }

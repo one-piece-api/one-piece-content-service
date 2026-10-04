@@ -1083,7 +1083,15 @@ components:
     DevilFruitTypeTranslationRequest:
       type: object
       properties:
+        advantages:
+          type: string
+          maxLength: 2000
+          minLength: 0
         description:
+          type: string
+          maxLength: 2000
+          minLength: 0
+        disadvantages:
           type: string
           maxLength: 2000
           minLength: 0
@@ -1094,7 +1102,11 @@ components:
     DevilFruitTypeTranslationResponse:
       type: object
       properties:
+        advantages:
+          type: string
         description:
+          type: string
+        disadvantages:
           type: string
         name:
           type: string

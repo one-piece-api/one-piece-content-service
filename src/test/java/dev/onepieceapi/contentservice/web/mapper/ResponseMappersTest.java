@@ -47,8 +47,10 @@ class ResponseMappersTest {
 	private static final User ZORO = new User(UUID.randomUUID(), "zoro", "zoro@onepiece.local");
 
 	private static final DevilFruitType ZOAN = new DevilFruitType("Zoan",
-			Map.of("it", new DevilFruitTypeTranslation("Zoo Zoo", "Trasforma in animale"), "en",
-					new DevilFruitTypeTranslation(null, "Turns into an animal")));
+			Map.of("it",
+					new DevilFruitTypeTranslation("Zoo Zoo", "Trasforma in animale", "Forza bestiale",
+							"Debole al mare"),
+					"en", new DevilFruitTypeTranslation(null, "Turns into an animal", null, null)));
 
 	@Test
 	void aVersionResponseCarriesTheWorkflowAndTheBodyTheCallerMapped() {
@@ -156,8 +158,9 @@ class ResponseMappersTest {
 
 		assertThat(body.romaji()).isEqualTo("Zoan");
 		assertThat(body.translations()).containsExactly(
-				entry("en", new DevilFruitTypeTranslationResponse(null, "Turns into an animal")),
-				entry("it", new DevilFruitTypeTranslationResponse("Zoo Zoo", "Trasforma in animale")));
+				entry("en", new DevilFruitTypeTranslationResponse(null, "Turns into an animal", null, null)),
+				entry("it", new DevilFruitTypeTranslationResponse("Zoo Zoo", "Trasforma in animale", "Forza bestiale",
+						"Debole al mare")));
 	}
 
 	@Test
