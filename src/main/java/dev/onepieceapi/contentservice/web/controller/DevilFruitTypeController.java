@@ -43,6 +43,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 /**
@@ -65,13 +66,17 @@ class DevilFruitTypeController {
 
 	private final DevilFruitTypeService service;
 
+	/**
+	 * One page of the list. A sort by {@code name} reads the name in the language of the
+	 * standard {@code Accept-Language} header, the one the caller is reading in.
+	 */
 	@GetMapping(ApiPaths.DEVIL_FRUIT_TYPES)
 	PageResponse<ContentSummaryResponse<DevilFruitTypeNamesResponse>> list(
 			@ParameterObject @Valid ContentListRequest request,
 			@ParameterObject @SortableBy(DevilFruitTypeSortField.class) Pageable pageable,
-			@AuthenticationPrincipal AuthenticatedCaller caller) {
+			@AuthenticationPrincipal AuthenticatedCaller caller, Locale locale) {
 		Page<ContentSummary<DevilFruitType>> page = this.service.list(caller.permissions(), caller.user(),
-				ContentRequestMapper.toFilter(request), pageable);
+				ContentRequestMapper.toFilter(request), pageable, locale.getLanguage());
 		return PageResponse.from(page.map(DevilFruitTypeResponseMapper::toSummaryResponse));
 	}
 

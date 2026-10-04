@@ -99,7 +99,7 @@ class DevilFruitTypeControllerTest {
 	@Test
 	void theListReturnsOnePageOfRows() throws Exception {
 		var row = new ContentSummary<>(CONTENT_ID, version(2, VersionStatus.IN_REVIEW), 1, Set.of());
-		when(this.service.list(any(), any(), any(), any()))
+		when(this.service.list(any(), any(), any(), any(), any()))
 			.thenReturn(new PageImpl<>(List.of(row), PageRequest.of(0, 20), 41));
 
 		this.mockMvc.perform(get("/devil-fruit-types").with(callerWith(Permission.CONTENT_READ)))
@@ -122,7 +122,7 @@ class DevilFruitTypeControllerTest {
 
 	@Test
 	void theListPassesTheCallersPermissionsFiltersAndPageToTheService() throws Exception {
-		when(this.service.list(any(), any(), any(), any())).thenReturn(new PageImpl<>(List.of()));
+		when(this.service.list(any(), any(), any(), any(), any())).thenReturn(new PageImpl<>(List.of()));
 
 		var request = get("/devil-fruit-types").with(callerWith(Permission.CONTENT_READ, Permission.CONTENT_REVIEW))
 			.param("status", "IN_REVIEW")
@@ -131,38 +131,40 @@ class DevilFruitTypeControllerTest {
 			.param("updatedWithinDays", "7")
 			.param("page", "2")
 			.param("size", "5")
-			.param("sort", "romaji,asc");
+			.param("sort", "name,asc")
+			.header("Accept-Language", "en");
 		this.mockMvc.perform(request).andExpect(status().isOk());
 
 		var pageable = ArgumentCaptor.forClass(Pageable.class);
 		verify(this.service).list(eq(Set.of(Permission.CONTENT_READ, Permission.CONTENT_REVIEW)), any(),
-				eq(new ContentFilter(VersionStatus.IN_REVIEW, "zoan", "nami", 7)), pageable.capture());
+				eq(new ContentFilter(VersionStatus.IN_REVIEW, "zoan", "nami", 7)), pageable.capture(), eq("en"));
 		assertThat(pageable.getValue().getPageNumber()).isEqualTo(2);
 		assertThat(pageable.getValue().getPageSize()).isEqualTo(5);
-		assertThat(pageable.getValue().getSort().getOrderFor("romaji")).isNotNull();
+		assertThat(pageable.getValue().getSort().getOrderFor("name")).isNotNull();
 	}
 
 	@Test
 	void thePageSizeHasADefaultAndIsCapped() throws Exception {
-		when(this.service.list(any(), any(), any(), any())).thenReturn(new PageImpl<>(List.of()));
+		when(this.service.list(any(), any(), any(), any(), any())).thenReturn(new PageImpl<>(List.of()));
 		var pageable = ArgumentCaptor.forClass(Pageable.class);
 
 		this.mockMvc.perform(get("/devil-fruit-types").with(callerWith(Permission.CONTENT_READ)));
 		this.mockMvc.perform(get("/devil-fruit-types").with(callerWith(Permission.CONTENT_READ)).param("size", "5000"));
 
-		verify(this.service, times(2)).list(any(), any(), any(), pageable.capture());
+		verify(this.service, times(2)).list(any(), any(), any(), pageable.capture(), any());
 		assertThat(pageable.getAllValues()).extracting(Pageable::getPageSize).containsExactly(20, 100);
 	}
 
 	@ParameterizedTest(name = "{0} -> {1}: {2}")
-	@CsvSource(delimiter = '|', textBlock = """
-			/devil-fruit-types?updatedWithinDays=-1 | updatedWithinDays | must be greater than or equal to 0
-			/devil-fruit-types?status=NOPE          | status            | invalid value
-			/devil-fruit-types?sort=authorEmail     | pageable          | can only be sorted by [romaji, updatedAt]
-			/devil-fruit-types/not-a-uuid           | id                | invalid value
-			/devil-fruit-types/not-a-uuid/versions/1| id                | invalid value
-			/devil-fruit-types/7b0e6c1a-3f52-4d0c-9a52-1f2f3d4e5a6b/versions/two | number | invalid value
-			""")
+	@CsvSource(delimiter = '|',
+			textBlock = """
+					/devil-fruit-types?updatedWithinDays=-1 | updatedWithinDays | must be greater than or equal to 0
+					/devil-fruit-types?status=NOPE          | status            | invalid value
+					/devil-fruit-types?sort=authorEmail | pageable | can only be sorted by [author, name, romaji, status, updatedAt]
+					/devil-fruit-types/not-a-uuid           | id                | invalid value
+					/devil-fruit-types/not-a-uuid/versions/1| id                | invalid value
+					/devil-fruit-types/7b0e6c1a-3f52-4d0c-9a52-1f2f3d4e5a6b/versions/two | number | invalid value
+					""")
 	void aRequestOfTheWrongShapeIsRefusedNamingTheField(String uri, String field, String message) throws Exception {
 		this.mockMvc.perform(get(uri).with(callerWith(Permission.CONTENT_READ)))
 			.andExpect(status().isBadRequest())
@@ -173,12 +175,15 @@ class DevilFruitTypeControllerTest {
 	}
 
 	@Test
-	void theListCanBeSortedByEitherSortableFieldInAnyDirection() throws Exception {
-		when(this.service.list(any(), any(), any(), any())).thenReturn(new PageImpl<>(List.of()));
+	void theListCanBeSortedByAnySortableFieldInAnyDirection() throws Exception {
+		when(this.service.list(any(), any(), any(), any(), any())).thenReturn(new PageImpl<>(List.of()));
 
 		var request = get("/devil-fruit-types").with(callerWith(Permission.CONTENT_READ))
 			.param("sort", "updatedAt,desc")
-			.param("sort", "romaji,asc");
+			.param("sort", "romaji,asc")
+			.param("sort", "name,desc")
+			.param("sort", "author,asc")
+			.param("sort", "status,desc");
 		this.mockMvc.perform(request).andExpect(status().isOk());
 	}
 

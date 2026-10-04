@@ -433,7 +433,7 @@ class DevilFruitTypeDraftIntegrationTest {
 	private Map<UUID, Set<VersionAction>> actionsInList(User caller) {
 		Map<UUID, Set<VersionAction>> actions = new HashMap<>();
 		for (ContentSummary<DevilFruitType> row : this.service.list(EDITOR, caller, ContentFilter.none(),
-				PageRequest.of(0, 20))) {
+				PageRequest.of(0, 20), "it")) {
 			actions.put(row.contentId(), row.allowedActions());
 		}
 		return actions;

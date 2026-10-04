@@ -98,6 +98,8 @@ class DevilFruitTypeServiceIntegrationTest {
 
 	private static final Pageable FIRST_PAGE = PageRequest.of(0, 20);
 
+	private static final String ITALIAN = "it";
+
 	private final User nami = new User(UUID.randomUUID(), "nami", "nami@onepiece.local");
 
 	private final User chopper = new User(UUID.randomUUID(), "chopper", "chopper@onepiece.local");
@@ -159,7 +161,7 @@ class DevilFruitTypeServiceIntegrationTest {
 
 	@Test
 	void anEditorSeesEveryContentByItsMostRecentVersionNewestFirst() {
-		var page = this.service.list(EDITOR, this.nami, NO_FILTER, FIRST_PAGE);
+		var page = this.service.list(EDITOR, this.nami, NO_FILTER, FIRST_PAGE, ITALIAN);
 
 		assertThat(page.getContent())
 			.extracting(ContentSummary::contentId, row -> row.version().number(), row -> row.version().status(),
@@ -170,7 +172,7 @@ class DevilFruitTypeServiceIntegrationTest {
 
 	@Test
 	void aReviewerSeesNoDraftSoAContentFallsBackToItsLatestVisibleVersion() {
-		var page = this.service.list(REVIEWER, this.nami, NO_FILTER, FIRST_PAGE);
+		var page = this.service.list(REVIEWER, this.nami, NO_FILTER, FIRST_PAGE, ITALIAN);
 
 		assertThat(page.getContent())
 			.extracting(ContentSummary::contentId, row -> row.version().number(), row -> row.version().status())
@@ -180,7 +182,7 @@ class DevilFruitTypeServiceIntegrationTest {
 
 	@Test
 	void aPublisherSeesNothingBeforeReadyToPublish() {
-		var page = this.service.list(PUBLISHER, this.nami, NO_FILTER, FIRST_PAGE);
+		var page = this.service.list(PUBLISHER, this.nami, NO_FILTER, FIRST_PAGE, ITALIAN);
 
 		assertThat(page.getContent())
 			.extracting(ContentSummary::contentId, row -> row.version().number(), row -> row.version().status())
@@ -190,7 +192,8 @@ class DevilFruitTypeServiceIntegrationTest {
 
 	@Test
 	void aRowCarriesTheContentOfItsVersion() {
-		var row = this.service.list(EDITOR, this.nami, new ContentFilter(null, "kodai", null, null), FIRST_PAGE)
+		var row = this.service
+			.list(EDITOR, this.nami, new ContentFilter(null, "kodai", null, null), FIRST_PAGE, ITALIAN)
 			.getContent()
 			.get(0);
 
@@ -208,9 +211,9 @@ class DevilFruitTypeServiceIntegrationTest {
 	@Test
 	void theStatusFilterShowsEachContentByItsVersionInThatStatus() {
 		var superseded = this.service.list(EDITOR, this.nami, new ContentFilter(SUPERSEDED, null, null, null),
-				FIRST_PAGE);
-		var published = this.service.list(EDITOR, this.nami, new ContentFilter(PUBLISHED, null, null, null),
-				FIRST_PAGE);
+				FIRST_PAGE, ITALIAN);
+		var published = this.service.list(EDITOR, this.nami, new ContentFilter(PUBLISHED, null, null, null), FIRST_PAGE,
+				ITALIAN);
 
 		assertThat(superseded.getContent())
 			.extracting(ContentSummary::contentId, row -> row.version().number(), ContentSummary::onlineVersionNumber)
@@ -223,9 +226,9 @@ class DevilFruitTypeServiceIntegrationTest {
 	void theStatusFilterIsLimitedToTheStatusesTheCallerSees() {
 		var drafts = new ContentFilter(DRAFT, null, null, null);
 
-		assertThat(this.service.list(EDITOR, this.nami, drafts, FIRST_PAGE).getTotalElements()).isEqualTo(2);
-		assertThat(this.service.list(REVIEWER, this.nami, drafts, FIRST_PAGE).getTotalElements()).isZero();
-		assertThat(this.service.list(REVIEWER, this.nami, drafts, FIRST_PAGE).getContent()).isEmpty();
+		assertThat(this.service.list(EDITOR, this.nami, drafts, FIRST_PAGE, ITALIAN).getTotalElements()).isEqualTo(2);
+		assertThat(this.service.list(REVIEWER, this.nami, drafts, FIRST_PAGE, ITALIAN).getTotalElements()).isZero();
+		assertThat(this.service.list(REVIEWER, this.nami, drafts, FIRST_PAGE, ITALIAN).getContent()).isEmpty();
 	}
 
 	@Test
@@ -273,11 +276,14 @@ class DevilFruitTypeServiceIntegrationTest {
 		var firstOfTwo = PageRequest.of(0, 2);
 
 		// Seven versions, four contents.
-		assertThat(this.service.list(EDITOR, this.nami, NO_FILTER, firstOfTwo).getTotalElements()).isEqualTo(4);
-		assertThat(this.service.list(EDITOR, this.nami, NO_FILTER, firstOfTwo).getTotalPages()).isEqualTo(2);
-		assertThat(this.service.list(REVIEWER, this.nami, NO_FILTER, firstOfTwo).getTotalElements()).isEqualTo(3);
+		assertThat(this.service.list(EDITOR, this.nami, NO_FILTER, firstOfTwo, ITALIAN).getTotalElements())
+			.isEqualTo(4);
+		assertThat(this.service.list(EDITOR, this.nami, NO_FILTER, firstOfTwo, ITALIAN).getTotalPages()).isEqualTo(2);
+		assertThat(this.service.list(REVIEWER, this.nami, NO_FILTER, firstOfTwo, ITALIAN).getTotalElements())
+			.isEqualTo(3);
 		var byChopper = new ContentFilter(null, null, this.chopper.username(), null);
-		assertThat(this.service.list(PUBLISHER, this.nami, byChopper, firstOfTwo).getTotalElements()).isEqualTo(1);
+		assertThat(this.service.list(PUBLISHER, this.nami, byChopper, firstOfTwo, ITALIAN).getTotalElements())
+			.isEqualTo(1);
 	}
 
 	@Test
@@ -285,7 +291,7 @@ class DevilFruitTypeServiceIntegrationTest {
 		assertThat(idsOf(EDITOR, NO_FILTER, PageRequest.of(0, 2))).containsExactly(this.paramecia, this.zoan);
 		assertThat(idsOf(EDITOR, NO_FILTER, PageRequest.of(1, 2))).containsExactly(this.logia, this.kodaiZoan);
 
-		var beyond = this.service.list(EDITOR, this.nami, NO_FILTER, PageRequest.of(2, 2));
+		var beyond = this.service.list(EDITOR, this.nami, NO_FILTER, PageRequest.of(2, 2), ITALIAN);
 		assertThat(beyond.getContent()).isEmpty();
 		assertThat(beyond.getTotalElements()).isEqualTo(4);
 	}
@@ -314,6 +320,62 @@ class DevilFruitTypeServiceIntegrationTest {
 		var byRomaji = PageRequest.of(0, 20, Sort.by("romaji"));
 
 		assertThat(idsOf(PUBLISHER, NO_FILTER, byRomaji)).containsExactly(this.kodaiZoan, this.paramecia, this.zoan);
+	}
+
+	@Test
+	void theListSortedByNameFollowsTheNameInTheCallersLanguageOrElseTheRomaji() {
+		var byName = PageRequest.of(0, 20, Sort.by("name"));
+
+		// Rogia, Superuomo, Zoo Zoo, Zoo Zoo antico.
+		assertThat(idsOf(EDITOR, NO_FILTER, byName, "it")).containsExactly(this.logia, this.paramecia, this.zoan,
+				this.kodaiZoan);
+		// 100%, Logia (no English name: its romaji), Paramecia, Zoan.
+		assertThat(idsOf(EDITOR, NO_FILTER, byName, "en")).containsExactly(this.kodaiZoan, this.logia, this.paramecia,
+				this.zoan);
+		assertThat(idsOf(EDITOR, NO_FILTER, PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "name")), "it"))
+			.containsExactly(this.kodaiZoan, this.zoan, this.paramecia, this.logia);
+	}
+
+	@Test
+	void sortingByNameDoesNotChangeTheTotal() {
+		var byName = PageRequest.of(0, 2, Sort.by("name"));
+
+		var page = this.service.list(EDITOR, this.nami, NO_FILTER, byName, ITALIAN);
+
+		assertThat(page.getTotalElements()).isEqualTo(4);
+		assertThat(page.getContent()).hasSize(2);
+	}
+
+	@Test
+	void aRowWithoutANameComesLastWhicheverTheDirection() {
+		var unnamed = content();
+		version(unnamed, 1, DRAFT, this.zoro, 3, names(null, null, null));
+		this.entityManager.flush();
+		this.entityManager.clear();
+
+		assertThat(idsOf(EDITOR, NO_FILTER, PageRequest.of(0, 20, Sort.by(Sort.Direction.ASC, "name")))).last()
+			.isEqualTo(unnamed);
+		assertThat(idsOf(EDITOR, NO_FILTER, PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "name")))).last()
+			.isEqualTo(unnamed);
+	}
+
+	@Test
+	void theListSortedByStatusFollowsTheLifecycleNotTheAlphabet() {
+		// In review, ready to publish, published - alphabetically "published" would come
+		// second.
+		assertThat(idsOf(REVIEWER, NO_FILTER, PageRequest.of(0, 20, Sort.by("status")))).containsExactly(this.zoan,
+				this.kodaiZoan, this.paramecia);
+		assertThat(idsOf(REVIEWER, NO_FILTER, PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "status"))))
+			.containsExactly(this.paramecia, this.kodaiZoan, this.zoan);
+	}
+
+	@Test
+	void theListSortedByAuthorThenByLastUpdateKeepsBothOrders() {
+		var byAuthorThenNewest = PageRequest.of(0, 20, Sort.by(Sort.Order.asc("author"), Sort.Order.desc("updatedAt")));
+
+		// chopper's three rows, newest first, then nami's.
+		assertThat(idsOf(EDITOR, NO_FILTER, byAuthorThenNewest)).containsExactly(this.paramecia, this.zoan,
+				this.kodaiZoan, this.logia);
 	}
 
 	@Test
@@ -359,7 +421,7 @@ class DevilFruitTypeServiceIntegrationTest {
 	void theMineCountIsWhatTheAuthorFilterWouldList() {
 		var byChopper = ContentFilter.authoredBy(this.chopper.username());
 
-		var listed = this.service.list(EDITOR, this.nami, byChopper, FIRST_PAGE).getTotalElements();
+		var listed = this.service.list(EDITOR, this.nami, byChopper, FIRST_PAGE, ITALIAN).getTotalElements();
 
 		assertThat(this.service.summary(EDITOR, this.chopper).mine()).isEqualTo(listed);
 	}
@@ -558,7 +620,8 @@ class DevilFruitTypeServiceIntegrationTest {
 
 		assertThatThrownBy(() -> this.service.get(EDITOR, this.nami, this.paramecia))
 			.isInstanceOf(DevilFruitTypeNotFoundException.class);
-		assertThat(this.service.list(EDITOR, this.nami, NO_FILTER, FIRST_PAGE).getTotalElements()).isEqualTo(3);
+		assertThat(this.service.list(EDITOR, this.nami, NO_FILTER, FIRST_PAGE, ITALIAN).getTotalElements())
+			.isEqualTo(3);
 	}
 
 	private List<UUID> idsOf(Set<Permission> permissions, ContentFilter filter) {
@@ -566,7 +629,13 @@ class DevilFruitTypeServiceIntegrationTest {
 	}
 
 	private List<UUID> idsOf(Set<Permission> permissions, ContentFilter filter, Pageable pageable) {
-		return this.service.list(permissions, this.nami, filter, pageable).map(ContentSummary::contentId).getContent();
+		return idsOf(permissions, filter, pageable, ITALIAN);
+	}
+
+	private List<UUID> idsOf(Set<Permission> permissions, ContentFilter filter, Pageable pageable, String language) {
+		return this.service.list(permissions, this.nami, filter, pageable, language)
+			.map(ContentSummary::contentId)
+			.getContent();
 	}
 
 	private UUID content() {

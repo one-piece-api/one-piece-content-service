@@ -8,6 +8,7 @@ import dev.onepieceapi.contentservice.persistence.specification.DevilFruitTypeSo
 import dev.onepieceapi.contentservice.persistence.specification.DevilFruitTypeVersionSpecifications;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -30,12 +31,14 @@ public interface DevilFruitTypeVersionRepository extends JpaRepository<DevilFrui
 
 	/**
 	 * One page of the list: one row per content, by its most recent version among
-	 * {@code statuses}, filtered and sorted as asked.
+	 * {@code statuses}, filtered and sorted as asked; a sort by name reads it in
+	 * {@code language}.
 	 */
 	default Page<DevilFruitTypeVersionEntity> search(Collection<VersionStatus> statuses, ContentFilter filter,
-			Clock clock, Pageable pageable) {
-		var specification = DevilFruitTypeVersionSpecifications.listOf(statuses, filter, clock);
-		return findAll(specification, DevilFruitTypeSorting.resolve(pageable));
+			Clock clock, Pageable pageable, String language) {
+		var specification = DevilFruitTypeVersionSpecifications.listOf(statuses, filter, clock)
+			.and(DevilFruitTypeSorting.orderedBy(pageable.getSort(), language));
+		return findAll(specification, PageRequest.of(pageable.getPageNumber(), pageable.getPageSize()));
 	}
 
 	/**

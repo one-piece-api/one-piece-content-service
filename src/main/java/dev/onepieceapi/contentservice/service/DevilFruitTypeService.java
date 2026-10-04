@@ -111,15 +111,17 @@ public class DevilFruitTypeService {
 
 	/**
 	 * One row per content: its most recent visible version or, when filtering by status,
-	 * its visible version in that status. The other filters apply to that row.
+	 * its visible version in that status. The other filters apply to that row. A sort by
+	 * name reads it in {@code language}, the one the caller is reading in.
 	 */
 	public Page<ContentSummary<DevilFruitType>> list(Set<Permission> permissions, User caller, ContentFilter filter,
-			Pageable pageable) {
+			Pageable pageable, String language) {
 		Set<VersionStatus> statuses = filter.statusesAmong(VisibilityPolicy.visibleStatuses(permissions));
 		if (statuses.isEmpty()) {
 			return Page.empty(pageable);
 		}
-		Page<DevilFruitTypeVersionEntity> page = this.versionRepository.search(statuses, filter, this.clock, pageable);
+		Page<DevilFruitTypeVersionEntity> page = this.versionRepository.search(statuses, filter, this.clock, pageable,
+				language);
 		List<UUID> contentIds = contentIdsOf(page);
 		Map<UUID, Integer> onlineNumbers = this.contentVersionRepository.onlineVersionNumbers(contentIds);
 		Set<UUID> withOpenVersion = this.contentVersionRepository.withOpenVersion(contentIds);

@@ -7,7 +7,8 @@ import java.util.stream.Collectors;
 
 /**
  * Where a version stands in the editorial lifecycle
- * (docs/user-flows/content-editorial-workflow.md 4.2).
+ * (docs/user-flows/content-editorial-workflow.md 4.2). Declared in lifecycle order, which
+ * is also the order a list sorted by status follows.
  */
 public enum VersionStatus {
 
