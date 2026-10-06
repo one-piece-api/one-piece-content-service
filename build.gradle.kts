@@ -4,6 +4,7 @@ plugins {
 	id("io.spring.dependency-management") version "1.1.7"
 	id("io.spring.javaformat") version "0.0.48"
 	checkstyle
+	`maven-publish`
 }
 
 group = "dev.onepieceapi"
@@ -83,4 +84,65 @@ tasks.register<Test>("updateOpenApiSpec") {
 
 checkstyle {
 	toolVersion = "14.0.0"
+}
+
+// The Flyway migrations alone, published for one-piece-public-api's tests: they build the
+// same schema, "published" views included (docs/adr/0003-published-interface.md). The
+// version is the number of the latest migration, so "migrations 8" means "schema up to V8".
+val migrationsDir = layout.projectDirectory.dir("src/main/resources/db/migration")
+val migrationsVersion = migrationsDir.asFile
+	.list()
+	.orEmpty()
+	.mapNotNull { Regex("""^V(\d+)__.+\.sql$""").find(it)?.groupValues?.get(1)?.toInt() }
+	.max()
+	.toString()
+
+val migrationsJar by tasks.registering(Jar::class) {
+	description = "Packages the Flyway migrations alone, for one-piece-public-api's tests."
+	group = "build"
+	archiveBaseName = "one-piece-content-service-migrations"
+	archiveVersion = migrationsVersion
+	// Not build/libs: the Dockerfile copies the one jar it finds there.
+	destinationDirectory = layout.buildDirectory.dir("migrations")
+	from(migrationsDir) { into("db/migration") }
+}
+
+// The only publication is SQL files with no dependencies: no Spring Boot BOM in its POM.
+dependencyManagement {
+	generatedPomCustomization {
+		enabled(false)
+	}
+}
+
+// Read by CI to skip the publication when this version is already on GitHub Packages.
+tasks.register("printMigrationsVersion") {
+	description = "Prints the version of the migrations artifact."
+	group = "help"
+	val version = migrationsVersion
+	doLast { println(version) }
+}
+
+publishing {
+	publications {
+		create<MavenPublication>("migrations") {
+			artifactId = "one-piece-content-service-migrations"
+			version = migrationsVersion
+			artifact(migrationsJar)
+			pom {
+				name = "one-piece-content-service-migrations"
+				description = "Flyway migrations of one-piece-content-service's database"
+				url = "https://github.com/one-piece-api/one-piece-content-service"
+			}
+		}
+	}
+	repositories {
+		maven {
+			name = "GitHubPackages"
+			url = uri("https://maven.pkg.github.com/one-piece-api/one-piece-content-service")
+			credentials {
+				username = System.getenv("GITHUB_ACTOR")
+				password = System.getenv("GITHUB_TOKEN")
+			}
+		}
+	}
 }

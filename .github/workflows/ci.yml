@@ -106,6 +106,43 @@ jobs:
           revision: openapi/openapi.yaml
           review: false
 
+  # Le sole migrazioni Flyway, per i test di one-piece-public-api (docs/adr/0003-published-interface.md).
+  # Versione = numero dell'ultima migrazione: un push senza migrazioni nuove trova la versione
+  # già pubblicata e salta, perché GitHub Packages non permette di sovrascriverla.
+  publish-migrations:
+    name: Publish migrations
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    if: github.event_name == 'push'
+    env:
+      GITHUB_ACTOR: ${{ github.actor }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Check whether this version is already published
+        id: published
+        run: |
+          version="$(./gradlew -q printMigrationsVersion --no-daemon)"
+          status="$(curl -s -o /dev/null -w '%{http_code}' -u "$GITHUB_ACTOR:$GITHUB_TOKEN" \
+            "https://maven.pkg.github.com/one-piece-api/one-piece-content-service/dev/onepieceapi/one-piece-content-service-migrations/$version/one-piece-content-service-migrations-$version.pom")"
+          echo "version $version: HTTP $status"
+          echo "exists=$([ "$status" = 200 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      - name: Publish
+        if: steps.published.outputs.exists == 'false'
+        run: ./gradlew publishMigrationsPublicationToGitHubPackagesRepository --no-daemon
+
   build-jar:
     name: Build jar
     runs-on: ubuntu-latest
