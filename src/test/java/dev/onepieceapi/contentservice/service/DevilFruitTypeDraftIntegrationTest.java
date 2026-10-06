@@ -22,12 +22,15 @@ import dev.onepieceapi.contentservice.persistence.repository.ContentVersionRepos
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitTypeVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
 import dev.onepieceapi.contentservice.service.exception.DevilFruitTypeNotFoundException;
+import dev.onepieceapi.contentservice.service.exception.SlugAlreadyUsedException;
 import dev.onepieceapi.contentservice.service.exception.TranslationLanguageUnknownException;
 import dev.onepieceapi.contentservice.service.exception.ValueAlreadyUsedException;
+import dev.onepieceapi.contentservice.service.exception.ValueInvalidException;
 import dev.onepieceapi.contentservice.service.exception.VersionActionConflictException;
 import dev.onepieceapi.contentservice.service.exception.VersionActionForbiddenException;
 import dev.onepieceapi.contentservice.service.exception.VersionNotFoundException;
 import dev.onepieceapi.contentservice.service.validation.DevilFruitTypeValidator;
+import dev.onepieceapi.exception.DomainException;
 import dev.onepieceapi.exception.web.FieldViolation;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -262,6 +265,49 @@ class DevilFruitTypeDraftIntegrationTest {
 	}
 
 	@Test
+	void aRomajiGivingTheSlugOfAnotherContentIsRefusedNamingThatSlug() {
+		// No other content has this romaji, but "Zoan" online gives the same slug.
+		var refused = catchThrowableOfType(SlugAlreadyUsedException.class,
+				() -> this.service.create(EDITOR, this.nami, romajiOnly("ZOĀN!")));
+
+		assertThat(refused.getDetails()).containsEntry("slug", "zoan");
+		assertThat(fieldsOf(refused)).containsExactly("romaji");
+	}
+
+	@Test
+	void theSlugOfAnotherContentsDraftIsTakenToo() {
+		assertThatThrownBy(() -> this.service.create(EDITOR, this.nami, romajiOnly("Lōgia")))
+			.isInstanceOf(SlugAlreadyUsedException.class);
+	}
+
+	@Test
+	void aSlugAnotherContentHadOnlineStaysReservedToIt() {
+		oldSlug(this.zoan, "dobutsu-kei");
+
+		assertThatThrownBy(() -> this.service.create(EDITOR, this.nami, romajiOnly("Dōbutsu kei")))
+			.isInstanceOf(SlugAlreadyUsedException.class);
+	}
+
+	@Test
+	void aContentMayTakeBackASlugItHadBefore() {
+		oldSlug(this.zoan, "dobutsu-kei");
+		version(this.zoan, 3, DRAFT, this.nami, "Zoan", "Animale");
+		stored();
+
+		var answer = this.service.edit(EDITOR, this.nami, this.zoan, 3, romajiOnly("Dobutsu-kei"));
+
+		assertThat(answer.version().body().romaji()).isEqualTo("Dobutsu-kei");
+	}
+
+	@Test
+	void aRomajiWithNoLetterOrDigitIsRefusedForItGivesNoSlug() {
+		var refused = catchThrowableOfType(ValueInvalidException.class,
+				() -> this.service.create(EDITOR, this.nami, romajiOnly("¡¿…!")));
+
+		assertThat(fieldsOf(refused)).containsExactly("romaji");
+	}
+
+	@Test
 	void aNameIsUniqueWithinItsLanguageOnly() {
 		var written = new DevilFruitType("Chojin-kei", Map.of("en", translation("Zoo Zoo", null)));
 
@@ -443,7 +489,7 @@ class DevilFruitTypeDraftIntegrationTest {
 		return this.service.summary(EDITOR, caller).total();
 	}
 
-	private static List<String> fieldsOf(ValueAlreadyUsedException refused) {
+	private static List<String> fieldsOf(DomainException refused) {
 		@SuppressWarnings("unchecked")
 		List<FieldViolation> violations = (List<FieldViolation>) refused.getDetails().get("errors");
 		return violations.stream().map(FieldViolation::field).toList();
@@ -461,6 +507,17 @@ class DevilFruitTypeDraftIntegrationTest {
 	private void stored() {
 		this.entityManager.flush();
 		this.entityManager.clear();
+	}
+
+	/** A slug the content had online, written as a publication would. */
+	private void oldSlug(UUID contentId, String slug) {
+		this.entityManager.getEntityManager()
+			.createNativeQuery("insert into content_slug (entity_type, slug, content_id, assigned_at)"
+					+ " values ('DEVIL_FRUIT_TYPE', ?, ?, ?)")
+			.setParameter(1, slug)
+			.setParameter(2, contentId)
+			.setParameter(3, EARLIER)
+			.executeUpdate();
 	}
 
 	private UUID content() {

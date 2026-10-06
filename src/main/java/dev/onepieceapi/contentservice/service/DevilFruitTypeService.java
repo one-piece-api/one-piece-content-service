@@ -474,7 +474,9 @@ public class DevilFruitTypeService {
 	 * at once. Another version going online at the same instant - published or restored -
 	 * is stopped by the lock on the version both supersede; with nothing online to
 	 * supersede, only by the database (one online version per content - see {@code V2}):
-	 * the one left out is refused as if it had come second.
+	 * the one left out is refused as if it had come second. The content takes the slug of
+	 * its romaji (flows document 3.3), refused the same way in the one case the checks on
+	 * save cannot stop: another content saving the same slug at the same instant.
 	 */
 	private void putOnline(DevilFruitTypeVersionEntity entity, int versionNumber, VersionAction action, User caller) {
 		Instant now = this.clock.instant();
@@ -485,6 +487,9 @@ public class DevilFruitTypeService {
 			this.versionRepository.flush();
 		}
 		catch (DataIntegrityViolationException ex) {
+			throw new VersionActionConflictException(action);
+		}
+		if (this.versionRepository.assignSlug(entity.getVersionId(), now) == 0) {
 			throw new VersionActionConflictException(action);
 		}
 	}

@@ -6,8 +6,10 @@ import dev.onepieceapi.contentservice.persistence.entity.LanguageEntity;
 import dev.onepieceapi.contentservice.persistence.mapper.DevilFruitTypeVersionMapper;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitTypeVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
+import dev.onepieceapi.contentservice.service.exception.SlugAlreadyUsedException;
 import dev.onepieceapi.contentservice.service.exception.TranslationLanguageUnknownException;
 import dev.onepieceapi.contentservice.service.exception.ValueAlreadyUsedException;
+import dev.onepieceapi.contentservice.service.exception.ValueInvalidException;
 import dev.onepieceapi.contentservice.service.exception.VersionIdenticalException;
 import dev.onepieceapi.contentservice.service.exception.VersionIncompleteException;
 import dev.onepieceapi.exception.web.FieldViolation;
@@ -17,6 +19,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
@@ -24,10 +27,11 @@ import java.util.stream.Collectors;
 
 /**
  * The rules a Devil Fruit Type must meet (docs/user-flows/content-editorial-workflow.md
- * 3.3). To be saved as a draft: only languages of the catalog, and a romaji and names no
- * other content has - a draft may be incomplete. To be submitted, in this order, stopping
- * at the first rule broken: complete in every language of the catalog, still unique, and
- * different from every other version of its content.
+ * 3.3). To be saved as a draft: only languages of the catalog, a romaji that gives a
+ * slug, and a slug and names no other content has - a draft may be incomplete. To be
+ * submitted, in this order, stopping at the first rule broken: complete in every language
+ * of the catalog, a romaji that gives a slug, still unique, and different from every
+ * other version of its content.
  */
 @Component
 @RequiredArgsConstructor(onConstructor_ = { @Autowired })
@@ -48,6 +52,10 @@ public class DevilFruitTypeValidator {
 
 	private static final String REQUIRED = "is required for review";
 
+	private static final String NO_SLUG = "must contain a letter or a digit";
+
+	private static final String SLUG_TAKEN = "gives the public address of another content";
+
 	private final DevilFruitTypeVersionRepository versionRepository;
 
 	private final LanguageRepository languageRepository;
@@ -58,7 +66,7 @@ public class DevilFruitTypeValidator {
 	 */
 	public void validateDraft(UUID contentId, DevilFruitType body) {
 		requireKnownLanguages(body);
-		requireUniqueValues(contentId, body);
+		requireUniqueValues(contentId, body, slugOf(body));
 	}
 
 	/**
@@ -68,7 +76,7 @@ public class DevilFruitTypeValidator {
 	 */
 	public void validateSubmission(UUID contentId, int versionNumber, DevilFruitType body) {
 		requireComplete(body);
-		requireUniqueValues(contentId, body);
+		requireUniqueValues(contentId, body, slugOf(body));
 		requireDifferentFromOtherVersions(contentId, versionNumber, body);
 	}
 
@@ -121,8 +129,32 @@ public class DevilFruitTypeValidator {
 			});
 	}
 
-	/** Every value at fault is reported, not just the first one found. */
-	private void requireUniqueValues(UUID contentId, DevilFruitType body) {
+	/**
+	 * The slug of the romaji - the public address of the content - refused when the
+	 * romaji gives none; empty while no romaji is written.
+	 */
+	private Optional<String> slugOf(DevilFruitType body) {
+		if (body.romaji() == null) {
+			return Optional.empty();
+		}
+		return Optional.of(this.versionRepository.slugOf(body.romaji())
+			.orElseThrow(() -> new ValueInvalidException(List.of(new FieldViolation(ROMAJI_FIELD, NO_SLUG)))));
+	}
+
+	/**
+	 * Every value equal to another content's is reported, not just the first one found.
+	 * Then the slug: a romaji no other content has may still give the address of another
+	 * one (a macron is all that sets Ryu apart) - said apart, since there is no equal
+	 * value to show.
+	 */
+	private void requireUniqueValues(UUID contentId, DevilFruitType body, Optional<String> slug) {
+		requireUnusedValues(contentId, body);
+		slug.filter(value -> this.versionRepository.slugIsTakenByAnother(value, contentId)).ifPresent(value -> {
+			throw new SlugAlreadyUsedException(value, List.of(new FieldViolation(ROMAJI_FIELD, SLUG_TAKEN)));
+		});
+	}
+
+	private void requireUnusedValues(UUID contentId, DevilFruitType body) {
 		List<FieldViolation> taken = new ArrayList<>();
 		if (romajiIsTaken(contentId, body.romaji())) {
 			taken.add(new FieldViolation(ROMAJI_FIELD, ALREADY_USED));

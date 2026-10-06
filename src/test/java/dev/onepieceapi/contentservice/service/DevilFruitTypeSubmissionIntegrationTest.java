@@ -17,6 +17,7 @@ import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitTypeVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
+import dev.onepieceapi.contentservice.service.exception.SlugAlreadyUsedException;
 import dev.onepieceapi.contentservice.service.exception.ValueAlreadyUsedException;
 import dev.onepieceapi.contentservice.service.exception.VersionActionConflictException;
 import dev.onepieceapi.contentservice.service.exception.VersionActionForbiddenException;
@@ -218,6 +219,19 @@ class DevilFruitTypeSubmissionIntegrationTest {
 				() -> this.service.submit(EDITOR, this.nami, twin, 1));
 
 		assertThat(fieldsOf(refused)).containsExactly("romaji");
+		assertStillADraft(twin);
+	}
+
+	@Test
+	void aSlugTakenByAnotherContentSinceTheLastSaveIsRefused() {
+		UUID twin = content();
+		version(twin, 1, DRAFT, this.nami, complete("Zoān", "Twin"));
+		stored();
+
+		var refused = catchThrowableOfType(SlugAlreadyUsedException.class,
+				() -> this.service.submit(EDITOR, this.nami, twin, 1));
+
+		assertThat(refused.getDetails()).containsEntry("slug", "zoan");
 		assertStillADraft(twin);
 	}
 

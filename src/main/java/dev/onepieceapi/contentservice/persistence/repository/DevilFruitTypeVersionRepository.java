@@ -12,9 +12,11 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 import java.time.Clock;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -104,6 +106,13 @@ public interface DevilFruitTypeVersionRepository extends JpaRepository<DevilFrui
 	boolean existsByLanguage(String languageCode);
 
 	/**
+	 * The slug this romaji gives, by the database's one definition of a slug
+	 * ({@code V8}): empty when it has no letter or digit.
+	 */
+	@Query(value = "select slug_of(:romaji)", nativeQuery = true)
+	Optional<String> slugOf(String romaji);
+
+	/**
 	 * Whether a version of another content, in any status, has this romaji - whatever the
 	 * case it is written in.
 	 */
@@ -111,6 +120,37 @@ public interface DevilFruitTypeVersionRepository extends JpaRepository<DevilFrui
 			select count(d) > 0 from DevilFruitTypeVersionEntity d join d.version v
 			where lower(d.romaji) = lower(:romaji) and v.contentId <> :contentId""")
 	boolean romajiIsTakenByAnother(String romaji, UUID contentId);
+
+	/**
+	 * Whether another content has this slug - from the romaji of one of its versions, in
+	 * any status, or as a slug it had online. Two romaji differing only in accents or
+	 * punctuation give the same slug.
+	 */
+	@Query(value = """
+			select exists (select 1 from devil_fruit_type_version d join content_version v on v.id = d.version_id
+			               where d.romaji_slug = :slug and v.content_id <> :contentId)
+			    or exists (select 1 from content_slug s
+			               where s.entity_type = 'DEVIL_FRUIT_TYPE' and s.slug = :slug and s.content_id <> :contentId)""",
+			nativeQuery = true)
+	boolean slugIsTakenByAnother(String slug, UUID contentId);
+
+	/**
+	 * Gives the content of this version the slug of its romaji, as it goes online: added
+	 * to its slug history, or marked as assigned again if it had it before.
+	 * @return 0 when the slug belongs to another content, which no other check prevents
+	 * only for two saves of the same value at the same instant
+	 */
+	@Modifying
+	@Query(value = """
+			insert into content_slug (entity_type, slug, content_id, assigned_at)
+			select c.entity_type, d.romaji_slug, c.id, :assignedAt
+			from devil_fruit_type_version d
+			    join content_version v on v.id = d.version_id
+			    join content c on c.id = v.content_id
+			where d.version_id = :versionId and d.romaji_slug is not null
+			on conflict (entity_type, slug) do update set assigned_at = excluded.assigned_at
+			where content_slug.content_id = excluded.content_id""", nativeQuery = true)
+	int assignSlug(UUID versionId, Instant assignedAt);
 
 	/**
 	 * Whether a version of another content, in any status, has this name in this language

@@ -227,10 +227,70 @@ class DevilFruitTypePublicationIntegrationTest {
 			.isInstanceOf(OptimisticLockingFailureException.class);
 	}
 
+	@Test
+	void publishingGivesTheContentTheSlugOfItsRomaji() {
+		this.service.publish(PUBLISHER, this.vivi, this.logia, 1);
+		stored();
+
+		assertThat(slugsOf(this.logia)).containsExactly("logia");
+	}
+
+	@Test
+	void aNewRomajiAddsItsSlugAndTheOldOneStaysInTheHistory() {
+		UUID chojin = content();
+		version(chojin, 1, PUBLISHED, this.nami, "Chojin");
+		slug(chojin, "chojin");
+		version(chojin, 2, READY_TO_PUBLISH, this.nami, "Chōjin-kei");
+		stored();
+
+		this.service.publish(PUBLISHER, this.vivi, chojin, 2);
+		stored();
+
+		assertThat(slugsOf(chojin)).containsExactlyInAnyOrder("chojin", "chojin-kei");
+	}
+
+	@Test
+	void aContentPublishedAgainUnderTheSameRomajiKeepsOneSlug() {
+		slug(this.paramecia, "paramecia");
+
+		this.service.publish(PUBLISHER, this.vivi, this.paramecia, 2);
+		stored();
+
+		assertThat(slugsOf(this.paramecia)).containsExactly("paramecia");
+	}
+
+	@Test
+	void aSlugTakenMeanwhileByAnotherContentFailsThePublication() {
+		// Two drafts saved at the same instant both passed the check: the other one went
+		// online first.
+		slug(this.paramecia, "logia");
+
+		assertThatThrownBy(() -> this.service.publish(PUBLISHER, this.vivi, this.logia, 1))
+			.isInstanceOf(VersionActionConflictException.class);
+	}
+
 	/** What was done so far is written and read again from the database. */
 	private void stored() {
 		this.entityManager.flush();
 		this.entityManager.clear();
+	}
+
+	private void slug(UUID contentId, String slug) {
+		this.entityManager.getEntityManager()
+			.createNativeQuery("insert into content_slug (entity_type, slug, content_id, assigned_at)"
+					+ " values ('DEVIL_FRUIT_TYPE', ?, ?, ?)")
+			.setParameter(1, slug)
+			.setParameter(2, contentId)
+			.setParameter(3, EARLIER)
+			.executeUpdate();
+	}
+
+	@SuppressWarnings("unchecked")
+	private List<String> slugsOf(UUID contentId) {
+		return this.entityManager.getEntityManager()
+			.createNativeQuery("select slug from content_slug where content_id = ?", String.class)
+			.setParameter(1, contentId)
+			.getResultList();
 	}
 
 	private UUID content() {

@@ -16,8 +16,10 @@ import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.entity.ContentVersionEntity;
 import dev.onepieceapi.contentservice.service.DevilFruitTypeService;
 import dev.onepieceapi.contentservice.service.exception.DevilFruitTypeNotFoundException;
+import dev.onepieceapi.contentservice.service.exception.SlugAlreadyUsedException;
 import dev.onepieceapi.contentservice.service.exception.TranslationLanguageUnknownException;
 import dev.onepieceapi.contentservice.service.exception.ValueAlreadyUsedException;
+import dev.onepieceapi.contentservice.service.exception.ValueInvalidException;
 import dev.onepieceapi.contentservice.service.exception.VersionActionConflictException;
 import dev.onepieceapi.contentservice.service.exception.VersionActionForbiddenException;
 import dev.onepieceapi.contentservice.service.exception.VersionIdenticalException;
@@ -420,6 +422,30 @@ class DevilFruitTypeControllerTest {
 			.andExpect(jsonPath("$.errorCode").value("CONTENT_VALUE_ALREADY_USED"))
 			.andExpect(jsonPath("$.errors[0].field").value("romaji"))
 			.andExpect(jsonPath("$.errors[1].field").value("translations[it].name"));
+	}
+
+	@Test
+	void aSlugAlreadyUsedIsUnprocessableAndNamesTheSlugAndTheRomaji() throws Exception {
+		var taken = List.of(new FieldViolation("romaji", "gives the public address of another content"));
+		when(this.service.edit(any(), any(), any(), eq(1), any()))
+			.thenThrow(new SlugAlreadyUsedException("zoan", taken));
+
+		this.mockMvc.perform(edit("{\"romaji\":\"Zoān\"}").with(callerWith(Permission.CONTENT_WRITE)))
+			.andExpect(status().isUnprocessableEntity())
+			.andExpect(jsonPath("$.errorCode").value("CONTENT_SLUG_ALREADY_USED"))
+			.andExpect(jsonPath("$.slug").value("zoan"))
+			.andExpect(jsonPath("$.errors[0].field").value("romaji"));
+	}
+
+	@Test
+	void aRomajiGivingNoSlugIsUnprocessableAndNamesTheRomaji() throws Exception {
+		var invalid = List.of(new FieldViolation("romaji", "must contain a letter or a digit"));
+		when(this.service.edit(any(), any(), any(), eq(1), any())).thenThrow(new ValueInvalidException(invalid));
+
+		this.mockMvc.perform(edit("{\"romaji\":\"!!\"}").with(callerWith(Permission.CONTENT_WRITE)))
+			.andExpect(status().isUnprocessableEntity())
+			.andExpect(jsonPath("$.errorCode").value("CONTENT_VALUE_INVALID"))
+			.andExpect(jsonPath("$.errors[0].field").value("romaji"));
 	}
 
 	@Test
