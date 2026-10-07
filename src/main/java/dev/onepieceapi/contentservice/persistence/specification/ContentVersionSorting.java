@@ -14,7 +14,7 @@ import java.util.Map;
 /**
  * Turns the sort a caller asks of a dashboard status page, expressed in
  * {@link DashboardSortField}s, into the one the query over the shared workflow table runs
- * with - as {@link DevilFruitTypeSorting} does for one kind of content.
+ * with - as {@link VersionBodySorting} does for an entity section.
  */
 @UtilityClass
 public class ContentVersionSorting {

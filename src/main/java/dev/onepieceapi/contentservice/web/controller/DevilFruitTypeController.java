@@ -1,123 +1,57 @@
 package dev.onepieceapi.contentservice.web.controller;
 
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitType;
-import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitTypeSortField;
-import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
 import dev.onepieceapi.contentservice.service.DevilFruitTypeService;
 import dev.onepieceapi.contentservice.web.ApiPaths;
-import dev.onepieceapi.contentservice.web.dto.request.ContentListRequest;
 import dev.onepieceapi.contentservice.web.dto.request.DevilFruitTypeRequest;
-import dev.onepieceapi.contentservice.web.dto.request.NewVersionRequest;
-import dev.onepieceapi.contentservice.web.dto.request.RejectVersionRequest;
-import dev.onepieceapi.contentservice.web.dto.response.ContentListSummaryResponse;
 import dev.onepieceapi.contentservice.web.dto.response.ContentResponse;
-import dev.onepieceapi.contentservice.web.dto.response.ContentSummaryResponse;
 import dev.onepieceapi.contentservice.web.dto.response.DevilFruitTypeNamesResponse;
 import dev.onepieceapi.contentservice.web.dto.response.DevilFruitTypeResponse;
-import dev.onepieceapi.contentservice.web.dto.response.PageResponse;
-import dev.onepieceapi.contentservice.web.dto.response.UserResponse;
-import dev.onepieceapi.contentservice.web.dto.response.VersionEventResponse;
 import dev.onepieceapi.contentservice.web.dto.response.VersionResponse;
-import dev.onepieceapi.contentservice.web.mapper.ContentRequestMapper;
 import dev.onepieceapi.contentservice.web.mapper.ContentResponseMapper;
 import dev.onepieceapi.contentservice.web.mapper.DevilFruitTypeRequestMapper;
 import dev.onepieceapi.contentservice.web.mapper.DevilFruitTypeResponseMapper;
 import dev.onepieceapi.contentservice.web.security.AuthenticatedCaller;
-import dev.onepieceapi.contentservice.web.validation.SortableBy;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
-import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
-import java.util.Locale;
 import java.util.UUID;
 
 /**
- * The Devil Fruit Type section. Reading (UF-CNT-12, UF-CNT-18) - the paginated list, a
- * content with its version chain, one version with what it says, and its history - takes
- * {@code content:read}; creating a content, editing its draft, discarding it, sending it
- * to review and taking it back, returning a rejected one to draft, opening a new version
- * (UF-CNT-01 to 04, UF-CNT-08, UF-CNT-11, UF-CNT-15) take {@code content:write};
- * claiming, releasing, approving and rejecting (UF-CNT-05, 06, 13, 14)
- * {@code content:review}; publishing (UF-CNT-07) {@code content:publish} (see
- * {@code SecuredEndpoint}). What a caller then finds is limited to the statuses their
- * permissions make visible: whatever is not visible answers {@code 404} like something
- * that does not exist, a visible version the caller may not change {@code 403}, one that
- * is not in a state for it {@code 409}.
+ * The Devil Fruit Type section: every endpoint of {@link ContentController}, plus
+ * creating a content and editing its draft (UF-CNT-01, UF-CNT-02), which take
+ * {@code content:write}.
  */
 @RestController
+@RequestMapping(ApiPaths.DEVIL_FRUIT_TYPES)
 @Tag(name = "Devil Fruit Types")
-@RequiredArgsConstructor(onConstructor_ = { @Autowired })
-class DevilFruitTypeController {
+class DevilFruitTypeController
+		extends ContentController<DevilFruitType, DevilFruitTypeResponse, DevilFruitTypeNamesResponse> {
 
 	private final DevilFruitTypeService service;
 
-	/**
-	 * One page of the list. A sort by {@code name} reads the name in the language of the
-	 * standard {@code Accept-Language} header, the one the caller is reading in.
-	 */
-	@GetMapping(ApiPaths.DEVIL_FRUIT_TYPES)
-	PageResponse<ContentSummaryResponse<DevilFruitTypeNamesResponse>> list(
-			@ParameterObject @Valid ContentListRequest request,
-			@ParameterObject @SortableBy(DevilFruitTypeSortField.class) Pageable pageable,
-			@AuthenticationPrincipal AuthenticatedCaller caller, Locale locale) {
-		Page<ContentSummary<DevilFruitType>> page = this.service.list(caller.permissions(), caller.user(),
-				ContentRequestMapper.toFilter(request), pageable, locale.getLanguage());
-		return PageResponse.from(page.map(DevilFruitTypeResponseMapper::toSummaryResponse));
-	}
-
-	/** Powers the list's author filter, which cannot be derived from one loaded page. */
-	@GetMapping(ApiPaths.DEVIL_FRUIT_TYPE_AUTHORS)
-	List<UserResponse> authors(@AuthenticationPrincipal AuthenticatedCaller caller) {
-		return this.service.authors(caller.permissions()).stream().map(ContentResponseMapper::toUserResponse).toList();
-	}
-
-	/** The totals and the status options the list shows around its rows. */
-	@GetMapping(ApiPaths.DEVIL_FRUIT_TYPE_SUMMARY)
-	ContentListSummaryResponse summary(@AuthenticationPrincipal AuthenticatedCaller caller) {
-		return ContentResponseMapper.toListSummaryResponse(this.service.summary(caller.permissions(), caller.user()));
-	}
-
-	@GetMapping(ApiPaths.DEVIL_FRUIT_TYPE_BY_ID)
-	ContentResponse get(@PathVariable UUID id, @AuthenticationPrincipal AuthenticatedCaller caller) {
-		return ContentResponseMapper.toContentResponse(this.service.get(caller.permissions(), caller.user(), id));
-	}
-
-	@GetMapping(ApiPaths.DEVIL_FRUIT_TYPE_VERSION)
-	VersionResponse<DevilFruitTypeResponse> version(@PathVariable UUID id, @PathVariable int number,
-			@AuthenticationPrincipal AuthenticatedCaller caller) {
-		var version = this.service.getVersion(caller.permissions(), caller.user(), id, number);
-		return DevilFruitTypeResponseMapper.toVersionResponse(version);
-	}
-
-	@GetMapping(ApiPaths.DEVIL_FRUIT_TYPE_VERSION_EVENTS)
-	List<VersionEventResponse> events(@PathVariable UUID id, @PathVariable int number,
-			@AuthenticationPrincipal AuthenticatedCaller caller) {
-		return this.service.events(caller.permissions(), id, number)
-			.stream()
-			.map(ContentResponseMapper::toEventResponse)
-			.toList();
+	@Autowired
+	DevilFruitTypeController(DevilFruitTypeService service) {
+		super(service, DevilFruitTypeResponseMapper::toVersionResponse,
+				DevilFruitTypeResponseMapper::toSummaryResponse);
+		this.service = service;
 	}
 
 	/**
 	 * A new content with its first draft, written by the caller (UF-CNT-01). Answers with
 	 * the content, so its id is known.
 	 */
-	@PostMapping(ApiPaths.DEVIL_FRUIT_TYPES)
+	@PostMapping(ApiPaths.CONTENT_LIST)
 	@ResponseStatus(HttpStatus.CREATED)
 	ContentResponse create(@RequestBody @Valid DevilFruitTypeRequest request,
 			@AuthenticationPrincipal AuthenticatedCaller caller) {
@@ -126,149 +60,12 @@ class DevilFruitTypeController {
 		return ContentResponseMapper.toContentResponse(content);
 	}
 
-	/**
-	 * Opens the next version of a content from one of its closed versions (UF-CNT-08): a
-	 * draft of the caller, saying what that one says. Answers with the new version.
-	 */
-	@PostMapping(ApiPaths.DEVIL_FRUIT_TYPE_VERSIONS)
-	@ResponseStatus(HttpStatus.CREATED)
-	VersionResponse<DevilFruitTypeResponse> openNewVersion(@PathVariable UUID id,
-			@RequestBody @Valid NewVersionRequest request, @AuthenticationPrincipal AuthenticatedCaller caller) {
-		var version = this.service.openNewVersion(caller.permissions(), caller.user(), id, request.basedOn());
-		return DevilFruitTypeResponseMapper.toVersionResponse(version);
-	}
-
-	/** Discards a draft (UF-CNT-11) - and its content with it, when it was the first. */
-	@DeleteMapping(ApiPaths.DEVIL_FRUIT_TYPE_VERSION)
-	@ResponseStatus(HttpStatus.NO_CONTENT)
-	void delete(@PathVariable UUID id, @PathVariable int number, @AuthenticationPrincipal AuthenticatedCaller caller) {
-		this.service.delete(caller.permissions(), caller.user(), id, number);
-	}
-
 	/** Replaces what a draft says (UF-CNT-02); answers with the version as it now is. */
-	@PutMapping(ApiPaths.DEVIL_FRUIT_TYPE_VERSION)
+	@PutMapping(ApiPaths.CONTENT_VERSION)
 	VersionResponse<DevilFruitTypeResponse> edit(@PathVariable UUID id, @PathVariable int number,
 			@RequestBody @Valid DevilFruitTypeRequest request, @AuthenticationPrincipal AuthenticatedCaller caller) {
 		DevilFruitType written = DevilFruitTypeRequestMapper.toDomain(request);
 		var version = this.service.edit(caller.permissions(), caller.user(), id, number, written);
-		return DevilFruitTypeResponseMapper.toVersionResponse(version);
-	}
-
-	/** Sends a draft to review (UF-CNT-03); answers with the version as it now is. */
-	@PostMapping(ApiPaths.DEVIL_FRUIT_TYPE_VERSION_SUBMIT)
-	VersionResponse<DevilFruitTypeResponse> submit(@PathVariable UUID id, @PathVariable int number,
-			@AuthenticationPrincipal AuthenticatedCaller caller) {
-		var version = this.service.submit(caller.permissions(), caller.user(), id, number);
-		return DevilFruitTypeResponseMapper.toVersionResponse(version);
-	}
-
-	/**
-	 * Takes an unclaimed version back from review (UF-CNT-04); answers with it as it now
-	 * is.
-	 */
-	@PostMapping(ApiPaths.DEVIL_FRUIT_TYPE_VERSION_PULL_BACK)
-	VersionResponse<DevilFruitTypeResponse> pullBack(@PathVariable UUID id, @PathVariable int number,
-			@AuthenticationPrincipal AuthenticatedCaller caller) {
-		var version = this.service.pullBack(caller.permissions(), caller.user(), id, number);
-		return DevilFruitTypeResponseMapper.toVersionResponse(version);
-	}
-
-	/**
-	 * Takes a version in review for the caller to decide on (UF-CNT-13); answers with it
-	 * as it now is.
-	 */
-	@PostMapping(ApiPaths.DEVIL_FRUIT_TYPE_VERSION_CLAIM)
-	VersionResponse<DevilFruitTypeResponse> claim(@PathVariable UUID id, @PathVariable int number,
-			@AuthenticationPrincipal AuthenticatedCaller caller) {
-		var version = this.service.claim(caller.permissions(), caller.user(), id, number);
-		return DevilFruitTypeResponseMapper.toVersionResponse(version);
-	}
-
-	/**
-	 * Lets go of a version the caller holds (UF-CNT-14); answers with it as it now is.
-	 */
-	@PostMapping(ApiPaths.DEVIL_FRUIT_TYPE_VERSION_RELEASE)
-	VersionResponse<DevilFruitTypeResponse> release(@PathVariable UUID id, @PathVariable int number,
-			@AuthenticationPrincipal AuthenticatedCaller caller) {
-		var version = this.service.release(caller.permissions(), caller.user(), id, number);
-		return DevilFruitTypeResponseMapper.toVersionResponse(version);
-	}
-
-	/** Passes the review of a version the caller holds (UF-CNT-05). */
-	@PostMapping(ApiPaths.DEVIL_FRUIT_TYPE_VERSION_APPROVE)
-	VersionResponse<DevilFruitTypeResponse> approve(@PathVariable UUID id, @PathVariable int number,
-			@AuthenticationPrincipal AuthenticatedCaller caller) {
-		var version = this.service.approve(caller.permissions(), caller.user(), id, number);
-		return DevilFruitTypeResponseMapper.toVersionResponse(version);
-	}
-
-	/** Fails the review of a version the caller holds, saying why (UF-CNT-06). */
-	@PostMapping(ApiPaths.DEVIL_FRUIT_TYPE_VERSION_REJECT)
-	VersionResponse<DevilFruitTypeResponse> reject(@PathVariable UUID id, @PathVariable int number,
-			@RequestBody @Valid RejectVersionRequest request, @AuthenticationPrincipal AuthenticatedCaller caller) {
-		var version = this.service.reject(caller.permissions(), caller.user(), id, number, request.reason());
-		return DevilFruitTypeResponseMapper.toVersionResponse(version);
-	}
-
-	/** Takes a rejected version of the caller back to draft (UF-CNT-15). */
-	@PostMapping(ApiPaths.DEVIL_FRUIT_TYPE_VERSION_RETURN_TO_DRAFT)
-	VersionResponse<DevilFruitTypeResponse> returnToDraft(@PathVariable UUID id, @PathVariable int number,
-			@AuthenticationPrincipal AuthenticatedCaller caller) {
-		var version = this.service.returnToDraft(caller.permissions(), caller.user(), id, number);
-		return DevilFruitTypeResponseMapper.toVersionResponse(version);
-	}
-
-	/**
-	 * Puts a version ready to publish online (UF-CNT-07), superseding the one online
-	 * until then; answers with it as it now is.
-	 */
-	@PostMapping(ApiPaths.DEVIL_FRUIT_TYPE_VERSION_PUBLISH)
-	VersionResponse<DevilFruitTypeResponse> publish(@PathVariable UUID id, @PathVariable int number,
-			@AuthenticationPrincipal AuthenticatedCaller caller) {
-		var version = this.service.publish(caller.permissions(), caller.user(), id, number);
-		return DevilFruitTypeResponseMapper.toVersionResponse(version);
-	}
-
-	/**
-	 * Sets a version ready to publish aside without putting it online (UF-CNT-16);
-	 * answers with it as it now is.
-	 */
-	@PostMapping(ApiPaths.DEVIL_FRUIT_TYPE_VERSION_ARCHIVE)
-	VersionResponse<DevilFruitTypeResponse> archive(@PathVariable UUID id, @PathVariable int number,
-			@AuthenticationPrincipal AuthenticatedCaller caller) {
-		var version = this.service.archive(caller.permissions(), caller.user(), id, number);
-		return DevilFruitTypeResponseMapper.toVersionResponse(version);
-	}
-
-	/**
-	 * Brings an archived version back among those ready to publish (UF-CNT-17); answers
-	 * with it as it now is.
-	 */
-	@PostMapping(ApiPaths.DEVIL_FRUIT_TYPE_VERSION_RECOVER)
-	VersionResponse<DevilFruitTypeResponse> recover(@PathVariable UUID id, @PathVariable int number,
-			@AuthenticationPrincipal AuthenticatedCaller caller) {
-		var version = this.service.recover(caller.permissions(), caller.user(), id, number);
-		return DevilFruitTypeResponseMapper.toVersionResponse(version);
-	}
-
-	/**
-	 * Takes the online version offline (UF-CNT-10); answers with it as it now is.
-	 */
-	@PostMapping(ApiPaths.DEVIL_FRUIT_TYPE_VERSION_RETIRE)
-	VersionResponse<DevilFruitTypeResponse> retire(@PathVariable UUID id, @PathVariable int number,
-			@AuthenticationPrincipal AuthenticatedCaller caller) {
-		var version = this.service.retire(caller.permissions(), caller.user(), id, number);
-		return DevilFruitTypeResponseMapper.toVersionResponse(version);
-	}
-
-	/**
-	 * Puts a version that was online back online as it was (UF-CNT-09), superseding the
-	 * one online until then; answers with it as it now is.
-	 */
-	@PostMapping(ApiPaths.DEVIL_FRUIT_TYPE_VERSION_RESTORE)
-	VersionResponse<DevilFruitTypeResponse> restore(@PathVariable UUID id, @PathVariable int number,
-			@AuthenticationPrincipal AuthenticatedCaller caller) {
-		var version = this.service.restore(caller.permissions(), caller.user(), id, number);
 		return DevilFruitTypeResponseMapper.toVersionResponse(version);
 	}
 

@@ -12,8 +12,8 @@ import java.lang.annotation.Target;
 
 /**
  * On a {@code Pageable} parameter: the request may sort only by the fields of the given
- * enum, e.g. {@code @SortableBy(DevilFruitTypeSortField.class)}. Anything else is refused
- * as a validation failure before the controller method runs. Checked by
+ * enum, e.g. {@code @SortableBy(ContentSortField.class)}. Anything else is refused as a
+ * validation failure before the controller method runs. Checked by
  * {@link SortableByValidator}.
  */
 @Documented

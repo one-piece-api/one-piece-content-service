@@ -3,9 +3,9 @@ package dev.onepieceapi.contentservice.persistence.specification;
 import dev.onepieceapi.contentservice.domain.workflow.ContentFilter;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.entity.ContentVersionEntity;
-import dev.onepieceapi.contentservice.persistence.entity.DevilFruitTypeVersionEntity;
 import dev.onepieceapi.contentservice.persistence.entity.TranslationEmbeddable;
 import dev.onepieceapi.contentservice.persistence.entity.UserEmbeddable;
+import dev.onepieceapi.contentservice.persistence.entity.VersionBodyEntity;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.MapJoin;
@@ -22,18 +22,18 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
-import java.util.Optional;
 import java.util.UUID;
 
 /**
- * The building blocks of the Devil Fruit Type list query (UF-CNT-18), following the
+ * The building blocks of the list query of any entity section (UF-CNT-18), following the
  * Specification pattern: each method is one condition, and the caller ANDs together the
  * ones it needs - so a page and its total always come from the same predicate. The
  * conditions are about one row per content, then about that row: its workflow (the shared
- * version) or what it says.
+ * version) or what it says. They read only what every entity has (see
+ * {@link VersionBodyEntity}), so one set serves every section.
  */
 @UtilityClass
-public class DevilFruitTypeVersionSpecifications {
+public class VersionBodySpecifications {
 
 	private static final char LIKE_ESCAPE = '\\';
 
@@ -41,15 +41,15 @@ public class DevilFruitTypeVersionSpecifications {
 	 * The whole list query: one row per content among {@code statuses}, then each filter
 	 * that was actually given.
 	 */
-	public Specification<DevilFruitTypeVersionEntity> listOf(Collection<VersionStatus> statuses, ContentFilter filter,
-			Clock clock) {
-		List<Specification<DevilFruitTypeVersionEntity>> conditions = new ArrayList<>();
+	public <E extends VersionBodyEntity> Specification<E> listOf(Collection<VersionStatus> statuses,
+			ContentFilter filter, Clock clock) {
+		List<Specification<E>> conditions = new ArrayList<>();
 		conditions.add(mostRecentIn(statuses));
-		filter.text().map(DevilFruitTypeVersionSpecifications::matching).ifPresent(conditions::add);
-		Optional.ofNullable(filter.author())
-			.map(DevilFruitTypeVersionSpecifications::authoredBy)
-			.ifPresent(conditions::add);
-		filter.updatedSince(clock).map(DevilFruitTypeVersionSpecifications::updatedSince).ifPresent(conditions::add);
+		filter.text().ifPresent(text -> conditions.add(matching(text)));
+		if (filter.author() != null) {
+			conditions.add(authoredBy(filter.author()));
+		}
+		filter.updatedSince(clock).ifPresent(instant -> conditions.add(updatedSince(instant)));
 		return Specification.allOf(conditions);
 	}
 
@@ -58,22 +58,22 @@ public class DevilFruitTypeVersionSpecifications {
 	 * the one representing the content in the list. One row per content, so counting the
 	 * rows counts the contents.
 	 */
-	public Specification<DevilFruitTypeVersionEntity> mostRecentIn(Collection<VersionStatus> statuses) {
+	public <E extends VersionBodyEntity> Specification<E> mostRecentIn(Collection<VersionStatus> statuses) {
 		return (root, query, cb) -> ContentVersionSpecifications.mostRecentIn(workflowOf(root), statuses, query, cb);
 	}
 
-	public Specification<DevilFruitTypeVersionEntity> ofContents(Collection<UUID> contentIds) {
+	public <E extends VersionBodyEntity> Specification<E> ofContents(Collection<UUID> contentIds) {
 		return (root, query, cb) -> workflowOf(root).get(ContentVersionEntity.Fields.contentId).in(contentIds);
 	}
 
-	public Specification<DevilFruitTypeVersionEntity> authoredBy(String username) {
+	public <E extends VersionBodyEntity> Specification<E> authoredBy(String username) {
 		return (root, query, cb) -> {
 			Path<UserEmbeddable> author = workflowOf(root).get(ContentVersionEntity.Fields.author);
 			return cb.equal(author.get(UserEmbeddable.Fields.username), username);
 		};
 	}
 
-	public Specification<DevilFruitTypeVersionEntity> updatedSince(Instant instant) {
+	public <E extends VersionBodyEntity> Specification<E> updatedSince(Instant instant) {
 		return (root, query, cb) -> {
 			Path<Instant> updatedAt = workflowOf(root).get(ContentVersionEntity.Fields.updatedAt);
 			return cb.greaterThanOrEqualTo(updatedAt, instant);
@@ -81,26 +81,25 @@ public class DevilFruitTypeVersionSpecifications {
 	}
 
 	/** Case-insensitive "contains", on the romaji or on the name in any language. */
-	public Specification<DevilFruitTypeVersionEntity> matching(String text) {
+	public <E extends VersionBodyEntity> Specification<E> matching(String text) {
 		return (root, query, cb) -> {
 			String pattern = "%" + escapeLike(text.toLowerCase(Locale.ROOT)) + "%";
-			Predicate inRomaji = contains(cb, root.get(DevilFruitTypeVersionEntity.Fields.romaji), pattern);
+			Predicate inRomaji = contains(cb, root.get(VersionBodyEntity.Fields.romaji), pattern);
 			return cb.or(inRomaji, cb.exists(anyNameContaining(pattern, root, query.subquery(Integer.class), cb)));
 		};
 	}
 
 	/** "This version has a translation whose name contains the text", as a subquery. */
-	private static Subquery<Integer> anyNameContaining(String pattern, Root<DevilFruitTypeVersionEntity> root,
+	private static <E extends VersionBodyEntity> Subquery<Integer> anyNameContaining(String pattern, Root<E> root,
 			Subquery<Integer> subquery, CriteriaBuilder cb) {
-		Root<DevilFruitTypeVersionEntity> sameVersion = subquery.correlate(root);
-		MapJoin<DevilFruitTypeVersionEntity, String, TranslationEmbeddable> translation = sameVersion
-			.joinMap(DevilFruitTypeVersionEntity.Fields.translations);
+		Root<E> sameVersion = subquery.correlate(root);
+		MapJoin<E, String, TranslationEmbeddable> translation = sameVersion.joinMap(VersionBodyEntity.TRANSLATIONS);
 		Predicate inName = contains(cb, translation.value().get(TranslationEmbeddable.Fields.name), pattern);
 		return subquery.select(cb.literal(1)).where(inName);
 	}
 
-	private static Path<ContentVersionEntity> workflowOf(Root<DevilFruitTypeVersionEntity> root) {
-		return root.get(DevilFruitTypeVersionEntity.Fields.version);
+	private static <E extends VersionBodyEntity> Path<ContentVersionEntity> workflowOf(Root<E> root) {
+		return root.get(VersionBodyEntity.Fields.version);
 	}
 
 	private static Predicate contains(CriteriaBuilder cb, Expression<String> field, String pattern) {

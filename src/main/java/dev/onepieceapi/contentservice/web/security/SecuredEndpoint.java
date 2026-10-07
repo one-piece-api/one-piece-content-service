@@ -14,7 +14,8 @@ import java.util.function.Consumer;
  * Every secured endpoint, in one place: its HTTP method, its path (from {@link ApiPaths},
  * so it can never drift from what the controller actually maps) and the rule that
  * authorizes it. {@link SecurityConfig} only ever calls {@link #configureAll}, staying
- * unaware of how the registry itself is built. Same pattern as
+ * unaware of how the registry itself is built. The endpoints of the entity sections, the
+ * same in each, are in {@link ContentEndpoint}. Same pattern as
  * {@code one-piece-user-service}'s {@code SecuredEndpoint}
  * ({@code docs/adr/0009-permission-based-endpoint-registry.md} there).
  */
@@ -43,51 +44,7 @@ enum SecuredEndpoint {
 	DASHBOARD(HttpMethod.GET, ApiPaths.DASHBOARD, Permission.CONTENT_READ),
 	DASHBOARD_ACTIVITY(HttpMethod.GET, ApiPaths.DASHBOARD_ACTIVITY, Permission.CONTENT_READ),
 	DASHBOARD_STATUS(HttpMethod.GET, ApiPaths.DASHBOARD_STATUS, Permission.CONTENT_READ),
-	DASHBOARD_STATUS_AUTHORS(HttpMethod.GET, ApiPaths.DASHBOARD_STATUS_AUTHORS, Permission.CONTENT_READ),
-	DEVIL_FRUIT_TYPE_LIST(HttpMethod.GET, ApiPaths.DEVIL_FRUIT_TYPES, Permission.CONTENT_READ),
-	DEVIL_FRUIT_TYPE_AUTHORS(HttpMethod.GET, ApiPaths.DEVIL_FRUIT_TYPE_AUTHORS, Permission.CONTENT_READ),
-	DEVIL_FRUIT_TYPE_SUMMARY(HttpMethod.GET, ApiPaths.DEVIL_FRUIT_TYPE_SUMMARY, Permission.CONTENT_READ),
-	DEVIL_FRUIT_TYPE_GET(HttpMethod.GET, ApiPaths.DEVIL_FRUIT_TYPE_BY_ID, Permission.CONTENT_READ),
-	DEVIL_FRUIT_TYPE_VERSION(HttpMethod.GET, ApiPaths.DEVIL_FRUIT_TYPE_VERSION, Permission.CONTENT_READ),
-	DEVIL_FRUIT_TYPE_VERSION_EVENTS(HttpMethod.GET, ApiPaths.DEVIL_FRUIT_TYPE_VERSION_EVENTS, Permission.CONTENT_READ),
-
-	// Writing takes content:write; whether this caller may change this version - its
-	// author, while it is a draft - is decided by TransitionPolicy, inside the service.
-	DEVIL_FRUIT_TYPE_CREATE(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPES, Permission.CONTENT_WRITE),
-	DEVIL_FRUIT_TYPE_VERSION_OPEN(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_VERSIONS, Permission.CONTENT_WRITE),
-	DEVIL_FRUIT_TYPE_VERSION_EDIT(HttpMethod.PUT, ApiPaths.DEVIL_FRUIT_TYPE_VERSION, Permission.CONTENT_WRITE),
-	DEVIL_FRUIT_TYPE_VERSION_DELETE(HttpMethod.DELETE, ApiPaths.DEVIL_FRUIT_TYPE_VERSION, Permission.CONTENT_WRITE),
-	DEVIL_FRUIT_TYPE_VERSION_SUBMIT(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_VERSION_SUBMIT,
-			Permission.CONTENT_WRITE),
-	DEVIL_FRUIT_TYPE_VERSION_PULL_BACK(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_VERSION_PULL_BACK,
-			Permission.CONTENT_WRITE),
-	DEVIL_FRUIT_TYPE_VERSION_RETURN_TO_DRAFT(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_VERSION_RETURN_TO_DRAFT,
-			Permission.CONTENT_WRITE),
-
-	// Reviewing takes content:review; whether this caller may take or let go this version
-	// -
-	// not its author, not held by someone else - is decided by TransitionPolicy.
-	DEVIL_FRUIT_TYPE_VERSION_CLAIM(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_VERSION_CLAIM, Permission.CONTENT_REVIEW),
-	DEVIL_FRUIT_TYPE_VERSION_RELEASE(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_VERSION_RELEASE,
-			Permission.CONTENT_REVIEW),
-	DEVIL_FRUIT_TYPE_VERSION_APPROVE(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_VERSION_APPROVE,
-			Permission.CONTENT_REVIEW),
-	DEVIL_FRUIT_TYPE_VERSION_REJECT(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_VERSION_REJECT,
-			Permission.CONTENT_REVIEW),
-
-	// Publishing, archiving, recovering and restoring take content:publish, retiring
-	// content:retire; whether this version is in the right status for it - and, to
-	// recover, its content has no open version - is decided by TransitionPolicy.
-	DEVIL_FRUIT_TYPE_VERSION_PUBLISH(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_VERSION_PUBLISH,
-			Permission.CONTENT_PUBLISH),
-	DEVIL_FRUIT_TYPE_VERSION_ARCHIVE(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_VERSION_ARCHIVE,
-			Permission.CONTENT_PUBLISH),
-	DEVIL_FRUIT_TYPE_VERSION_RECOVER(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_VERSION_RECOVER,
-			Permission.CONTENT_PUBLISH),
-	DEVIL_FRUIT_TYPE_VERSION_RETIRE(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_VERSION_RETIRE,
-			Permission.CONTENT_RETIRE),
-	DEVIL_FRUIT_TYPE_VERSION_RESTORE(HttpMethod.POST, ApiPaths.DEVIL_FRUIT_TYPE_VERSION_RESTORE,
-			Permission.CONTENT_PUBLISH);
+	DASHBOARD_STATUS_AUTHORS(HttpMethod.GET, ApiPaths.DASHBOARD_STATUS_AUTHORS, Permission.CONTENT_READ);
 
 	private final HttpMethod method;
 
@@ -126,6 +83,7 @@ enum SecuredEndpoint {
 			var authorizedUrl = reg.requestMatchers(endpoint.method, endpoint.path);
 			endpoint.rule.accept(authorizedUrl);
 		}
+		ContentEndpoint.configureAll(reg);
 	}
 
 	/**
@@ -138,7 +96,8 @@ enum SecuredEndpoint {
 		return Arrays.stream(values())
 			.filter(endpoint -> endpoint.method.equals(method) && endpoint.path.equals(path))
 			.findFirst()
-			.map(endpoint -> endpoint.permission);
+			.map(endpoint -> endpoint.permission)
+			.or(() -> ContentEndpoint.requiredPermission(method, path));
 	}
 
 }

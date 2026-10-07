@@ -4,8 +4,6 @@ import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitType;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitTypeTranslation;
 import dev.onepieceapi.contentservice.domain.security.User;
 import dev.onepieceapi.contentservice.domain.workflow.Version;
-import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
-import dev.onepieceapi.contentservice.persistence.entity.ContentVersionEntity;
 import dev.onepieceapi.contentservice.persistence.entity.DevilFruitTypeVersionEntity;
 import dev.onepieceapi.contentservice.persistence.entity.TranslationEmbeddable;
 import lombok.experimental.UtilityClass;
@@ -47,15 +45,7 @@ public class DevilFruitTypeVersionMapper {
 
 	private static DevilFruitTypeVersionEntity toDraft(UUID contentId, int number, Integer basedOn, User author,
 			DevilFruitType body, Instant now) {
-		ContentVersionEntity workflow = ContentVersionEntity.builder()
-			.contentId(contentId)
-			.versionNumber(number)
-			.basedOnNumber(basedOn)
-			.author(UserMapper.toEmbeddable(author))
-			.status(VersionStatus.DRAFT)
-			.createdAt(now)
-			.updatedAt(now)
-			.build();
+		var workflow = ContentVersionMapper.toDraft(contentId, number, basedOn, author, now);
 		var entity = new DevilFruitTypeVersionEntity(workflow);
 		rewrite(entity, body, now);
 		return entity;

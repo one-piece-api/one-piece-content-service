@@ -42,7 +42,9 @@ Fruits, Characters, …). What a version says is not: each entity has its own fi
   version taking its number.
 - Only the workflow schema is shared. Each entity keeps its own API path, service and
   repository, reading its own tables joined to the shared ones: no generic content
-  framework.
+  framework. *Revised by ADR-0004 (2026-10-07): with the second entity, services,
+  repositories and controllers became a generic framework driven by a descriptor per
+  entity; the tables per entity stay as decided here.*
 
 ## Alternatives considered
 

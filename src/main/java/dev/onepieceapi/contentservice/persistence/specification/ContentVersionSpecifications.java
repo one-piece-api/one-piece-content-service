@@ -20,7 +20,7 @@ import java.util.UUID;
 /**
  * The building blocks of the queries over the workflow of any kind of content - the
  * dashboard's status pages (UF-CNT-19) - following the Specification pattern, like
- * {@link DevilFruitTypeVersionSpecifications} for one kind.
+ * {@link VersionBodySpecifications} for an entity section.
  */
 @UtilityClass
 public class ContentVersionSpecifications {
