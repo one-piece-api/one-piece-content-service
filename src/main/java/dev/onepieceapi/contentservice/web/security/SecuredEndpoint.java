@@ -41,6 +41,12 @@ enum SecuredEndpoint {
 
 	// Reading content only takes content:read: which versions the caller then sees is
 	// decided per status by VisibilityPolicy, inside the service.
+	// The types a fruit may be linked to are chosen by whoever writes a fruit; listed
+	// before
+	// the endpoints of the sections, whose "a content by id" path would otherwise take
+	// it.
+	LINKABLE_TYPES(HttpMethod.GET, ApiPaths.DEVIL_FRUIT_TYPES_LINKABLE, Permission.CONTENT_WRITE),
+
 	DASHBOARD(HttpMethod.GET, ApiPaths.DASHBOARD, Permission.CONTENT_READ),
 	DASHBOARD_ACTIVITY(HttpMethod.GET, ApiPaths.DASHBOARD_ACTIVITY, Permission.CONTENT_READ),
 	DASHBOARD_STATUS(HttpMethod.GET, ApiPaths.DASHBOARD_STATUS, Permission.CONTENT_READ),

@@ -30,4 +30,20 @@ class ContentEndpointTest {
 		assertThat(ContentEndpoint.requiredPermission(HttpMethod.PATCH, ApiPaths.DEVIL_FRUIT_TYPES)).isEmpty();
 	}
 
+	@Test
+	void theDevilFruitSectionHasTheEndpointsEverySectionHas() {
+		assertThat(ApiPaths.CONTENT_SECTIONS).contains(ApiPaths.DEVIL_FRUITS);
+		assertThat(SecuredEndpoint.requiredPermission(HttpMethod.GET, ApiPaths.DEVIL_FRUITS))
+			.contains(Permission.CONTENT_READ);
+		assertThat(SecuredEndpoint.requiredPermission(HttpMethod.PUT, ApiPaths.DEVIL_FRUITS + ApiPaths.CONTENT_VERSION))
+			.contains(Permission.CONTENT_WRITE);
+	}
+
+	@Test
+	void theTypesAFruitMayBeLinkedToTakeContentWriteAndAreNotInTheSections() {
+		assertThat(SecuredEndpoint.requiredPermission(HttpMethod.GET, ApiPaths.DEVIL_FRUIT_TYPES_LINKABLE))
+			.contains(Permission.CONTENT_WRITE);
+		assertThat(ContentEndpoint.requiredPermission(HttpMethod.GET, ApiPaths.DEVIL_FRUIT_TYPES_LINKABLE)).isEmpty();
+	}
+
 }

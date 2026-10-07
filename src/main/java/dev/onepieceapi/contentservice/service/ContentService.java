@@ -2,6 +2,7 @@ package dev.onepieceapi.contentservice.service;
 
 import dev.onepieceapi.contentservice.domain.security.Permission;
 import dev.onepieceapi.contentservice.domain.security.User;
+import dev.onepieceapi.contentservice.domain.workflow.BlockedAction;
 import dev.onepieceapi.contentservice.domain.workflow.Content;
 import dev.onepieceapi.contentservice.domain.workflow.ContentBody;
 import dev.onepieceapi.contentservice.domain.workflow.ContentFilter;
@@ -23,6 +24,7 @@ import dev.onepieceapi.contentservice.persistence.mapper.UserMapper;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.VersionBodyRepository;
+import dev.onepieceapi.contentservice.service.exception.VersionActionBlockedException;
 import dev.onepieceapi.contentservice.service.exception.VersionActionConflictException;
 import dev.onepieceapi.contentservice.service.exception.VersionActionForbiddenException;
 import dev.onepieceapi.contentservice.service.exception.VersionNotFoundException;
@@ -103,6 +105,8 @@ public class ContentService<T extends ContentBody<T>, E extends VersionBodyEntit
 
 	private final ContentValidator<T, E> validator;
 
+	private final ContentRules<T> rules;
+
 	private final ContentVersionRepository contentVersionRepository;
 
 	private final ContentRepository contentRepository;
@@ -116,6 +120,7 @@ public class ContentService<T extends ContentBody<T>, E extends VersionBodyEntit
 		this.definition = definition;
 		this.versionRepository = definition.repository();
 		this.validator = definition.validator();
+		this.rules = definition.rules();
 		this.contentVersionRepository = contentVersionRepository;
 		this.contentRepository = contentRepository;
 		this.auditLogService = auditLogService;
@@ -180,7 +185,8 @@ public class ContentService<T extends ContentBody<T>, E extends VersionBodyEntit
 		boolean hasOpenVersion = this.contentVersionRepository.hasOpenVersion(contentId);
 		List<VersionAccess<T>> chain = versions.stream()
 			.map(this.definition::toDomain)
-			.map(version -> accessTo(version, new TransitionContext(version, hasOpenVersion, caller, permissions)))
+			.map(version -> accessTo(contentId, version,
+					new TransitionContext(version, hasOpenVersion, caller, permissions)))
 			.toList();
 		return new Content<>(contentId, chain);
 	}
@@ -189,7 +195,7 @@ public class ContentService<T extends ContentBody<T>, E extends VersionBodyEntit
 	public VersionAccess<T> getVersion(Set<Permission> permissions, User caller, UUID contentId, int versionNumber) {
 		E entity = visibleVersion(permissions, contentId, versionNumber);
 		Version<T> version = this.definition.toDomain(entity);
-		return accessTo(version, contextOf(version, contentId, caller, permissions));
+		return accessTo(contentId, version, contextOf(version, contentId, caller, permissions));
 	}
 
 	/** The history of a version the caller sees, oldest first. */
@@ -214,7 +220,7 @@ public class ContentService<T extends ContentBody<T>, E extends VersionBodyEntit
 		this.auditLogService.recordOnVersion(auditRecord(AUDIT_ACTION_CREATED, caller, saved).build());
 		Version<T> version = this.definition.toDomain(saved);
 		var context = new TransitionContext(version, true, caller, permissions);
-		return new Content<>(contentId, List.of(accessTo(version, context)));
+		return new Content<>(contentId, List.of(accessTo(contentId, version, context)));
 	}
 
 	/**
@@ -234,7 +240,7 @@ public class ContentService<T extends ContentBody<T>, E extends VersionBodyEntit
 		this.auditLogService.recordOnVersion(auditRecord(AUDIT_ACTION_EDITED, caller, entity)
 			.override(TransitionPolicy.overrides(VersionAction.EDIT, context))
 			.build());
-		return accessTo(this.definition.toDomain(entity), context);
+		return accessTo(contentId, this.definition.toDomain(entity), context);
 	}
 
 	/**
@@ -266,7 +272,7 @@ public class ContentService<T extends ContentBody<T>, E extends VersionBodyEntit
 		E entity = visibleVersion(permissions, contentId, versionNumber);
 		Version<T> current = this.definition.toDomain(entity);
 		TransitionContext context = contextOf(current, contentId, caller, permissions);
-		require(VersionAction.SUBMIT, context);
+		require(VersionAction.SUBMIT, contentId, current, context);
 		this.validator.validateSubmission(contentId, versionNumber, current.body());
 		entity.submit(this.clock.instant());
 		return recorded(entity, context, VersionAction.SUBMIT, AUDIT_ACTION_SUBMITTED);
@@ -281,7 +287,7 @@ public class ContentService<T extends ContentBody<T>, E extends VersionBodyEntit
 		E entity = visibleVersion(permissions, contentId, versionNumber);
 		Version<T> current = this.definition.toDomain(entity);
 		TransitionContext context = contextOf(current, contentId, caller, permissions);
-		require(VersionAction.PULL_BACK, context);
+		require(VersionAction.PULL_BACK, contentId, current, context);
 		entity.moveTo(VersionStatus.DRAFT, this.clock.instant());
 		return recorded(entity, context, VersionAction.PULL_BACK, AUDIT_ACTION_PULLED_BACK);
 	}
@@ -295,7 +301,7 @@ public class ContentService<T extends ContentBody<T>, E extends VersionBodyEntit
 		E entity = visibleVersion(permissions, contentId, versionNumber);
 		Version<T> current = this.definition.toDomain(entity);
 		TransitionContext context = contextOf(current, contentId, caller, permissions);
-		require(VersionAction.CLAIM, context);
+		require(VersionAction.CLAIM, contentId, current, context);
 		entity.claimBy(UserMapper.toEmbeddable(caller));
 		return recorded(entity, context, VersionAction.CLAIM, AUDIT_ACTION_CLAIMED);
 	}
@@ -310,7 +316,7 @@ public class ContentService<T extends ContentBody<T>, E extends VersionBodyEntit
 		E entity = visibleVersion(permissions, contentId, versionNumber);
 		Version<T> current = this.definition.toDomain(entity);
 		TransitionContext context = contextOf(current, contentId, caller, permissions);
-		require(VersionAction.RELEASE, context);
+		require(VersionAction.RELEASE, contentId, current, context);
 		boolean forced = TransitionPolicy.overrides(VersionAction.RELEASE, context);
 		String heldBy = forced ? current.claimantUsername() : null;
 		entity.release();
@@ -326,7 +332,7 @@ public class ContentService<T extends ContentBody<T>, E extends VersionBodyEntit
 		E entity = visibleVersion(permissions, contentId, versionNumber);
 		Version<T> current = this.definition.toDomain(entity);
 		TransitionContext context = contextOf(current, contentId, caller, permissions);
-		require(VersionAction.APPROVE, context);
+		require(VersionAction.APPROVE, contentId, current, context);
 		entity.approve(this.clock.instant());
 		return recorded(entity, context, VersionAction.APPROVE, AUDIT_ACTION_APPROVED);
 	}
@@ -341,7 +347,7 @@ public class ContentService<T extends ContentBody<T>, E extends VersionBodyEntit
 		E entity = visibleVersion(permissions, contentId, versionNumber);
 		Version<T> current = this.definition.toDomain(entity);
 		TransitionContext context = contextOf(current, contentId, caller, permissions);
-		require(VersionAction.REJECT, context);
+		require(VersionAction.REJECT, contentId, current, context);
 		entity.reject(reason, this.clock.instant());
 		return recorded(entity, context, VersionAction.REJECT, AUDIT_ACTION_REJECTED, reason);
 	}
@@ -355,7 +361,7 @@ public class ContentService<T extends ContentBody<T>, E extends VersionBodyEntit
 		E entity = visibleVersion(permissions, contentId, versionNumber);
 		Version<T> current = this.definition.toDomain(entity);
 		TransitionContext context = contextOf(current, contentId, caller, permissions);
-		require(VersionAction.RETURN_TO_DRAFT, context);
+		require(VersionAction.RETURN_TO_DRAFT, contentId, current, context);
 		entity.moveTo(VersionStatus.DRAFT, this.clock.instant());
 		return recorded(entity, context, VersionAction.RETURN_TO_DRAFT, AUDIT_ACTION_RETURNED_TO_DRAFT);
 	}
@@ -369,7 +375,7 @@ public class ContentService<T extends ContentBody<T>, E extends VersionBodyEntit
 		E entity = visibleVersion(permissions, contentId, versionNumber);
 		Version<T> current = this.definition.toDomain(entity);
 		TransitionContext context = contextOf(current, contentId, caller, permissions);
-		require(VersionAction.PUBLISH, context);
+		require(VersionAction.PUBLISH, contentId, current, context);
 		putOnline(entity, versionNumber, VersionAction.PUBLISH, caller);
 		return recorded(entity, context, VersionAction.PUBLISH, AUDIT_ACTION_PUBLISHED);
 	}
@@ -383,7 +389,7 @@ public class ContentService<T extends ContentBody<T>, E extends VersionBodyEntit
 		E entity = visibleVersion(permissions, contentId, versionNumber);
 		Version<T> current = this.definition.toDomain(entity);
 		TransitionContext context = contextOf(current, contentId, caller, permissions);
-		require(VersionAction.ARCHIVE, context);
+		require(VersionAction.ARCHIVE, contentId, current, context);
 		entity.moveTo(VersionStatus.ARCHIVED, this.clock.instant());
 		return recorded(entity, context, VersionAction.ARCHIVE, AUDIT_ACTION_ARCHIVED);
 	}
@@ -400,7 +406,7 @@ public class ContentService<T extends ContentBody<T>, E extends VersionBodyEntit
 		E entity = visibleVersion(permissions, contentId, versionNumber);
 		Version<T> current = this.definition.toDomain(entity);
 		TransitionContext context = contextOf(current, contentId, caller, permissions);
-		require(VersionAction.RECOVER, context);
+		require(VersionAction.RECOVER, contentId, current, context);
 		entity.moveTo(VersionStatus.READY_TO_PUBLISH, this.clock.instant());
 		try {
 			this.versionRepository.flush();
@@ -420,7 +426,7 @@ public class ContentService<T extends ContentBody<T>, E extends VersionBodyEntit
 		E entity = visibleVersion(permissions, contentId, versionNumber);
 		Version<T> current = this.definition.toDomain(entity);
 		TransitionContext context = contextOf(current, contentId, caller, permissions);
-		require(VersionAction.RETIRE, context);
+		require(VersionAction.RETIRE, contentId, current, context);
 		entity.moveTo(VersionStatus.RETIRED, this.clock.instant());
 		return recorded(entity, context, VersionAction.RETIRE, AUDIT_ACTION_RETIRED);
 	}
@@ -435,7 +441,7 @@ public class ContentService<T extends ContentBody<T>, E extends VersionBodyEntit
 		E entity = visibleVersion(permissions, contentId, versionNumber);
 		Version<T> current = this.definition.toDomain(entity);
 		TransitionContext context = contextOf(current, contentId, caller, permissions);
-		require(VersionAction.RESTORE, context);
+		require(VersionAction.RESTORE, contentId, current, context);
 		putOnline(entity, versionNumber, VersionAction.RESTORE, caller);
 		return recorded(entity, context, VersionAction.RESTORE, AUDIT_ACTION_RESTORED);
 	}
@@ -465,7 +471,7 @@ public class ContentService<T extends ContentBody<T>, E extends VersionBodyEntit
 		this.auditLogService
 			.recordOnVersion(auditRecord(AUDIT_ACTION_CREATED, caller, saved).detail(String.valueOf(basedOn)).build());
 		Version<T> opened = this.definition.toDomain(saved);
-		return accessTo(opened, new TransitionContext(opened, true, caller, permissions));
+		return accessTo(contentId, opened, new TransitionContext(opened, true, caller, permissions));
 	}
 
 	/**
@@ -534,7 +540,7 @@ public class ContentService<T extends ContentBody<T>, E extends VersionBodyEntit
 			.override(TransitionPolicy.overrides(action, before))
 			.build());
 		Version<T> moved = this.definition.toDomain(entity);
-		return accessTo(moved, before.after(moved));
+		return accessTo(entity.getContentId(), moved, before.after(moved));
 	}
 
 	/** A record of an action on the version, named as the version is now named. */
@@ -559,10 +565,32 @@ public class ContentService<T extends ContentBody<T>, E extends VersionBodyEntit
 		return new TransitionContext(version, hasOpenVersion, caller, permissions);
 	}
 
-	/** The version with what the transition rules let the caller do with it. */
-	private static <B> VersionAccess<B> accessTo(Version<B> version, TransitionContext context) {
-		return new VersionAccess<>(version, TransitionPolicy.allowedActions(context),
-				TransitionPolicy.overrideActions(context));
+	/**
+	 * The version with what the transition rules let the caller do with it, and which of
+	 * those the entity's own rules refuse.
+	 */
+	private VersionAccess<T> accessTo(UUID contentId, Version<T> version, TransitionContext context) {
+		Set<VersionAction> allowed = TransitionPolicy.allowedActions(context);
+		List<BlockedAction> blocked = allowed.stream()
+			.sorted()
+			.flatMap(action -> this.rules.blockOf(action, contentId, version)
+				.map(block -> BlockedAction.of(action, block))
+				.stream())
+			.toList();
+		return new VersionAccess<>(version, allowed, TransitionPolicy.overrideActions(context), blocked);
+	}
+
+	/**
+	 * Stops an action the transition rules or the entity's own rules refuse. The lock the
+	 * entity wants is taken first, so what its rule reads cannot change before the action
+	 * is written.
+	 */
+	private void require(VersionAction action, UUID contentId, Version<T> version, TransitionContext context) {
+		require(action, context);
+		this.rules.lockBefore(action, contentId, version);
+		this.rules.blockOf(action, contentId, version).ifPresent(block -> {
+			throw new VersionActionBlockedException(action, block);
+		});
 	}
 
 	/** Stops an action the transition rules refuse, telling the two refusals apart. */

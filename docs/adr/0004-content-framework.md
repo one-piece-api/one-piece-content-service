@@ -62,3 +62,8 @@ types: `T`, what a version says (a `ContentBody`), and `E`, the entity's version
   with an entity that exists only in the tests.
 - "Is this language still in use" still asks the Devil Fruit Type repository only; it must
   ask every entity once there are two.
+
+## Updated by ADR-0005
+
+Entity-specific rules are now a hook of the descriptor (`ContentRules`), and "language in use"
+asks every entity - see ADR-0005.

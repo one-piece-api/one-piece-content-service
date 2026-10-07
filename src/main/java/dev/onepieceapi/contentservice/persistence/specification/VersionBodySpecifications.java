@@ -37,6 +37,8 @@ public class VersionBodySpecifications {
 
 	private static final char LIKE_ESCAPE = '\\';
 
+	private static final String RELATION_SUFFIX = "ContentId";
+
 	/**
 	 * The whole list query: one row per content among {@code statuses}, then each filter
 	 * that was actually given.
@@ -50,6 +52,7 @@ public class VersionBodySpecifications {
 			conditions.add(authoredBy(filter.author()));
 		}
 		filter.updatedSince(clock).ifPresent(instant -> conditions.add(updatedSince(instant)));
+		filter.related().forEach((relation, contentId) -> conditions.add(relatedTo(relation, contentId)));
 		return Specification.allOf(conditions);
 	}
 
@@ -71,6 +74,15 @@ public class VersionBodySpecifications {
 			Path<UserEmbeddable> author = workflowOf(root).get(ContentVersionEntity.Fields.author);
 			return cb.equal(author.get(UserEmbeddable.Fields.username), username);
 		};
+	}
+
+	/**
+	 * "This version points, through this relation, to this content": the relation is the
+	 * attribute of the entity named as it, with {@code ContentId} after (a fruit's
+	 * {@code type} is its {@code typeContentId}).
+	 */
+	public <E extends VersionBodyEntity> Specification<E> relatedTo(String relation, UUID contentId) {
+		return (root, query, cb) -> cb.equal(root.get(relation + RELATION_SUFFIX), contentId);
 	}
 
 	public <E extends VersionBodyEntity> Specification<E> updatedSince(Instant instant) {

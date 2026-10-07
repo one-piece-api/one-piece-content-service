@@ -1,7 +1,7 @@
 info:
   name: devilFruitTypeEdit
   type: http
-  seq: 9
+  seq: 10
   tags:
     - Devil_Fruit_Types
 
@@ -70,6 +70,13 @@ examples:
               "username": ""
             },
             "basedOn": 0,
+            "blockedActions": [
+              {
+                "action": "EDIT",
+                "detail": {},
+                "reason": "TYPE_NOT_ONLINE"
+              }
+            ],
             "body": {
               "romaji": "",
               "translations": {}

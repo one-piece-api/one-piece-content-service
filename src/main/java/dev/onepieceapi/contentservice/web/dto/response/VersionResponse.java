@@ -19,10 +19,14 @@ import java.util.List;
  * rules that guard the endpoints - the client offers these and nothing else
  * @param overrideActions those of the allowed actions the caller may perform only through
  * {@code content:admin}, on someone else's version or claim
+ * @param blockedActions those of the allowed actions the entity's own rules refuse, each
+ * with why: the client shows them disabled instead of offering a click that ends in
+ * {@code 409}
  */
 @Builder
 public record VersionResponse<T>(int number, VersionStatus status, UserResponse author, Integer basedOn,
 		UserResponse claimant, boolean everPublished, String rejectionReason, T body,
-		List<VersionAction> allowedActions, List<VersionAction> overrideActions, Instant createdAt, Instant updatedAt) {
+		List<VersionAction> allowedActions, List<VersionAction> overrideActions,
+		List<BlockedActionResponse> blockedActions, Instant createdAt, Instant updatedAt) {
 
 }

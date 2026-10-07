@@ -1,6 +1,9 @@
 package dev.onepieceapi.contentservice.web.controller;
 
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitType;
+import dev.onepieceapi.contentservice.domain.devilfruit.TypeReference;
+import dev.onepieceapi.contentservice.domain.workflow.ActionBlock;
+import dev.onepieceapi.contentservice.domain.workflow.BlockReason;
 import dev.onepieceapi.contentservice.domain.workflow.Content;
 import dev.onepieceapi.contentservice.domain.workflow.ContentFilter;
 import dev.onepieceapi.contentservice.domain.workflow.ContentListSummary;
@@ -14,12 +17,14 @@ import dev.onepieceapi.contentservice.domain.workflow.VersionAction;
 import dev.onepieceapi.contentservice.domain.workflow.VersionEvent;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.entity.ContentVersionEntity;
+import dev.onepieceapi.contentservice.service.DevilFruitTypeLinks;
 import dev.onepieceapi.contentservice.service.DevilFruitTypeService;
 import dev.onepieceapi.contentservice.service.exception.DevilFruitTypeNotFoundException;
 import dev.onepieceapi.contentservice.service.exception.SlugAlreadyUsedException;
 import dev.onepieceapi.contentservice.service.exception.TranslationLanguageUnknownException;
 import dev.onepieceapi.contentservice.service.exception.ValueAlreadyUsedException;
 import dev.onepieceapi.contentservice.service.exception.ValueInvalidException;
+import dev.onepieceapi.contentservice.service.exception.VersionActionBlockedException;
 import dev.onepieceapi.contentservice.service.exception.VersionActionConflictException;
 import dev.onepieceapi.contentservice.service.exception.VersionActionForbiddenException;
 import dev.onepieceapi.contentservice.service.exception.VersionIdenticalException;
@@ -57,6 +62,7 @@ import java.util.stream.Stream;
 import static dev.onepieceapi.contentservice.web.controller.TestCallers.callerWith;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
@@ -97,6 +103,9 @@ class DevilFruitTypeControllerTest {
 
 	@MockitoBean
 	private DevilFruitTypeService service;
+
+	@MockitoBean
+	private DevilFruitTypeLinks links;
 
 	@Test
 	void theListReturnsOnePageOfRows() throws Exception {
@@ -1006,6 +1015,85 @@ class DevilFruitTypeControllerTest {
 	/** A workflow action on version 1 of the content, not signed in yet. */
 	private static MockHttpServletRequestBuilder workflow(String action) {
 		return post("/devil-fruit-types/" + CONTENT_ID + "/versions/1/" + action);
+	}
+
+	@Test
+	void eachRowOfTheListSaysHowManyFruitsTheCallerSeesOfIt() throws Exception {
+		var other = UUID.fromString("5a1d9c2e-77b4-4d3a-8e0f-2c6b1a9d4e22");
+		var rows = List.of(new ContentSummary<>(CONTENT_ID, version(1, VersionStatus.PUBLISHED), 1, Set.of()),
+				new ContentSummary<>(other, version(1, VersionStatus.DRAFT), null, Set.of()));
+		when(this.service.list(any(), any(), any(), any(), any()))
+			.thenReturn(new PageImpl<>(rows, PageRequest.of(0, 20), 2));
+		when(this.links.fruitCounts(any(), any())).thenReturn(Map.of(CONTENT_ID, 12L));
+
+		this.mockMvc.perform(get("/devil-fruit-types").with(callerWith(Permission.CONTENT_READ)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.content[0].body.devilFruitCount").value(12))
+			.andExpect(jsonPath("$.content[1].body.devilFruitCount").value(0));
+
+		verify(this.links).fruitCounts(eq(Set.of(Permission.CONTENT_READ)), eq(List.of(CONTENT_ID, other)));
+	}
+
+	@Test
+	void theTypesAFruitMayBeLinkedToAreListedForWhoeverWritesFruits() throws Exception {
+		var paramecia = new TypeReference(CONTENT_ID, "Paramecia", Map.of("it", "Paramisha"));
+		when(this.links.linkable(any(), anyInt(), anyInt()))
+			.thenReturn(new PageImpl<>(List.of(paramecia), PageRequest.of(1, 5), 6));
+
+		this.mockMvc
+			.perform(get("/devil-fruit-types/linkable").param("q", "param")
+				.param("page", "1")
+				.param("size", "5")
+				.with(callerWith(Permission.CONTENT_WRITE)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.totalElements").value(6))
+			.andExpect(jsonPath("$.content[0].id").value(CONTENT_ID.toString()))
+			.andExpect(jsonPath("$.content[0].romaji").value("Paramecia"))
+			.andExpect(jsonPath("$.content[0].names.it").value("Paramisha"));
+		verify(this.links).linkable("param", 1, 5);
+	}
+
+	@Test
+	void theTypesAFruitMayBeLinkedToAreFirstPageTwentyByDefault() throws Exception {
+		when(this.links.linkable(any(), anyInt(), anyInt())).thenReturn(new PageImpl<>(List.of()));
+
+		this.mockMvc.perform(get("/devil-fruit-types/linkable").with(callerWith(Permission.CONTENT_WRITE)))
+			.andExpect(status().isOk());
+
+		verify(this.links).linkable(null, 0, 20);
+	}
+
+	@Test
+	void theLinkableTypesAreNotForWhoOnlyReadsAndAreNotAContentId() throws Exception {
+		this.mockMvc.perform(get("/devil-fruit-types/linkable").with(callerWith(Permission.CONTENT_READ)))
+			.andExpect(status().isForbidden());
+		this.mockMvc.perform(get("/devil-fruit-types/linkable")).andExpect(status().isUnauthorized());
+		verifyNoInteractions(this.links);
+	}
+
+	@ParameterizedTest
+	@CsvSource({ "size,51", "size,0", "page,-1" })
+	void aPageOfLinkableTypesBeyondTheLimitsIsABadRequest(String parameter, String value) throws Exception {
+		this.mockMvc
+			.perform(get("/devil-fruit-types/linkable").param(parameter, value)
+				.with(callerWith(Permission.CONTENT_WRITE)))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.errorCode").value("VALIDATION_FAILED"));
+	}
+
+	@Test
+	void aTypeRetirementTheFruitsBlockIsAConflictNamingTheFruits() throws Exception {
+		var block = new ActionBlock(BlockReason.ONLINE_FRUITS_LINKED,
+				Map.of("count", 7L, "fruits", List.of(Map.of("id", CONTENT_ID, "romaji", "Gomu Gomu"))));
+		when(this.service.retire(any(), any(), eq(CONTENT_ID), eq(1)))
+			.thenThrow(new VersionActionBlockedException(VersionAction.RETIRE, block));
+
+		this.mockMvc.perform(workflow("retire").with(callerWith(Permission.CONTENT_RETIRE)))
+			.andExpect(status().isConflict())
+			.andExpect(jsonPath("$.errorCode").value("CONTENT_VERSION_ACTION_BLOCKED"))
+			.andExpect(jsonPath("$.reason").value("ONLINE_FRUITS_LINKED"))
+			.andExpect(jsonPath("$.detail.count").value(7))
+			.andExpect(jsonPath("$.detail.fruits[0].romaji").value("Gomu Gomu"));
 	}
 
 	/** A rejection of version 1 of the content with that reason, not signed in yet. */

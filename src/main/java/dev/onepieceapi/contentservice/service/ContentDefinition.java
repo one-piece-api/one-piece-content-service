@@ -39,6 +39,11 @@ public interface ContentDefinition<T extends ContentBody<T>, E extends VersionBo
 	/** Makes the version say what was given, in place of what it said. */
 	void rewrite(E entity, T body, Instant now);
 
+	/** The entity's rules about its data; by default, none. */
+	default ContentRules<T> rules() {
+		return ContentRules.none();
+	}
+
 	/** A content of this entity that does not exist for the caller. */
 	NotFoundException notFound(UUID contentId);
 

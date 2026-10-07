@@ -57,6 +57,14 @@ public enum VersionStatus {
 	}
 
 	/**
+	 * The statuses of a version that passed review, whatever became of it after: what
+	 * makes a content one that others may point to.
+	 */
+	public static Set<VersionStatus> approved() {
+		return EnumSet.of(READY_TO_PUBLISH, PUBLISHED, ARCHIVED, RETIRED, SUPERSEDED);
+	}
+
+	/**
 	 * Whether a version in this status has been online at some point. Derived, not
 	 * stored: {@code RETIRED} and {@code SUPERSEDED} are only ever reached from
 	 * {@code PUBLISHED}, and no other status is.

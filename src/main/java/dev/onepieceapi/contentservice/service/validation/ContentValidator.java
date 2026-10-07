@@ -67,6 +67,7 @@ public class ContentValidator<T extends ContentBody<T>, E extends VersionBodyEnt
 	 */
 	public void validateDraft(UUID contentId, T body) {
 		requireKnownLanguages(body);
+		requireValidRelations(body);
 		requireUniqueValues(contentId, body, slugOf(body));
 	}
 
@@ -77,8 +78,16 @@ public class ContentValidator<T extends ContentBody<T>, E extends VersionBodyEnt
 	 */
 	public void validateSubmission(UUID contentId, int versionNumber, T body) {
 		requireComplete(body);
+		requireValidRelations(body);
 		requireUniqueValues(contentId, body, slugOf(body));
 		requireDifferentFromOtherVersions(contentId, versionNumber, body);
+	}
+
+	/**
+	 * What the entity says about the contents its body points to, checked on every save
+	 * and again at submission; nothing by default.
+	 */
+	protected void requireValidRelations(T body) {
 	}
 
 	private void requireKnownLanguages(T body) {

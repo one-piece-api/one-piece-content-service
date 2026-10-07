@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.service;
 
+import dev.onepieceapi.contentservice.config.RulesProperties;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitType;
 import dev.onepieceapi.contentservice.domain.security.Permission;
 import dev.onepieceapi.contentservice.domain.security.User;
@@ -15,6 +16,7 @@ import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitTypeVersionRepository;
+import dev.onepieceapi.contentservice.persistence.repository.DevilFruitVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
 import dev.onepieceapi.contentservice.service.exception.VersionActionConflictException;
 import dev.onepieceapi.contentservice.service.validation.DevilFruitTypeValidator;
@@ -104,6 +106,9 @@ class DevilFruitTypeRaceIntegrationTest {
 
 	@Autowired
 	private ContentRepository contentRepository;
+
+	@Autowired
+	private DevilFruitVersionRepository fruitRepository;
 
 	@Autowired
 	private LanguageRepository languageRepository;
@@ -261,6 +266,7 @@ class DevilFruitTypeRaceIntegrationTest {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
 		var validator = new DevilFruitTypeValidator(this.versionRepository, this.languageRepository);
 		return new DevilFruitTypeService(versions, contentVersions, this.contentRepository, validator,
+				new DevilFruitTypeRules(this.contentRepository, this.fruitRepository, new RulesProperties(5)),
 				new AuditLogService(this.auditLogRepository, clock), clock);
 	}
 

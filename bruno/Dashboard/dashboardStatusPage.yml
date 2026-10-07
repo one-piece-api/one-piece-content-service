@@ -44,6 +44,10 @@ http:
       value: DEVIL_FRUIT_TYPE
       type: query
       disabled: true
+    - name: entity
+      value: DEVIL_FRUIT
+      type: query
+      disabled: true
     - name: author
       value: ""
       type: query
@@ -114,6 +118,10 @@ examples:
           disabled: true
         - name: entity
           value: DEVIL_FRUIT_TYPE
+          type: query
+          disabled: true
+        - name: entity
+          value: DEVIL_FRUIT
           type: query
           disabled: true
         - name: author
@@ -227,6 +235,10 @@ examples:
           value: DEVIL_FRUIT_TYPE
           type: query
           disabled: true
+        - name: entity
+          value: DEVIL_FRUIT
+          type: query
+          disabled: true
         - name: author
           value: ""
           type: query
@@ -310,6 +322,10 @@ examples:
           disabled: true
         - name: entity
           value: DEVIL_FRUIT_TYPE
+          type: query
+          disabled: true
+        - name: entity
+          value: DEVIL_FRUIT
           type: query
           disabled: true
         - name: author

@@ -6,6 +6,6 @@ package dev.onepieceapi.contentservice.domain.workflow;
  */
 public enum EntityType {
 
-	DEVIL_FRUIT_TYPE
+	DEVIL_FRUIT_TYPE, DEVIL_FRUIT
 
 }

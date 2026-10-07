@@ -4,6 +4,8 @@ import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitType;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitTypeTranslation;
 import dev.onepieceapi.contentservice.domain.language.Language;
 import dev.onepieceapi.contentservice.domain.security.User;
+import dev.onepieceapi.contentservice.domain.workflow.BlockReason;
+import dev.onepieceapi.contentservice.domain.workflow.BlockedAction;
 import dev.onepieceapi.contentservice.domain.workflow.Content;
 import dev.onepieceapi.contentservice.domain.workflow.ContentFilter;
 import dev.onepieceapi.contentservice.domain.workflow.ContentListSummary;
@@ -112,6 +114,23 @@ class ResponseMappersTest {
 	}
 
 	@Test
+	void aVersionListsTheAllowedActionsTheEntityRefuses() {
+		var draft = version(1, VersionStatus.READY_TO_PUBLISH);
+		var blocked = new BlockedAction(VersionAction.PUBLISH, BlockReason.TYPE_NOT_ONLINE, Map.of("typeId", "t-1"));
+		var access = new VersionAccess<DevilFruitType>(draft, EnumSet.of(VersionAction.PUBLISH),
+				EnumSet.noneOf(VersionAction.class), List.of(blocked));
+
+		var response = ContentResponseMapper.toVersionResponse(access, DevilFruitType::romaji);
+
+		assertThat(response.allowedActions()).containsExactly(VersionAction.PUBLISH);
+		assertThat(response.blockedActions()).singleElement().satisfies(entry -> {
+			assertThat(entry.action()).isEqualTo(VersionAction.PUBLISH);
+			assertThat(entry.reason()).isEqualTo(BlockReason.TYPE_NOT_ONLINE);
+			assertThat(entry.detail()).containsEntry("typeId", "t-1");
+		});
+	}
+
+	@Test
 	void aContentWithNothingOnlineSaysSoWithNull() {
 		var content = new Content<>(CONTENT_ID, List.of(readOnly(version(1, VersionStatus.DRAFT))));
 
@@ -165,10 +184,11 @@ class ResponseMappersTest {
 
 	@Test
 	void theRowOfADevilFruitTypeHasOnlyTheNamesThatExist() {
-		var names = DevilFruitTypeResponseMapper.toNamesResponse(ZOAN);
+		var names = DevilFruitTypeResponseMapper.toNamesResponse(ZOAN, 3);
 
 		assertThat(names.romaji()).isEqualTo("Zoan");
 		assertThat(names.names()).containsExactly(entry("it", "Zoo Zoo"));
+		assertThat(names.devilFruitCount()).isEqualTo(3);
 	}
 
 	@Test
@@ -176,7 +196,7 @@ class ResponseMappersTest {
 		var access = new VersionAccess<>(rejected(2), EnumSet.noneOf(VersionAction.class));
 		var version = DevilFruitTypeResponseMapper.toVersionResponse(access);
 		var row = DevilFruitTypeResponseMapper
-			.toSummaryResponse(new ContentSummary<>(CONTENT_ID, rejected(2), null, access.allowedActions()));
+			.toSummaryResponse(new ContentSummary<>(CONTENT_ID, rejected(2), null, access.allowedActions()), 0);
 
 		assertThat(version.body().translations()).containsKeys("en", "it");
 		assertThat(row.body().names()).containsOnlyKeys("it");

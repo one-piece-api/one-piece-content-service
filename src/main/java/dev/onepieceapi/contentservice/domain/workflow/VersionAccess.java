@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.domain.workflow;
 
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -10,9 +11,16 @@ import java.util.Set;
  * @param allowedActions decided by {@link TransitionPolicy}
  * @param overrideActions those of the allowed actions the caller may perform only through
  * {@code content:admin}
+ * @param blockedActions those of the allowed actions the entity's own rules refuse, each
+ * with why
  */
 public record VersionAccess<T>(Version<T> version, Set<VersionAction> allowedActions,
-		Set<VersionAction> overrideActions) {
+		Set<VersionAction> overrideActions, List<BlockedAction> blockedActions) {
+
+	/** Nothing blocked by the entity. */
+	public VersionAccess(Version<T> version, Set<VersionAction> allowedActions, Set<VersionAction> overrideActions) {
+		this(version, allowedActions, overrideActions, List.of());
+	}
 
 	/** A caller allowed nothing through an override. */
 	public VersionAccess(Version<T> version, Set<VersionAction> allowedActions) {

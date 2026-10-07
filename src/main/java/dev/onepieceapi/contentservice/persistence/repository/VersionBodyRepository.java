@@ -109,6 +109,15 @@ public interface VersionBodyRepository<E extends VersionBodyEntity>
 	boolean existsByLanguage(String languageCode);
 
 	/**
+	 * Whether this content of the entity has a version in one of these statuses - whether
+	 * or not the caller sees it.
+	 */
+	@Query("""
+			select count(d) > 0 from #{#entityName} d join d.version v
+			where v.contentId = :contentId and v.status in :statuses""")
+	boolean existsWithStatus(UUID contentId, Collection<VersionStatus> statuses);
+
+	/**
 	 * The slug this romaji gives, by the database's one definition of a slug
 	 * ({@code V8}): empty when it has no letter or digit.
 	 */

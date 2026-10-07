@@ -1,6 +1,7 @@
 package dev.onepieceapi.contentservice.domain.devilfruittype;
 
 import dev.onepieceapi.contentservice.domain.workflow.ContentBody;
+import dev.onepieceapi.contentservice.domain.workflow.Text;
 
 import java.util.ArrayList;
 import java.util.Collection;
