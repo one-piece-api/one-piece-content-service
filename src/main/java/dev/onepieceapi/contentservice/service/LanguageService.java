@@ -3,7 +3,7 @@ package dev.onepieceapi.contentservice.service;
 import dev.onepieceapi.contentservice.domain.language.Language;
 import dev.onepieceapi.contentservice.domain.security.User;
 import dev.onepieceapi.contentservice.persistence.mapper.LanguageMapper;
-import dev.onepieceapi.contentservice.persistence.repository.DevilFruitTypeVersionRepository;
+import dev.onepieceapi.contentservice.persistence.repository.VersionBodyRepository;
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
 import dev.onepieceapi.contentservice.service.exception.LanguageAlreadyExistsException;
 import dev.onepieceapi.contentservice.service.exception.LanguageInUseException;
@@ -32,7 +32,11 @@ public class LanguageService {
 
 	private final LanguageRepository languageRepository;
 
-	private final DevilFruitTypeVersionRepository versionRepository;
+	/**
+	 * The versions of every entity: a language is in use if any of them says something in
+	 * it.
+	 */
+	private final List<VersionBodyRepository<?>> versionRepositories;
 
 	private final AuditLogService auditLogService;
 
@@ -58,7 +62,7 @@ public class LanguageService {
 	public void delete(String rawCode, User actor) {
 		var code = normalizeCode(rawCode);
 		var language = this.languageRepository.findById(code).orElseThrow(() -> new LanguageNotFoundException(code));
-		if (this.versionRepository.existsByLanguage(code)) {
+		if (this.versionRepositories.stream().anyMatch(repository -> repository.existsByLanguage(code))) {
 			throw new LanguageInUseException(code);
 		}
 		this.languageRepository.delete(language);

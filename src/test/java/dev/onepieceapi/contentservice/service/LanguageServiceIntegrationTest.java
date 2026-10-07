@@ -34,6 +34,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -74,7 +75,7 @@ class LanguageServiceIntegrationTest {
 	void setUp() {
 		var clock = Clock.fixed(Instant.parse("2026-09-22T10:00:00Z"), ZoneOffset.UTC);
 		var auditLogService = new AuditLogService(this.auditLogRepository, clock);
-		this.service = new LanguageService(this.languageRepository, this.versionRepository, auditLogService,
+		this.service = new LanguageService(this.languageRepository, List.of(this.versionRepository), auditLogService,
 				new LanguageValidator());
 	}
 

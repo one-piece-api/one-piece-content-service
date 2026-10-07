@@ -46,7 +46,17 @@ public final class ApiPaths {
 	 */
 	public static final String DEVIL_FRUIT_TYPES = "/devil-fruit-types";
 
-	public static final List<String> CONTENT_SECTIONS = List.of(DEVIL_FRUIT_TYPES);
+	public static final String DEVIL_FRUITS = "/devil-fruits";
+
+	public static final List<String> CONTENT_SECTIONS = List.of(DEVIL_FRUIT_TYPES, DEVIL_FRUITS);
+
+	/**
+	 * The types a fruit may be linked to - an endpoint of the Devil Fruit Type section
+	 * only, so it is secured on its own and not with the ones every section has.
+	 */
+	public static final String CONTENT_LINKABLE = "/linkable";
+
+	public static final String DEVIL_FRUIT_TYPES_LINKABLE = DEVIL_FRUIT_TYPES + CONTENT_LINKABLE;
 
 	/** The section itself: its list, and where a new content is posted. */
 	public static final String CONTENT_LIST = "";

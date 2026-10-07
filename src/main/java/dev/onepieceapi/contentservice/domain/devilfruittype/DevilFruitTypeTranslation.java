@@ -1,5 +1,7 @@
 package dev.onepieceapi.contentservice.domain.devilfruittype;
 
+import dev.onepieceapi.contentservice.domain.workflow.Text;
+
 import java.util.Objects;
 import java.util.stream.Stream;
 

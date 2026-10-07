@@ -27,6 +27,8 @@ class DevilFruitTypeDefinition implements ContentDefinition<DevilFruitType, Devi
 
 	private final DevilFruitTypeValidator validator;
 
+	private final DevilFruitTypeRules rules;
+
 	@Override
 	public EntityType entityType() {
 		return EntityType.DEVIL_FRUIT_TYPE;

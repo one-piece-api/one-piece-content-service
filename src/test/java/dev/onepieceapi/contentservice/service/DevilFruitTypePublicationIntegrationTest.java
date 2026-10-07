@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.service;
 
+import dev.onepieceapi.contentservice.config.RulesProperties;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitType;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitTypeTranslation;
 import dev.onepieceapi.contentservice.domain.security.Permission;
@@ -16,6 +17,7 @@ import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitTypeVersionRepository;
+import dev.onepieceapi.contentservice.persistence.repository.DevilFruitVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
 import dev.onepieceapi.contentservice.service.exception.VersionActionConflictException;
 import dev.onepieceapi.contentservice.service.exception.VersionActionForbiddenException;
@@ -106,6 +108,9 @@ class DevilFruitTypePublicationIntegrationTest {
 	private ContentRepository contentRepository;
 
 	@Autowired
+	private DevilFruitVersionRepository fruitRepository;
+
+	@Autowired
 	private LanguageRepository languageRepository;
 
 	@Autowired
@@ -126,7 +131,9 @@ class DevilFruitTypePublicationIntegrationTest {
 		var auditLogService = new AuditLogService(this.auditLogRepository, clock);
 		var validator = new DevilFruitTypeValidator(this.versionRepository, this.languageRepository);
 		this.service = new DevilFruitTypeService(this.versionRepository, this.contentVersionRepository,
-				this.contentRepository, validator, auditLogService, clock);
+				this.contentRepository, validator,
+				new DevilFruitTypeRules(this.contentRepository, this.fruitRepository, new RulesProperties(5)),
+				auditLogService, clock);
 
 		this.logia = content();
 		version(this.logia, 1, READY_TO_PUBLISH, this.nami, "Logia");

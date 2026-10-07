@@ -21,9 +21,10 @@ public class DevilFruitTypeService extends ContentService<DevilFruitType, DevilF
 	@Autowired
 	public DevilFruitTypeService(DevilFruitTypeVersionRepository versionRepository,
 			ContentVersionRepository contentVersionRepository, ContentRepository contentRepository,
-			DevilFruitTypeValidator validator, AuditLogService auditLogService, Clock clock) {
-		super(new DevilFruitTypeDefinition(versionRepository, validator), contentVersionRepository, contentRepository,
-				auditLogService, clock);
+			DevilFruitTypeValidator validator, DevilFruitTypeRules rules, AuditLogService auditLogService,
+			Clock clock) {
+		super(new DevilFruitTypeDefinition(versionRepository, validator, rules), contentVersionRepository,
+				contentRepository, auditLogService, clock);
 	}
 
 }

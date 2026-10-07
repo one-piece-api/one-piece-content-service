@@ -29,9 +29,10 @@ public class DevilFruitTypeResponseMapper {
 	}
 
 	/** A row of the list of Devil Fruit Types. */
-	public ContentSummaryResponse<DevilFruitTypeNamesResponse> toSummaryResponse(
-			ContentSummary<DevilFruitType> summary) {
-		return ContentResponseMapper.toSummaryResponse(summary, DevilFruitTypeResponseMapper::toNamesResponse);
+	public ContentSummaryResponse<DevilFruitTypeNamesResponse> toSummaryResponse(ContentSummary<DevilFruitType> summary,
+			long devilFruitCount) {
+		return ContentResponseMapper.toSummaryResponse(summary,
+				devilFruitType -> toNamesResponse(devilFruitType, devilFruitCount));
 	}
 
 	/** Everything the version says. */
@@ -42,9 +43,11 @@ public class DevilFruitTypeResponseMapper {
 		return new DevilFruitTypeResponse(devilFruitType.romaji(), translations);
 	}
 
-	/** What a list row shows: the names, for the languages that have one. */
-	public DevilFruitTypeNamesResponse toNamesResponse(DevilFruitType devilFruitType) {
-		return new DevilFruitTypeNamesResponse(devilFruitType.romaji(), devilFruitType.names());
+	/**
+	 * What a list row shows: the names, for the languages that have one, and its fruits.
+	 */
+	public DevilFruitTypeNamesResponse toNamesResponse(DevilFruitType devilFruitType, long devilFruitCount) {
+		return new DevilFruitTypeNamesResponse(devilFruitType.romaji(), devilFruitType.names(), devilFruitCount);
 	}
 
 	private static DevilFruitTypeTranslationResponse toTranslationResponse(DevilFruitTypeTranslation translation) {

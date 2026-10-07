@@ -160,6 +160,7 @@ examples:
                   "username": ""
                 },
                 "body": {
+                  "devilFruitCount": 0,
                   "names": {},
                   "romaji": ""
                 },

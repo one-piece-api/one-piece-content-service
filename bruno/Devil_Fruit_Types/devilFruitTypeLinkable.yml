@@ -1,0 +1,167 @@
+info:
+  name: devilFruitTypeLinkable
+  type: http
+  seq: 4
+  tags:
+    - Devil_Fruit_Types
+
+http:
+  method: GET
+  url: "{{baseUrl}}/devil-fruit-types/linkable"
+  params:
+    - name: page
+      value: "0"
+      type: query
+      description: 0-based page, 0 when missing
+      disabled: true
+    - name: size
+      value: "1"
+      type: query
+      description: "Page size: 20 when missing, at most 50"
+      disabled: true
+    - name: q
+      value: ""
+      type: query
+      description: Text the romaji or a name contains, case-insensitive; 100 characters at most
+      disabled: true
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+examples:
+  - name: 200 Response
+    description: OK
+    request:
+      url: "{{baseUrl}}/devil-fruit-types/linkable"
+      method: GET
+      params:
+        - name: page
+          value: "0"
+          type: query
+          description: 0-based page, 0 when missing
+          disabled: true
+        - name: size
+          value: "1"
+          type: query
+          description: "Page size: 20 when missing, at most 50"
+          disabled: true
+        - name: q
+          value: ""
+          type: query
+          description: Text the romaji or a name contains, case-insensitive; 100 characters at most
+          disabled: true
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          {
+            "content": [
+              {
+                "id": "",
+                "names": {},
+                "romaji": ""
+              }
+            ],
+            "page": 0,
+            "size": 0,
+            "totalElements": 0,
+            "totalPages": 0
+          }
+  - name: 4XX Response
+    description: Client error - a problem detail, except a 401/403 rejected by the security filter chain before reaching the application, which has no body
+    request:
+      url: "{{baseUrl}}/devil-fruit-types/linkable"
+      method: GET
+      params:
+        - name: page
+          value: "0"
+          type: query
+          description: 0-based page, 0 when missing
+          disabled: true
+        - name: size
+          value: "1"
+          type: query
+          description: "Page size: 20 when missing, at most 50"
+          disabled: true
+        - name: q
+          value: ""
+          type: query
+          description: Text the romaji or a name contains, case-insensitive; 100 characters at most
+          disabled: true
+    response:
+      headers:
+        - name: Content-Type
+          value: application/problem+json
+      body:
+        type: json
+        data: |-
+          {
+            "detail": "",
+            "errorCode": "",
+            "errors": [
+              {
+                "field": "",
+                "message": ""
+              }
+            ],
+            "instance": "",
+            "status": 0,
+            "timestamp": "",
+            "title": "",
+            "traceId": "",
+            "type": ""
+          }
+  - name: 5XX Response
+    description: Unexpected server error
+    request:
+      url: "{{baseUrl}}/devil-fruit-types/linkable"
+      method: GET
+      params:
+        - name: page
+          value: "0"
+          type: query
+          description: 0-based page, 0 when missing
+          disabled: true
+        - name: size
+          value: "1"
+          type: query
+          description: "Page size: 20 when missing, at most 50"
+          disabled: true
+        - name: q
+          value: ""
+          type: query
+          description: Text the romaji or a name contains, case-insensitive; 100 characters at most
+          disabled: true
+    response:
+      headers:
+        - name: Content-Type
+          value: application/problem+json
+      body:
+        type: json
+        data: |-
+          {
+            "detail": "",
+            "errorCode": "",
+            "errors": [
+              {
+                "field": "",
+                "message": ""
+              }
+            ],
+            "instance": "",
+            "status": 0,
+            "timestamp": "",
+            "title": "",
+            "traceId": "",
+            "type": ""
+          }

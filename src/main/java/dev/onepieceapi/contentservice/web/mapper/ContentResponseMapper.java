@@ -1,12 +1,14 @@
 package dev.onepieceapi.contentservice.web.mapper;
 
 import dev.onepieceapi.contentservice.domain.security.User;
+import dev.onepieceapi.contentservice.domain.workflow.BlockedAction;
 import dev.onepieceapi.contentservice.domain.workflow.Content;
 import dev.onepieceapi.contentservice.domain.workflow.ContentListSummary;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
 import dev.onepieceapi.contentservice.domain.workflow.Version;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAccess;
 import dev.onepieceapi.contentservice.domain.workflow.VersionEvent;
+import dev.onepieceapi.contentservice.web.dto.response.BlockedActionResponse;
 import dev.onepieceapi.contentservice.web.dto.response.ContentListSummaryResponse;
 import dev.onepieceapi.contentservice.web.dto.response.ContentResponse;
 import dev.onepieceapi.contentservice.web.dto.response.ContentSummaryResponse;
@@ -71,9 +73,14 @@ public class ContentResponseMapper {
 			.body(toBody.apply(version.body()))
 			.allowedActions(List.copyOf(access.allowedActions()))
 			.overrideActions(List.copyOf(access.overrideActions()))
+			.blockedActions(access.blockedActions().stream().map(ContentResponseMapper::toBlockedResponse).toList())
 			.createdAt(version.createdAt())
 			.updatedAt(version.updatedAt())
 			.build();
+	}
+
+	private static BlockedActionResponse toBlockedResponse(BlockedAction blocked) {
+		return new BlockedActionResponse(blocked.action(), blocked.reason(), blocked.detail());
 	}
 
 	/** A link of the chain: the workflow of a version, without what it says. */

@@ -1,12 +1,11 @@
 package dev.onepieceapi.contentservice.web.controller;
 
 import dev.onepieceapi.contentservice.domain.workflow.ContentBody;
-import dev.onepieceapi.contentservice.domain.workflow.ContentSortField;
+import dev.onepieceapi.contentservice.domain.workflow.ContentFilter;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAccess;
 import dev.onepieceapi.contentservice.service.ContentService;
 import dev.onepieceapi.contentservice.web.ApiPaths;
-import dev.onepieceapi.contentservice.web.dto.request.ContentListRequest;
 import dev.onepieceapi.contentservice.web.dto.request.NewVersionRequest;
 import dev.onepieceapi.contentservice.web.dto.request.RejectVersionRequest;
 import dev.onepieceapi.contentservice.web.dto.response.ContentListSummaryResponse;
@@ -16,13 +15,11 @@ import dev.onepieceapi.contentservice.web.dto.response.PageResponse;
 import dev.onepieceapi.contentservice.web.dto.response.UserResponse;
 import dev.onepieceapi.contentservice.web.dto.response.VersionEventResponse;
 import dev.onepieceapi.contentservice.web.dto.response.VersionResponse;
-import dev.onepieceapi.contentservice.web.mapper.ContentRequestMapper;
 import dev.onepieceapi.contentservice.web.mapper.ContentResponseMapper;
 import dev.onepieceapi.contentservice.web.security.AuthenticatedCaller;
-import dev.onepieceapi.contentservice.web.validation.SortableBy;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -71,20 +68,28 @@ abstract class ContentController<T extends ContentBody<T>, R, S> {
 	 */
 	private final Function<VersionAccess<T>, VersionResponse<R>> toVersionResponse;
 
-	/** The entity's mapper, answering a row of the list. */
-	private final Function<ContentSummary<T>, ContentSummaryResponse<S>> toSummaryResponse;
+	/**
+	 * The rows of a page of the list, answered in the entity's shape - all at once, so an
+	 * entity that must look something up for each row can do it for the page.
+	 */
+	protected abstract List<ContentSummaryResponse<S>> summaryResponses(List<ContentSummary<T>> rows,
+			AuthenticatedCaller caller);
+
+	/** A version as the entity answers it. */
+	protected VersionResponse<R> versionResponse(VersionAccess<T> access) {
+		return this.toVersionResponse.apply(access);
+	}
 
 	/**
-	 * One page of the list. A sort by {@code name} reads the name in the language of the
+	 * One page of the list, for the filter a section's own {@code list} built from its
+	 * query parameters. A sort by {@code name} reads the name in the language of the
 	 * standard {@code Accept-Language} header, the one the caller is reading in.
 	 */
-	@GetMapping(ApiPaths.CONTENT_LIST)
-	PageResponse<ContentSummaryResponse<S>> list(@ParameterObject @Valid ContentListRequest request,
-			@ParameterObject @SortableBy(ContentSortField.class) Pageable pageable,
-			@AuthenticationPrincipal AuthenticatedCaller caller, Locale locale) {
-		var page = this.service.list(caller.permissions(), caller.user(), ContentRequestMapper.toFilter(request),
-				pageable, locale.getLanguage());
-		return PageResponse.from(page.map(this.toSummaryResponse));
+	protected PageResponse<ContentSummaryResponse<S>> listPage(ContentFilter filter, Pageable pageable,
+			AuthenticatedCaller caller, Locale locale) {
+		var page = this.service.list(caller.permissions(), caller.user(), filter, pageable, locale.getLanguage());
+		var rows = summaryResponses(page.getContent(), caller);
+		return PageResponse.from(new PageImpl<>(rows, page.getPageable(), page.getTotalElements()));
 	}
 
 	/** Powers the list's author filter, which cannot be derived from one loaded page. */

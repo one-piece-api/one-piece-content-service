@@ -1,7 +1,7 @@
 info:
   name: devilFruitTypeReturnToDraft
   type: http
-  seq: 21
+  seq: 22
   tags:
     - Devil_Fruit_Types
 
@@ -56,6 +56,13 @@ examples:
               "username": ""
             },
             "basedOn": 0,
+            "blockedActions": [
+              {
+                "action": "EDIT",
+                "detail": {},
+                "reason": "TYPE_NOT_ONLINE"
+              }
+            ],
             "body": {
               "romaji": "",
               "translations": {}

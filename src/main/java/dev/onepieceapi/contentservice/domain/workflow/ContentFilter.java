@@ -5,7 +5,10 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.Set;
 import java.util.function.Predicate;
 
@@ -19,8 +22,31 @@ import java.util.function.Predicate;
  * kind of content
  * @param author the username of the author of the version
  * @param updatedWithinDays updated today (0) or in the last N days
+ * @param related the contents the version must point to, by relation (e.g. the type of a
+ * fruit); empty for an entity pointing to none
  */
-public record ContentFilter(VersionStatus status, String query, String author, Integer updatedWithinDays) {
+public record ContentFilter(VersionStatus status, String query, String author, Integer updatedWithinDays,
+		Map<String, UUID> related) {
+
+	public ContentFilter {
+		related = related == null ? Map.of() : Map.copyOf(related);
+	}
+
+	/** Without any relation to narrow by. */
+	public ContentFilter(VersionStatus status, String query, String author, Integer updatedWithinDays) {
+		this(status, query, author, updatedWithinDays, Map.of());
+	}
+
+	/**
+	 * The same filter, narrowed to the contents pointing to this one through the named
+	 * relation. The relation is named as the entity's attribute holding it, less its
+	 * {@code ContentId} suffix: {@code type} for {@code typeContentId}.
+	 */
+	public ContentFilter relatedTo(String relation, UUID contentId) {
+		Map<String, UUID> narrowed = new HashMap<>(this.related);
+		narrowed.put(relation, contentId);
+		return new ContentFilter(this.status, this.query, this.author, this.updatedWithinDays, narrowed);
+	}
 
 	/** No filter at all: every content the caller sees. */
 	public static ContentFilter none() {

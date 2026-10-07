@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.service;
 
+import dev.onepieceapi.contentservice.config.RulesProperties;
 import dev.onepieceapi.contentservice.domain.workflow.EntityType;
 import dev.onepieceapi.contentservice.domain.workflow.ContentFilter;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
@@ -21,6 +22,7 @@ import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitTypeVersionRepository;
+import dev.onepieceapi.contentservice.persistence.repository.DevilFruitVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
 import dev.onepieceapi.contentservice.service.exception.DevilFruitTypeNotFoundException;
 import dev.onepieceapi.contentservice.service.exception.VersionNotFoundException;
@@ -116,6 +118,9 @@ class DevilFruitTypeServiceIntegrationTest {
 	private ContentRepository contentRepository;
 
 	@Autowired
+	private DevilFruitVersionRepository fruitRepository;
+
+	@Autowired
 	private LanguageRepository languageRepository;
 
 	@Autowired
@@ -140,7 +145,9 @@ class DevilFruitTypeServiceIntegrationTest {
 		var auditLogService = new AuditLogService(this.auditLogRepository, clock);
 		var validator = new DevilFruitTypeValidator(this.versionRepository, this.languageRepository);
 		this.service = new DevilFruitTypeService(this.versionRepository, this.contentVersionRepository,
-				this.contentRepository, validator, auditLogService, clock);
+				this.contentRepository, validator,
+				new DevilFruitTypeRules(this.contentRepository, this.fruitRepository, new RulesProperties(5)),
+				auditLogService, clock);
 
 		this.paramecia = content();
 		version(this.paramecia, 1, SUPERSEDED, this.nami, 60, names("Paramecia", "Paramisia", "Paramecia"));
