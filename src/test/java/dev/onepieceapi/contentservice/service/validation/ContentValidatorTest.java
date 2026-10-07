@@ -130,8 +130,8 @@ class ContentValidatorTest {
 		}
 
 		@Override
-		public List<String> missingFields(Collection<String> languages) {
-			this.askedFor = List.copyOf(languages);
+		public List<String> missingFields(Collection<String> catalog) {
+			this.askedFor = List.copyOf(catalog);
 			return this.missing;
 		}
 
