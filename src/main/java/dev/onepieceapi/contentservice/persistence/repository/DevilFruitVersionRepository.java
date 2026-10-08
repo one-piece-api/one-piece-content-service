@@ -34,6 +34,12 @@ public interface DevilFruitVersionRepository extends VersionBodyRepository<Devil
 			group by d.typeContentId""")
 	List<TypeFruitCount> countByTypes(Collection<UUID> typeContentIds, Collection<VersionStatus> statuses);
 
+	/** Whether a version in one of these statuses has this image. */
+	@Query("""
+			select count(d) > 0 from DevilFruitVersionEntity d join d.version v
+			where d.imageId = :imageId and v.status in :statuses""")
+	boolean usesImage(String imageId, Collection<VersionStatus> statuses);
+
 	/** How many fruits are online with this type. */
 	@Query("""
 			select count(d) from DevilFruitVersionEntity d join d.version v

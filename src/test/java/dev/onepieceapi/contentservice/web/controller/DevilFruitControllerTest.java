@@ -3,6 +3,7 @@ package dev.onepieceapi.contentservice.web.controller;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitTranslation;
 import dev.onepieceapi.contentservice.domain.devilfruit.TypeReference;
+import dev.onepieceapi.contentservice.domain.image.ImageChange;
 import dev.onepieceapi.contentservice.domain.security.Permission;
 import dev.onepieceapi.contentservice.domain.security.User;
 import dev.onepieceapi.contentservice.domain.workflow.ActionBlock;
@@ -17,8 +18,12 @@ import dev.onepieceapi.contentservice.domain.workflow.VersionAction;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.service.DevilFruitService;
 import dev.onepieceapi.contentservice.service.DevilFruitTypeLinks;
+import dev.onepieceapi.contentservice.service.exception.ContentErrorCode;
+import dev.onepieceapi.contentservice.service.exception.ImageRefusedException;
 import dev.onepieceapi.contentservice.service.exception.ValueInvalidException;
 import dev.onepieceapi.contentservice.service.exception.VersionActionBlockedException;
+import dev.onepieceapi.contentservice.web.dto.response.ImageResponse;
+import dev.onepieceapi.contentservice.web.mapper.ImageResponseMapper;
 import dev.onepieceapi.contentservice.web.security.SecurityConfig;
 import dev.onepieceapi.exception.web.ApplicationExceptionHandler;
 import dev.onepieceapi.exception.web.ConcurrentModificationExceptionHandler;
@@ -30,9 +35,12 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.http.HttpMethod;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.EnumSet;
@@ -49,6 +57,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -84,6 +93,9 @@ class DevilFruitControllerTest {
 
 	@MockitoBean
 	private DevilFruitTypeLinks links;
+
+	@MockitoBean
+	private ImageResponseMapper images;
 
 	@Test
 	void aVersionSaysItsTypeAsItIsTodayAndWhichActionsAreBlocked() throws Exception {
@@ -171,7 +183,7 @@ class DevilFruitControllerTest {
 	@Test
 	void creatingAFruitPassesOnTheTypeAndAnswersWithTheContent() throws Exception {
 		var draft = new VersionAccess<>(version(VersionStatus.DRAFT, TYPE_ID), EnumSet.of(VersionAction.EDIT));
-		when(this.service.create(any(), any(), any())).thenReturn(new Content<>(CONTENT_ID, List.of(draft)));
+		when(this.service.create(any(), any(), any(), any())).thenReturn(new Content<>(CONTENT_ID, List.of(draft)));
 
 		var request = post("/devil-fruits").with(callerWith(Permission.CONTENT_WRITE))
 			.contentType("application/json")
@@ -182,7 +194,8 @@ class DevilFruitControllerTest {
 			.andExpect(jsonPath("$.id").value(CONTENT_ID.toString()));
 
 		var written = ArgumentCaptor.forClass(DevilFruit.class);
-		verify(this.service).create(eq(Set.of(Permission.CONTENT_WRITE)), any(), written.capture());
+		verify(this.service).create(eq(Set.of(Permission.CONTENT_WRITE)), any(), written.capture(),
+				eq(ImageChange.KEEP));
 		assertThat(written.getValue().typeContentId()).isEqualTo(TYPE_ID);
 		assertThat(written.getValue().translations().get("it"))
 			.isEqualTo(new DevilFruitTranslation("Gomu", null, null, null));
@@ -191,7 +204,7 @@ class DevilFruitControllerTest {
 	@Test
 	void editingAnswersWithTheVersionAndItsType() throws Exception {
 		var access = new VersionAccess<>(version(VersionStatus.DRAFT, TYPE_ID), EnumSet.of(VersionAction.EDIT));
-		when(this.service.edit(any(), any(), eq(CONTENT_ID), eq(1), any())).thenReturn(access);
+		when(this.service.edit(any(), any(), eq(CONTENT_ID), eq(1), any(), eq(ImageChange.KEEP))).thenReturn(access);
 		when(this.links.referencesOf(anyCollection())).thenReturn(Map.of(TYPE_ID, PARAMECIA));
 
 		var request = put("/devil-fruits/" + CONTENT_ID + "/versions/1").with(callerWith(Permission.CONTENT_WRITE))
@@ -205,7 +218,7 @@ class DevilFruitControllerTest {
 	@Test
 	void aTypeThatCannotBeLinkedIsUnprocessableAndNamesTheType() throws Exception {
 		var invalid = List.of(new FieldViolation("type", "must be a Devil Fruit Type with an approved version"));
-		when(this.service.create(any(), any(), any())).thenThrow(new ValueInvalidException(invalid));
+		when(this.service.create(any(), any(), any(), any())).thenThrow(new ValueInvalidException(invalid));
 
 		var request = post("/devil-fruits").with(callerWith(Permission.CONTENT_WRITE))
 			.contentType("application/json")
@@ -229,6 +242,97 @@ class DevilFruitControllerTest {
 			.andExpect(jsonPath("$.errorCode").value("CONTENT_VERSION_ACTION_BLOCKED"))
 			.andExpect(jsonPath("$.reason").value("TYPE_NOT_ONLINE"))
 			.andExpect(jsonPath("$.detail.typeRomaji").value("Paramecia"));
+	}
+
+	@Test
+	void creatingWithAnImagePassesOnItsBytesWithTheVersionPart() throws Exception {
+		var draft = new VersionAccess<>(version(VersionStatus.DRAFT, TYPE_ID), EnumSet.of(VersionAction.EDIT));
+		when(this.service.create(any(), any(), any(), any())).thenReturn(new Content<>(CONTENT_ID, List.of(draft)));
+		byte[] upload = { 1, 2, 3 };
+
+		this.mockMvc
+			.perform(multipart("/devil-fruits").file(versionPart("{\"romaji\":\"Gomu Gomu\"}"))
+				.file(new MockMultipartFile("image", "gomu.png", "image/png", upload))
+				.with(callerWith(Permission.CONTENT_WRITE)))
+			.andExpect(status().isCreated());
+
+		var change = ArgumentCaptor.forClass(ImageChange.class);
+		verify(this.service).create(any(), any(), any(), change.capture());
+		assertThat(change.getValue()).isInstanceOfSatisfying(ImageChange.Replace.class,
+				replace -> assertThat(replace.upload()).isEqualTo(upload));
+	}
+
+	@Test
+	void editingWithoutAFileKeepsTheImageAndRemoveImageRemovesIt() throws Exception {
+		var access = new VersionAccess<>(version(VersionStatus.DRAFT, null), EnumSet.of(VersionAction.EDIT));
+		when(this.service.edit(any(), any(), eq(CONTENT_ID), eq(1), any(), any())).thenReturn(access);
+
+		this.mockMvc
+			.perform(multipart(HttpMethod.PUT, "/devil-fruits/" + CONTENT_ID + "/versions/1")
+				.file(versionPart("{\"romaji\":\"Gomu Gomu\"}"))
+				.with(callerWith(Permission.CONTENT_WRITE)))
+			.andExpect(status().isOk());
+		this.mockMvc
+			.perform(put("/devil-fruits/" + CONTENT_ID + "/versions/1").with(callerWith(Permission.CONTENT_WRITE))
+				.contentType("application/json")
+				.content("{\"romaji\":\"Gomu Gomu\",\"removeImage\":true}"))
+			.andExpect(status().isOk());
+
+		verify(this.service).edit(any(), any(), eq(CONTENT_ID), eq(1), any(), eq(ImageChange.KEEP));
+		verify(this.service).edit(any(), any(), eq(CONTENT_ID), eq(1), any(), eq(ImageChange.REMOVE));
+	}
+
+	@Test
+	void anImageTogetherWithRemoveImageIsUnprocessable() throws Exception {
+		this.mockMvc
+			.perform(multipart(HttpMethod.PUT, "/devil-fruits/" + CONTENT_ID + "/versions/1")
+				.file(versionPart("{\"romaji\":\"Gomu Gomu\",\"removeImage\":true}"))
+				.file(new MockMultipartFile("image", "gomu.png", "image/png", new byte[] { 1 }))
+				.with(callerWith(Permission.CONTENT_WRITE)))
+			.andExpect(status().isUnprocessableContent())
+			.andExpect(jsonPath("$.errorCode").value("CONTENT_VALUE_INVALID"))
+			.andExpect(jsonPath("$.errors[0].field").value("image"));
+	}
+
+	@Test
+	void aRefusedImageNamesItsReasonAndNumbers() throws Exception {
+		when(this.service.create(any(), any(), any(), any())).thenThrow(new ImageRefusedException(
+				ContentErrorCode.IMAGE_TOO_SMALL, "The image is too small", Map.of("width", 320, "minWidth", 640)));
+
+		this.mockMvc
+			.perform(multipart("/devil-fruits").file(versionPart("{\"romaji\":\"Gomu Gomu\"}"))
+				.file(new MockMultipartFile("image", "gomu.png", "image/png", new byte[] { 1 }))
+				.with(callerWith(Permission.CONTENT_WRITE)))
+			.andExpect(status().isUnprocessableContent())
+			.andExpect(jsonPath("$.errorCode").value("CONTENT_IMAGE_TOO_SMALL"))
+			.andExpect(jsonPath("$.field").value("image"))
+			.andExpect(jsonPath("$.width").value(320))
+			.andExpect(jsonPath("$.minWidth").value(640));
+	}
+
+	@Test
+	void aVersionWithAnImageAnswersItsIdAndUrl() throws Exception {
+		var withImage = Version.<DevilFruit>builder()
+			.number(1)
+			.status(VersionStatus.DRAFT)
+			.author(NAMI)
+			.body(new DevilFruit("Gomu Gomu", null, Map.of(), "abc"))
+			.createdAt(CREATED)
+			.updatedAt(CREATED)
+			.build();
+		when(this.service.getVersion(any(), any(), eq(CONTENT_ID), eq(1)))
+			.thenReturn(new VersionAccess<>(withImage, Set.of()));
+		when(this.images.toResponse("abc")).thenReturn(new ImageResponse("abc", "/api/content/images/abc"));
+
+		this.mockMvc
+			.perform(get("/devil-fruits/" + CONTENT_ID + "/versions/1").with(callerWith(Permission.CONTENT_READ)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.body.image.id").value("abc"))
+			.andExpect(jsonPath("$.body.image.url").value("/api/content/images/abc"));
+	}
+
+	private static MockMultipartFile versionPart(String json) {
+		return new MockMultipartFile("version", "", "application/json", json.getBytes(StandardCharsets.UTF_8));
 	}
 
 	@Test

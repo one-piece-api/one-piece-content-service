@@ -22,6 +22,7 @@ import dev.onepieceapi.contentservice.persistence.repository.ContentVersionRepos
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitTypeVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
+import dev.onepieceapi.contentservice.service.image.ContentImages;
 import dev.onepieceapi.contentservice.service.validation.DevilFruitValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -46,6 +47,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+import static org.mockito.Mockito.mock;
 import static dev.onepieceapi.contentservice.domain.workflow.VersionStatus.ARCHIVED;
 import static dev.onepieceapi.contentservice.domain.workflow.VersionStatus.DRAFT;
 import static dev.onepieceapi.contentservice.domain.workflow.VersionStatus.IN_REVIEW;
@@ -119,10 +121,12 @@ class DevilFruitTypeLinksIntegrationTest {
 	@BeforeEach
 	void setUp() {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
-		this.fruits = new DevilFruitService(this.fruitRepository, this.contentVersionRepository, this.contentRepository,
-				new DevilFruitValidator(this.fruitRepository, this.languageRepository, this.typeRepository),
-				new DevilFruitRules(this.contentRepository, this.typeRepository),
-				new AuditLogService(this.auditLogRepository, clock), clock);
+		this.fruits = new DevilFruitService(
+				new DevilFruitDefinition(this.fruitRepository,
+						new DevilFruitValidator(this.fruitRepository, this.languageRepository, this.typeRepository),
+						new DevilFruitRules(this.contentRepository, this.typeRepository)),
+				this.contentVersionRepository, this.contentRepository,
+				new AuditLogService(this.auditLogRepository, clock), clock, mock(ContentImages.class));
 		this.links = new DevilFruitTypeLinks(new DevilFruitTypeTitleSource(this.typeRepository), this.typeRepository,
 				this.fruitRepository, clock);
 

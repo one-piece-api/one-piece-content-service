@@ -22,9 +22,11 @@ import java.util.UUID;
  * are different, as the record's equality has it.
  *
  * @param typeContentId the content of the Devil Fruit Type; null while not chosen
+ * @param imageId its image (implementation plan of the Devil Fruit, D5), optional and not
+ * localized; part of the version, so a different image is a different version
  */
-public record DevilFruit(String romaji, UUID typeContentId,
-		Map<String, DevilFruitTranslation> translations) implements ContentBody<DevilFruit> {
+public record DevilFruit(String romaji, UUID typeContentId, Map<String, DevilFruitTranslation> translations,
+		String imageId) implements ContentBody<DevilFruit> {
 
 	public static final int ROMAJI_MAX_LENGTH = 100;
 
@@ -41,6 +43,16 @@ public record DevilFruit(String romaji, UUID typeContentId,
 
 	private static final String DISADVANTAGES_FIELD = "translations[%s].disadvantages";
 
+	/** A fruit without an image. */
+	public DevilFruit(String romaji, UUID typeContentId, Map<String, DevilFruitTranslation> translations) {
+		this(romaji, typeContentId, translations, null);
+	}
+
+	/** The same fruit with another image, or none. */
+	public DevilFruit withImage(String newImageId) {
+		return new DevilFruit(this.romaji, this.typeContentId, this.translations, newImageId);
+	}
+
 	@Override
 	public DevilFruit normalized() {
 		Map<String, DevilFruitTranslation> written = new TreeMap<>();
@@ -50,7 +62,7 @@ public record DevilFruit(String romaji, UUID typeContentId,
 				written.put(language, normalized);
 			}
 		});
-		return new DevilFruit(Text.stripToNull(this.romaji), this.typeContentId, written);
+		return new DevilFruit(Text.stripToNull(this.romaji), this.typeContentId, written, this.imageId);
 	}
 
 	@Override

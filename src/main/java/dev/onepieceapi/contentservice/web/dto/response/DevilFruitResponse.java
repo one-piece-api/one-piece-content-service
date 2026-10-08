@@ -7,8 +7,9 @@ import java.util.Map;
  *
  * @param type the Devil Fruit Type it belongs to, as it is today; null while not chosen
  * @param translations name, description, advantages and disadvantages per language code
+ * @param image its image; null for none
  */
 public record DevilFruitResponse(String romaji, TypeReferenceResponse type,
-		Map<String, DevilFruitTranslationResponse> translations) {
+		Map<String, DevilFruitTranslationResponse> translations, ImageResponse image) {
 
 }

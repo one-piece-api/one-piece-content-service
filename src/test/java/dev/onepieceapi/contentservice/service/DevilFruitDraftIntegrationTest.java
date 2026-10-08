@@ -23,6 +23,7 @@ import dev.onepieceapi.contentservice.service.exception.ValueAlreadyUsedExceptio
 import dev.onepieceapi.contentservice.service.exception.ValueInvalidException;
 import dev.onepieceapi.contentservice.service.exception.VersionIdenticalException;
 import dev.onepieceapi.contentservice.service.exception.VersionIncompleteException;
+import dev.onepieceapi.contentservice.service.image.ContentImages;
 import dev.onepieceapi.contentservice.service.validation.DevilFruitValidator;
 import dev.onepieceapi.exception.DomainException;
 import dev.onepieceapi.exception.web.FieldViolation;
@@ -51,6 +52,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+import static org.mockito.Mockito.mock;
 import static dev.onepieceapi.contentservice.domain.workflow.VersionStatus.DRAFT;
 import static dev.onepieceapi.contentservice.domain.workflow.VersionStatus.IN_REVIEW;
 import static dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED;
@@ -128,9 +130,11 @@ class DevilFruitDraftIntegrationTest {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
 		var auditLogService = new AuditLogService(this.auditLogRepository, clock);
 		var validator = new DevilFruitValidator(this.versionRepository, this.languageRepository, this.typeRepository);
-		this.service = new DevilFruitService(this.versionRepository, this.contentVersionRepository,
-				this.contentRepository, validator, new DevilFruitRules(this.contentRepository, this.typeRepository),
-				auditLogService, clock);
+		this.service = new DevilFruitService(
+				new DevilFruitDefinition(this.versionRepository, validator,
+						new DevilFruitRules(this.contentRepository, this.typeRepository)),
+				this.contentVersionRepository, this.contentRepository, auditLogService, clock,
+				mock(ContentImages.class));
 
 		this.paramecia = typeContent("Paramecia", PUBLISHED);
 		this.zoan = typeContent("Zoan", PUBLISHED);

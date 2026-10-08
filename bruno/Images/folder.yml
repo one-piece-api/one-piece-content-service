@@ -1,0 +1,6 @@
+info:
+  name: Images
+  type: folder
+
+request:
+  auth: inherit

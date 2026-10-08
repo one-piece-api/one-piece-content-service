@@ -47,6 +47,10 @@ enum SecuredEndpoint {
 	// it.
 	LINKABLE_TYPES(HttpMethod.GET, ApiPaths.DEVIL_FRUIT_TYPES_LINKABLE, Permission.CONTENT_WRITE),
 
+	// An image, for whoever sees a version using it - decided inside the service, like
+	// the versions themselves.
+	IMAGE(HttpMethod.GET, ApiPaths.IMAGE_BY_ID, Permission.CONTENT_READ),
+
 	DASHBOARD(HttpMethod.GET, ApiPaths.DASHBOARD, Permission.CONTENT_READ),
 	DASHBOARD_ACTIVITY(HttpMethod.GET, ApiPaths.DASHBOARD_ACTIVITY, Permission.CONTENT_READ),
 	DASHBOARD_STATUS(HttpMethod.GET, ApiPaths.DASHBOARD_STATUS, Permission.CONTENT_READ),

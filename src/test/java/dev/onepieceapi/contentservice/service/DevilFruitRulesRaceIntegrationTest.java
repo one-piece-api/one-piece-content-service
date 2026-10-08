@@ -22,6 +22,7 @@ import dev.onepieceapi.contentservice.persistence.repository.DevilFruitTypeVersi
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
 import dev.onepieceapi.contentservice.service.exception.VersionActionBlockedException;
+import dev.onepieceapi.contentservice.service.image.ContentImages;
 import dev.onepieceapi.contentservice.service.validation.DevilFruitTypeValidator;
 import dev.onepieceapi.contentservice.service.validation.DevilFruitValidator;
 import org.junit.jupiter.api.Test;
@@ -216,10 +217,12 @@ class DevilFruitRulesRaceIntegrationTest {
 
 	private DevilFruitService fruitService(DevilFruitTypeVersionRepository types) {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
-		return new DevilFruitService(this.fruitRepository, this.contentVersionRepository, this.contentRepository,
-				new DevilFruitValidator(this.fruitRepository, this.languageRepository, types),
-				new DevilFruitRules(this.contentRepository, types), new AuditLogService(this.auditLogRepository, clock),
-				clock);
+		return new DevilFruitService(
+				new DevilFruitDefinition(this.fruitRepository,
+						new DevilFruitValidator(this.fruitRepository, this.languageRepository, types),
+						new DevilFruitRules(this.contentRepository, types)),
+				this.contentVersionRepository, this.contentRepository,
+				new AuditLogService(this.auditLogRepository, clock), clock, mock(ContentImages.class));
 	}
 
 	/**

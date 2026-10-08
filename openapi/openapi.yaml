@@ -959,6 +959,17 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/DevilFruitRequest"
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+                version:
+                  $ref: "#/components/schemas/DevilFruitRequest"
+              required:
+              - version
         required: true
       responses:
         "201":
@@ -1139,6 +1150,17 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/DevilFruitRequest"
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+                version:
+                  $ref: "#/components/schemas/DevilFruitRequest"
+              required:
+              - version
         required: true
       responses:
         "200":
@@ -1552,6 +1574,30 @@ paths:
       tags:
       - Devil Fruits
       x-required-permission: content:write
+  /images/{id}:
+    get:
+      operationId: imageGet
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            image/png:
+              schema:
+                type: string
+                format: byte
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Images
+      x-required-permission: content:read
   /languages:
     get:
       operationId: languageList
@@ -1892,6 +1938,8 @@ components:
     DevilFruitRequest:
       type: object
       properties:
+        removeImage:
+          type: boolean
         romaji:
           type: string
           maxLength: 100
@@ -1907,6 +1955,8 @@ components:
     DevilFruitResponse:
       type: object
       properties:
+        image:
+          $ref: "#/components/schemas/ImageResponse"
         romaji:
           type: string
         translations:
@@ -2017,6 +2067,13 @@ components:
       required:
       - field
       - message
+    ImageResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        url:
+          type: string
     LanguageResponse:
       type: object
       properties:

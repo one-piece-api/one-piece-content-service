@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.web.mapper;
 
+import dev.onepieceapi.contentservice.config.ImageProperties;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitTranslation;
 import dev.onepieceapi.contentservice.domain.devilfruit.TypeReference;
@@ -38,7 +39,7 @@ class DevilFruitMappersTest {
 	@Test
 	void aRequestBecomesWhatItSaysAsTypedWithItsType() {
 		var request = new DevilFruitRequest(" Gomu Gomu ", TYPE_ID,
-				Map.of("it", new DevilFruitTranslationRequest(" Gomu ", null, "Pro", null)));
+				Map.of("it", new DevilFruitTranslationRequest(" Gomu ", null, "Pro", null)), null);
 
 		var fruit = DevilFruitRequestMapper.toDomain(request);
 
@@ -53,8 +54,8 @@ class DevilFruitMappersTest {
 		Map<String, DevilFruitTranslationRequest> translations = new HashMap<>();
 		translations.put("it", null);
 
-		var fruit = DevilFruitRequestMapper.toDomain(new DevilFruitRequest(null, null, translations));
-		var bare = DevilFruitRequestMapper.toDomain(new DevilFruitRequest(null, null, null));
+		var fruit = DevilFruitRequestMapper.toDomain(new DevilFruitRequest(null, null, translations, null));
+		var bare = DevilFruitRequestMapper.toDomain(new DevilFruitRequest(null, null, null, null));
 
 		assertThat(fruit.typeContentId()).isNull();
 		assertThat(fruit.translations())
@@ -81,7 +82,8 @@ class DevilFruitMappersTest {
 		var access = new VersionAccess<>(version(TYPE_ID), EnumSet.of(VersionAction.SUBMIT));
 		var types = Map.of(TYPE_ID, PARAMECIA);
 
-		var version = DevilFruitResponseMapper.toVersionResponse(access, types);
+		var version = DevilFruitResponseMapper.toVersionResponse(access, types,
+				new ImageResponseMapper(new ImageProperties("/api/content", Map.of())));
 		var row = DevilFruitResponseMapper.toSummaryResponse(
 				new ContentSummary<>(CONTENT_ID, version(TYPE_ID), null, access.allowedActions()), types);
 

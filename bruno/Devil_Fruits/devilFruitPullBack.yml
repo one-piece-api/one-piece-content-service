@@ -64,6 +64,10 @@ examples:
               }
             ],
             "body": {
+              "image": {
+                "id": "",
+                "url": ""
+              },
               "romaji": "",
               "translations": {},
               "type": {

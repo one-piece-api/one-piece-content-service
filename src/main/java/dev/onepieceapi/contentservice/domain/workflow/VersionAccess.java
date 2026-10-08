@@ -27,4 +27,9 @@ public record VersionAccess<T>(Version<T> version, Set<VersionAction> allowedAct
 		this(version, allowedActions, Set.of());
 	}
 
+	/** What the version says. */
+	public T body() {
+		return this.version.body();
+	}
+
 }

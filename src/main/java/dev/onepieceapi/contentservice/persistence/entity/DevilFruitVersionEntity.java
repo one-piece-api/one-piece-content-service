@@ -32,6 +32,9 @@ public class DevilFruitVersionEntity extends VersionBodyEntity {
 	/** The type's content, not one of its versions; null while not chosen. */
 	private UUID typeContentId;
 
+	/** The id of its image; null for none. */
+	private String imageId;
+
 	/**
 	 * The localized fields per language code; a language nothing was saved for is absent.
 	 */
@@ -46,9 +49,10 @@ public class DevilFruitVersionEntity extends VersionBodyEntity {
 
 	/** Replaces everything the version says, and notes when. */
 	public void rewrite(String newRomaji, UUID newTypeContentId, Map<String, TranslationEmbeddable> newTranslations,
-			Instant now) {
+			String newImageId, Instant now) {
 		setRomaji(newRomaji);
 		this.typeContentId = newTypeContentId;
+		this.imageId = newImageId;
 		this.translations.clear();
 		this.translations.putAll(newTranslations);
 		touch(now);

@@ -24,6 +24,7 @@ import dev.onepieceapi.contentservice.persistence.repository.DevilFruitTypeVersi
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
 import dev.onepieceapi.contentservice.service.exception.VersionActionBlockedException;
+import dev.onepieceapi.contentservice.service.image.ContentImages;
 import dev.onepieceapi.contentservice.service.validation.DevilFruitTypeValidator;
 import dev.onepieceapi.contentservice.service.validation.DevilFruitValidator;
 import org.junit.jupiter.api.BeforeEach;
@@ -50,6 +51,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+import static org.mockito.Mockito.mock;
 import static dev.onepieceapi.contentservice.domain.workflow.VersionStatus.ARCHIVED;
 import static dev.onepieceapi.contentservice.domain.workflow.VersionStatus.DRAFT;
 import static dev.onepieceapi.contentservice.domain.workflow.VersionStatus.IN_REVIEW;
@@ -134,9 +136,12 @@ class DevilFruitRulesIntegrationTest {
 	void setUp() {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
 		var auditLogService = new AuditLogService(this.auditLogRepository, clock);
-		this.fruits = new DevilFruitService(this.fruitRepository, this.contentVersionRepository, this.contentRepository,
-				new DevilFruitValidator(this.fruitRepository, this.languageRepository, this.typeRepository),
-				new DevilFruitRules(this.contentRepository, this.typeRepository), auditLogService, clock);
+		this.fruits = new DevilFruitService(
+				new DevilFruitDefinition(this.fruitRepository,
+						new DevilFruitValidator(this.fruitRepository, this.languageRepository, this.typeRepository),
+						new DevilFruitRules(this.contentRepository, this.typeRepository)),
+				this.contentVersionRepository, this.contentRepository, auditLogService, clock,
+				mock(ContentImages.class));
 		this.types = new DevilFruitTypeService(this.typeRepository, this.contentVersionRepository,
 				this.contentRepository, new DevilFruitTypeValidator(this.typeRepository, this.languageRepository),
 				new DevilFruitTypeRules(this.contentRepository, this.fruitRepository, new RulesProperties(5)),

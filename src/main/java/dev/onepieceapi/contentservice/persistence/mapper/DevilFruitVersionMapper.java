@@ -20,13 +20,14 @@ import java.util.TreeMap;
 public class DevilFruitVersionMapper {
 
 	public Version<DevilFruit> toDomain(DevilFruitVersionEntity entity) {
-		var body = new DevilFruit(entity.getRomaji(), entity.getTypeContentId(), toDomain(entity.getTranslations()));
+		var body = new DevilFruit(entity.getRomaji(), entity.getTypeContentId(), toDomain(entity.getTranslations()),
+				entity.getImageId());
 		return ContentVersionMapper.toDomain(entity.getVersion(), body);
 	}
 
 	/** Makes the version say what was given, in place of what it said. */
 	public void rewrite(DevilFruitVersionEntity entity, DevilFruit body, Instant now) {
-		entity.rewrite(body.romaji(), body.typeContentId(), toEmbeddables(body.translations()), now);
+		entity.rewrite(body.romaji(), body.typeContentId(), toEmbeddables(body.translations()), body.imageId(), now);
 	}
 
 	/** Sorted by language code, so the same version always reads the same way. */

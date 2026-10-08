@@ -19,6 +19,7 @@ http:
     type: json
     data: |-
       {
+        "removeImage": false,
         "romaji": "",
         "translations": {},
         "type": ""
@@ -49,6 +50,7 @@ examples:
         type: json
         data: |-
           {
+            "removeImage": false,
             "romaji": "",
             "translations": {},
             "type": ""
@@ -80,6 +82,10 @@ examples:
               }
             ],
             "body": {
+              "image": {
+                "id": "",
+                "url": ""
+              },
               "romaji": "",
               "translations": {},
               "type": {
@@ -119,6 +125,7 @@ examples:
         type: json
         data: |-
           {
+            "removeImage": false,
             "romaji": "",
             "translations": {},
             "type": ""
@@ -162,6 +169,7 @@ examples:
         type: json
         data: |-
           {
+            "removeImage": false,
             "romaji": "",
             "translations": {},
             "type": ""

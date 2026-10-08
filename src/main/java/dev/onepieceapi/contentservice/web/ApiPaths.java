@@ -40,6 +40,14 @@ public final class ApiPaths {
 	public static final String DASHBOARD_STATUS_AUTHORS = DASHBOARD_STATUS + "/authors";
 
 	/**
+	 * The images of versions, of every entity, by id (implementation plan of the Devil
+	 * Fruit, D5).
+	 */
+	public static final String IMAGES = "/images";
+
+	public static final String IMAGE_BY_ID = IMAGES + "/{id}";
+
+	/**
 	 * The entity sections, each the root of the same set of paths below - its list, a
 	 * content, then one of its versions by number. Controllers map them relative to their
 	 * section; {@code security.SecuredEndpoint} prefixes them with each section.

@@ -13,11 +13,13 @@ import dev.onepieceapi.exception.NotFoundException;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
+import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 import java.util.UUID;
 
 /** The Devil Fruit, as the generic workflow sees it. */
+@Component
 @Getter
 @Accessors(fluent = true)
 @RequiredArgsConstructor

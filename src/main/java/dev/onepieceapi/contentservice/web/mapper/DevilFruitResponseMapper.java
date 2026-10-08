@@ -31,8 +31,8 @@ public class DevilFruitResponseMapper {
 
 	/** A version of a Devil Fruit as its caller meets it, with everything it says. */
 	public VersionResponse<DevilFruitResponse> toVersionResponse(VersionAccess<DevilFruit> access,
-			Map<UUID, TypeReference> types) {
-		return ContentResponseMapper.toVersionResponse(access, fruit -> toResponse(fruit, types));
+			Map<UUID, TypeReference> types, ImageResponseMapper images) {
+		return ContentResponseMapper.toVersionResponse(access, fruit -> toResponse(fruit, types, images));
 	}
 
 	/** A row of the list of Devil Fruits. */
@@ -42,10 +42,11 @@ public class DevilFruitResponseMapper {
 	}
 
 	/** Everything the version says. */
-	public DevilFruitResponse toResponse(DevilFruit fruit, Map<UUID, TypeReference> types) {
+	public DevilFruitResponse toResponse(DevilFruit fruit, Map<UUID, TypeReference> types, ImageResponseMapper images) {
 		Map<String, DevilFruitTranslationResponse> translations = new TreeMap<>();
 		fruit.translations().forEach((language, translation) -> translations.put(language, toResponse(translation)));
-		return new DevilFruitResponse(fruit.romaji(), toTypeResponse(fruit.typeContentId(), types), translations);
+		return new DevilFruitResponse(fruit.romaji(), toTypeResponse(fruit.typeContentId(), types), translations,
+				images.toResponse(fruit.imageId()));
 	}
 
 	/**
