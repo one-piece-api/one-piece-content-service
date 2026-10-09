@@ -28,7 +28,7 @@ import static org.assertj.core.api.Assertions.tuple;
 import static org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase.Replace;
 
 /**
- * The interface one-piece-public-api reads ({@code V8},
+ * The interface one-piece-public-api reads ({@code V8}, {@code V11},
  * docs/adr/0003-published-interface.md) against a real PostgreSQL (Testcontainers): the
  * slug of a romaji, the {@code published} views showing only what is online, the revision
  * counter moved by triggers, and what the reader role may and may not do. Seeded in SQL:
@@ -99,6 +99,41 @@ class PublishedInterfaceIntegrationTest {
 	}
 
 	@Test
+	void theDevilFruitsShownAreTheVersionsOnlineWithTheirTypeInTheSameLanguage() {
+		UUID mera = content("DEVIL_FRUIT");
+		fruit(mera, 1, "SUPERSEDED", "Mera Mera", null);
+		fruit(mera, 2, "PUBLISHED", "Mera Mera no Mi", null);
+		fruit(content("DEVIL_FRUIT"), 1, "DRAFT", "Gomu Gomu no Mi", null);
+
+		var rows = this.jdbc
+			.sql("select id, slug, language, name, type_id, type_slug, type_romaji, type_name"
+					+ " from published.devil_fruit")
+			.query((rs, n) -> tuple(rs.getObject("id"), rs.getString("slug"), rs.getString("language"),
+					rs.getString("name"), rs.getObject("type_id"), rs.getString("type_slug"),
+					rs.getString("type_romaji"), rs.getString("type_name")))
+			.list();
+
+		assertThat(rows).containsExactlyInAnyOrder(
+				tuple(mera, "mera-mera-no-mi", "it", "Mera Mera no Mi IT", this.zoan, "zoan", "Zoan", "Zoan IT"),
+				tuple(mera, "mera-mera-no-mi", "en", "Mera Mera no Mi EN", this.zoan, "zoan", "Zoan", "Zoan EN"));
+	}
+
+	@Test
+	void theImagesShownAreThoseOfTheVersionsOnline() {
+		String online = image('a');
+		String superseded = image('b');
+		String draft = image('c');
+		UUID mera = content("DEVIL_FRUIT");
+		fruit(mera, 1, "SUPERSEDED", "Mera Mera", superseded);
+		fruit(mera, 2, "PUBLISHED", "Mera Mera no Mi", online);
+		fruit(content("DEVIL_FRUIT"), 1, "DRAFT", "Gomu Gomu no Mi", draft);
+
+		assertThat(this.jdbc.sql("select id from published.image").query(String.class).list()).containsExactly(online);
+		assertThat(this.jdbc.sql("select image_id from published.devil_fruit").query(String.class).list())
+			.containsOnly(online);
+	}
+
+	@Test
 	void theSlugsShownAreThoseOfTheContentsOnline() {
 		slug(this.zoan, "zoan");
 		slug(this.zoan, "dobutsu");
@@ -161,6 +196,8 @@ class PublishedInterfaceIntegrationTest {
 		assertThat(this.jdbc.sql("select count(*) from published.content_slug").query(Long.class).single()).isZero();
 		assertThat(this.jdbc.sql("select count(*) from published.language").query(Long.class).single()).isEqualTo(2);
 		assertThat(this.jdbc.sql("select revision from published.revision").query(Long.class).single()).isPositive();
+		assertThat(this.jdbc.sql("select count(*) from published.devil_fruit").query(Long.class).single()).isZero();
+		assertThat(this.jdbc.sql("select count(*) from published.image").query(Long.class).single()).isZero();
 	}
 
 	@Test
@@ -206,15 +243,51 @@ class PublishedInterfaceIntegrationTest {
 	}
 
 	private UUID content() {
+		return content("DEVIL_FRUIT_TYPE");
+	}
+
+	private UUID content(String entityType) {
 		UUID id = UUID.randomUUID();
-		this.jdbc.sql("insert into content (id, entity_type, created_at) values (?, 'DEVIL_FRUIT_TYPE', ?)")
-			.params(id, EARLIER)
+		this.jdbc.sql("insert into content (id, entity_type, created_at) values (?, ?, ?)")
+			.params(id, entityType, EARLIER)
 			.update();
 		return id;
 	}
 
-	/** Seeds a version with its romaji and a name in both languages of the catalog. */
+	/** Seeds a version of a type with its romaji and a name in both languages. */
 	private UUID version(UUID contentId, int number, String status, String romaji) {
+		return version("devil_fruit_type_version", contentId, number, status, romaji);
+	}
+
+	/** Seeds a version of a fruit of the type Zoan, with its romaji, image and names. */
+	private UUID fruit(UUID contentId, int number, String status, String romaji, String imageId) {
+		UUID id = version("devil_fruit_version", contentId, number, status, romaji);
+		this.jdbc.sql("update devil_fruit_version set type_content_id = ?, image_id = ? where version_id = ?")
+			.params(this.zoan, imageId, id)
+			.update();
+		return id;
+	}
+
+	/**
+	 * Seeds a stored image whose id is the given digit repeated: its bytes do not matter
+	 * here.
+	 */
+	private String image(char digit) {
+		String id = String.valueOf(digit).repeat(64);
+		this.jdbc
+			.sql("insert into image (id, content_type, width, height, size_bytes, bytes, created_at)"
+					+ " values (?, 'image/png', 640, 800, 1, ?, ?)")
+			.params(id, new byte[] { 1 }, EARLIER)
+			.update();
+		return id;
+	}
+
+	/**
+	 * Seeds a version in {@code table} ({@code <entity>_version}, with its
+	 * {@code _translation}) and a name in both languages of the catalog. The table names
+	 * are this test's constants.
+	 */
+	private UUID version(String table, UUID contentId, int number, String status, String romaji) {
 		UUID id = UUID.randomUUID();
 		this.jdbc.sql("""
 				insert into content_version (id, content_id, version_number, author_user_id, author_username,
@@ -222,13 +295,9 @@ class PublishedInterfaceIntegrationTest {
 				values (?, ?, ?, ?, 'chopper', 'chopper@onepiece.local', ?, ?, ?)""")
 			.params(id, contentId, number, UUID.randomUUID(), status, EARLIER, EARLIER)
 			.update();
-		this.jdbc.sql("insert into devil_fruit_type_version (version_id, romaji) values (?, ?)")
-			.params(id, romaji)
-			.update();
+		this.jdbc.sql("insert into " + table + " (version_id, romaji) values (?, ?)").params(id, romaji).update();
 		for (String language : new String[] { "it", "en" }) {
-			this.jdbc
-				.sql("insert into devil_fruit_type_version_translation (version_id, language_code, name)"
-						+ " values (?, ?, ?)")
+			this.jdbc.sql("insert into " + table + "_translation (version_id, language_code, name) values (?, ?, ?)")
 				.params(id, language, romaji + " " + language.toUpperCase())
 				.update();
 		}
