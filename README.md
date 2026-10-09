@@ -2,13 +2,17 @@
 
 Backend applicativo (Spring Boot) per il workflow editoriale dei contenuti One Piece — catena
 lineare di versioni per contenuto, revisione con presa in carico, pubblicazione, ritiro e
-ripristino. Primo caso d'uso concreto: **Devil Fruit Type**. Espone:
+ripristino, su un framework generico per entità. Entità: **Devil Fruit Type** e **Devil Fruit**
+(con relazione al tipo e immagine). Espone:
 
 - **Catalogo lingue** (`/languages`): lettura, aggiunta, rimozione di una lingua non in uso.
 - **Devil Fruit Type** (`/devil-fruit-types`): lista paginata, catena di versioni,
   contenuto e cronologia di una versione, bozze (crea, modifica, scarta) e tutte le
   transizioni del workflow (invio, presa in carico, approvazione, rifiuto, pubblicazione,
   archiviazione, ritiro, ripristino, nuova versione), con le azioni consentite al chiamante.
+- **Devil Fruit** (`/devil-fruits`): le stesse operazioni, più il tipo (relazione verso un
+  tipo approvato) e l'immagine PNG (salvataggio multipart, validata e normalizzata). Un frutto
+  va online solo con il suo tipo online; un tipo con frutti online non si ritira.
 - **Dashboard** (`/dashboard`): contatori per stato, attività recente del chiamante
   (dall'audit log) e pagine per stato trasversali alle entità.
 
