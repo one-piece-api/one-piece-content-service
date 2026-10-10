@@ -2,7 +2,7 @@ package dev.onepieceapi.contentservice.web.controller;
 
 import dev.onepieceapi.contentservice.domain.language.Language;
 import dev.onepieceapi.contentservice.domain.security.Permission;
-import dev.onepieceapi.contentservice.service.LanguageService;
+import dev.onepieceapi.contentservice.service.language.LanguageService;
 import dev.onepieceapi.contentservice.service.exception.InvalidLanguageCodeException;
 import dev.onepieceapi.contentservice.service.exception.LanguageInUseException;
 import dev.onepieceapi.contentservice.web.security.SecurityConfig;

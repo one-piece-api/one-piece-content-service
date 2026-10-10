@@ -4,7 +4,7 @@ import dev.onepieceapi.contentservice.domain.workflow.ContentBody;
 import dev.onepieceapi.contentservice.domain.workflow.ContentFilter;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAccess;
-import dev.onepieceapi.contentservice.service.ContentService;
+import dev.onepieceapi.contentservice.service.content.ContentService;
 import dev.onepieceapi.contentservice.web.ApiPaths;
 import dev.onepieceapi.contentservice.web.dto.request.NewVersionRequest;
 import dev.onepieceapi.contentservice.web.dto.request.RejectVersionRequest;

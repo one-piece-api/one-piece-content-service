@@ -5,7 +5,7 @@ import dev.onepieceapi.contentservice.domain.dashboard.ContentTitle;
 import dev.onepieceapi.contentservice.domain.dashboard.StatusCount;
 import dev.onepieceapi.contentservice.domain.dashboard.StatusRow;
 import dev.onepieceapi.contentservice.domain.workflow.Version;
-import dev.onepieceapi.contentservice.service.StatusPage;
+import dev.onepieceapi.contentservice.service.content.StatusPage;
 import dev.onepieceapi.contentservice.web.dto.response.ActivityResponse;
 import dev.onepieceapi.contentservice.web.dto.response.ContentTitleResponse;
 import dev.onepieceapi.contentservice.web.dto.response.DashboardResponse;

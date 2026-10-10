@@ -1,6 +1,6 @@
 package dev.onepieceapi.contentservice.web.controller;
 
-import dev.onepieceapi.contentservice.service.LanguageService;
+import dev.onepieceapi.contentservice.service.language.LanguageService;
 import dev.onepieceapi.contentservice.web.ApiPaths;
 import dev.onepieceapi.contentservice.web.dto.request.CreateLanguageRequest;
 import dev.onepieceapi.contentservice.web.dto.response.LanguageResponse;

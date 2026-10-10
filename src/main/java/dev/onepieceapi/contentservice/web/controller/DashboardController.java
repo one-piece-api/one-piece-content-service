@@ -2,7 +2,7 @@ package dev.onepieceapi.contentservice.web.controller;
 
 import dev.onepieceapi.contentservice.domain.dashboard.DashboardSortField;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
-import dev.onepieceapi.contentservice.service.DashboardService;
+import dev.onepieceapi.contentservice.service.dashboard.DashboardService;
 import dev.onepieceapi.contentservice.web.ApiPaths;
 import dev.onepieceapi.contentservice.web.dto.request.StatusPageRequest;
 import dev.onepieceapi.contentservice.web.dto.response.ActivityResponse;

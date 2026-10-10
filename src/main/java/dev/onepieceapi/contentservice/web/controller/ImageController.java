@@ -1,7 +1,7 @@
 package dev.onepieceapi.contentservice.web.controller;
 
 import dev.onepieceapi.contentservice.domain.image.NormalizedImage;
-import dev.onepieceapi.contentservice.service.ImageService;
+import dev.onepieceapi.contentservice.service.image.ImageService;
 import dev.onepieceapi.contentservice.web.ApiPaths;
 import dev.onepieceapi.contentservice.web.security.AuthenticatedCaller;
 import io.swagger.v3.oas.annotations.tags.Tag;
