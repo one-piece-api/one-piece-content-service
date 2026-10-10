@@ -119,6 +119,47 @@ class PublishedInterfaceIntegrationTest {
 	}
 
 	@Test
+	void theSubcategoriesShownAreThoseOfTheTypeVersionOnlineInOrderAndInEachLanguage() {
+		UUID mythical = UUID.randomUUID();
+		UUID ancient = UUID.randomUUID();
+		subcategory(this.zoanOnline, mythical, 1, "Mythical", "it", "en");
+		subcategory(this.zoanOnline, ancient, 0, "Ancient", "it");
+		subcategory(version(this.zoan, 3, "SUPERSEDED", "Dobutsu"), UUID.randomUUID(), 0, "Old", "it", "en");
+
+		var rows = this.jdbc.sql(
+				"select type_id, id, language, name from published.devil_fruit_type_subcategory order by position, language desc")
+			.query((rs, n) -> tuple(rs.getObject("type_id"), rs.getObject("id"), rs.getString("language"),
+					rs.getString("name")))
+			.list();
+
+		assertThat(rows).containsExactly(tuple(this.zoan, ancient, "it", "Ancient IT"),
+				tuple(this.zoan, mythical, "it", "Mythical IT"), tuple(this.zoan, mythical, "en", "Mythical EN"));
+	}
+
+	@Test
+	void aDevilFruitShowsItsSubcategoryInTheSameLanguageAndKeepsItsRowWithout() {
+		UUID mythical = UUID.randomUUID();
+		UUID italianOnly = UUID.randomUUID();
+		subcategory(this.zoanOnline, mythical, 0, "Mythical", "it", "en");
+		subcategory(this.zoanOnline, italianOnly, 1, "Artificial", "it");
+		UUID kitsune = content("DEVIL_FRUIT");
+		subcategoryOf(fruit(kitsune, 1, "PUBLISHED", "Inu Inu no Mi", null), mythical);
+		UUID partial = content("DEVIL_FRUIT");
+		subcategoryOf(fruit(partial, 1, "PUBLISHED", "Neko Neko no Mi", null), italianOnly);
+		UUID plain = content("DEVIL_FRUIT");
+		fruit(plain, 1, "PUBLISHED", "Mera Mera no Mi", null);
+
+		var rows = this.jdbc.sql("select id, language, subcategory_id, subcategory_name from published.devil_fruit")
+			.query((rs, n) -> tuple(rs.getObject("id"), rs.getString("language"), rs.getObject("subcategory_id"),
+					rs.getString("subcategory_name")))
+			.list();
+
+		assertThat(rows).containsExactlyInAnyOrder(tuple(kitsune, "it", mythical, "Mythical IT"),
+				tuple(kitsune, "en", mythical, "Mythical EN"), tuple(partial, "it", italianOnly, "Artificial IT"),
+				tuple(partial, "en", null, null), tuple(plain, "it", null, null), tuple(plain, "en", null, null));
+	}
+
+	@Test
 	void theImagesShownAreThoseOfTheVersionsOnline() {
 		String online = image('a');
 		String superseded = image('b');
@@ -266,6 +307,32 @@ class PublishedInterfaceIntegrationTest {
 			.params(this.zoan, imageId, id)
 			.update();
 		return id;
+	}
+
+	/**
+	 * Seeds a subcategory of a type version, named "{@code name} LANGUAGE" in each given
+	 * language.
+	 */
+	private void subcategory(UUID typeVersionId, UUID subcategoryId, int position, String name, String... languages) {
+		UUID rowId = UUID.randomUUID();
+		this.jdbc
+			.sql("insert into devil_fruit_type_version_subcategory (id, version_id, subcategory_id, position)"
+					+ " values (?, ?, ?, ?)")
+			.params(rowId, typeVersionId, subcategoryId, position)
+			.update();
+		for (String language : languages) {
+			this.jdbc
+				.sql("insert into devil_fruit_type_version_subcategory_translation"
+						+ " (subcategory_row_id, language_code, name, description) values (?, ?, ?, ?)")
+				.params(rowId, language, name + " " + language.toUpperCase(), "About " + name)
+				.update();
+		}
+	}
+
+	private void subcategoryOf(UUID fruitVersionId, UUID subcategoryId) {
+		this.jdbc.sql("update devil_fruit_version set subcategory_id = ? where version_id = ?")
+			.params(subcategoryId, fruitVersionId)
+			.update();
 	}
 
 	/**
