@@ -1,16 +1,23 @@
 package dev.onepieceapi.contentservice.persistence.mapper;
 
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitType;
+import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitTypeSubcategory;
+import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitTypeSubcategoryTranslation;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitTypeTranslation;
 import dev.onepieceapi.contentservice.domain.security.User;
 import dev.onepieceapi.contentservice.domain.workflow.Version;
+import dev.onepieceapi.contentservice.persistence.entity.DevilFruitTypeSubcategoryEntity;
 import dev.onepieceapi.contentservice.persistence.entity.DevilFruitTypeVersionEntity;
+import dev.onepieceapi.contentservice.persistence.entity.SubcategoryTranslationEmbeddable;
 import dev.onepieceapi.contentservice.persistence.entity.TranslationEmbeddable;
 import lombok.experimental.UtilityClass;
 
 import java.time.Instant;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.TreeMap;
 import java.util.UUID;
 
@@ -22,7 +29,8 @@ import java.util.UUID;
 public class DevilFruitTypeVersionMapper {
 
 	public Version<DevilFruitType> toDomain(DevilFruitTypeVersionEntity entity) {
-		var body = new DevilFruitType(entity.getRomaji(), toDomain(entity.getTranslations()));
+		var body = new DevilFruitType(entity.getRomaji(), toDomain(entity.getTranslations()),
+				entity.getSubcategories().stream().map(DevilFruitTypeVersionMapper::toDomain).toList());
 		return ContentVersionMapper.toDomain(entity.getVersion(), body);
 	}
 
@@ -53,7 +61,32 @@ public class DevilFruitTypeVersionMapper {
 
 	/** Makes the version say what was given, in place of what it said. */
 	public void rewrite(DevilFruitTypeVersionEntity entity, DevilFruitType body, Instant now) {
-		entity.rewrite(body.romaji(), toEmbeddables(body.translations()), now);
+		entity.rewrite(body.romaji(), toEmbeddables(body.translations()), toSubcategoryRows(body.subcategories()), now);
+	}
+
+	private static DevilFruitTypeSubcategory toDomain(DevilFruitTypeSubcategoryEntity subcategory) {
+		Map<String, DevilFruitTypeSubcategoryTranslation> byLanguage = new TreeMap<>();
+		subcategory.getTranslations()
+			.forEach((language, translation) -> byLanguage.put(language,
+					new DevilFruitTypeSubcategoryTranslation(translation.getName(), translation.getDescription())));
+		return new DevilFruitTypeSubcategory(subcategory.getSubcategoryId(), byLanguage);
+	}
+
+	/**
+	 * The translations of each subcategory by its id, in order; every one has an id by
+	 * now (see {@code ContentBody#identified}).
+	 */
+	private static Map<UUID, Map<String, SubcategoryTranslationEmbeddable>> toSubcategoryRows(
+			List<DevilFruitTypeSubcategory> subcategories) {
+		Map<UUID, Map<String, SubcategoryTranslationEmbeddable>> rows = new LinkedHashMap<>();
+		subcategories.forEach(subcategory -> {
+			Map<String, SubcategoryTranslationEmbeddable> byLanguage = new HashMap<>();
+			subcategory.translations()
+				.forEach((language, translation) -> byLanguage.put(language,
+						new SubcategoryTranslationEmbeddable(translation.name(), translation.description())));
+			rows.put(Objects.requireNonNull(subcategory.id(), "a subcategory is saved with its id"), byLanguage);
+		});
+		return rows;
 	}
 
 	/** Sorted by language code, so the same version always reads the same way. */

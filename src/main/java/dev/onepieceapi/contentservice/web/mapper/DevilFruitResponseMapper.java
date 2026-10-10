@@ -2,6 +2,7 @@ package dev.onepieceapi.contentservice.web.mapper;
 
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitTranslation;
+import dev.onepieceapi.contentservice.domain.devilfruit.SubcategoryReference;
 import dev.onepieceapi.contentservice.domain.devilfruit.TypeReference;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAccess;
@@ -9,13 +10,16 @@ import dev.onepieceapi.contentservice.web.dto.response.ContentSummaryResponse;
 import dev.onepieceapi.contentservice.web.dto.response.DevilFruitNamesResponse;
 import dev.onepieceapi.contentservice.web.dto.response.DevilFruitResponse;
 import dev.onepieceapi.contentservice.web.dto.response.DevilFruitTranslationResponse;
+import dev.onepieceapi.contentservice.web.dto.response.SubcategoryReferenceResponse;
 import dev.onepieceapi.contentservice.web.dto.response.TypeReferenceResponse;
 import dev.onepieceapi.contentservice.web.dto.response.VersionResponse;
 import lombok.experimental.UtilityClass;
 
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
@@ -45,15 +49,31 @@ public class DevilFruitResponseMapper {
 	public DevilFruitResponse toResponse(DevilFruit fruit, Map<UUID, TypeReference> types, ImageResponseMapper images) {
 		Map<String, DevilFruitTranslationResponse> translations = new TreeMap<>();
 		fruit.translations().forEach((language, translation) -> translations.put(language, toResponse(translation)));
-		return new DevilFruitResponse(fruit.romaji(), toTypeResponse(fruit.typeContentId(), types), translations,
-				images.toResponse(fruit.imageId()));
+		return new DevilFruitResponse(fruit.romaji(), toTypeResponse(fruit.typeContentId(), types),
+				toSubcategoryResponse(fruit, types), translations, images.toResponse(fruit.imageId()));
 	}
 
 	/**
 	 * What a list row shows: the names, for the languages that have one, and the type.
 	 */
 	public DevilFruitNamesResponse toNamesResponse(DevilFruit fruit, Map<UUID, TypeReference> types) {
-		return new DevilFruitNamesResponse(fruit.romaji(), fruit.names(), toTypeResponse(fruit.typeContentId(), types));
+		return new DevilFruitNamesResponse(fruit.romaji(), fruit.names(), toTypeResponse(fruit.typeContentId(), types),
+				toSubcategoryResponse(fruit, types));
+	}
+
+	/**
+	 * The subcategory with its names, as its type was last approved; with only its id
+	 * when the type no longer has it, which a read must not fail for; null for none.
+	 */
+	public SubcategoryReferenceResponse toSubcategoryResponse(DevilFruit fruit, Map<UUID, TypeReference> types) {
+		UUID subcategoryId = fruit.subcategoryId();
+		if (subcategoryId == null) {
+			return null;
+		}
+		return Optional.ofNullable(types.get(fruit.typeContentId()))
+			.flatMap(type -> type.subcategory(subcategoryId))
+			.map(DevilFruitResponseMapper::toResponse)
+			.orElseGet(() -> new SubcategoryReferenceResponse(subcategoryId, Map.of()));
 	}
 
 	/**
@@ -65,11 +85,16 @@ public class DevilFruitResponseMapper {
 			return null;
 		}
 		TypeReference type = types.get(typeContentId);
-		return type == null ? new TypeReferenceResponse(typeContentId, null, Map.of()) : toResponse(type);
+		return type == null ? new TypeReferenceResponse(typeContentId, null, Map.of(), List.of()) : toResponse(type);
 	}
 
 	public TypeReferenceResponse toResponse(TypeReference type) {
-		return new TypeReferenceResponse(type.id(), type.romaji(), type.names());
+		return new TypeReferenceResponse(type.id(), type.romaji(), type.names(),
+				type.subcategories().stream().map(DevilFruitResponseMapper::toResponse).toList());
+	}
+
+	private static SubcategoryReferenceResponse toResponse(SubcategoryReference subcategory) {
+		return new SubcategoryReferenceResponse(subcategory.id(), subcategory.names());
 	}
 
 	/** The types the given fruits point to, to look them all up at once. */

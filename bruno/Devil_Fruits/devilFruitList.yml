@@ -172,10 +172,20 @@ examples:
                 "body": {
                   "names": {},
                   "romaji": "",
+                  "subcategory": {
+                    "id": "",
+                    "names": {}
+                  },
                   "type": {
                     "id": "",
                     "names": {},
-                    "romaji": ""
+                    "romaji": "",
+                    "subcategories": [
+                      {
+                        "id": "",
+                        "names": {}
+                      }
+                    ]
                   }
                 },
                 "id": "",

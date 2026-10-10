@@ -22,11 +22,13 @@ import java.util.UUID;
  * are different, as the record's equality has it.
  *
  * @param typeContentId the content of the Devil Fruit Type; null while not chosen
+ * @param subcategoryId one subcategory of that type (implementation plan of the
+ * subcategories, S5); null for none, which is complete
  * @param imageId its image (implementation plan of the Devil Fruit, D5), optional and not
  * localized; part of the version, so a different image is a different version
  */
-public record DevilFruit(String romaji, UUID typeContentId, Map<String, DevilFruitTranslation> translations,
-		String imageId) implements ContentBody<DevilFruit> {
+public record DevilFruit(String romaji, UUID typeContentId, UUID subcategoryId,
+		Map<String, DevilFruitTranslation> translations, String imageId) implements ContentBody<DevilFruit> {
 
 	public static final int ROMAJI_MAX_LENGTH = 100;
 
@@ -43,14 +45,20 @@ public record DevilFruit(String romaji, UUID typeContentId, Map<String, DevilFru
 
 	private static final String DISADVANTAGES_FIELD = "translations[%s].disadvantages";
 
-	/** A fruit without an image. */
+	/** A fruit without a subcategory or an image. */
 	public DevilFruit(String romaji, UUID typeContentId, Map<String, DevilFruitTranslation> translations) {
-		this(romaji, typeContentId, translations, null);
+		this(romaji, typeContentId, null, translations, null);
+	}
+
+	/** A fruit without a subcategory. */
+	public DevilFruit(String romaji, UUID typeContentId, Map<String, DevilFruitTranslation> translations,
+			String imageId) {
+		this(romaji, typeContentId, null, translations, imageId);
 	}
 
 	/** The same fruit with another image, or none. */
 	public DevilFruit withImage(String newImageId) {
-		return new DevilFruit(this.romaji, this.typeContentId, this.translations, newImageId);
+		return new DevilFruit(this.romaji, this.typeContentId, this.subcategoryId, this.translations, newImageId);
 	}
 
 	@Override
@@ -62,7 +70,8 @@ public record DevilFruit(String romaji, UUID typeContentId, Map<String, DevilFru
 				written.put(language, normalized);
 			}
 		});
-		return new DevilFruit(Text.stripToNull(this.romaji), this.typeContentId, written, this.imageId);
+		return new DevilFruit(Text.stripToNull(this.romaji), this.typeContentId, this.subcategoryId, written,
+				this.imageId);
 	}
 
 	@Override

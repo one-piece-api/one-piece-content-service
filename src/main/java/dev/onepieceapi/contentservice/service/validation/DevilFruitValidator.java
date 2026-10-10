@@ -3,6 +3,7 @@ package dev.onepieceapi.contentservice.service.validation;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.entity.DevilFruitVersionEntity;
+import dev.onepieceapi.contentservice.persistence.mapper.DevilFruitTypeVersionMapper;
 import dev.onepieceapi.contentservice.persistence.mapper.DevilFruitVersionMapper;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitTypeVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitVersionRepository;
@@ -13,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * The rules a Devil Fruit must meet (implementation plan of the Devil Fruit, D2, D7):
@@ -21,6 +23,8 @@ import java.util.List;
  * and never stops being (an approved version is never deleted), so the check is the same
  * on every save and again at submission. An id that names no type, a content that is not
  * a type and a type with nothing approved are told alike: nobody learns which ids exist.
+ * A subcategory, optional, must be one of that type's (implementation plan of the
+ * subcategories, S5); none can be named without a type.
  */
 @Component
 public class DevilFruitValidator extends ContentValidator<DevilFruit, DevilFruitVersionEntity> {
@@ -28,6 +32,10 @@ public class DevilFruitValidator extends ContentValidator<DevilFruit, DevilFruit
 	private static final String TYPE_FIELD = "type";
 
 	private static final String NOT_LINKABLE = "must be a Devil Fruit Type with an approved version";
+
+	private static final String SUBCATEGORY_FIELD = "subcategory";
+
+	private static final String NOT_OF_TYPE = "must be a subcategory of its Devil Fruit Type, as last approved";
 
 	private final DevilFruitTypeVersionRepository typeRepository;
 
@@ -44,6 +52,22 @@ public class DevilFruitValidator extends ContentValidator<DevilFruit, DevilFruit
 				&& !this.typeRepository.existsWithStatus(body.typeContentId(), VersionStatus.approved())) {
 			throw new ValueInvalidException(List.of(new FieldViolation(TYPE_FIELD, NOT_LINKABLE)));
 		}
+		if (body.subcategoryId() != null && !subcategoryOfType(body.typeContentId(), body.subcategoryId())) {
+			throw new ValueInvalidException(List.of(new FieldViolation(SUBCATEGORY_FIELD, NOT_OF_TYPE)));
+		}
+	}
+
+	/**
+	 * Whether the type, as it was last approved, has this subcategory (implementation
+	 * plan of the subcategories, S5): one an approved version removed is no longer
+	 * offered.
+	 */
+	private boolean subcategoryOfType(UUID typeContentId, UUID subcategoryId) {
+		return typeContentId != null
+				&& this.typeRepository.findMostRecent(List.of(typeContentId), VersionStatus.approved())
+					.stream()
+					.map(DevilFruitTypeVersionMapper::toDomain)
+					.anyMatch(type -> type.body().subcategory(subcategoryId).isPresent());
 	}
 
 }

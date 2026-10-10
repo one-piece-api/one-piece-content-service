@@ -3,6 +3,7 @@ package dev.onepieceapi.contentservice.web.mapper;
 import dev.onepieceapi.contentservice.config.ImageProperties;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitTranslation;
+import dev.onepieceapi.contentservice.domain.devilfruit.SubcategoryReference;
 import dev.onepieceapi.contentservice.domain.devilfruit.TypeReference;
 import dev.onepieceapi.contentservice.domain.security.User;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
@@ -13,6 +14,7 @@ import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.web.dto.request.DevilFruitListRequest;
 import dev.onepieceapi.contentservice.web.dto.request.DevilFruitRequest;
 import dev.onepieceapi.contentservice.web.dto.request.DevilFruitTranslationRequest;
+import dev.onepieceapi.contentservice.web.dto.response.SubcategoryReferenceResponse;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -38,7 +40,7 @@ class DevilFruitMappersTest {
 
 	@Test
 	void aRequestBecomesWhatItSaysAsTypedWithItsType() {
-		var request = new DevilFruitRequest(" Gomu Gomu ", TYPE_ID,
+		var request = new DevilFruitRequest(" Gomu Gomu ", TYPE_ID, null,
 				Map.of("it", new DevilFruitTranslationRequest(" Gomu ", null, "Pro", null)), null);
 
 		var fruit = DevilFruitRequestMapper.toDomain(request);
@@ -54,8 +56,8 @@ class DevilFruitMappersTest {
 		Map<String, DevilFruitTranslationRequest> translations = new HashMap<>();
 		translations.put("it", null);
 
-		var fruit = DevilFruitRequestMapper.toDomain(new DevilFruitRequest(null, null, translations, null));
-		var bare = DevilFruitRequestMapper.toDomain(new DevilFruitRequest(null, null, null, null));
+		var fruit = DevilFruitRequestMapper.toDomain(new DevilFruitRequest(null, null, null, translations, null));
+		var bare = DevilFruitRequestMapper.toDomain(new DevilFruitRequest(null, null, null, null, null));
 
 		assertThat(fruit.typeContentId()).isNull();
 		assertThat(fruit.translations())
@@ -112,6 +114,32 @@ class DevilFruitMappersTest {
 		var fruits = List.of(fruit(TYPE_ID), fruit(other), fruit(TYPE_ID), fruit(null));
 
 		assertThat(DevilFruitResponseMapper.typesOf(fruits)).containsExactlyInAnyOrder(TYPE_ID, other);
+	}
+
+	@Test
+	void aSubcategoryIsNamedAsItsTypeGivesItOnlyItsIdWhenTheTypeLacksItAndNoneIsNull() {
+		UUID mythical = UUID.randomUUID();
+		var zoan = new TypeReference(TYPE_ID, "Dobutsu", Map.of("it", "Zoo Zoo"),
+				List.of(new SubcategoryReference(mythical, Map.of("it", "Mitologico"))));
+		var types = Map.of(TYPE_ID, zoan);
+		var named = new DevilFruit("Uo Uo", TYPE_ID, mythical, Map.of(), null);
+		var unknown = new DevilFruit("Uo Uo", TYPE_ID, UUID.randomUUID(), Map.of(), null);
+
+		assertThat(DevilFruitResponseMapper.toSubcategoryResponse(named, types))
+			.isEqualTo(new SubcategoryReferenceResponse(mythical, Map.of("it", "Mitologico")));
+		assertThat(DevilFruitResponseMapper.toSubcategoryResponse(unknown, types).names()).isEmpty();
+		assertThat(DevilFruitResponseMapper.toSubcategoryResponse(fruit(TYPE_ID), types)).isNull();
+		assertThat(DevilFruitResponseMapper.toResponse(zoan).subcategories())
+			.containsExactly(new SubcategoryReferenceResponse(mythical, Map.of("it", "Mitologico")));
+	}
+
+	@Test
+	void aRequestSaysItsSubcategory() {
+		UUID mythical = UUID.randomUUID();
+
+		var fruit = DevilFruitRequestMapper.toDomain(new DevilFruitRequest("Uo Uo", TYPE_ID, mythical, null, null));
+
+		assertThat(fruit.subcategoryId()).isEqualTo(mythical);
 	}
 
 	private static DevilFruit fruit(UUID type) {

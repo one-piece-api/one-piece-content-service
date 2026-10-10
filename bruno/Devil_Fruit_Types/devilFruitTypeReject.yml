@@ -77,6 +77,12 @@ examples:
             ],
             "body": {
               "romaji": "",
+              "subcategories": [
+                {
+                  "id": "",
+                  "translations": {}
+                }
+              ],
               "translations": {}
             },
             "claimant": {

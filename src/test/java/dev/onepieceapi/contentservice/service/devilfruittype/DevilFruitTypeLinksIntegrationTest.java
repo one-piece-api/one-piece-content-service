@@ -132,8 +132,7 @@ class DevilFruitTypeLinksIntegrationTest {
 						new DevilFruitRules(this.contentRepository, this.typeRepository)),
 				this.contentVersionRepository, this.contentRepository,
 				new AuditLogService(this.auditLogRepository, clock), clock, mock(ContentImages.class));
-		this.links = new DevilFruitTypeLinks(new DevilFruitTypeTitleSource(this.typeRepository), this.typeRepository,
-				this.fruitRepository, clock);
+		this.links = new DevilFruitTypeLinks(this.typeRepository, this.fruitRepository, clock);
 
 		this.paramecia = typeContent("Paramecia", "Paramisha", PUBLISHED);
 		this.zoan = typeContent("Zoan", "Zoo", READY_TO_PUBLISH);

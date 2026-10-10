@@ -4,6 +4,7 @@ import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitType;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -14,8 +15,10 @@ import java.util.Map;
  *
  * @param translations name, description, advantages and disadvantages per language code;
  * a language left out, or with nothing written in it, has no translation
+ * @param subcategories every subcategory, in the order they are shown; left out for none
  */
 public record DevilFruitTypeRequest(@Size(max = DevilFruitType.ROMAJI_MAX_LENGTH) String romaji,
-		Map<String, @Valid DevilFruitTypeTranslationRequest> translations) {
+		Map<String, @Valid DevilFruitTypeTranslationRequest> translations,
+		List<@Valid DevilFruitTypeSubcategoryRequest> subcategories) {
 
 }

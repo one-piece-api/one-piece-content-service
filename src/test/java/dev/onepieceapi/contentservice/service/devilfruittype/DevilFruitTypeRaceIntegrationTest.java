@@ -199,6 +199,25 @@ class DevilFruitTypeRaceIntegrationTest {
 		assertThat(online).isTrue();
 	}
 
+	@Test
+	void twoVersionsPutOnlineAtOnceWithTheTypeRulesGoOnlineOneAfterTheOther() throws Exception {
+		var transaction = new TransactionTemplate(this.transactionManager);
+		UUID kodai = transaction.execute(status -> seedContent(VersionStatus.RETIRED, VersionStatus.READY_TO_PUBLISH));
+		DevilFruitTypeService service = service(this.versionRepository, this.contentVersionRepository);
+
+		List<Object> outcomes = race(
+				() -> transaction.execute(status -> service.restore(PUBLISHER, this.vivi, kodai, 1)),
+				() -> transaction.execute(status -> service.publish(PUBLISHER, this.luffy, kodai, 2)));
+
+		assertThat(outcomes).allMatch(VersionAccess.class::isInstance);
+		Integer online = transaction
+			.execute(status -> this.versionRepository.findVisible(kodai, Set.of(VersionStatus.PUBLISHED)).size());
+		Integer superseded = transaction
+			.execute(status -> this.versionRepository.findVisible(kodai, Set.of(VersionStatus.SUPERSEDED)).size());
+		assertThat(online).isEqualTo(1);
+		assertThat(superseded).isEqualTo(1);
+	}
+
 	private static void assertOneGotInAndTheOtherAConflict(List<Object> outcomes) {
 		assertThat(outcomes).filteredOn(VersionAccess.class::isInstance).hasSize(1);
 		assertThat(outcomes).filteredOn(VersionActionConflictException.class::isInstance).hasSize(1);
@@ -249,7 +268,11 @@ class DevilFruitTypeRaceIntegrationTest {
 
 	/**
 	 * The service, with its view of the versions holding each caller right after it
-	 * looked for the online version to supersede, until both have looked.
+	 * looked for the online version to supersede, until both have looked. Without the
+	 * type's own rules: they hold the content exclusively before going online, so with
+	 * them the two never look at once (see
+	 * {@link #twoVersionsPutOnlineAtOnceWithTheTypeRulesGoOnlineOneAfterTheOther}); what
+	 * is proven here is the database's own guard, which every entity has.
 	 */
 	private DevilFruitTypeService serviceWithBothCallersHeldAfterLookingForTheOnlineVersion(UUID contentId) {
 		var bothLooked = new CyclicBarrier(2);
@@ -260,15 +283,20 @@ class DevilFruitTypeRaceIntegrationTest {
 			bothLooked.await(WAIT_SECONDS, TimeUnit.SECONDS);
 			return online;
 		}).when(heldAfterLooking).findOnline(contentId);
-		return service(heldAfterLooking, this.contentVersionRepository);
+		return service(heldAfterLooking, this.contentVersionRepository, mock(DevilFruitTypeRules.class));
 	}
 
 	private DevilFruitTypeService service(DevilFruitTypeVersionRepository versions,
 			ContentVersionRepository contentVersions) {
+		return service(versions, contentVersions,
+				new DevilFruitTypeRules(this.contentRepository, this.fruitRepository, new RulesProperties(5)));
+	}
+
+	private DevilFruitTypeService service(DevilFruitTypeVersionRepository versions,
+			ContentVersionRepository contentVersions, DevilFruitTypeRules rules) {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
 		var validator = new DevilFruitTypeValidator(this.versionRepository, this.languageRepository);
-		return new DevilFruitTypeService(versions, contentVersions, this.contentRepository, validator,
-				new DevilFruitTypeRules(this.contentRepository, this.fruitRepository, new RulesProperties(5)),
+		return new DevilFruitTypeService(versions, contentVersions, this.contentRepository, validator, rules,
 				new AuditLogService(this.auditLogRepository, clock), clock);
 	}
 

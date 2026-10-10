@@ -9,7 +9,9 @@ import java.util.Map;
  *
  * @param names the name per language code, for the languages that have one
  * @param type the Devil Fruit Type it belongs to, as it is today; null while not chosen
+ * @param subcategory the subcategory of that type it names; null for none
  */
-public record DevilFruitNamesResponse(String romaji, Map<String, String> names, TypeReferenceResponse type) {
+public record DevilFruitNamesResponse(String romaji, Map<String, String> names, TypeReferenceResponse type,
+		SubcategoryReferenceResponse subcategory) {
 
 }

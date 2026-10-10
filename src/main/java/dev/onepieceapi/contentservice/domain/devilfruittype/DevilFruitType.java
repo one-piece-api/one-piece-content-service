@@ -7,18 +7,25 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * What one version of a Devil Fruit Type says
  * (docs/user-flows/content-editorial-workflow.md 3.1.1): one romaji shared by every
- * language, and a name, description, advantages and disadvantages per language code.
- * Plugged into the generic {@code Content} and {@code Version}, which carry the workflow
- * around it.
+ * language, a name, description, advantages and disadvantages per language code, and its
+ * subcategories in the order they are shown. Plugged into the generic {@code Content} and
+ * {@code Version}, which carry the workflow around it.
+ *
+ * @param subcategories none for a type without them; never null
  */
-public record DevilFruitType(String romaji,
-		Map<String, DevilFruitTypeTranslation> translations) implements ContentBody<DevilFruitType> {
+public record DevilFruitType(String romaji, Map<String, DevilFruitTypeTranslation> translations,
+		List<DevilFruitTypeSubcategory> subcategories) implements ContentBody<DevilFruitType> {
 
 	public static final int ROMAJI_MAX_LENGTH = 100;
 
@@ -33,6 +40,19 @@ public record DevilFruitType(String romaji,
 
 	private static final String DISADVANTAGES_FIELD = "translations[%s].disadvantages";
 
+	private static final String SUBCATEGORY_NAME_FIELD = "subcategories[%d].translations[%s].name";
+
+	private static final String SUBCATEGORY_DESCRIPTION_FIELD = "subcategories[%d].translations[%s].description";
+
+	public DevilFruitType {
+		subcategories = subcategories == null ? List.of() : List.copyOf(subcategories);
+	}
+
+	/** A type without subcategories. */
+	public DevilFruitType(String romaji, Map<String, DevilFruitTypeTranslation> translations) {
+		this(romaji, translations, List.of());
+	}
+
 	@Override
 	public DevilFruitType normalized() {
 		Map<String, DevilFruitTypeTranslation> written = new TreeMap<>();
@@ -42,12 +62,23 @@ public record DevilFruitType(String romaji,
 				written.put(language, normalized);
 			}
 		});
-		return new DevilFruitType(Text.stripToNull(this.romaji), written);
+		return new DevilFruitType(Text.stripToNull(this.romaji), written,
+				this.subcategories.stream().map(DevilFruitTypeSubcategory::normalized).toList());
 	}
 
+	/** Every subcategory just added gets its id. */
+	@Override
+	public DevilFruitType identified() {
+		return new DevilFruitType(this.romaji, this.translations,
+				this.subcategories.stream().map(DevilFruitTypeSubcategory::identified).toList());
+	}
+
+	/** The languages of the type and of its subcategories. */
 	@Override
 	public Set<String> languages() {
-		return this.translations.keySet();
+		Set<String> languages = new TreeSet<>(this.translations.keySet());
+		this.subcategories.forEach(subcategory -> languages.addAll(subcategory.translations().keySet()));
+		return languages;
 	}
 
 	@Override
@@ -62,8 +93,8 @@ public record DevilFruitType(String romaji,
 	}
 
 	/**
-	 * The romaji, then a name, a description, advantages and disadvantages per language -
-	 * every one missing.
+	 * The romaji, then a name, a description, advantages and disadvantages per language,
+	 * then a name and a description per language of each subcategory - every one missing.
 	 */
 	@Override
 	public List<String> missingFields(Collection<String> languages) {
@@ -86,6 +117,18 @@ public record DevilFruitType(String romaji,
 				missing.add(DISADVANTAGES_FIELD.formatted(language));
 			}
 		}
+		for (int index = 0; index < this.subcategories.size(); index++) {
+			DevilFruitTypeSubcategory subcategory = this.subcategories.get(index);
+			for (String language : languages) {
+				DevilFruitTypeSubcategoryTranslation translation = subcategory.translationIn(language);
+				if (translation.name() == null) {
+					missing.add(SUBCATEGORY_NAME_FIELD.formatted(index, language));
+				}
+				if (translation.description() == null) {
+					missing.add(SUBCATEGORY_DESCRIPTION_FIELD.formatted(index, language));
+				}
+			}
+		}
 		return missing;
 	}
 
@@ -94,6 +137,19 @@ public record DevilFruitType(String romaji,
 	 */
 	public DevilFruitTypeTranslation translationIn(String language) {
 		return this.translations.getOrDefault(language, DevilFruitTypeTranslation.NONE);
+	}
+
+	/** The ids of its subcategories; those just added, without one yet, are left out. */
+	public Set<UUID> subcategoryIds() {
+		return this.subcategories.stream()
+			.map(DevilFruitTypeSubcategory::id)
+			.filter(Objects::nonNull)
+			.collect(Collectors.toSet());
+	}
+
+	/** The subcategory with this id, when the type has it. */
+	public Optional<DevilFruitTypeSubcategory> subcategory(UUID id) {
+		return this.subcategories.stream().filter(subcategory -> id.equals(subcategory.id())).findFirst();
 	}
 
 }

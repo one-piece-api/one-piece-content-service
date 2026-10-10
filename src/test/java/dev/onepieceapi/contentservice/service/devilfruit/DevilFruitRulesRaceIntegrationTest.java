@@ -7,6 +7,10 @@ import dev.onepieceapi.contentservice.service.devilfruittype.DevilFruitTypeRules
 import dev.onepieceapi.contentservice.config.RulesProperties;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitTranslation;
+import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitType;
+import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitTypeSubcategory;
+import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitTypeSubcategoryTranslation;
+import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitTypeTranslation;
 import dev.onepieceapi.contentservice.domain.security.Permission;
 import dev.onepieceapi.contentservice.domain.security.User;
 import dev.onepieceapi.contentservice.domain.workflow.BlockReason;
@@ -17,6 +21,7 @@ import dev.onepieceapi.contentservice.persistence.entity.ContentVersionEntity;
 import dev.onepieceapi.contentservice.persistence.entity.DevilFruitTypeVersionEntity;
 import dev.onepieceapi.contentservice.persistence.entity.DevilFruitVersionEntity;
 import dev.onepieceapi.contentservice.persistence.entity.TranslationEmbeddable;
+import dev.onepieceapi.contentservice.persistence.mapper.DevilFruitTypeVersionMapper;
 import dev.onepieceapi.contentservice.persistence.mapper.DevilFruitVersionMapper;
 import dev.onepieceapi.contentservice.persistence.mapper.UserMapper;
 import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
@@ -47,6 +52,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -210,6 +216,76 @@ class DevilFruitRulesRaceIntegrationTest {
 		assertThat(fruitOnline).isTrue();
 	}
 
+	@Test
+	void aTypeVersionLeavingOutASubcategoryWhileAFruitWithItIsGoingOnlineWaitsAndIsRefusedOnceTheFruitIsOnline()
+			throws Exception {
+		var transaction = new TransactionTemplate(this.transactionManager);
+		UUID ancient = UUID.randomUUID();
+		UUID type = transaction.execute(status -> zoanContent(ancient));
+		UUID fruit = transaction.execute(status -> fruitContent(type, ancient, READY_TO_PUBLISH));
+		var publishFoundTypeOnline = new CountDownLatch(1);
+		var letPublishGo = new CountDownLatch(1);
+		DevilFruitTypeVersionRepository holdingRead = mock(DevilFruitTypeVersionRepository.class,
+				delegatesTo(this.typeRepository));
+		doAnswer(invocation -> {
+			boolean online = this.typeRepository.existsWithStatus(type, Set.of(PUBLISHED));
+			publishFoundTypeOnline.countDown();
+			letPublishGo.await(WAIT_SECONDS, TimeUnit.SECONDS);
+			return online;
+		}).when(holdingRead).existsWithStatus(eq(type), any());
+		var fruits = fruitService(holdingRead);
+		var types = typeService(this.fruitRepository, this.typeRepository);
+
+		try (var executor = Executors.newFixedThreadPool(2)) {
+			Future<?> publish = executor
+				.submit(() -> transaction.execute(status -> fruits.publish(PUBLISHER, this.luffy, fruit, 1)));
+			assertThat(publishFoundTypeOnline.await(WAIT_SECONDS, TimeUnit.SECONDS)).isTrue();
+			Future<?> typePublish = executor
+				.submit(() -> transaction.execute(status -> types.publish(PUBLISHER, this.vivi, type, 2)));
+
+			Thread.sleep(SETTLE_MILLIS);
+			assertThat(typePublish.isDone()).as("the type's version waits for the fruit").isFalse();
+			letPublishGo.countDown();
+
+			assertThat(publish.get(WAIT_SECONDS, TimeUnit.SECONDS)).isNotNull();
+			assertThatThrownBy(() -> typePublish.get(WAIT_SECONDS, TimeUnit.SECONDS))
+				.isInstanceOf(ExecutionException.class)
+				.hasCauseInstanceOf(VersionActionBlockedException.class)
+				.cause()
+				.satisfies(refused -> assertThat(((VersionActionBlockedException) refused).getDetails())
+					.containsEntry("reason", BlockReason.SUBCATEGORY_IN_USE));
+		}
+
+		Boolean fruitOnline = transaction.execute(status -> this.fruitRepository.findOnline(fruit).isPresent());
+		Integer onlineTypeVersion = transaction
+			.execute(status -> this.typeRepository.findOnline(type).orElseThrow().getVersion().getVersionNumber());
+		assertThat(fruitOnline).isTrue();
+		assertThat(onlineTypeVersion).isEqualTo(1);
+	}
+
+	/**
+	 * A type online with this subcategory, and ready to publish a version without it; a
+	 * name of its own, so runs never collide.
+	 */
+	private UUID zoanContent(UUID subcategoryId) {
+		UUID contentId = this.contentRepository
+			.save(new ContentEntity(UUID.randomUUID(), EntityType.DEVIL_FRUIT_TYPE, NOW))
+			.getId();
+		String romaji = "Type " + contentId;
+		var translations = Map.of("it", new DevilFruitTypeTranslation(romaji, "Descrizione", "Pro", "Contro"));
+		var online = new DevilFruitTypeVersionEntity(workflow(contentId, 1, PUBLISHED));
+		DevilFruitTypeVersionMapper.rewrite(online,
+				new DevilFruitType(romaji, translations,
+						List.of(new DevilFruitTypeSubcategory(subcategoryId,
+								Map.of("it", new DevilFruitTypeSubcategoryTranslation("Antico", "Descrizione"))))),
+				NOW);
+		this.typeRepository.save(online);
+		var ready = new DevilFruitTypeVersionEntity(workflow(contentId, 2, READY_TO_PUBLISH));
+		DevilFruitTypeVersionMapper.rewrite(ready, new DevilFruitType(romaji, translations), NOW);
+		this.typeRepository.save(ready);
+		return contentId;
+	}
+
 	private DevilFruitTypeService typeService(DevilFruitVersionRepository fruits,
 			DevilFruitTypeVersionRepository types) {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
@@ -245,20 +321,28 @@ class DevilFruitRulesRaceIntegrationTest {
 	}
 
 	private UUID fruitContent(UUID type, VersionStatus status) {
+		return fruitContent(type, null, status);
+	}
+
+	private UUID fruitContent(UUID type, UUID subcategory, VersionStatus status) {
 		UUID contentId = this.contentRepository.save(new ContentEntity(UUID.randomUUID(), EntityType.DEVIL_FRUIT, NOW))
 			.getId();
 		String romaji = "Fruit " + contentId;
-		var version = new DevilFruitVersionEntity(workflow(contentId, status));
-		DevilFruitVersionMapper.rewrite(version, new DevilFruit(romaji, type,
-				Map.of("it", new DevilFruitTranslation(romaji, "Descrizione", "Pro", "Contro"))), NOW);
+		var version = new DevilFruitVersionEntity(workflow(contentId, 1, status));
+		DevilFruitVersionMapper.rewrite(version, new DevilFruit(romaji, type, subcategory,
+				Map.of("it", new DevilFruitTranslation(romaji, "Descrizione", "Pro", "Contro")), null), NOW);
 		this.fruitRepository.save(version);
 		return contentId;
 	}
 
 	private ContentVersionEntity workflow(UUID contentId, VersionStatus status) {
+		return workflow(contentId, 1, status);
+	}
+
+	private ContentVersionEntity workflow(UUID contentId, int number, VersionStatus status) {
 		return ContentVersionEntity.builder()
 			.contentId(contentId)
-			.versionNumber(1)
+			.versionNumber(number)
 			.author(UserMapper.toEmbeddable(this.vivi))
 			.status(status)
 			.createdAt(NOW)

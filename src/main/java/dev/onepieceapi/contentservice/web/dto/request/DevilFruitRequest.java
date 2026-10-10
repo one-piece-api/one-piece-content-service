@@ -16,6 +16,8 @@ import java.util.UUID;
  *
  * @param type the id of the content of the Devil Fruit Type it belongs to; whether it can
  * be chosen is answered by {@code GET /devil-fruit-types/linkable}
+ * @param subcategory one of the subcategories of that type, as {@code linkable} lists
+ * them; left out for none
  * @param translations name, description, advantages and disadvantages per language code;
  * a language left out, or with nothing written in it, has no translation
  * @param removeImage true to remove the draft's image; not together with an uploaded one.
@@ -23,6 +25,7 @@ import java.util.UUID;
  */
 public record DevilFruitRequest(@Size(max = DevilFruit.ROMAJI_MAX_LENGTH) String romaji,
 		@Schema(description = "The content id of its Devil Fruit Type") UUID type,
+		@Schema(description = "The id of a subcategory of its Devil Fruit Type; left out for none") UUID subcategory,
 		Map<String, @Valid DevilFruitTranslationRequest> translations, Boolean removeImage) {
 
 	/** Whether the image is to be removed; not saying so keeps it. */

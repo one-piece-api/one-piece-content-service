@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.web.dto.response;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -10,7 +11,9 @@ import java.util.UUID;
  * @param id the content id of the type
  * @param romaji null when the type has nothing approved to call it by
  * @param names the name per language code, for the languages that have one
+ * @param subcategories those a fruit of the type may name, in order
  */
-public record TypeReferenceResponse(UUID id, String romaji, Map<String, String> names) {
+public record TypeReferenceResponse(UUID id, String romaji, Map<String, String> names,
+		List<SubcategoryReferenceResponse> subcategories) {
 
 }

@@ -66,7 +66,16 @@ public class ContentValidator<T extends ContentBody<T>, E extends VersionBodyEnt
 	 * each other
 	 */
 	public void validateDraft(UUID contentId, T body) {
+		validateDraft(contentId, Optional.empty(), body);
+	}
+
+	/**
+	 * @param previous what the draft said until now; empty for the first draft of a new
+	 * content
+	 */
+	public void validateDraft(UUID contentId, Optional<T> previous, T body) {
 		requireKnownLanguages(body);
+		requireValidRevision(previous, body);
 		requireValidRelations(body);
 		requireUniqueValues(contentId, body, slugOf(body));
 	}
@@ -88,6 +97,14 @@ public class ContentValidator<T extends ContentBody<T>, E extends VersionBodyEnt
 	 * and again at submission; nothing by default.
 	 */
 	protected void requireValidRelations(T body) {
+	}
+
+	/**
+	 * What the entity says about a draft against what it said until now - e.g. the parts
+	 * it names by an id it already had; checked on every save, nothing by default.
+	 * @param previous empty for the first draft of a new content
+	 */
+	protected void requireValidRevision(Optional<T> previous, T body) {
 	}
 
 	private void requireKnownLanguages(T body) {

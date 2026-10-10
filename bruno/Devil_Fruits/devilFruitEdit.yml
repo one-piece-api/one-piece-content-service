@@ -21,6 +21,7 @@ http:
       {
         "removeImage": false,
         "romaji": "",
+        "subcategory": "",
         "translations": {},
         "type": ""
       }
@@ -52,6 +53,7 @@ examples:
           {
             "removeImage": false,
             "romaji": "",
+            "subcategory": "",
             "translations": {},
             "type": ""
           }
@@ -87,11 +89,21 @@ examples:
                 "url": ""
               },
               "romaji": "",
+              "subcategory": {
+                "id": "",
+                "names": {}
+              },
               "translations": {},
               "type": {
                 "id": "",
                 "names": {},
-                "romaji": ""
+                "romaji": "",
+                "subcategories": [
+                  {
+                    "id": "",
+                    "names": {}
+                  }
+                ]
               }
             },
             "claimant": {
@@ -127,6 +139,7 @@ examples:
           {
             "removeImage": false,
             "romaji": "",
+            "subcategory": "",
             "translations": {},
             "type": ""
           }
@@ -171,6 +184,7 @@ examples:
           {
             "removeImage": false,
             "romaji": "",
+            "subcategory": "",
             "translations": {},
             "type": ""
           }

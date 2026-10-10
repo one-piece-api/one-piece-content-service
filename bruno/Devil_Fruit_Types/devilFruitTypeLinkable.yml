@@ -69,7 +69,13 @@ examples:
               {
                 "id": "",
                 "names": {},
-                "romaji": ""
+                "romaji": "",
+                "subcategories": [
+                  {
+                    "id": "",
+                    "names": {}
+                  }
+                ]
               }
             ],
             "page": 0,

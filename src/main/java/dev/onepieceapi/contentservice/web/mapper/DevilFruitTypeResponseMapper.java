@@ -1,12 +1,15 @@
 package dev.onepieceapi.contentservice.web.mapper;
 
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitType;
+import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitTypeSubcategory;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitTypeTranslation;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAccess;
 import dev.onepieceapi.contentservice.web.dto.response.ContentSummaryResponse;
 import dev.onepieceapi.contentservice.web.dto.response.DevilFruitTypeNamesResponse;
 import dev.onepieceapi.contentservice.web.dto.response.DevilFruitTypeResponse;
+import dev.onepieceapi.contentservice.web.dto.response.DevilFruitTypeSubcategoryResponse;
+import dev.onepieceapi.contentservice.web.dto.response.DevilFruitTypeSubcategoryTranslationResponse;
 import dev.onepieceapi.contentservice.web.dto.response.DevilFruitTypeTranslationResponse;
 import dev.onepieceapi.contentservice.web.dto.response.VersionResponse;
 import lombok.experimental.UtilityClass;
@@ -40,7 +43,11 @@ public class DevilFruitTypeResponseMapper {
 		Map<String, DevilFruitTypeTranslationResponse> translations = new TreeMap<>();
 		devilFruitType.translations()
 			.forEach((language, translation) -> translations.put(language, toTranslationResponse(translation)));
-		return new DevilFruitTypeResponse(devilFruitType.romaji(), translations);
+		return new DevilFruitTypeResponse(devilFruitType.romaji(), translations,
+				devilFruitType.subcategories()
+					.stream()
+					.map(DevilFruitTypeResponseMapper::toSubcategoryResponse)
+					.toList());
 	}
 
 	/**
@@ -53,6 +60,14 @@ public class DevilFruitTypeResponseMapper {
 	private static DevilFruitTypeTranslationResponse toTranslationResponse(DevilFruitTypeTranslation translation) {
 		return new DevilFruitTypeTranslationResponse(translation.name(), translation.description(),
 				translation.advantages(), translation.disadvantages());
+	}
+
+	private static DevilFruitTypeSubcategoryResponse toSubcategoryResponse(DevilFruitTypeSubcategory subcategory) {
+		Map<String, DevilFruitTypeSubcategoryTranslationResponse> translations = new TreeMap<>();
+		subcategory.translations()
+			.forEach((language, translation) -> translations.put(language,
+					new DevilFruitTypeSubcategoryTranslationResponse(translation.name(), translation.description())));
+		return new DevilFruitTypeSubcategoryResponse(subcategory.id(), translations);
 	}
 
 }

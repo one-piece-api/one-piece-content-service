@@ -13,6 +13,12 @@ http:
     data: |-
       {
         "romaji": "",
+        "subcategories": [
+          {
+            "id": "",
+            "translations": {}
+          }
+        ],
         "translations": {}
       }
   auth: inherit
@@ -35,6 +41,12 @@ examples:
         data: |-
           {
             "romaji": "",
+            "subcategories": [
+              {
+                "id": "",
+                "translations": {}
+              }
+            ],
             "translations": {}
           }
     response:
@@ -86,6 +98,12 @@ examples:
         data: |-
           {
             "romaji": "",
+            "subcategories": [
+              {
+                "id": "",
+                "translations": {}
+              }
+            ],
             "translations": {}
           }
     response:
@@ -121,6 +139,12 @@ examples:
         data: |-
           {
             "romaji": "",
+            "subcategories": [
+              {
+                "id": "",
+                "translations": {}
+              }
+            ],
             "translations": {}
           }
     response:

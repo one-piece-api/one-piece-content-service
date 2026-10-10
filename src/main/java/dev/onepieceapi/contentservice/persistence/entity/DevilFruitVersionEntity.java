@@ -18,9 +18,9 @@ import java.util.UUID;
 /**
  * What one version of a Devil Fruit says (implementation plan of the Devil Fruit, D1,
  * D7): its romaji (see {@link VersionBodyEntity}), the content of its Devil Fruit Type
- * and, per language, its name, description, advantages and disadvantages. The entity type
- * of the link is a constant the database fills in: it is what keeps a fruit from pointing
- * to a fruit.
+ * and of one of its subcategories, and, per language, its name, description, advantages
+ * and disadvantages. The entity type of the link is a constant the database fills in: it
+ * is what keeps a fruit from pointing to a fruit.
  */
 @Entity
 @Table(name = "devil_fruit_version")
@@ -31,6 +31,9 @@ public class DevilFruitVersionEntity extends VersionBodyEntity {
 
 	/** The type's content, not one of its versions; null while not chosen. */
 	private UUID typeContentId;
+
+	/** One subcategory of that type; null for none. */
+	private UUID subcategoryId;
 
 	/** The id of its image; null for none. */
 	private String imageId;
@@ -48,10 +51,11 @@ public class DevilFruitVersionEntity extends VersionBodyEntity {
 	}
 
 	/** Replaces everything the version says, and notes when. */
-	public void rewrite(String newRomaji, UUID newTypeContentId, Map<String, TranslationEmbeddable> newTranslations,
-			String newImageId, Instant now) {
+	public void rewrite(String newRomaji, UUID newTypeContentId, UUID newSubcategoryId,
+			Map<String, TranslationEmbeddable> newTranslations, String newImageId, Instant now) {
 		setRomaji(newRomaji);
 		this.typeContentId = newTypeContentId;
+		this.subcategoryId = newSubcategoryId;
 		this.imageId = newImageId;
 		this.translations.clear();
 		this.translations.putAll(newTranslations);

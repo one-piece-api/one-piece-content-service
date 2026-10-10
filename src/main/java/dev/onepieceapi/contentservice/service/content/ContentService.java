@@ -41,6 +41,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -216,6 +217,7 @@ public class ContentService<T extends ContentBody<T>, E extends VersionBodyEntit
 		UUID contentId = UUID.randomUUID();
 		T body = written.normalized();
 		this.validator.validateDraft(contentId, body);
+		body = body.identified();
 		Instant now = this.clock.instant();
 		this.contentRepository.save(new ContentEntity(contentId, this.definition.entityType(), now));
 		E draft = newDraft(contentId, 1, null, caller, body, now);
@@ -238,8 +240,8 @@ public class ContentService<T extends ContentBody<T>, E extends VersionBodyEntit
 		TransitionContext context = contextOf(current, contentId, caller, permissions);
 		require(VersionAction.EDIT, context);
 		T body = written.normalized();
-		this.validator.validateDraft(contentId, body);
-		this.definition.rewrite(entity, body, this.clock.instant());
+		this.validator.validateDraft(contentId, Optional.of(current.body()), body);
+		this.definition.rewrite(entity, body.identified(), this.clock.instant());
 		this.auditLogService.recordOnVersion(auditRecord(AUDIT_ACTION_EDITED, caller, entity)
 			.override(TransitionPolicy.overrides(VersionAction.EDIT, context))
 			.build());

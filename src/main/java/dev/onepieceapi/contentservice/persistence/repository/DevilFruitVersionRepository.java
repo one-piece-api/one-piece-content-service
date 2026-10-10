@@ -3,6 +3,7 @@ package dev.onepieceapi.contentservice.persistence.repository;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.entity.DevilFruitVersionEntity;
 import dev.onepieceapi.contentservice.persistence.projection.TypeFruitCount;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -10,6 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -54,6 +56,31 @@ public interface DevilFruitVersionRepository extends VersionBodyRepository<Devil
 				and v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED
 			order by d.romaji""")
 	List<DevilFruitVersionEntity> findOnlineLinkedTo(UUID typeContentId, Pageable pageable);
+
+	/**
+	 * The fruits online with this type naming a subcategory outside the given ones, by
+	 * romaji: as many as the page asks for, and how many there are.
+	 */
+	default Page<DevilFruitVersionEntity> findOnlineOutsideSubcategories(UUID typeContentId, Set<UUID> subcategoryIds,
+			Pageable pageable) {
+		return subcategoryIds.isEmpty() ? findOnlineWithSubcategory(typeContentId, pageable)
+				: findOnlineWithSubcategoryNotIn(typeContentId, subcategoryIds, pageable);
+	}
+
+	@Query("""
+			select d from DevilFruitVersionEntity d join d.version v
+			where d.typeContentId = :typeContentId and d.subcategoryId is not null
+				and v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED
+			order by d.romaji""")
+	Page<DevilFruitVersionEntity> findOnlineWithSubcategory(UUID typeContentId, Pageable pageable);
+
+	@Query("""
+			select d from DevilFruitVersionEntity d join d.version v
+			where d.typeContentId = :typeContentId and d.subcategoryId not in :subcategoryIds
+				and v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED
+			order by d.romaji""")
+	Page<DevilFruitVersionEntity> findOnlineWithSubcategoryNotIn(UUID typeContentId, Set<UUID> subcategoryIds,
+			Pageable pageable);
 
 	@Override
 	@Query(value = """

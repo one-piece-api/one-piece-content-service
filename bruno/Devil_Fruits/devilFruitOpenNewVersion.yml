@@ -75,11 +75,21 @@ examples:
                 "url": ""
               },
               "romaji": "",
+              "subcategory": {
+                "id": "",
+                "names": {}
+              },
               "translations": {},
               "type": {
                 "id": "",
                 "names": {},
-                "romaji": ""
+                "romaji": "",
+                "subcategories": [
+                  {
+                    "id": "",
+                    "names": {}
+                  }
+                ]
               }
             },
             "claimant": {

@@ -31,6 +31,16 @@ public interface ContentBody<T extends ContentBody<T>> {
 	T normalized();
 
 	/**
+	 * The same content with an id for each part that needs one and has none yet - e.g. a
+	 * subcategory just added to a Devil Fruit Type; given by the service once the draft
+	 * is valid, never by the client. Nothing to do by default.
+	 */
+	@SuppressWarnings("unchecked")
+	default T identified() {
+		return (T) this;
+	}
+
+	/**
 	 * Every field still missing for review in the given languages (3.3, completeness),
 	 * named as a request names it - e.g. {@code romaji}, {@code translations[it].name};
 	 * empty when the content is complete.

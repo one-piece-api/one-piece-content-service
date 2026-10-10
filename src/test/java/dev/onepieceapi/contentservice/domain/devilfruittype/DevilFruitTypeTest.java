@@ -3,8 +3,10 @@ package dev.onepieceapi.contentservice.domain.devilfruittype;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
@@ -74,6 +76,57 @@ class DevilFruitTypeTest {
 
 		assertThat(new DevilFruitType("Zoan", translations)).isEqualTo(stored);
 		assertThat(new DevilFruitType("ZOAN", translations)).isNotEqualTo(stored);
+	}
+
+	@Test
+	void theTextsOfASubcategoryAreTidiedAndALanguageWithNothingInItDropped() {
+		var typed = new DevilFruitType("Zoan", Map.of(),
+				List.of(new DevilFruitTypeSubcategory(null,
+						Map.of("it", new DevilFruitTypeSubcategoryTranslation(" Antico ", " "), "en",
+								new DevilFruitTypeSubcategoryTranslation(" ", null)))));
+
+		var normalized = typed.normalized();
+
+		assertThat(normalized.subcategories()).containsExactly(new DevilFruitTypeSubcategory(null,
+				Map.of("it", new DevilFruitTypeSubcategoryTranslation("Antico", null))));
+	}
+
+	@Test
+	void everySubcategoryJustAddedGetsAnIdAndTheOthersKeepTheirs() {
+		UUID ancient = UUID.randomUUID();
+		var typed = new DevilFruitType("Zoan", Map.of(), List.of(new DevilFruitTypeSubcategory(ancient, Map.of()),
+				new DevilFruitTypeSubcategory(null, Map.of())));
+
+		var identified = typed.identified();
+
+		assertThat(identified.subcategories().getFirst().id()).isEqualTo(ancient);
+		assertThat(identified.subcategories().get(1).id()).isNotNull().isNotEqualTo(ancient);
+		assertThat(typed.subcategoryIds()).containsExactly(ancient);
+		assertThat(identified.subcategory(ancient)).isPresent();
+	}
+
+	@Test
+	void aSubcategoryMissesItsNameAndDescriptionInEveryLanguageAndCountsAmongTheLanguagesUsed() {
+		var english = new DevilFruitTypeSubcategoryTranslation("Ancient", null);
+		var body = new DevilFruitType("Zoan", Map.of(),
+				List.of(new DevilFruitTypeSubcategory(UUID.randomUUID(), Map.of("en", english))));
+
+		assertThat(body.missingFields(List.of("en", "it")))
+			.contains("subcategories[0].translations[en].description", "subcategories[0].translations[it].name",
+					"subcategories[0].translations[it].description")
+			.doesNotContain("subcategories[0].translations[en].name");
+		assertThat(body.languages()).containsExactly("en");
+		assertThat(body.names()).isEmpty();
+	}
+
+	@Test
+	void aTypeWithoutSubcategoriesHasAnEmptyListAndOrderMakesTwoBodiesDifferent() {
+		var ancient = new DevilFruitTypeSubcategory(UUID.randomUUID(), Map.of());
+		var mythical = new DevilFruitTypeSubcategory(UUID.randomUUID(), Map.of());
+
+		assertThat(new DevilFruitType("Zoan", Map.of(), null).subcategories()).isEmpty();
+		assertThat(new DevilFruitType("Zoan", Map.of(), List.of(ancient, mythical)))
+			.isNotEqualTo(new DevilFruitType("Zoan", Map.of(), List.of(mythical, ancient)));
 	}
 
 }

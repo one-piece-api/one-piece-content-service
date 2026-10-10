@@ -1726,6 +1726,8 @@ components:
           enum:
           - TYPE_NOT_ONLINE
           - ONLINE_FRUITS_LINKED
+          - SUBCATEGORY_NOT_ONLINE
+          - SUBCATEGORY_IN_USE
     ContentListSummaryResponse:
       type: object
       properties:
@@ -1933,6 +1935,8 @@ components:
             type: string
         romaji:
           type: string
+        subcategory:
+          $ref: "#/components/schemas/SubcategoryReferenceResponse"
         type:
           $ref: "#/components/schemas/TypeReferenceResponse"
     DevilFruitRequest:
@@ -1944,6 +1948,11 @@ components:
           type: string
           maxLength: 100
           minLength: 0
+        subcategory:
+          type: string
+          format: uuid
+          description: The id of a subcategory of its Devil Fruit Type; left out for
+            none
         translations:
           type: object
           additionalProperties:
@@ -1959,6 +1968,8 @@ components:
           $ref: "#/components/schemas/ImageResponse"
         romaji:
           type: string
+        subcategory:
+          $ref: "#/components/schemas/SubcategoryReferenceResponse"
         translations:
           type: object
           additionalProperties:
@@ -2014,6 +2025,10 @@ components:
           type: string
           maxLength: 100
           minLength: 0
+        subcategories:
+          type: array
+          items:
+            $ref: "#/components/schemas/DevilFruitTypeSubcategoryRequest"
         translations:
           type: object
           additionalProperties:
@@ -2023,10 +2038,54 @@ components:
       properties:
         romaji:
           type: string
+        subcategories:
+          type: array
+          items:
+            $ref: "#/components/schemas/DevilFruitTypeSubcategoryResponse"
         translations:
           type: object
           additionalProperties:
             $ref: "#/components/schemas/DevilFruitTypeTranslationResponse"
+    DevilFruitTypeSubcategoryRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: The id of a subcategory the draft already has; left out for
+            a new one
+        translations:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/DevilFruitTypeSubcategoryTranslationRequest"
+    DevilFruitTypeSubcategoryResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        translations:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/DevilFruitTypeSubcategoryTranslationResponse"
+    DevilFruitTypeSubcategoryTranslationRequest:
+      type: object
+      properties:
+        description:
+          type: string
+          maxLength: 2000
+          minLength: 0
+        name:
+          type: string
+          maxLength: 100
+          minLength: 0
+    DevilFruitTypeSubcategoryTranslationResponse:
+      type: object
+      properties:
+        description:
+          type: string
+        name:
+          type: string
     DevilFruitTypeTranslationRequest:
       type: object
       properties:
@@ -2318,6 +2377,16 @@ components:
         versionNumber:
           type: integer
           format: int32
+    SubcategoryReferenceResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        names:
+          type: object
+          additionalProperties:
+            type: string
     TypeReferenceResponse:
       type: object
       properties:
@@ -2330,6 +2399,10 @@ components:
             type: string
         romaji:
           type: string
+        subcategories:
+          type: array
+          items:
+            $ref: "#/components/schemas/SubcategoryReferenceResponse"
     UserResponse:
       type: object
       properties:

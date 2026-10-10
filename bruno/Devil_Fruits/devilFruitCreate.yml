@@ -14,6 +14,7 @@ http:
       {
         "removeImage": false,
         "romaji": "",
+        "subcategory": "",
         "translations": {},
         "type": ""
       }
@@ -38,6 +39,7 @@ examples:
           {
             "removeImage": false,
             "romaji": "",
+            "subcategory": "",
             "translations": {},
             "type": ""
           }
@@ -91,6 +93,7 @@ examples:
           {
             "removeImage": false,
             "romaji": "",
+            "subcategory": "",
             "translations": {},
             "type": ""
           }
@@ -128,6 +131,7 @@ examples:
           {
             "removeImage": false,
             "romaji": "",
+            "subcategory": "",
             "translations": {},
             "type": ""
           }

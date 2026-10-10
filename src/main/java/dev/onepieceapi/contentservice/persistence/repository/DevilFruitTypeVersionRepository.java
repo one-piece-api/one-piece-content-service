@@ -9,8 +9,8 @@ import java.util.UUID;
 
 /**
  * The versions of Devil Fruit Types, content and workflow together. Every query common to
- * all entities comes from {@link VersionBodyRepository}; here, only the two that read the
- * entity's own table by name.
+ * all entities comes from {@link VersionBodyRepository}; here, only those that read the
+ * entity's own tables by name.
  */
 public interface DevilFruitTypeVersionRepository extends VersionBodyRepository<DevilFruitTypeVersionEntity> {
 
@@ -22,6 +22,14 @@ public interface DevilFruitTypeVersionRepository extends VersionBodyRepository<D
 			               where s.entity_type = 'DEVIL_FRUIT_TYPE' and s.slug = :slug and s.content_id <> :contentId)""",
 			nativeQuery = true)
 	boolean slugIsTakenByAnother(String slug, UUID contentId);
+
+	/** The subcategories' texts count too: a language they are written in is in use. */
+	@Override
+	@Query(value = """
+			select exists (select 1 from devil_fruit_type_version_translation where language_code = :languageCode)
+			    or exists (select 1 from devil_fruit_type_version_subcategory_translation
+			               where language_code = :languageCode)""", nativeQuery = true)
+	boolean existsByLanguage(String languageCode);
 
 	@Override
 	@Modifying
