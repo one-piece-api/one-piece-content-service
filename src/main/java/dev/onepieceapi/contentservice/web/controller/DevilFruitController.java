@@ -69,7 +69,7 @@ class DevilFruitController extends ContentController<DevilFruit, DevilFruitRespo
 	@Autowired
 	DevilFruitController(DevilFruitService service, DevilFruitTypeLinks links, ImageResponseMapper images) {
 		super(service, access -> DevilFruitResponseMapper.toVersionResponse(access,
-				links.referencesOf(DevilFruitResponseMapper.typesOf(List.of(access.body()))), images));
+				links.referencesFor(List.of(access.body())), images));
 		this.service = service;
 		this.links = links;
 	}
@@ -90,8 +90,7 @@ class DevilFruitController extends ContentController<DevilFruit, DevilFruitRespo
 	@Override
 	protected List<ContentSummaryResponse<DevilFruitNamesResponse>> summaryResponses(
 			List<ContentSummary<DevilFruit>> rows, AuthenticatedCaller caller) {
-		var types = this.links
-			.referencesOf(DevilFruitResponseMapper.typesOf(rows.stream().map(row -> row.version().body()).toList()));
+		var types = this.links.referencesFor(rows.stream().map(row -> row.version().body()).toList());
 		return rows.stream().map(row -> DevilFruitResponseMapper.toSummaryResponse(row, types)).toList();
 	}
 

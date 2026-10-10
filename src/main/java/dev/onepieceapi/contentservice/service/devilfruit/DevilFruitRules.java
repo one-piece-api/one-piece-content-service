@@ -89,12 +89,7 @@ public class DevilFruitRules implements ContentRules<DevilFruit> {
 		Map<String, Object> detail = new LinkedHashMap<>();
 		detail.put("typeId", typeContentId);
 		detail.put("subcategoryId", subcategoryId);
-		this.typeRepository.findVisible(typeContentId, VersionStatus.approved())
-			.reversed()
-			.stream()
-			.map(DevilFruitTypeVersionMapper::toDomain)
-			.flatMap(type -> type.body().subcategory(subcategoryId).stream())
-			.findFirst()
+		this.typeRepository.findLastApprovedSubcategory(typeContentId, subcategoryId)
 			.ifPresent(subcategory -> detail.put("subcategoryNames", subcategory.names()));
 		return new ActionBlock(BlockReason.SUBCATEGORY_NOT_ONLINE, detail);
 	}

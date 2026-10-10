@@ -104,7 +104,7 @@ class DevilFruitControllerTest {
 		var access = new VersionAccess<>(version(VersionStatus.READY_TO_PUBLISH, TYPE_ID),
 				EnumSet.of(VersionAction.PUBLISH), EnumSet.noneOf(VersionAction.class), List.of(blocked));
 		when(this.service.getVersion(any(), any(), eq(CONTENT_ID), eq(1))).thenReturn(access);
-		when(this.links.referencesOf(anyCollection())).thenReturn(Map.of(TYPE_ID, PARAMECIA));
+		when(this.links.referencesFor(anyCollection())).thenReturn(Map.of(TYPE_ID, PARAMECIA));
 
 		this.mockMvc
 			.perform(get("/devil-fruits/" + CONTENT_ID + "/versions/1").with(callerWith(Permission.CONTENT_READ)))
@@ -124,14 +124,14 @@ class DevilFruitControllerTest {
 	void aVersionWithoutATypeSaysNoneAndAskedNoOne() throws Exception {
 		var access = new VersionAccess<>(version(VersionStatus.DRAFT, null), Set.of());
 		when(this.service.getVersion(any(), any(), eq(CONTENT_ID), eq(1))).thenReturn(access);
-		when(this.links.referencesOf(anyCollection())).thenReturn(Map.of());
+		when(this.links.referencesFor(anyCollection())).thenReturn(Map.of());
 
 		this.mockMvc
 			.perform(get("/devil-fruits/" + CONTENT_ID + "/versions/1").with(callerWith(Permission.CONTENT_READ)))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.body.type").doesNotExist())
 			.andExpect(jsonPath("$.blockedActions").isEmpty());
-		verify(this.links).referencesOf(Set.of());
+		verify(this.links).referencesFor(List.of(access.body()));
 	}
 
 	@Test
@@ -142,7 +142,7 @@ class DevilFruitControllerTest {
 				new ContentSummary<>(UUID.randomUUID(), version(VersionStatus.DRAFT, TYPE_ID), null, Set.of()));
 		when(this.service.list(any(), any(), any(), any(), any()))
 			.thenReturn(new PageImpl<>(rows, PageRequest.of(0, 20), 3));
-		when(this.links.referencesOf(anyCollection())).thenReturn(Map.of(TYPE_ID, PARAMECIA));
+		when(this.links.referencesFor(anyCollection())).thenReturn(Map.of(TYPE_ID, PARAMECIA));
 
 		this.mockMvc.perform(get("/devil-fruits").with(callerWith(Permission.CONTENT_READ)))
 			.andExpect(status().isOk())
@@ -153,8 +153,9 @@ class DevilFruitControllerTest {
 			.andExpect(jsonPath("$.content[2].body.type.names.en").value("Paramecia"));
 
 		var asked = ArgumentCaptor.forClass(Collection.class);
-		verify(this.links).referencesOf(asked.capture());
-		assertThat(asked.getValue()).containsExactlyInAnyOrder(TYPE_ID, other);
+		verify(this.links).referencesFor(asked.capture());
+		assertThat(((Collection<DevilFruit>) asked.getValue()).stream().map(DevilFruit::typeContentId))
+			.containsExactly(TYPE_ID, other, TYPE_ID);
 	}
 
 	@Test
@@ -205,7 +206,7 @@ class DevilFruitControllerTest {
 	void editingAnswersWithTheVersionAndItsType() throws Exception {
 		var access = new VersionAccess<>(version(VersionStatus.DRAFT, TYPE_ID), EnumSet.of(VersionAction.EDIT));
 		when(this.service.edit(any(), any(), eq(CONTENT_ID), eq(1), any(), eq(ImageChange.KEEP))).thenReturn(access);
-		when(this.links.referencesOf(anyCollection())).thenReturn(Map.of(TYPE_ID, PARAMECIA));
+		when(this.links.referencesFor(anyCollection())).thenReturn(Map.of(TYPE_ID, PARAMECIA));
 
 		var request = put("/devil-fruits/" + CONTENT_ID + "/versions/1").with(callerWith(Permission.CONTENT_WRITE))
 			.contentType("application/json")

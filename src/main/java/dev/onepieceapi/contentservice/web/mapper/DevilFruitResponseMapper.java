@@ -15,12 +15,9 @@ import dev.onepieceapi.contentservice.web.dto.response.TypeReferenceResponse;
 import dev.onepieceapi.contentservice.web.dto.response.VersionResponse;
 import lombok.experimental.UtilityClass;
 
-import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
 
@@ -95,17 +92,6 @@ public class DevilFruitResponseMapper {
 
 	private static SubcategoryReferenceResponse toResponse(SubcategoryReference subcategory) {
 		return new SubcategoryReferenceResponse(subcategory.id(), subcategory.names());
-	}
-
-	/** The types the given fruits point to, to look them all up at once. */
-	public Set<UUID> typesOf(Collection<DevilFruit> fruits) {
-		Set<UUID> ids = new HashSet<>();
-		fruits.forEach(fruit -> {
-			if (fruit.typeContentId() != null) {
-				ids.add(fruit.typeContentId());
-			}
-		});
-		return ids;
 	}
 
 	private static DevilFruitTranslationResponse toResponse(DevilFruitTranslation translation) {

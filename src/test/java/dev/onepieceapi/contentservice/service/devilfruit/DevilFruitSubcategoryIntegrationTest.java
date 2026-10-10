@@ -3,6 +3,7 @@ package dev.onepieceapi.contentservice.service.devilfruit;
 import dev.onepieceapi.contentservice.config.RulesProperties;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitTranslation;
+import dev.onepieceapi.contentservice.domain.devilfruit.SubcategoryReference;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitType;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitTypeSubcategory;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitTypeSubcategoryTranslation;
@@ -28,6 +29,7 @@ import dev.onepieceapi.contentservice.persistence.repository.DevilFruitTypeVersi
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
 import dev.onepieceapi.contentservice.service.audit.AuditLogService;
+import dev.onepieceapi.contentservice.service.devilfruittype.DevilFruitTypeLinks;
 import dev.onepieceapi.contentservice.service.devilfruittype.DevilFruitTypeRules;
 import dev.onepieceapi.contentservice.service.devilfruittype.DevilFruitTypeService;
 import dev.onepieceapi.contentservice.service.exception.ValueInvalidException;
@@ -333,6 +335,24 @@ class DevilFruitSubcategoryIntegrationTest {
 		assertThat(refused.getDetails()).containsEntry("reason", BlockReason.SUBCATEGORY_NOT_ONLINE);
 		assertThat(refused.getDetails().get("detail")).isEqualTo(Map.of("typeId", type, "subcategoryId", MYTHICAL,
 				"subcategoryNames", Map.of("it", "Mitico", "en", "Mitico (en)")));
+	}
+
+	@Test
+	void aFruitWhoseSubcategoryTheTypeLeftOutIsStillShownWithItsNameButItIsNotOffered() {
+		UUID type = typeContent(SUPERSEDED, zoan(subcategory(ANCIENT, "Antico"), subcategory(MYTHICAL, "Mitico")));
+		typeVersion(type, 2, PUBLISHED, zoan(subcategory(ANCIENT, "Antico")));
+		var uo = fruit("Uo Uo", type, MYTHICAL);
+		stored();
+
+		var reference = new DevilFruitTypeLinks(this.typeRepository, this.fruitRepository,
+				Clock.fixed(NOW, ZoneOffset.UTC))
+			.referencesFor(List.of(uo))
+			.get(type);
+
+		assertThat(reference.subcategory(MYTHICAL))
+			.hasValueSatisfying(mythical -> assertThat(mythical.names()).containsEntry("it", "Mitico")
+				.containsEntry("en", "Mitico (en)"));
+		assertThat(reference.subcategories()).extracting(SubcategoryReference::id).containsExactly(ANCIENT);
 	}
 
 	@Test

@@ -1,10 +1,14 @@
 package dev.onepieceapi.contentservice.persistence.repository;
 
+import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitTypeSubcategory;
+import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.entity.DevilFruitTypeVersionEntity;
+import dev.onepieceapi.contentservice.persistence.mapper.DevilFruitTypeVersionMapper;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 import java.time.Instant;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -43,5 +47,18 @@ public interface DevilFruitTypeVersionRepository extends VersionBodyRepository<D
 			on conflict (entity_type, slug) do update set assigned_at = excluded.assigned_at
 			where content_slug.content_id = excluded.content_id""", nativeQuery = true)
 	int assignSlug(UUID versionId, Instant assignedAt);
+
+	/**
+	 * The subcategory as the most recent approved version of the type that has it says it
+	 * (implementation plan of the subcategories, S5-S7): the version online, or the one
+	 * last approved, may well have left it out since a fruit named it.
+	 */
+	default Optional<DevilFruitTypeSubcategory> findLastApprovedSubcategory(UUID typeContentId, UUID subcategoryId) {
+		return findVisible(typeContentId, VersionStatus.approved()).reversed()
+			.stream()
+			.map(DevilFruitTypeVersionMapper::toDomain)
+			.flatMap(type -> type.body().subcategory(subcategoryId).stream())
+			.findFirst();
+	}
 
 }

@@ -109,14 +109,6 @@ class DevilFruitMappersTest {
 	}
 
 	@Test
-	void theTypesOfSeveralFruitsAreEachGivenOnceAndNoneForAFruitWithout() {
-		var other = UUID.randomUUID();
-		var fruits = List.of(fruit(TYPE_ID), fruit(other), fruit(TYPE_ID), fruit(null));
-
-		assertThat(DevilFruitResponseMapper.typesOf(fruits)).containsExactlyInAnyOrder(TYPE_ID, other);
-	}
-
-	@Test
 	void aSubcategoryIsNamedAsItsTypeGivesItOnlyItsIdWhenTheTypeLacksItAndNoneIsNull() {
 		UUID mythical = UUID.randomUUID();
 		var zoan = new TypeReference(TYPE_ID, "Dobutsu", Map.of("it", "Zoo Zoo"),

@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.service.devilfruittype;
 
+import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
 import dev.onepieceapi.contentservice.domain.devilfruit.SubcategoryReference;
 import dev.onepieceapi.contentservice.domain.devilfruit.TypeReference;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitType;
@@ -23,8 +24,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
@@ -63,6 +66,29 @@ public class DevilFruitTypeLinks {
 			.stream()
 			.map(DevilFruitTypeLinks::referenceOf)
 			.collect(Collectors.toMap(TypeReference::id, Function.identity()));
+	}
+
+	/**
+	 * The types the given fruits point to, as {@link #referencesOf}; a subcategory a
+	 * fruit names that its type has since left out is named too, as the most recent
+	 * approved version having it said - so a fruit is never shown with a bare id.
+	 */
+	public Map<UUID, TypeReference> referencesFor(Collection<DevilFruit> fruits) {
+		Set<UUID> typeIds = fruits.stream()
+			.map(DevilFruit::typeContentId)
+			.filter(Objects::nonNull)
+			.collect(Collectors.toSet());
+		Map<UUID, TypeReference> types = new HashMap<>(referencesOf(typeIds));
+		for (DevilFruit fruit : fruits) {
+			TypeReference type = types.get(fruit.typeContentId());
+			UUID subcategoryId = fruit.subcategoryId();
+			if (type != null && subcategoryId != null && type.subcategory(subcategoryId).isEmpty()) {
+				this.typeRepository.findLastApprovedSubcategory(type.id(), subcategoryId)
+					.ifPresent(dropped -> types.put(type.id(),
+							type.withDropped(new SubcategoryReference(dropped.id(), dropped.names()))));
+			}
+		}
+		return types;
 	}
 
 	/**
