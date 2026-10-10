@@ -81,3 +81,16 @@ both succeed: nothing writes the row the other reads, so the database does not s
 - Supersedes two statements of ADR-0004: entity rules are no longer "to be added with the
   first entity that needs one", and "language in use" no longer asks the Devil Fruit Type
   repository only.
+
+## Note: subcategories (2026-10-10)
+
+A type's subcategories live in its version and a fruit may name one (`subcategoryId`, no
+foreign key: rows belong to versions). The same two rules and the same lock cover it:
+
+- **Fruit online** (publish / restore): its subcategory must exist in the type's *published*
+  version, else `SUBCATEGORY_NOT_ONLINE`; checked after the type rule, under the same shared lock.
+- **Type version online** (publish / restore): it cannot drop a subcategory used by online
+  fruits, else `SUBCATEGORY_IN_USE`. To exclude a racing fruit it takes the type's `content`
+  row **exclusively**, as a retirement does; two versions of one type going online now also
+  run one after the other.
+- `content:admin` lifts neither. The published views carry the subcategories (`V13`).
