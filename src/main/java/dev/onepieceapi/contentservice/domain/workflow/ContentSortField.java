@@ -16,9 +16,14 @@ public enum ContentSortField implements SortField {
 	/** The last update of the version shown - the default, newest first. */
 	UPDATED_AT("updatedAt"),
 
+	/**
+	 * The natural key of the entity, by the name the Devil Fruit and its type give it.
+	 */
 	ROMAJI("romaji"),
 
-	/** The name in the caller's language, or else the romaji - what the row shows. */
+	/**
+	 * The name in the caller's language, or else the natural key - what the row shows.
+	 */
 	NAME("name"),
 
 	/** The username of the author of the version shown. */

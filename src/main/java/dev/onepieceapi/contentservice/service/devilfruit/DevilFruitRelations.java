@@ -1,0 +1,27 @@
+package dev.onepieceapi.contentservice.service.devilfruit;
+
+import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
+import dev.onepieceapi.contentservice.domain.workflow.BlockReason;
+import dev.onepieceapi.contentservice.service.content.RelationDescriptor;
+
+/**
+ * The relations of a Devil Fruit (implementation plan of the Devil Fruit, D1, D2). Its
+ * type keeps the reason codes it had before the rules were made generic: the wire does
+ * not change.
+ */
+public final class DevilFruitRelations {
+
+	/** The Devil Fruit Type of a fruit. */
+	public static final RelationDescriptor<DevilFruit> TYPE = RelationDescriptor.<DevilFruit>builder()
+		.name("type")
+		.target(DevilFruit::typeContentId)
+		.notLinkable("must be a Devil Fruit Type with an approved version")
+		.targetNotOnline(BlockReason.TYPE_NOT_ONLINE)
+		.onlineItemsLinked(BlockReason.ONLINE_FRUITS_LINKED)
+		.itemsName("fruits")
+		.build();
+
+	private DevilFruitRelations() {
+	}
+
+}

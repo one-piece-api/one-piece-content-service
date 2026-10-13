@@ -21,6 +21,11 @@ import java.util.UUID;
  */
 public interface DevilFruitVersionRepository extends VersionBodyRepository<DevilFruitVersionEntity> {
 
+	@Override
+	default String naturalKeyAttribute() {
+		return DevilFruitVersionEntity.Fields.romaji;
+	}
+
 	/**
 	 * How many fruits each of these types has for a caller seeing these statuses: the
 	 * fruits whose most recent visible version points to it - the version their list

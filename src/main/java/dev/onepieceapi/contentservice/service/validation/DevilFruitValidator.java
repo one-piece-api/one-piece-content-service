@@ -8,6 +8,8 @@ import dev.onepieceapi.contentservice.persistence.mapper.DevilFruitVersionMapper
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitTypeVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
+import dev.onepieceapi.contentservice.service.content.RelationRules;
+import dev.onepieceapi.contentservice.service.devilfruit.DevilFruitRelations;
 import dev.onepieceapi.contentservice.service.exception.ValueInvalidException;
 import dev.onepieceapi.exception.web.FieldViolation;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,19 +21,13 @@ import java.util.UUID;
 /**
  * The rules a Devil Fruit must meet (implementation plan of the Devil Fruit, D2, D7):
  * those of every content - see {@link ContentValidator}, here among the fruits only - and
- * a type it may be linked to. A type is linkable once one of its versions passed review,
- * and never stops being (an approved version is never deleted), so the check is the same
- * on every save and again at submission. An id that names no type, a content that is not
- * a type and a type with nothing approved are told alike: nobody learns which ids exist.
- * A subcategory, optional, must be one of that type's (implementation plan of the
- * subcategories, S5); none can be named without a type.
+ * a type it may be linked to, as every relation ({@link RelationRules}): one of its
+ * versions passed review, the same on every save and again at submission. A subcategory,
+ * optional, must be one of that type's (implementation plan of the subcategories, S5);
+ * none can be named without a type.
  */
 @Component
 public class DevilFruitValidator extends ContentValidator<DevilFruit, DevilFruitVersionEntity> {
-
-	private static final String TYPE_FIELD = "type";
-
-	private static final String NOT_LINKABLE = "must be a Devil Fruit Type with an approved version";
 
 	private static final String SUBCATEGORY_FIELD = "subcategory";
 
@@ -48,10 +44,7 @@ public class DevilFruitValidator extends ContentValidator<DevilFruit, DevilFruit
 
 	@Override
 	protected void requireValidRelations(DevilFruit body) {
-		if (body.typeContentId() != null
-				&& !this.typeRepository.existsWithStatus(body.typeContentId(), VersionStatus.approved())) {
-			throw new ValueInvalidException(List.of(new FieldViolation(TYPE_FIELD, NOT_LINKABLE)));
-		}
+		RelationRules.requireLinkable(DevilFruitRelations.TYPE, body, this.typeRepository);
 		if (body.subcategoryId() != null && !subcategoryOfType(body.typeContentId(), body.subcategoryId())) {
 			throw new ValueInvalidException(List.of(new FieldViolation(SUBCATEGORY_FIELD, NOT_OF_TYPE)));
 		}

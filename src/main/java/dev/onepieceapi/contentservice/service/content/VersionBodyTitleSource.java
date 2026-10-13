@@ -49,7 +49,7 @@ public class VersionBodyTitleSource<T extends ContentBody<T>, E extends VersionB
 
 	private ContentTitle titleOf(E entity) {
 		T body = this.toDomain.apply(entity).body();
-		return new ContentTitle(body.names(), body.romaji());
+		return new ContentTitle(body.names(), body.naturalKeyText());
 	}
 
 }

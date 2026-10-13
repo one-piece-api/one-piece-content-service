@@ -44,10 +44,10 @@ public class VersionBodySpecifications {
 	 * that was actually given.
 	 */
 	public <E extends VersionBodyEntity> Specification<E> listOf(Collection<VersionStatus> statuses,
-			ContentFilter filter, Clock clock) {
+			ContentFilter filter, Clock clock, String naturalKey) {
 		List<Specification<E>> conditions = new ArrayList<>();
 		conditions.add(mostRecentIn(statuses));
-		filter.text().ifPresent(text -> conditions.add(matching(text)));
+		filter.text().ifPresent(text -> conditions.add(matching(text, naturalKey)));
 		if (filter.author() != null) {
 			conditions.add(authoredBy(filter.author()));
 		}
@@ -67,6 +67,20 @@ public class VersionBodySpecifications {
 
 	public <E extends VersionBodyEntity> Specification<E> ofContents(Collection<UUID> contentIds) {
 		return (root, query, cb) -> workflowOf(root).get(ContentVersionEntity.Fields.contentId).in(contentIds);
+	}
+
+	public <E extends VersionBodyEntity> Specification<E> notOf(UUID contentId) {
+		return (root, query, cb) -> cb.notEqual(workflowOf(root).get(ContentVersionEntity.Fields.contentId), contentId);
+	}
+
+	/**
+	 * "This version has this natural key" (the attribute named so): a text whatever the
+	 * case it is written in, any other value as it is.
+	 */
+	public <E extends VersionBodyEntity> Specification<E> withNaturalKey(String naturalKey, Object value) {
+		return (root, query, cb) -> value instanceof String text
+				? cb.equal(cb.lower(root.<String>get(naturalKey)), cb.lower(cb.literal(text)))
+				: cb.equal(root.get(naturalKey), value);
 	}
 
 	public <E extends VersionBodyEntity> Specification<E> authoredBy(String username) {
@@ -92,12 +106,15 @@ public class VersionBodySpecifications {
 		};
 	}
 
-	/** Case-insensitive "contains", on the romaji or on the name in any language. */
-	public <E extends VersionBodyEntity> Specification<E> matching(String text) {
+	/**
+	 * Case-insensitive "contains", on the natural key (the attribute named so) or on the
+	 * name in any language.
+	 */
+	public <E extends VersionBodyEntity> Specification<E> matching(String text, String naturalKey) {
 		return (root, query, cb) -> {
 			String pattern = "%" + escapeLike(text.toLowerCase(Locale.ROOT)) + "%";
-			Predicate inRomaji = contains(cb, root.get(VersionBodyEntity.Fields.romaji), pattern);
-			return cb.or(inRomaji, cb.exists(anyNameContaining(pattern, root, query.subquery(Integer.class), cb)));
+			Predicate inNaturalKey = contains(cb, naturalKeyText(root, naturalKey), pattern);
+			return cb.or(inNaturalKey, cb.exists(anyNameContaining(pattern, root, query.subquery(Integer.class), cb)));
 		};
 	}
 
@@ -108,6 +125,15 @@ public class VersionBodySpecifications {
 		MapJoin<E, String, TranslationEmbeddable> translation = sameVersion.joinMap(VersionBodyEntity.TRANSLATIONS);
 		Predicate inName = contains(cb, translation.value().get(TranslationEmbeddable.Fields.name), pattern);
 		return subquery.select(cb.literal(1)).where(inName);
+	}
+
+	/**
+	 * The natural key (the attribute named so) as text: as it is when it is one, cast
+	 * otherwise - e.g. a number searched as the digits it is written with.
+	 */
+	public Expression<String> naturalKeyText(Root<? extends VersionBodyEntity> root, String naturalKey) {
+		Path<?> key = root.get(naturalKey);
+		return String.class.equals(key.getJavaType()) ? root.get(naturalKey) : key.as(String.class);
 	}
 
 	private static <E extends VersionBodyEntity> Path<ContentVersionEntity> workflowOf(Root<E> root) {

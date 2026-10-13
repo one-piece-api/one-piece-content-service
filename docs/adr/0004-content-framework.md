@@ -67,3 +67,8 @@ types: `T`, what a version says (a `ContentBody`), and `E`, the entity's version
 
 Entity-specific rules are now a hook of the descriptor (`ContentRules`), and "language in use"
 asks every entity - see ADR-0005.
+
+## Updated by ADR-0007
+
+The `romaji` the framework assumed is now a natural key each entity declares, and the relation
+rules are written once (`RelationDescriptor`, `RelationRules`) - see ADR-0007.

@@ -1,6 +1,7 @@
 package dev.onepieceapi.contentservice.domain.devilfruit;
 
 import dev.onepieceapi.contentservice.domain.workflow.ContentBody;
+import dev.onepieceapi.contentservice.domain.workflow.NaturalKey;
 import dev.onepieceapi.contentservice.domain.workflow.Text;
 
 import java.util.ArrayList;
@@ -88,6 +89,11 @@ public record DevilFruit(String romaji, UUID typeContentId, UUID subcategoryId,
 			}
 		});
 		return names;
+	}
+
+	@Override
+	public NaturalKey naturalKey() {
+		return new NaturalKey(ROMAJI_FIELD, this.romaji);
 	}
 
 	/**

@@ -7,6 +7,7 @@ import dev.onepieceapi.contentservice.domain.security.Permission;
 import dev.onepieceapi.contentservice.domain.security.User;
 import dev.onepieceapi.contentservice.domain.workflow.ContentBody;
 import dev.onepieceapi.contentservice.domain.workflow.EntityType;
+import dev.onepieceapi.contentservice.domain.workflow.NaturalKey;
 import dev.onepieceapi.contentservice.domain.workflow.Version;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.entity.ContentEntity;
@@ -21,6 +22,7 @@ import dev.onepieceapi.contentservice.service.validation.ContentValidator;
 import dev.onepieceapi.exception.NotFoundException;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import lombok.experimental.Accessors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -141,6 +143,11 @@ class ContentServiceTest {
 	record Note(String romaji, Map<String, String> names) implements ContentBody<Note> {
 
 		@Override
+		public NaturalKey naturalKey() {
+			return new NaturalKey("romaji", this.romaji);
+		}
+
+		@Override
 		public Set<String> languages() {
 			return this.names.keySet();
 		}
@@ -160,10 +167,19 @@ class ContentServiceTest {
 	/** The version table of notes - never persisted here. */
 	static class NoteVersionEntity extends VersionBodyEntity {
 
+		@Getter
+		@Setter
+		private String romaji;
+
 		private Map<String, String> names = Map.of();
 
 		NoteVersionEntity(ContentVersionEntity version) {
 			super(version);
+		}
+
+		@Override
+		public NaturalKey naturalKey() {
+			return new NaturalKey("romaji", this.romaji);
 		}
 
 		void write(Note body, Instant now) {

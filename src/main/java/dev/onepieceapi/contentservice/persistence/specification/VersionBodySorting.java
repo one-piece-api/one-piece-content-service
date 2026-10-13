@@ -38,7 +38,8 @@ public class VersionBodySorting {
 	@FunctionalInterface
 	private interface SortKey {
 
-		Expression<?> of(Root<? extends VersionBodyEntity> root, CriteriaBuilder cb, String language);
+		Expression<?> of(Root<? extends VersionBodyEntity> root, CriteriaBuilder cb, String language,
+				String naturalKey);
 
 	}
 
@@ -46,11 +47,11 @@ public class VersionBodySorting {
 
 	static {
 		KEYS.put(ContentSortField.UPDATED_AT,
-				(root, cb, language) -> workflowOf(root).get(ContentVersionEntity.Fields.updatedAt));
-		KEYS.put(ContentSortField.ROMAJI, (root, cb, language) -> romajiOf(root, cb));
+				(root, cb, language, naturalKey) -> workflowOf(root).get(ContentVersionEntity.Fields.updatedAt));
+		KEYS.put(ContentSortField.ROMAJI, (root, cb, language, naturalKey) -> naturalKeyOf(root, cb, naturalKey));
 		KEYS.put(ContentSortField.NAME, VersionBodySorting::nameOf);
-		KEYS.put(ContentSortField.AUTHOR, (root, cb, language) -> authorOf(root));
-		KEYS.put(ContentSortField.STATUS, (root, cb, language) -> statusRankOf(root, cb));
+		KEYS.put(ContentSortField.AUTHOR, (root, cb, language, naturalKey) -> authorOf(root));
+		KEYS.put(ContentSortField.STATUS, (root, cb, language, naturalKey) -> statusRankOf(root, cb));
 	}
 
 	/** Last update, newest first - what the list shows when no sort is asked for. */
@@ -59,29 +60,32 @@ public class VersionBodySorting {
 	/**
 	 * The list query ordered as {@code requested}, or by the default sort; then by
 	 * content, so that rows with equal values keep a stable order across pages. Rows
-	 * missing the value sorted by come last in either direction. A count query is left
-	 * alone: the order would not change it.
+	 * missing the value sorted by come last in either direction; {@code naturalKey} names
+	 * the attribute holding the entity's natural key. A count query is left alone: the
+	 * order would not change it.
 	 */
-	public <E extends VersionBodyEntity> Specification<E> orderedBy(Sort requested, String language) {
+	public <E extends VersionBodyEntity> Specification<E> orderedBy(Sort requested, String language,
+			String naturalKey) {
 		return (root, query, cb) -> {
 			if (!isCount(query)) {
-				query.orderBy(ordersFor(requested.isSorted() ? requested : DEFAULT_SORT, root, cb, language));
+				query.orderBy(
+						ordersFor(requested.isSorted() ? requested : DEFAULT_SORT, root, cb, language, naturalKey));
 			}
 			return null;
 		};
 	}
 
 	private static List<Order> ordersFor(Sort sort, Root<? extends VersionBodyEntity> root, CriteriaBuilder cb,
-			String language) {
+			String language, String naturalKey) {
 		List<Order> orders = new ArrayList<>();
-		sort.forEach(order -> orders.add(toOrder(order, root, cb, language)));
+		sort.forEach(order -> orders.add(toOrder(order, root, cb, language, naturalKey)));
 		orders.add(cb.asc(workflowOf(root).get(ContentVersionEntity.Fields.contentId)));
 		return orders;
 	}
 
 	private static Order toOrder(Sort.Order order, Root<? extends VersionBodyEntity> root, CriteriaBuilder cb,
-			String language) {
-		Expression<?> key = keyOf(order).of(root, cb, language);
+			String language, String naturalKey) {
+		Expression<?> key = keyOf(order).of(root, cb, language, naturalKey);
 		return order.isAscending() ? cb.asc(key, Nulls.LAST) : cb.desc(key, Nulls.LAST);
 	}
 
@@ -93,20 +97,23 @@ public class VersionBodySorting {
 	}
 
 	/**
-	 * The name in {@code language}, or else the romaji - case-insensitive. Joins the one
-	 * translation in that language, if the version has it.
+	 * The name in {@code language}, or else the natural key - case-insensitive. Joins the
+	 * one translation in that language, if the version has it.
 	 */
 	private static Expression<String> nameOf(Root<? extends VersionBodyEntity> root, CriteriaBuilder cb,
-			String language) {
+			String language, String naturalKey) {
 		MapJoin<? extends VersionBodyEntity, String, TranslationEmbeddable> translation = root
 			.joinMap(VersionBodyEntity.TRANSLATIONS, JoinType.LEFT);
 		translation.on(cb.equal(translation.key(), language));
 		Expression<String> name = translation.value().get(TranslationEmbeddable.Fields.name);
-		return cb.coalesce(cb.lower(name), romajiOf(root, cb));
+		return cb.coalesce(cb.lower(name), cb.lower(VersionBodySpecifications.naturalKeyText(root, naturalKey)));
 	}
 
-	private static Expression<String> romajiOf(Root<? extends VersionBodyEntity> root, CriteriaBuilder cb) {
-		return cb.lower(root.get(VersionBodyEntity.Fields.romaji));
+	/** A text case-insensitive, any other value - e.g. a number - in its own order. */
+	private static Expression<?> naturalKeyOf(Root<? extends VersionBodyEntity> root, CriteriaBuilder cb,
+			String naturalKey) {
+		Path<?> key = root.get(naturalKey);
+		return String.class.equals(key.getJavaType()) ? cb.lower(root.get(naturalKey)) : key;
 	}
 
 	private static Path<String> authorOf(Root<? extends VersionBodyEntity> root) {

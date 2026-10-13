@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.persistence.entity;
 
+import dev.onepieceapi.contentservice.domain.workflow.NaturalKey;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.ElementCollection;
@@ -11,6 +12,7 @@ import jakarta.persistence.OrderColumn;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import lombok.experimental.FieldNameConstants;
 
 import java.time.Instant;
@@ -24,9 +26,9 @@ import java.util.stream.Collectors;
 
 /**
  * What one version of a Devil Fruit Type says
- * (docs/user-flows/content-editorial-workflow.md 3.1.1): its romaji (see
- * {@link VersionBodyEntity}), per language its name, description, advantages and
- * disadvantages, and its subcategories in order.
+ * (docs/user-flows/content-editorial-workflow.md 3.1.1): its romaji (its natural key),
+ * per language its name, description, advantages and disadvantages, and its subcategories
+ * in order.
  */
 @Entity
 @Table(name = "devil_fruit_type_version")
@@ -34,6 +36,12 @@ import java.util.stream.Collectors;
 @NoArgsConstructor
 @FieldNameConstants
 public class DevilFruitTypeVersionEntity extends VersionBodyEntity {
+
+	/**
+	 * The natural key of the entity (see {@link #naturalKey()}); null while not written.
+	 */
+	@Setter
+	private String romaji;
 
 	/**
 	 * The localized fields per language code; a language nothing was saved for is absent.
@@ -51,6 +59,11 @@ public class DevilFruitTypeVersionEntity extends VersionBodyEntity {
 
 	public DevilFruitTypeVersionEntity(ContentVersionEntity version) {
 		super(version);
+	}
+
+	@Override
+	public NaturalKey naturalKey() {
+		return new NaturalKey(Fields.romaji, this.romaji);
 	}
 
 	/**

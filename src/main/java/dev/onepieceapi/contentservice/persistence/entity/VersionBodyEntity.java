@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.persistence.entity;
 
+import dev.onepieceapi.contentservice.domain.workflow.NaturalKey;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.FetchType;
@@ -12,7 +13,6 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
-import lombok.Setter;
 import lombok.experimental.FieldNameConstants;
 
 import java.time.Instant;
@@ -20,9 +20,10 @@ import java.util.UUID;
 
 /**
  * What one version of a content says, in the table of its entity - the part every entity
- * shares: the romaji (docs/user-flows/content-editorial-workflow.md 3.1). It shares its
- * id with the {@link ContentVersionEntity} carrying the workflow of that version, and is
- * saved and removed together with it. Each entity extends it with its own fields, e.g.
+ * shares (docs/user-flows/content-editorial-workflow.md 3.1), its natural key being
+ * declared by each entity (see {@link #naturalKey()}). It shares its id with the
+ * {@link ContentVersionEntity} carrying the workflow of that version, and is saved and
+ * removed together with it. Each entity extends it with its own fields, e.g.
  * {@link DevilFruitTypeVersionEntity}, and keeps its localized fields in a map named
  * {@value #TRANSLATIONS} whose values have a {@code name}: the generic list queries
  * search and sort by it.
@@ -44,11 +45,22 @@ public abstract class VersionBodyEntity {
 	@JoinColumn(name = "version_id")
 	private ContentVersionEntity version;
 
-	@Setter
-	private String romaji;
-
 	protected VersionBodyEntity(@NonNull ContentVersionEntity version) {
 		this.version = version;
+	}
+
+	/**
+	 * What identifies the content, as this version says it (3.3): the field of the entity
+	 * holding it, named as the attribute its repository sorts and searches by (see
+	 * {@code VersionBodyRepository#naturalKeyAttribute()}).
+	 */
+	public abstract NaturalKey naturalKey();
+
+	/**
+	 * The natural key as text, e.g. to name the version; {@code null} while not written.
+	 */
+	public String naturalKeyText() {
+		return naturalKey().text();
 	}
 
 	/** The content this version belongs to. */

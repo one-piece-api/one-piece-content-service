@@ -556,7 +556,7 @@ public class ContentService<T extends ContentBody<T>, E extends VersionBodyEntit
 			.actor(actor)
 			.contentId(entity.getContentId())
 			.versionId(entity.getVersionId())
-			.label(entity.getRomaji());
+			.label(entity.naturalKeyText());
 	}
 
 	private E visibleVersion(Set<Permission> permissions, UUID contentId, int versionNumber) {

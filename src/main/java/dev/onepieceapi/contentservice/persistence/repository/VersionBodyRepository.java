@@ -37,14 +37,21 @@ public interface VersionBodyRepository<E extends VersionBodyEntity>
 		extends JpaRepository<E, UUID>, JpaSpecificationExecutor<E> {
 
 	/**
+	 * The attribute of the entity holding its natural key (see
+	 * {@link VersionBodyEntity#naturalKey()}): what the list searches and sorts by, and
+	 * what must be unique.
+	 */
+	String naturalKeyAttribute();
+
+	/**
 	 * One page of the list: one row per content, by its most recent version among
 	 * {@code statuses}, filtered and sorted as asked; a sort by name reads it in
 	 * {@code language}.
 	 */
 	default Page<E> search(Collection<VersionStatus> statuses, ContentFilter filter, Clock clock, Pageable pageable,
 			String language) {
-		var specification = VersionBodySpecifications.<E>listOf(statuses, filter, clock)
-			.and(VersionBodySorting.orderedBy(pageable.getSort(), language));
+		var specification = VersionBodySpecifications.<E>listOf(statuses, filter, clock, naturalKeyAttribute())
+			.and(VersionBodySorting.orderedBy(pageable.getSort(), language, naturalKeyAttribute()));
 		return findAll(specification, PageRequest.of(pageable.getPageNumber(), pageable.getPageSize()));
 	}
 
@@ -52,7 +59,7 @@ public interface VersionBodyRepository<E extends VersionBodyEntity>
 	 * How many contents the list would show in all, with the same statuses and filters.
 	 */
 	default long count(Collection<VersionStatus> statuses, ContentFilter filter, Clock clock) {
-		return count(VersionBodySpecifications.<E>listOf(statuses, filter, clock));
+		return count(VersionBodySpecifications.<E>listOf(statuses, filter, clock, naturalKeyAttribute()));
 	}
 
 	/**
@@ -118,20 +125,20 @@ public interface VersionBodyRepository<E extends VersionBodyEntity>
 	boolean existsWithStatus(UUID contentId, Collection<VersionStatus> statuses);
 
 	/**
-	 * The slug this romaji gives, by the database's one definition of a slug
+	 * The slug this natural key gives, by the database's one definition of a slug
 	 * ({@code V8}): empty when it has no letter or digit.
 	 */
-	@Query(value = "select slug_of(:romaji)", nativeQuery = true)
-	Optional<String> slugOf(String romaji);
+	@Query(value = "select slug_of(:naturalKey)", nativeQuery = true)
+	Optional<String> slugOf(String naturalKey);
 
 	/**
-	 * Whether a version of another content of this entity, in any status, has this romaji
-	 * - whatever the case it is written in.
+	 * Whether a version of another content of this entity, in any status, has this
+	 * natural key - whatever the case a text is written in.
 	 */
-	@Query("""
-			select count(d) > 0 from #{#entityName} d join d.version v
-			where lower(d.romaji) = lower(:romaji) and v.contentId <> :contentId""")
-	boolean romajiIsTakenByAnother(String romaji, UUID contentId);
+	default boolean naturalKeyIsTakenByAnother(Object value, UUID contentId) {
+		return exists(VersionBodySpecifications.<E>withNaturalKey(naturalKeyAttribute(), value)
+			.and(VersionBodySpecifications.notOf(contentId)));
+	}
 
 	/**
 	 * Whether a version of another content of this entity, in any status, has this name
@@ -143,17 +150,17 @@ public interface VersionBodyRepository<E extends VersionBodyEntity>
 	boolean nameIsTakenByAnother(String languageCode, String name, UUID contentId);
 
 	/**
-	 * Whether another content of this entity has this slug - from the romaji of one of
-	 * its versions, in any status, or as a slug it had online. Two romaji differing only
-	 * in accents or punctuation give the same slug. Written by each repository: it reads
-	 * the entity's table.
+	 * Whether another content of this entity has this slug - from the natural key of one
+	 * of its versions, in any status, or as a slug it had online. Two romaji differing
+	 * only in accents or punctuation give the same slug. Written by each repository: it
+	 * reads the entity's table.
 	 */
 	boolean slugIsTakenByAnother(String slug, UUID contentId);
 
 	/**
-	 * Gives the content of this version the slug of its romaji, as it goes online: added
-	 * to its slug history, or marked as assigned again if it had it before. Written by
-	 * each repository: it reads the entity's table.
+	 * Gives the content of this version the slug of its natural key, as it goes online:
+	 * added to its slug history, or marked as assigned again if it had it before. Written
+	 * by each repository: it reads the entity's table.
 	 * @return 0 when the slug belongs to another content, which no other check prevents
 	 * only for two saves of the same value at the same instant
 	 */

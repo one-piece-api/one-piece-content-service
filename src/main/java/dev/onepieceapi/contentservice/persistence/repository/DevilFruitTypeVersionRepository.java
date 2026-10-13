@@ -19,6 +19,11 @@ import java.util.UUID;
 public interface DevilFruitTypeVersionRepository extends VersionBodyRepository<DevilFruitTypeVersionEntity> {
 
 	@Override
+	default String naturalKeyAttribute() {
+		return DevilFruitTypeVersionEntity.Fields.romaji;
+	}
+
+	@Override
 	@Query(value = """
 			select exists (select 1 from devil_fruit_type_version d join content_version v on v.id = d.version_id
 			               where d.romaji_slug = :slug and v.content_id <> :contentId)

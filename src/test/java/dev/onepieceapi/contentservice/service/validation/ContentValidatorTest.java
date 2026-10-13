@@ -1,6 +1,7 @@
 package dev.onepieceapi.contentservice.service.validation;
 
 import dev.onepieceapi.contentservice.domain.workflow.ContentBody;
+import dev.onepieceapi.contentservice.domain.workflow.NaturalKey;
 import dev.onepieceapi.contentservice.persistence.entity.LanguageEntity;
 import dev.onepieceapi.contentservice.persistence.entity.VersionBodyEntity;
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
@@ -110,8 +111,8 @@ class ContentValidatorTest {
 		}
 
 		@Override
-		public String romaji() {
-			return this.romaji;
+		public NaturalKey naturalKey() {
+			return new NaturalKey("romaji", this.romaji);
 		}
 
 		@Override

@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.persistence.entity;
 
+import dev.onepieceapi.contentservice.domain.workflow.NaturalKey;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
@@ -8,6 +9,7 @@ import jakarta.persistence.MapKeyColumn;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import lombok.experimental.FieldNameConstants;
 
 import java.time.Instant;
@@ -17,10 +19,10 @@ import java.util.UUID;
 
 /**
  * What one version of a Devil Fruit says (implementation plan of the Devil Fruit, D1,
- * D7): its romaji (see {@link VersionBodyEntity}), the content of its Devil Fruit Type
- * and of one of its subcategories, and, per language, its name, description, advantages
- * and disadvantages. The entity type of the link is a constant the database fills in: it
- * is what keeps a fruit from pointing to a fruit.
+ * D7): its romaji (its natural key), the content of its Devil Fruit Type and of one of
+ * its subcategories, and, per language, its name, description, advantages and
+ * disadvantages. The entity type of the link is a constant the database fills in: it is
+ * what keeps a fruit from pointing to a fruit.
  */
 @Entity
 @Table(name = "devil_fruit_version")
@@ -28,6 +30,12 @@ import java.util.UUID;
 @NoArgsConstructor
 @FieldNameConstants
 public class DevilFruitVersionEntity extends VersionBodyEntity {
+
+	/**
+	 * The natural key of the entity (see {@link #naturalKey()}); null while not written.
+	 */
+	@Setter
+	private String romaji;
 
 	/** The type's content, not one of its versions; null while not chosen. */
 	private UUID typeContentId;
@@ -48,6 +56,11 @@ public class DevilFruitVersionEntity extends VersionBodyEntity {
 
 	public DevilFruitVersionEntity(ContentVersionEntity version) {
 		super(version);
+	}
+
+	@Override
+	public NaturalKey naturalKey() {
+		return new NaturalKey(Fields.romaji, this.romaji);
 	}
 
 	/** Replaces everything the version says, and notes when. */

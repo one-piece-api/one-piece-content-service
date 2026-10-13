@@ -6,9 +6,9 @@ import dev.onepieceapi.exception.web.FieldViolation;
 import java.util.List;
 
 /**
- * Raised when a romaji differs from every other content's, but would give the content the
- * public address (slug) of another one - e.g. the same romaji with a macron more
- * (docs/user-flows/content-editorial-workflow.md 3.3). Told apart from
+ * Raised when a natural key differs from every other content's, but would give the
+ * content the public address (slug) of another one - e.g. the same romaji with a macron
+ * more (docs/user-flows/content-editorial-workflow.md 3.3). Told apart from
  * {@link ValueAlreadyUsedException} because the editor sees no equal value to blame.
  */
 public class SlugAlreadyUsedException extends DomainException {

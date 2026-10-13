@@ -94,3 +94,8 @@ foreign key: rows belong to versions). The same two rules and the same lock cove
   row **exclusively**, as a retirement does; two versions of one type going online now also
   run one after the other.
 - `content:admin` lifts neither. The published views carry the subcategories (`V13`).
+
+## Updated by ADR-0007
+
+The `romaji` the framework assumed is now a natural key each entity declares, and the relation
+rules are written once (`RelationDescriptor`, `RelationRules`) - see ADR-0007.

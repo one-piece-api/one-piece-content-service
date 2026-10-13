@@ -8,15 +8,30 @@ import java.util.Set;
 /**
  * What one version of a content says, whatever its entity: what the generic workflow
  * needs to know of it (docs/user-flows/content-editorial-workflow.md 3). Every entity has
- * a romaji and a name per language; each one adds its own fields, e.g.
+ * a natural key and a name per language; each one adds its own fields, e.g.
  * {@code DevilFruitType}.
  *
  * @param <T> the entity's own record, so that {@link #normalized()} gives one back
  */
 public interface ContentBody<T extends ContentBody<T>> {
 
-	/** One value shared by every language - also what the public address comes from. */
-	String romaji();
+	/**
+	 * One value shared by every language, unique within the entity - also what the public
+	 * address comes from.
+	 */
+	NaturalKey naturalKey();
+
+	/**
+	 * The natural key as text, e.g. to name the content; {@code null} while not written.
+	 */
+	default String naturalKeyText() {
+		return naturalKey().text();
+	}
+
+	/** The field holding the natural key, named as a request names it. */
+	default String naturalKeyField() {
+		return naturalKey().field();
+	}
 
 	/** The language codes something was written in. */
 	Set<String> languages();
