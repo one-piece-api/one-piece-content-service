@@ -43,7 +43,7 @@ import java.util.stream.Collectors;
 public class ContentValidator<T extends ContentBody<T>, E extends VersionBodyEntity> {
 
 	/** Named as request validation names them, so a client reads both the same way. */
-	private static final String NAME_FIELD = "translations[%s].name";
+	private static final String NAME_FIELD = "translations[%s].%s";
 
 	private static final String ALREADY_USED = "is already used by another content";
 
@@ -170,7 +170,7 @@ public class ContentValidator<T extends ContentBody<T>, E extends VersionBodyEnt
 		}
 		body.names().forEach((language, name) -> {
 			if (this.versionRepository.nameIsTakenByAnother(language, name, contentId)) {
-				taken.add(new FieldViolation(NAME_FIELD.formatted(language), ALREADY_USED));
+				taken.add(new FieldViolation(NAME_FIELD.formatted(language, body.nameField()), ALREADY_USED));
 			}
 		});
 		if (!taken.isEmpty()) {

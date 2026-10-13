@@ -23,6 +23,20 @@ public enum BlockReason {
 	 * The version of a Devil Fruit Type leaves out subcategories that online fruits use
 	 * (implementation plan of the subcategories, S7).
 	 */
-	SUBCATEGORY_IN_USE
+	SUBCATEGORY_IN_USE,
+
+	/**
+	 * The content a relation points to is not online, so the item cannot be
+	 * (implementation plan of the story structure, S5): the generic code of every
+	 * relation but the Devil Fruit's type; the detail names the relation, e.g.
+	 * {@code sagaId}.
+	 */
+	RELATED_NOT_ONLINE,
+
+	/**
+	 * Items online still point to the content through a relation (S5); the detail names
+	 * them, e.g. {@code arcs}.
+	 */
+	ONLINE_ITEMS_LINKED
 
 }

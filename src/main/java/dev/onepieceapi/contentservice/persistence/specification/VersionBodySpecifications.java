@@ -113,7 +113,7 @@ public class VersionBodySpecifications {
 	public <E extends VersionBodyEntity> Specification<E> matching(String text, String naturalKey) {
 		return (root, query, cb) -> {
 			String pattern = "%" + escapeLike(text.toLowerCase(Locale.ROOT)) + "%";
-			Predicate inNaturalKey = contains(cb, naturalKeyText(root, naturalKey), pattern);
+			Predicate inNaturalKey = contains(cb, naturalKeyText(root, cb, naturalKey), pattern);
 			return cb.or(inNaturalKey, cb.exists(anyNameContaining(pattern, root, query.subquery(Integer.class), cb)));
 		};
 	}
@@ -128,12 +128,14 @@ public class VersionBodySpecifications {
 	}
 
 	/**
-	 * The natural key (the attribute named so) as text: as it is when it is one, cast
-	 * otherwise - e.g. a number searched as the digits it is written with.
+	 * The natural key (the attribute named so) as text: as it is when it is one,
+	 * converted by HQL {@code str} otherwise (a bare JPA cast emits no SQL cast) - e.g. a
+	 * number searched as the digits it is written with.
 	 */
-	public Expression<String> naturalKeyText(Root<? extends VersionBodyEntity> root, String naturalKey) {
+	public Expression<String> naturalKeyText(Root<? extends VersionBodyEntity> root, CriteriaBuilder cb,
+			String naturalKey) {
 		Path<?> key = root.get(naturalKey);
-		return String.class.equals(key.getJavaType()) ? root.get(naturalKey) : key.as(String.class);
+		return String.class.equals(key.getJavaType()) ? root.get(naturalKey) : cb.function("str", String.class, key);
 	}
 
 	private static <E extends VersionBodyEntity> Path<ContentVersionEntity> workflowOf(Root<E> root) {

@@ -46,6 +46,7 @@ enum SecuredEndpoint {
 	// the endpoints of the sections, whose "a content by id" path would otherwise take
 	// it.
 	LINKABLE_TYPES(HttpMethod.GET, ApiPaths.DEVIL_FRUIT_TYPES_LINKABLE, Permission.CONTENT_WRITE),
+	LINKABLE_SAGAS(HttpMethod.GET, ApiPaths.SAGAS_LINKABLE, Permission.CONTENT_WRITE),
 
 	// An image, for whoever sees a version using it - decided inside the service, like
 	// the versions themselves.

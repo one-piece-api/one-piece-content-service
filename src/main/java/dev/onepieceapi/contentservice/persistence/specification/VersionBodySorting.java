@@ -49,6 +49,7 @@ public class VersionBodySorting {
 		KEYS.put(ContentSortField.UPDATED_AT,
 				(root, cb, language, naturalKey) -> workflowOf(root).get(ContentVersionEntity.Fields.updatedAt));
 		KEYS.put(ContentSortField.ROMAJI, (root, cb, language, naturalKey) -> naturalKeyOf(root, cb, naturalKey));
+		KEYS.put(ContentSortField.NUMBER, (root, cb, language, naturalKey) -> naturalKeyOf(root, cb, naturalKey));
 		KEYS.put(ContentSortField.NAME, VersionBodySorting::nameOf);
 		KEYS.put(ContentSortField.AUTHOR, (root, cb, language, naturalKey) -> authorOf(root));
 		KEYS.put(ContentSortField.STATUS, (root, cb, language, naturalKey) -> statusRankOf(root, cb));
@@ -106,7 +107,7 @@ public class VersionBodySorting {
 			.joinMap(VersionBodyEntity.TRANSLATIONS, JoinType.LEFT);
 		translation.on(cb.equal(translation.key(), language));
 		Expression<String> name = translation.value().get(TranslationEmbeddable.Fields.name);
-		return cb.coalesce(cb.lower(name), cb.lower(VersionBodySpecifications.naturalKeyText(root, naturalKey)));
+		return cb.coalesce(cb.lower(name), cb.lower(VersionBodySpecifications.naturalKeyText(root, cb, naturalKey)));
 	}
 
 	/** A text case-insensitive, any other value - e.g. a number - in its own order. */

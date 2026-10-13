@@ -48,6 +48,14 @@ http:
       value: DEVIL_FRUIT
       type: query
       disabled: true
+    - name: entity
+      value: SAGA
+      type: query
+      disabled: true
+    - name: entity
+      value: ARC
+      type: query
+      disabled: true
     - name: author
       value: ""
       type: query
@@ -122,6 +130,14 @@ examples:
           disabled: true
         - name: entity
           value: DEVIL_FRUIT
+          type: query
+          disabled: true
+        - name: entity
+          value: SAGA
+          type: query
+          disabled: true
+        - name: entity
+          value: ARC
           type: query
           disabled: true
         - name: author
@@ -239,6 +255,14 @@ examples:
           value: DEVIL_FRUIT
           type: query
           disabled: true
+        - name: entity
+          value: SAGA
+          type: query
+          disabled: true
+        - name: entity
+          value: ARC
+          type: query
+          disabled: true
         - name: author
           value: ""
           type: query
@@ -326,6 +350,14 @@ examples:
           disabled: true
         - name: entity
           value: DEVIL_FRUIT
+          type: query
+          disabled: true
+        - name: entity
+          value: SAGA
+          type: query
+          disabled: true
+        - name: entity
+          value: ARC
           type: query
           disabled: true
         - name: author

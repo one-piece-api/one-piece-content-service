@@ -15,6 +15,9 @@ import java.util.Set;
  */
 public interface ContentBody<T extends ContentBody<T>> {
 
+	/** What most entities call the localized field they are named by. */
+	String DEFAULT_NAME_FIELD = "name";
+
 	/**
 	 * One value shared by every language, unique within the entity - also what the public
 	 * address comes from.
@@ -31,6 +34,14 @@ public interface ContentBody<T extends ContentBody<T>> {
 	/** The field holding the natural key, named as a request names it. */
 	default String naturalKeyField() {
 		return naturalKey().field();
+	}
+
+	/**
+	 * The localized field a content is called by, named as a request names it inside a
+	 * translation: {@code name} unless the entity says otherwise, e.g. {@code title}.
+	 */
+	default String nameField() {
+		return DEFAULT_NAME_FIELD;
 	}
 
 	/** The language codes something was written in. */

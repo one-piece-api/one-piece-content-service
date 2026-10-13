@@ -1,0 +1,6 @@
+info:
+  name: Arcs
+  type: folder
+
+request:
+  auth: inherit

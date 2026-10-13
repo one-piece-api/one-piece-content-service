@@ -22,6 +22,12 @@ public enum ContentSortField implements SortField {
 	ROMAJI("romaji"),
 
 	/**
+	 * The natural key of an entity keyed by a number, e.g. a saga - by the name it gives
+	 * it: the same order as {@link #ROMAJI}, which is the name of the key of the others.
+	 */
+	NUMBER("number"),
+
+	/**
 	 * The name in the caller's language, or else the natural key - what the row shows.
 	 */
 	NAME("name"),

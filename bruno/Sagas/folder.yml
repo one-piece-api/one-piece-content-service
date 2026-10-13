@@ -1,0 +1,6 @@
+info:
+  name: Sagas
+  type: folder
+
+request:
+  auth: inherit

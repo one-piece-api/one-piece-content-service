@@ -48,3 +48,20 @@ would multiply fake romaji columns and copies of the same rules.
   `naturalKey()`).
 - The natural key attribute is named twice (entity and repository) through the same Lombok
   `Fields` constant.
+
+## Addendum - first number-keyed entities (Saga, Arc; story structure SS3)
+
+- **Sort wire value:** sorting by the natural key uses the key's own field name:
+  `sort=romaji` (Devil Fruit / Type), `sort=number` (story entities). Both are values of
+  `ContentSortField` and read the same natural key, so either is accepted by every list.
+- **References:** a number-keyed target is answered as `{id, number, names}`
+  (`NumberedReferenceResponse`), the key under its own name as `romaji` is for a type;
+  `names` are the titles. Target lookups and `/linkable` come from `NumberedLinks`.
+- **Generic block codes:** new relations use `RELATED_NOT_ONLINE` (detail
+  `{<relation>Id, <relation>Number}`) and `ONLINE_ITEMS_LINKED` (detail
+  `{count, <items>: [{id, number}]}`); the keys name the relation. Devil Fruit codes unchanged.
+- **Title as name:** story translations map `title` onto the embeddable attribute `name`
+  (column `title`), so the generic search / sort / uniqueness queries stay unchanged;
+  `ContentBody#nameField()` names the field in violations (`translations[en].title`).
+- **Number as text:** search and the name-sort fallback convert a non-text key with HQL
+  `str()`: a JPA `as(String.class)` emits no SQL cast and PostgreSQL has no `lower(integer)`.

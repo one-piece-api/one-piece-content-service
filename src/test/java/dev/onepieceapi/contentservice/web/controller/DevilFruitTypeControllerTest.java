@@ -171,7 +171,7 @@ class DevilFruitTypeControllerTest {
 			textBlock = """
 					/devil-fruit-types?updatedWithinDays=-1 | updatedWithinDays | must be greater than or equal to 0
 					/devil-fruit-types?status=NOPE          | status            | invalid value
-					/devil-fruit-types?sort=authorEmail | pageable | can only be sorted by [author, name, romaji, status, updatedAt]
+					/devil-fruit-types?sort=email|pageable|can only be sorted by [author, name, number, romaji, status, updatedAt]
 					/devil-fruit-types/not-a-uuid           | id                | invalid value
 					/devil-fruit-types/not-a-uuid/versions/1| id                | invalid value
 					/devil-fruit-types/7b0e6c1a-3f52-4d0c-9a52-1f2f3d4e5a6b/versions/two | number | invalid value
