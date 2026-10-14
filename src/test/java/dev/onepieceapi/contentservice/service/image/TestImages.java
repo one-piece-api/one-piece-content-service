@@ -29,6 +29,18 @@ public final class TestImages {
 		.minTransparentPercent(5)
 		.build();
 
+	/** The volume profile as configured: a portrait cover, with no transparency asked. */
+	public static final ImageProfile VOLUME_PROFILE = ImageProfile.builder()
+		.width(420)
+		.height(600)
+		.minWidth(560)
+		.minHeight(800)
+		.ratioTolerance(0.1)
+		.maxBytes(5L * 1024 * 1024)
+		.maxPixels(25_000_000)
+		.minTransparentPercent(0)
+		.build();
+
 	private static final int END_OF_PNG_HEADER = 8 + 4 + 4 + 13 + 4;
 
 	private TestImages() {

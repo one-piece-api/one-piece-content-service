@@ -24,6 +24,7 @@ import dev.onepieceapi.contentservice.persistence.repository.DevilFruitVersionRe
 import dev.onepieceapi.contentservice.persistence.repository.ImageRepository;
 import dev.onepieceapi.contentservice.persistence.repository.JpaImageStore;
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
+import dev.onepieceapi.contentservice.persistence.repository.VolumeVersionRepository;
 import dev.onepieceapi.contentservice.service.exception.ContentErrorCode;
 import dev.onepieceapi.contentservice.service.exception.ImageNotFoundException;
 import dev.onepieceapi.contentservice.service.exception.ImageRefusedException;
@@ -100,7 +101,7 @@ class DevilFruitImageIntegrationTest {
 	private static final Set<Permission> READER = Set.of(Permission.CONTENT_READ);
 
 	private static final ImageProperties PROPERTIES = new ImageProperties("/api/content", Map.of(EntityType.DEVIL_FRUIT,
-			new ImageProperties.Profile(640, 800, 0.1, DataSize.ofMegabytes(5), 25_000_000, 5)));
+			new ImageProperties.Profile(640, 800, null, null, 0.1, DataSize.ofMegabytes(5), 25_000_000, 5)));
 
 	private final User nami = new User(UUID.randomUUID(), "nami", "nami@onepiece.local");
 
@@ -111,6 +112,9 @@ class DevilFruitImageIntegrationTest {
 
 	@Autowired
 	private DevilFruitTypeVersionRepository typeRepository;
+
+	@Autowired
+	private VolumeVersionRepository volumeRepository;
 
 	@Autowired
 	private ContentVersionRepository contentVersionRepository;
@@ -151,7 +155,7 @@ class DevilFruitImageIntegrationTest {
 						new DevilFruitRules(this.contentRepository, this.typeRepository)),
 				this.contentVersionRepository, this.contentRepository,
 				new AuditLogService(this.auditLogRepository, clock), clock, images);
-		this.imageService = new ImageService(store, this.versionRepository);
+		this.imageService = new ImageService(store, this.versionRepository, this.volumeRepository);
 
 		this.paramecia = this.entityManager
 			.persist(new ContentEntity(UUID.randomUUID(), EntityType.DEVIL_FRUIT_TYPE, EARLIER))

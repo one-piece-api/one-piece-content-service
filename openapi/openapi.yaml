@@ -130,6 +130,50 @@ paths:
       tags:
       - Arcs
       x-required-permission: content:read
+  /arcs/linkable:
+    get:
+      operationId: arcLinkable
+      parameters:
+      - description: "0-based page, 0 when missing"
+        in: query
+        name: page
+        required: false
+        schema:
+          type: integer
+          format: int32
+          minimum: 0
+      - description: "Page size: 20 when missing, at most 50"
+        in: query
+        name: size
+        required: false
+        schema:
+          type: integer
+          format: int32
+          maximum: 50
+          minimum: 1
+      - description: "Text the number or a title contains, case-insensitive; 100 characters\
+          \ at most"
+        in: query
+        name: q
+        required: false
+        schema:
+          type: string
+          maxLength: 100
+          minLength: 0
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PageResponseNumberedReferenceResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Arcs
+      x-required-permission: content:write
   /arcs/summary:
     get:
       operationId: arcSummary
@@ -689,6 +733,696 @@ paths:
       tags:
       - Arcs
       x-required-permission: content:write
+  /chapters:
+    get:
+      operationId: chapterList
+      parameters:
+      - in: query
+        name: status
+        required: false
+        schema:
+          type: string
+          enum:
+          - DRAFT
+          - IN_REVIEW
+          - REJECTED
+          - READY_TO_PUBLISH
+          - PUBLISHED
+          - ARCHIVED
+          - RETIRED
+          - SUPERSEDED
+      - in: query
+        name: q
+        required: false
+        schema:
+          type: string
+      - in: query
+        name: author
+        required: false
+        schema:
+          type: string
+      - in: query
+        name: updatedWithinDays
+        required: false
+        schema:
+          type: integer
+          format: int32
+          minimum: 0
+      - description: The content id of an arc
+        in: query
+        name: arc
+        required: false
+        schema:
+          type: string
+          format: uuid
+          description: The content id of an arc
+      - description: The content id of a volume
+        in: query
+        name: volume
+        required: false
+        schema:
+          type: string
+          format: uuid
+          description: The content id of a volume
+      - description: Zero-based page index (0..N)
+        in: query
+        name: page
+        required: false
+        schema:
+          type: integer
+          default: 0
+          minimum: 0
+      - description: The size of the page to be returned
+        in: query
+        name: size
+        required: false
+        schema:
+          type: integer
+          default: 20
+          minimum: 1
+      - description: "Sorting criteria in the format: property,(asc|desc). Default\
+          \ sort order is ascending. Multiple sort criteria are supported."
+        in: query
+        name: sort
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PageResponseContentSummaryResponseChapterNamesResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Chapters
+      x-required-permission: content:read
+    post:
+      operationId: chapterCreate
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChapterRequest"
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContentResponse"
+          description: Created
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Chapters
+      x-required-permission: content:write
+  /chapters/authors:
+    get:
+      operationId: chapterAuthors
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Chapters
+      x-required-permission: content:read
+  /chapters/summary:
+    get:
+      operationId: chapterSummary
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContentListSummaryResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Chapters
+      x-required-permission: content:read
+  /chapters/{id}:
+    get:
+      operationId: chapterGet
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContentResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Chapters
+      x-required-permission: content:read
+  /chapters/{id}/versions:
+    post:
+      operationId: chapterOpenNewVersion
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewVersionRequest"
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseChapterResponse"
+          description: Created
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Chapters
+      x-required-permission: content:write
+  /chapters/{id}/versions/{number}:
+    delete:
+      operationId: chapterDelete
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "204":
+          description: No Content
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Chapters
+      x-required-permission: content:write
+    get:
+      operationId: chapterVersion
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseChapterResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Chapters
+      x-required-permission: content:read
+    put:
+      operationId: chapterEdit
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChapterRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseChapterResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Chapters
+      x-required-permission: content:write
+  /chapters/{id}/versions/{number}/approve:
+    post:
+      operationId: chapterApprove
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseChapterResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Chapters
+      x-required-permission: content:review
+  /chapters/{id}/versions/{number}/archive:
+    post:
+      operationId: chapterArchive
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseChapterResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Chapters
+      x-required-permission: content:publish
+  /chapters/{id}/versions/{number}/claim:
+    post:
+      operationId: chapterClaim
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseChapterResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Chapters
+      x-required-permission: content:review
+  /chapters/{id}/versions/{number}/events:
+    get:
+      operationId: chapterEvents
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VersionEventResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Chapters
+      x-required-permission: content:read
+  /chapters/{id}/versions/{number}/publish:
+    post:
+      operationId: chapterPublish
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseChapterResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Chapters
+      x-required-permission: content:publish
+  /chapters/{id}/versions/{number}/pull-back:
+    post:
+      operationId: chapterPullBack
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseChapterResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Chapters
+      x-required-permission: content:write
+  /chapters/{id}/versions/{number}/recover:
+    post:
+      operationId: chapterRecover
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseChapterResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Chapters
+      x-required-permission: content:publish
+  /chapters/{id}/versions/{number}/reject:
+    post:
+      operationId: chapterReject
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RejectVersionRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseChapterResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Chapters
+      x-required-permission: content:review
+  /chapters/{id}/versions/{number}/release:
+    post:
+      operationId: chapterRelease
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseChapterResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Chapters
+      x-required-permission: content:review
+  /chapters/{id}/versions/{number}/restore:
+    post:
+      operationId: chapterRestore
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseChapterResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Chapters
+      x-required-permission: content:publish
+  /chapters/{id}/versions/{number}/retire:
+    post:
+      operationId: chapterRetire
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseChapterResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Chapters
+      x-required-permission: content:retire
+  /chapters/{id}/versions/{number}/return-to-draft:
+    post:
+      operationId: chapterReturnToDraft
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseChapterResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Chapters
+      x-required-permission: content:write
+  /chapters/{id}/versions/{number}/submit:
+    post:
+      operationId: chapterSubmit
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseChapterResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Chapters
+      x-required-permission: content:write
   /dashboard:
     get:
       operationId: dashboardStatusCounts
@@ -753,6 +1487,9 @@ paths:
           - DEVIL_FRUIT
           - SAGA
           - ARC
+          - VOLUME
+          - CHAPTER
+          - EPISODE
       - in: query
         name: author
         required: false
@@ -2258,6 +2995,688 @@ paths:
       tags:
       - Devil Fruits
       x-required-permission: content:write
+  /episodes:
+    get:
+      operationId: episodeList
+      parameters:
+      - in: query
+        name: status
+        required: false
+        schema:
+          type: string
+          enum:
+          - DRAFT
+          - IN_REVIEW
+          - REJECTED
+          - READY_TO_PUBLISH
+          - PUBLISHED
+          - ARCHIVED
+          - RETIRED
+          - SUPERSEDED
+      - in: query
+        name: q
+        required: false
+        schema:
+          type: string
+      - in: query
+        name: author
+        required: false
+        schema:
+          type: string
+      - in: query
+        name: updatedWithinDays
+        required: false
+        schema:
+          type: integer
+          format: int32
+          minimum: 0
+      - description: The content id of an arc
+        in: query
+        name: arc
+        required: false
+        schema:
+          type: string
+          format: uuid
+          description: The content id of an arc
+      - description: Zero-based page index (0..N)
+        in: query
+        name: page
+        required: false
+        schema:
+          type: integer
+          default: 0
+          minimum: 0
+      - description: The size of the page to be returned
+        in: query
+        name: size
+        required: false
+        schema:
+          type: integer
+          default: 20
+          minimum: 1
+      - description: "Sorting criteria in the format: property,(asc|desc). Default\
+          \ sort order is ascending. Multiple sort criteria are supported."
+        in: query
+        name: sort
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PageResponseContentSummaryResponseEpisodeNamesResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Episodes
+      x-required-permission: content:read
+    post:
+      operationId: episodeCreate
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EpisodeRequest"
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContentResponse"
+          description: Created
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Episodes
+      x-required-permission: content:write
+  /episodes/authors:
+    get:
+      operationId: episodeAuthors
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Episodes
+      x-required-permission: content:read
+  /episodes/summary:
+    get:
+      operationId: episodeSummary
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContentListSummaryResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Episodes
+      x-required-permission: content:read
+  /episodes/{id}:
+    get:
+      operationId: episodeGet
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContentResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Episodes
+      x-required-permission: content:read
+  /episodes/{id}/versions:
+    post:
+      operationId: episodeOpenNewVersion
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewVersionRequest"
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseEpisodeResponse"
+          description: Created
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Episodes
+      x-required-permission: content:write
+  /episodes/{id}/versions/{number}:
+    delete:
+      operationId: episodeDelete
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "204":
+          description: No Content
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Episodes
+      x-required-permission: content:write
+    get:
+      operationId: episodeVersion
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseEpisodeResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Episodes
+      x-required-permission: content:read
+    put:
+      operationId: episodeEdit
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EpisodeRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseEpisodeResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Episodes
+      x-required-permission: content:write
+  /episodes/{id}/versions/{number}/approve:
+    post:
+      operationId: episodeApprove
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseEpisodeResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Episodes
+      x-required-permission: content:review
+  /episodes/{id}/versions/{number}/archive:
+    post:
+      operationId: episodeArchive
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseEpisodeResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Episodes
+      x-required-permission: content:publish
+  /episodes/{id}/versions/{number}/claim:
+    post:
+      operationId: episodeClaim
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseEpisodeResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Episodes
+      x-required-permission: content:review
+  /episodes/{id}/versions/{number}/events:
+    get:
+      operationId: episodeEvents
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VersionEventResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Episodes
+      x-required-permission: content:read
+  /episodes/{id}/versions/{number}/publish:
+    post:
+      operationId: episodePublish
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseEpisodeResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Episodes
+      x-required-permission: content:publish
+  /episodes/{id}/versions/{number}/pull-back:
+    post:
+      operationId: episodePullBack
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseEpisodeResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Episodes
+      x-required-permission: content:write
+  /episodes/{id}/versions/{number}/recover:
+    post:
+      operationId: episodeRecover
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseEpisodeResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Episodes
+      x-required-permission: content:publish
+  /episodes/{id}/versions/{number}/reject:
+    post:
+      operationId: episodeReject
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RejectVersionRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseEpisodeResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Episodes
+      x-required-permission: content:review
+  /episodes/{id}/versions/{number}/release:
+    post:
+      operationId: episodeRelease
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseEpisodeResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Episodes
+      x-required-permission: content:review
+  /episodes/{id}/versions/{number}/restore:
+    post:
+      operationId: episodeRestore
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseEpisodeResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Episodes
+      x-required-permission: content:publish
+  /episodes/{id}/versions/{number}/retire:
+    post:
+      operationId: episodeRetire
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseEpisodeResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Episodes
+      x-required-permission: content:retire
+  /episodes/{id}/versions/{number}/return-to-draft:
+    post:
+      operationId: episodeReturnToDraft
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseEpisodeResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Episodes
+      x-required-permission: content:write
+  /episodes/{id}/versions/{number}/submit:
+    post:
+      operationId: episodeSubmit
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseEpisodeResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Episodes
+      x-required-permission: content:write
   /images/{id}:
     get:
       operationId: imageGet
@@ -3059,6 +4478,746 @@ paths:
       tags:
       - Sagas
       x-required-permission: content:write
+  /volumes:
+    get:
+      operationId: volumeList
+      parameters:
+      - in: query
+        name: status
+        required: false
+        schema:
+          type: string
+          enum:
+          - DRAFT
+          - IN_REVIEW
+          - REJECTED
+          - READY_TO_PUBLISH
+          - PUBLISHED
+          - ARCHIVED
+          - RETIRED
+          - SUPERSEDED
+      - in: query
+        name: q
+        required: false
+        schema:
+          type: string
+      - in: query
+        name: author
+        required: false
+        schema:
+          type: string
+      - in: query
+        name: updatedWithinDays
+        required: false
+        schema:
+          type: integer
+          format: int32
+          minimum: 0
+      - description: Zero-based page index (0..N)
+        in: query
+        name: page
+        required: false
+        schema:
+          type: integer
+          default: 0
+          minimum: 0
+      - description: The size of the page to be returned
+        in: query
+        name: size
+        required: false
+        schema:
+          type: integer
+          default: 20
+          minimum: 1
+      - description: "Sorting criteria in the format: property,(asc|desc). Default\
+          \ sort order is ascending. Multiple sort criteria are supported."
+        in: query
+        name: sort
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PageResponseContentSummaryResponseVolumeNamesResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Volumes
+      x-required-permission: content:read
+    post:
+      operationId: volumeCreate
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VolumeRequest"
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                cover:
+                  type: string
+                  format: binary
+                version:
+                  $ref: "#/components/schemas/VolumeRequest"
+              required:
+              - version
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContentResponse"
+          description: Created
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Volumes
+      x-required-permission: content:write
+  /volumes/authors:
+    get:
+      operationId: volumeAuthors
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Volumes
+      x-required-permission: content:read
+  /volumes/linkable:
+    get:
+      operationId: volumeLinkable
+      parameters:
+      - description: "0-based page, 0 when missing"
+        in: query
+        name: page
+        required: false
+        schema:
+          type: integer
+          format: int32
+          minimum: 0
+      - description: "Page size: 20 when missing, at most 50"
+        in: query
+        name: size
+        required: false
+        schema:
+          type: integer
+          format: int32
+          maximum: 50
+          minimum: 1
+      - description: "Text the number or a title contains, case-insensitive; 100 characters\
+          \ at most"
+        in: query
+        name: q
+        required: false
+        schema:
+          type: string
+          maxLength: 100
+          minLength: 0
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PageResponseNumberedReferenceResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Volumes
+      x-required-permission: content:write
+  /volumes/summary:
+    get:
+      operationId: volumeSummary
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContentListSummaryResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Volumes
+      x-required-permission: content:read
+  /volumes/{id}:
+    get:
+      operationId: volumeGet
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContentResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Volumes
+      x-required-permission: content:read
+  /volumes/{id}/versions:
+    post:
+      operationId: volumeOpenNewVersion
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewVersionRequest"
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseVolumeResponse"
+          description: Created
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Volumes
+      x-required-permission: content:write
+  /volumes/{id}/versions/{number}:
+    delete:
+      operationId: volumeDelete
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "204":
+          description: No Content
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Volumes
+      x-required-permission: content:write
+    get:
+      operationId: volumeVersion
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseVolumeResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Volumes
+      x-required-permission: content:read
+    put:
+      operationId: volumeEdit
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VolumeRequest"
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                cover:
+                  type: string
+                  format: binary
+                version:
+                  $ref: "#/components/schemas/VolumeRequest"
+              required:
+              - version
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseVolumeResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Volumes
+      x-required-permission: content:write
+  /volumes/{id}/versions/{number}/approve:
+    post:
+      operationId: volumeApprove
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseVolumeResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Volumes
+      x-required-permission: content:review
+  /volumes/{id}/versions/{number}/archive:
+    post:
+      operationId: volumeArchive
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseVolumeResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Volumes
+      x-required-permission: content:publish
+  /volumes/{id}/versions/{number}/claim:
+    post:
+      operationId: volumeClaim
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseVolumeResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Volumes
+      x-required-permission: content:review
+  /volumes/{id}/versions/{number}/events:
+    get:
+      operationId: volumeEvents
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VersionEventResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Volumes
+      x-required-permission: content:read
+  /volumes/{id}/versions/{number}/publish:
+    post:
+      operationId: volumePublish
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseVolumeResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Volumes
+      x-required-permission: content:publish
+  /volumes/{id}/versions/{number}/pull-back:
+    post:
+      operationId: volumePullBack
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseVolumeResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Volumes
+      x-required-permission: content:write
+  /volumes/{id}/versions/{number}/recover:
+    post:
+      operationId: volumeRecover
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseVolumeResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Volumes
+      x-required-permission: content:publish
+  /volumes/{id}/versions/{number}/reject:
+    post:
+      operationId: volumeReject
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RejectVersionRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseVolumeResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Volumes
+      x-required-permission: content:review
+  /volumes/{id}/versions/{number}/release:
+    post:
+      operationId: volumeRelease
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseVolumeResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Volumes
+      x-required-permission: content:review
+  /volumes/{id}/versions/{number}/restore:
+    post:
+      operationId: volumeRestore
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseVolumeResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Volumes
+      x-required-permission: content:publish
+  /volumes/{id}/versions/{number}/retire:
+    post:
+      operationId: volumeRetire
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseVolumeResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Volumes
+      x-required-permission: content:retire
+  /volumes/{id}/versions/{number}/return-to-draft:
+    post:
+      operationId: volumeReturnToDraft
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseVolumeResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Volumes
+      x-required-permission: content:write
+  /volumes/{id}/versions/{number}/submit:
+    post:
+      operationId: volumeSubmit
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseVolumeResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Volumes
+      x-required-permission: content:write
 components:
   responses:
     ClientError:
@@ -3091,6 +5250,9 @@ components:
           - DEVIL_FRUIT
           - SAGA
           - ARC
+          - VOLUME
+          - CHAPTER
+          - EPISODE
         label:
           type: string
         occurredAt:
@@ -3173,6 +5335,74 @@ components:
           - SUBCATEGORY_IN_USE
           - RELATED_NOT_ONLINE
           - ONLINE_ITEMS_LINKED
+    ChapterNamesResponse:
+      type: object
+      properties:
+        arc:
+          $ref: "#/components/schemas/NumberedReferenceResponse"
+        names:
+          type: object
+          additionalProperties:
+            type: string
+        number:
+          type: integer
+          format: int32
+        volume:
+          $ref: "#/components/schemas/NumberedReferenceResponse"
+    ChapterRequest:
+      type: object
+      properties:
+        arc:
+          type: string
+          format: uuid
+          description: The content id of its arc
+        japaneseTitle:
+          type: string
+          maxLength: 200
+          minLength: 0
+        number:
+          type: integer
+          format: int32
+          minimum: 0
+        pageCount:
+          type: integer
+          format: int32
+          exclusiveMinimum: 0
+        releases:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReleaseRequest"
+        translations:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/StoryTranslationRequest"
+        volume:
+          type: string
+          format: uuid
+          description: The content id of its volume; left out for none
+    ChapterResponse:
+      type: object
+      properties:
+        arc:
+          $ref: "#/components/schemas/NumberedReferenceResponse"
+        japaneseTitle:
+          type: string
+        number:
+          type: integer
+          format: int32
+        pageCount:
+          type: integer
+          format: int32
+        releases:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReleaseResponse"
+        translations:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/StoryTranslationResponse"
+        volume:
+          $ref: "#/components/schemas/NumberedReferenceResponse"
     ContentListSummaryResponse:
       type: object
       properties:
@@ -3235,6 +5465,76 @@ components:
           $ref: "#/components/schemas/UserResponse"
         body:
           $ref: "#/components/schemas/ArcNamesResponse"
+        id:
+          type: string
+          format: uuid
+        onlineVersionNumber:
+          type: integer
+          format: int32
+        overrideActions:
+          type: array
+          items:
+            type: string
+            enum:
+            - EDIT
+            - DELETE
+            - SUBMIT
+            - PULL_BACK
+            - CLAIM
+            - RELEASE
+            - APPROVE
+            - REJECT
+            - RETURN_TO_DRAFT
+            - PUBLISH
+            - ARCHIVE
+            - RECOVER
+            - RETIRE
+            - RESTORE
+            - OPEN_NEW_VERSION
+        status:
+          type: string
+          enum:
+          - DRAFT
+          - IN_REVIEW
+          - REJECTED
+          - READY_TO_PUBLISH
+          - PUBLISHED
+          - ARCHIVED
+          - RETIRED
+          - SUPERSEDED
+        updatedAt:
+          type: string
+          format: date-time
+        versionNumber:
+          type: integer
+          format: int32
+    ContentSummaryResponseChapterNamesResponse:
+      type: object
+      properties:
+        allowedActions:
+          type: array
+          items:
+            type: string
+            enum:
+            - EDIT
+            - DELETE
+            - SUBMIT
+            - PULL_BACK
+            - CLAIM
+            - RELEASE
+            - APPROVE
+            - REJECT
+            - RETURN_TO_DRAFT
+            - PUBLISH
+            - ARCHIVE
+            - RECOVER
+            - RETIRE
+            - RESTORE
+            - OPEN_NEW_VERSION
+        author:
+          $ref: "#/components/schemas/UserResponse"
+        body:
+          $ref: "#/components/schemas/ChapterNamesResponse"
         id:
           type: string
           format: uuid
@@ -3418,6 +5718,76 @@ components:
         versionNumber:
           type: integer
           format: int32
+    ContentSummaryResponseEpisodeNamesResponse:
+      type: object
+      properties:
+        allowedActions:
+          type: array
+          items:
+            type: string
+            enum:
+            - EDIT
+            - DELETE
+            - SUBMIT
+            - PULL_BACK
+            - CLAIM
+            - RELEASE
+            - APPROVE
+            - REJECT
+            - RETURN_TO_DRAFT
+            - PUBLISH
+            - ARCHIVE
+            - RECOVER
+            - RETIRE
+            - RESTORE
+            - OPEN_NEW_VERSION
+        author:
+          $ref: "#/components/schemas/UserResponse"
+        body:
+          $ref: "#/components/schemas/EpisodeNamesResponse"
+        id:
+          type: string
+          format: uuid
+        onlineVersionNumber:
+          type: integer
+          format: int32
+        overrideActions:
+          type: array
+          items:
+            type: string
+            enum:
+            - EDIT
+            - DELETE
+            - SUBMIT
+            - PULL_BACK
+            - CLAIM
+            - RELEASE
+            - APPROVE
+            - REJECT
+            - RETURN_TO_DRAFT
+            - PUBLISH
+            - ARCHIVE
+            - RECOVER
+            - RETIRE
+            - RESTORE
+            - OPEN_NEW_VERSION
+        status:
+          type: string
+          enum:
+          - DRAFT
+          - IN_REVIEW
+          - REJECTED
+          - READY_TO_PUBLISH
+          - PUBLISHED
+          - ARCHIVED
+          - RETIRED
+          - SUPERSEDED
+        updatedAt:
+          type: string
+          format: date-time
+        versionNumber:
+          type: integer
+          format: int32
     ContentSummaryResponseSagaNamesResponse:
       type: object
       properties:
@@ -3445,6 +5815,76 @@ components:
           $ref: "#/components/schemas/UserResponse"
         body:
           $ref: "#/components/schemas/SagaNamesResponse"
+        id:
+          type: string
+          format: uuid
+        onlineVersionNumber:
+          type: integer
+          format: int32
+        overrideActions:
+          type: array
+          items:
+            type: string
+            enum:
+            - EDIT
+            - DELETE
+            - SUBMIT
+            - PULL_BACK
+            - CLAIM
+            - RELEASE
+            - APPROVE
+            - REJECT
+            - RETURN_TO_DRAFT
+            - PUBLISH
+            - ARCHIVE
+            - RECOVER
+            - RETIRE
+            - RESTORE
+            - OPEN_NEW_VERSION
+        status:
+          type: string
+          enum:
+          - DRAFT
+          - IN_REVIEW
+          - REJECTED
+          - READY_TO_PUBLISH
+          - PUBLISHED
+          - ARCHIVED
+          - RETIRED
+          - SUPERSEDED
+        updatedAt:
+          type: string
+          format: date-time
+        versionNumber:
+          type: integer
+          format: int32
+    ContentSummaryResponseVolumeNamesResponse:
+      type: object
+      properties:
+        allowedActions:
+          type: array
+          items:
+            type: string
+            enum:
+            - EDIT
+            - DELETE
+            - SUBMIT
+            - PULL_BACK
+            - CLAIM
+            - RELEASE
+            - APPROVE
+            - REJECT
+            - RETURN_TO_DRAFT
+            - PUBLISH
+            - ARCHIVE
+            - RECOVER
+            - RETIRE
+            - RESTORE
+            - OPEN_NEW_VERSION
+        author:
+          $ref: "#/components/schemas/UserResponse"
+        body:
+          $ref: "#/components/schemas/VolumeNamesResponse"
         id:
           type: string
           format: uuid
@@ -3701,6 +6141,59 @@ components:
           type: string
         name:
           type: string
+    EpisodeNamesResponse:
+      type: object
+      properties:
+        arc:
+          $ref: "#/components/schemas/NumberedReferenceResponse"
+        names:
+          type: object
+          additionalProperties:
+            type: string
+        number:
+          type: integer
+          format: int32
+    EpisodeRequest:
+      type: object
+      properties:
+        arc:
+          type: string
+          format: uuid
+          description: The content id of its arc; left out for none
+        broadcasts:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReleaseRequest"
+        japaneseTitle:
+          type: string
+          maxLength: 200
+          minLength: 0
+        number:
+          type: integer
+          format: int32
+          minimum: 0
+        translations:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/StoryTranslationRequest"
+    EpisodeResponse:
+      type: object
+      properties:
+        arc:
+          $ref: "#/components/schemas/NumberedReferenceResponse"
+        broadcasts:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReleaseResponse"
+        japaneseTitle:
+          type: string
+        number:
+          type: integer
+          format: int32
+        translations:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/StoryTranslationResponse"
     FieldViolation:
       type: object
       properties:
@@ -3766,6 +6259,25 @@ components:
         totalPages:
           type: integer
           format: int32
+    PageResponseContentSummaryResponseChapterNamesResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/ContentSummaryResponseChapterNamesResponse"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
     PageResponseContentSummaryResponseDevilFruitNamesResponse:
       type: object
       properties:
@@ -3804,6 +6316,25 @@ components:
         totalPages:
           type: integer
           format: int32
+    PageResponseContentSummaryResponseEpisodeNamesResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/ContentSummaryResponseEpisodeNamesResponse"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
     PageResponseContentSummaryResponseSagaNamesResponse:
       type: object
       properties:
@@ -3811,6 +6342,25 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ContentSummaryResponseSagaNamesResponse"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+    PageResponseContentSummaryResponseVolumeNamesResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/ContentSummaryResponseVolumeNamesResponse"
         page:
           type: integer
           format: int32
@@ -3924,6 +6474,28 @@ components:
           minLength: 8
       required:
       - reason
+    ReleaseRequest:
+      type: object
+      properties:
+        country:
+          type: string
+          example: JP
+          minLength: 1
+        date:
+          type: string
+          format: date
+          example: 1997-12-24
+      required:
+      - country
+      - date
+    ReleaseResponse:
+      type: object
+      properties:
+        country:
+          type: string
+        date:
+          type: string
+          format: date
     SagaNamesResponse:
       type: object
       properties:
@@ -4023,6 +6595,9 @@ components:
           - DEVIL_FRUIT
           - SAGA
           - ARC
+          - VOLUME
+          - CHAPTER
+          - EPISODE
         onlineVersionNumber:
           type: integer
           format: int32
@@ -4167,6 +6742,86 @@ components:
             $ref: "#/components/schemas/BlockedActionResponse"
         body:
           $ref: "#/components/schemas/ArcResponse"
+        claimant:
+          $ref: "#/components/schemas/UserResponse"
+        createdAt:
+          type: string
+          format: date-time
+        everPublished:
+          type: boolean
+        number:
+          type: integer
+          format: int32
+        overrideActions:
+          type: array
+          items:
+            type: string
+            enum:
+            - EDIT
+            - DELETE
+            - SUBMIT
+            - PULL_BACK
+            - CLAIM
+            - RELEASE
+            - APPROVE
+            - REJECT
+            - RETURN_TO_DRAFT
+            - PUBLISH
+            - ARCHIVE
+            - RECOVER
+            - RETIRE
+            - RESTORE
+            - OPEN_NEW_VERSION
+        rejectionReason:
+          type: string
+        status:
+          type: string
+          enum:
+          - DRAFT
+          - IN_REVIEW
+          - REJECTED
+          - READY_TO_PUBLISH
+          - PUBLISHED
+          - ARCHIVED
+          - RETIRED
+          - SUPERSEDED
+        updatedAt:
+          type: string
+          format: date-time
+    VersionResponseChapterResponse:
+      type: object
+      properties:
+        allowedActions:
+          type: array
+          items:
+            type: string
+            enum:
+            - EDIT
+            - DELETE
+            - SUBMIT
+            - PULL_BACK
+            - CLAIM
+            - RELEASE
+            - APPROVE
+            - REJECT
+            - RETURN_TO_DRAFT
+            - PUBLISH
+            - ARCHIVE
+            - RECOVER
+            - RETIRE
+            - RESTORE
+            - OPEN_NEW_VERSION
+        author:
+          $ref: "#/components/schemas/UserResponse"
+        basedOn:
+          type: integer
+          format: int32
+        blockedActions:
+          type: array
+          items:
+            $ref: "#/components/schemas/BlockedActionResponse"
+        body:
+          $ref: "#/components/schemas/ChapterResponse"
         claimant:
           $ref: "#/components/schemas/UserResponse"
         createdAt:
@@ -4373,6 +7028,86 @@ components:
         updatedAt:
           type: string
           format: date-time
+    VersionResponseEpisodeResponse:
+      type: object
+      properties:
+        allowedActions:
+          type: array
+          items:
+            type: string
+            enum:
+            - EDIT
+            - DELETE
+            - SUBMIT
+            - PULL_BACK
+            - CLAIM
+            - RELEASE
+            - APPROVE
+            - REJECT
+            - RETURN_TO_DRAFT
+            - PUBLISH
+            - ARCHIVE
+            - RECOVER
+            - RETIRE
+            - RESTORE
+            - OPEN_NEW_VERSION
+        author:
+          $ref: "#/components/schemas/UserResponse"
+        basedOn:
+          type: integer
+          format: int32
+        blockedActions:
+          type: array
+          items:
+            $ref: "#/components/schemas/BlockedActionResponse"
+        body:
+          $ref: "#/components/schemas/EpisodeResponse"
+        claimant:
+          $ref: "#/components/schemas/UserResponse"
+        createdAt:
+          type: string
+          format: date-time
+        everPublished:
+          type: boolean
+        number:
+          type: integer
+          format: int32
+        overrideActions:
+          type: array
+          items:
+            type: string
+            enum:
+            - EDIT
+            - DELETE
+            - SUBMIT
+            - PULL_BACK
+            - CLAIM
+            - RELEASE
+            - APPROVE
+            - REJECT
+            - RETURN_TO_DRAFT
+            - PUBLISH
+            - ARCHIVE
+            - RECOVER
+            - RETIRE
+            - RESTORE
+            - OPEN_NEW_VERSION
+        rejectionReason:
+          type: string
+        status:
+          type: string
+          enum:
+          - DRAFT
+          - IN_REVIEW
+          - REJECTED
+          - READY_TO_PUBLISH
+          - PUBLISHED
+          - ARCHIVED
+          - RETIRED
+          - SUPERSEDED
+        updatedAt:
+          type: string
+          format: date-time
     VersionResponseSagaResponse:
       type: object
       properties:
@@ -4407,6 +7142,86 @@ components:
             $ref: "#/components/schemas/BlockedActionResponse"
         body:
           $ref: "#/components/schemas/SagaResponse"
+        claimant:
+          $ref: "#/components/schemas/UserResponse"
+        createdAt:
+          type: string
+          format: date-time
+        everPublished:
+          type: boolean
+        number:
+          type: integer
+          format: int32
+        overrideActions:
+          type: array
+          items:
+            type: string
+            enum:
+            - EDIT
+            - DELETE
+            - SUBMIT
+            - PULL_BACK
+            - CLAIM
+            - RELEASE
+            - APPROVE
+            - REJECT
+            - RETURN_TO_DRAFT
+            - PUBLISH
+            - ARCHIVE
+            - RECOVER
+            - RETIRE
+            - RESTORE
+            - OPEN_NEW_VERSION
+        rejectionReason:
+          type: string
+        status:
+          type: string
+          enum:
+          - DRAFT
+          - IN_REVIEW
+          - REJECTED
+          - READY_TO_PUBLISH
+          - PUBLISHED
+          - ARCHIVED
+          - RETIRED
+          - SUPERSEDED
+        updatedAt:
+          type: string
+          format: date-time
+    VersionResponseVolumeResponse:
+      type: object
+      properties:
+        allowedActions:
+          type: array
+          items:
+            type: string
+            enum:
+            - EDIT
+            - DELETE
+            - SUBMIT
+            - PULL_BACK
+            - CLAIM
+            - RELEASE
+            - APPROVE
+            - REJECT
+            - RETURN_TO_DRAFT
+            - PUBLISH
+            - ARCHIVE
+            - RECOVER
+            - RETIRE
+            - RESTORE
+            - OPEN_NEW_VERSION
+        author:
+          $ref: "#/components/schemas/UserResponse"
+        basedOn:
+          type: integer
+          format: int32
+        blockedActions:
+          type: array
+          items:
+            $ref: "#/components/schemas/BlockedActionResponse"
+        body:
+          $ref: "#/components/schemas/VolumeResponse"
         claimant:
           $ref: "#/components/schemas/UserResponse"
         createdAt:
@@ -4525,6 +7340,69 @@ components:
         updatedAt:
           type: string
           format: date-time
+    VolumeNamesResponse:
+      type: object
+      properties:
+        cover:
+          $ref: "#/components/schemas/ImageResponse"
+        names:
+          type: object
+          additionalProperties:
+            type: string
+        number:
+          type: integer
+          format: int32
+    VolumeRequest:
+      type: object
+      properties:
+        japaneseTitle:
+          type: string
+          maxLength: 200
+          minLength: 0
+        number:
+          type: integer
+          format: int32
+          minimum: 0
+        releases:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReleaseRequest"
+        removeImage:
+          type: boolean
+        translations:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/VolumeTranslationRequest"
+    VolumeResponse:
+      type: object
+      properties:
+        cover:
+          $ref: "#/components/schemas/ImageResponse"
+        japaneseTitle:
+          type: string
+        number:
+          type: integer
+          format: int32
+        releases:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReleaseResponse"
+        translations:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/VolumeTranslationResponse"
+    VolumeTranslationRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 200
+          minLength: 0
+    VolumeTranslationResponse:
+      type: object
+      properties:
+        title:
+          type: string
   securitySchemes:
     keycloak:
       flows:

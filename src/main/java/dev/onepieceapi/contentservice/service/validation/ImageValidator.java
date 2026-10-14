@@ -66,9 +66,9 @@ public class ImageValidator {
 	}
 
 	private void requireLargeEnough(int width, int height, ImageProfile profile) {
-		if (width < profile.width() || height < profile.height()) {
+		if (width < profile.minWidth() || height < profile.minHeight()) {
 			throw new ImageRefusedException(ContentErrorCode.IMAGE_TOO_SMALL, "The image is too small", Map.of("width",
-					width, "height", height, "minWidth", profile.width(), "minHeight", profile.height()));
+					width, "height", height, "minWidth", profile.minWidth(), "minHeight", profile.minHeight()));
 		}
 	}
 

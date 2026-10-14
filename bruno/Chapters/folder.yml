@@ -1,0 +1,6 @@
+info:
+  name: Chapters
+  type: folder
+
+request:
+  auth: inherit

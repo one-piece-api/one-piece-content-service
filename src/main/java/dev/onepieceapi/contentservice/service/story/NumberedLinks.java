@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.util.Collection;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -56,6 +57,14 @@ public class NumberedLinks<T extends ContentBody<T>, E extends VersionBodyEntity
 			.stream()
 			.map(this::referenceOf)
 			.collect(Collectors.toMap(NumberedReference::id, Function.identity()));
+	}
+
+	/**
+	 * The contents the given items point to, as {@link #referencesOf}.
+	 * @param target the content an item points to; null for none
+	 */
+	public <S> Map<UUID, NumberedReference> referencesFor(Collection<S> items, Function<S, UUID> target) {
+		return referencesOf(items.stream().map(target).filter(Objects::nonNull).collect(Collectors.toSet()));
 	}
 
 	/**

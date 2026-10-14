@@ -19,6 +19,7 @@ import dev.onepieceapi.contentservice.service.exception.ArcNotFoundException;
 import dev.onepieceapi.contentservice.service.exception.ValueAlreadyUsedException;
 import dev.onepieceapi.contentservice.service.exception.ValueInvalidException;
 import dev.onepieceapi.contentservice.service.exception.VersionActionBlockedException;
+import dev.onepieceapi.contentservice.service.story.ArcLinks;
 import dev.onepieceapi.contentservice.service.story.ArcService;
 import dev.onepieceapi.contentservice.service.story.SagaLinks;
 import dev.onepieceapi.contentservice.web.security.SecurityConfig;
@@ -51,6 +52,7 @@ import static dev.onepieceapi.contentservice.web.controller.TestCallers.callerWi
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -92,6 +94,9 @@ class ArcControllerTest {
 
 	@MockitoBean
 	private SagaLinks sagas;
+
+	@MockitoBean
+	private ArcLinks arcs;
 
 	@Test
 	void aVersionSaysItsSagaAsItIsTodayAndWhichActionsAreBlocked() throws Exception {
@@ -312,6 +317,37 @@ class ArcControllerTest {
 			.formatted("x".repeat(200), "x".repeat(2000));
 
 		this.mockMvc.perform(edit(body).with(callerWith(Permission.CONTENT_WRITE))).andExpect(status().isOk());
+	}
+
+	@Test
+	void theArcsAChapterMayBeLinkedToAreListedForWhoeverWritesChapters() throws Exception {
+		var romanceDawn = new NumberedReference(CONTENT_ID, 1, Map.of("it", "Romance Dawn"));
+		when(this.arcs.linkable(any(), anyInt(), anyInt()))
+			.thenReturn(new PageImpl<>(List.of(romanceDawn), PageRequest.of(1, 5), 6));
+
+		this.mockMvc
+			.perform(get("/arcs/linkable").param("q", "dawn")
+				.param("page", "1")
+				.param("size", "5")
+				.with(callerWith(Permission.CONTENT_WRITE)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.totalElements").value(6))
+			.andExpect(jsonPath("$.content[0].id").value(CONTENT_ID.toString()))
+			.andExpect(jsonPath("$.content[0].number").value(1))
+			.andExpect(jsonPath("$.content[0].names.it").value("Romance Dawn"));
+		verify(this.arcs).linkable("dawn", 1, 5);
+	}
+
+	@Test
+	void theLinkableArcsAreFirstPageTwentyByDefaultAndNotForWhoOnlyReads() throws Exception {
+		when(this.arcs.linkable(any(), anyInt(), anyInt())).thenReturn(new PageImpl<>(List.of()));
+
+		this.mockMvc.perform(get("/arcs/linkable").with(callerWith(Permission.CONTENT_WRITE)))
+			.andExpect(status().isOk());
+		verify(this.arcs).linkable(null, 0, 20);
+		this.mockMvc.perform(get("/arcs/linkable").with(callerWith(Permission.CONTENT_READ)))
+			.andExpect(status().isForbidden());
+		this.mockMvc.perform(get("/arcs/linkable")).andExpect(status().isUnauthorized());
 	}
 
 	/** A creation, not signed in yet. */

@@ -99,7 +99,7 @@ public abstract class VersionBodyEntity {
 	}
 
 	/** Notes that what the version says changed now. */
-	protected void touch(Instant now) {
+	public void touch(Instant now) {
 		this.version.setUpdatedAt(now);
 	}
 

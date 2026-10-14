@@ -60,7 +60,14 @@ public final class ApiPaths {
 
 	public static final String ARCS = "/arcs";
 
-	public static final List<String> CONTENT_SECTIONS = List.of(DEVIL_FRUIT_TYPES, DEVIL_FRUITS, SAGAS, ARCS);
+	public static final String VOLUMES = "/volumes";
+
+	public static final String CHAPTERS = "/chapters";
+
+	public static final String EPISODES = "/episodes";
+
+	public static final List<String> CONTENT_SECTIONS = List.of(DEVIL_FRUIT_TYPES, DEVIL_FRUITS, SAGAS, ARCS, VOLUMES,
+			CHAPTERS, EPISODES);
 
 	/**
 	 * The types a fruit may be linked to - an endpoint of the Devil Fruit Type section
@@ -72,6 +79,12 @@ public final class ApiPaths {
 
 	/** The sagas an arc may be linked to. */
 	public static final String SAGAS_LINKABLE = SAGAS + CONTENT_LINKABLE;
+
+	/** The arcs a chapter or an episode may be linked to. */
+	public static final String ARCS_LINKABLE = ARCS + CONTENT_LINKABLE;
+
+	/** The volumes a chapter may be linked to. */
+	public static final String VOLUMES_LINKABLE = VOLUMES + CONTENT_LINKABLE;
 
 	/** The section itself: its list, and where a new content is posted. */
 	public static final String CONTENT_LIST = "";

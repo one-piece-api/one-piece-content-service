@@ -68,6 +68,9 @@ dependencies {
 
 tasks.withType<Test> {
 	useJUnitPlatform()
+	// Every integration test class keeps its own Spring context (and its PostgreSQL container
+	// connection pool) cached for the whole run: the 512 MB default no longer holds them all.
+	maxHeapSize = "1g"
 }
 
 // Rewrites openapi/openapi.yaml from the current controllers instead of failing on a

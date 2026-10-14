@@ -17,7 +17,7 @@ class StoryTranslations {
 	/** Named as request validation names them, so a client reads both the same way. */
 	static final String TITLE = "title";
 
-	private static final String TITLE_FIELD = "translations[%s].title";
+	static final String TITLE_FIELD = "translations[%s].title";
 
 	private static final String DESCRIPTION_FIELD = "translations[%s].description";
 

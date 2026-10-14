@@ -1,0 +1,6 @@
+info:
+  name: Volumes
+  type: folder
+
+request:
+  auth: inherit

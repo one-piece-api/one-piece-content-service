@@ -19,7 +19,9 @@ import dev.onepieceapi.contentservice.persistence.mapper.StoryVersionMapper;
 import dev.onepieceapi.contentservice.persistence.mapper.UserMapper;
 import dev.onepieceapi.contentservice.persistence.repository.ArcVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
+import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
+import dev.onepieceapi.contentservice.persistence.repository.EpisodeVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
 import dev.onepieceapi.contentservice.persistence.repository.SagaVersionRepository;
@@ -111,6 +113,12 @@ class StoryRulesIntegrationTest {
 	private ArcVersionRepository arcRepository;
 
 	@Autowired
+	private ChapterVersionRepository chapterRepository;
+
+	@Autowired
+	private EpisodeVersionRepository episodeRepository;
+
+	@Autowired
 	private ContentVersionRepository contentVersionRepository;
 
 	@Autowired
@@ -141,7 +149,9 @@ class StoryRulesIntegrationTest {
 				clock);
 		this.arcs = new ArcService(this.arcRepository, this.contentVersionRepository, this.contentRepository,
 				new ArcValidator(this.arcRepository, this.languageRepository, this.sagaRepository),
-				new ArcRules(this.contentRepository, this.sagaRepository), auditLogService, clock);
+				new ArcRules(this.contentRepository, this.sagaRepository, this.chapterRepository,
+						this.episodeRepository, new RulesProperties(5)),
+				auditLogService, clock);
 	}
 
 	@Test

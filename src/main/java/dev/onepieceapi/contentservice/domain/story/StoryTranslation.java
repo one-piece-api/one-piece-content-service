@@ -16,6 +16,9 @@ public record StoryTranslation(String title, String description) {
 
 	public static final int DESCRIPTION_MAX_LENGTH = 2000;
 
+	/** The title as published in Japan, which every story entity may carry once. */
+	public static final int JAPANESE_TITLE_MAX_LENGTH = 200;
+
 	/** A language nothing was written in. */
 	static final StoryTranslation NONE = new StoryTranslation(null, null);
 

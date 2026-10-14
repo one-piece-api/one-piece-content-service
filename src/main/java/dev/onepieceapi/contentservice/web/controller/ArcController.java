@@ -3,15 +3,18 @@ package dev.onepieceapi.contentservice.web.controller;
 import dev.onepieceapi.contentservice.domain.story.Arc;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSortField;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
+import dev.onepieceapi.contentservice.service.story.ArcLinks;
 import dev.onepieceapi.contentservice.service.story.ArcService;
 import dev.onepieceapi.contentservice.service.story.SagaLinks;
 import dev.onepieceapi.contentservice.web.ApiPaths;
 import dev.onepieceapi.contentservice.web.dto.request.ArcListRequest;
 import dev.onepieceapi.contentservice.web.dto.request.ArcRequest;
+import dev.onepieceapi.contentservice.web.dto.request.LinkableNumberedRequest;
 import dev.onepieceapi.contentservice.web.dto.response.ArcNamesResponse;
 import dev.onepieceapi.contentservice.web.dto.response.ArcResponse;
 import dev.onepieceapi.contentservice.web.dto.response.ContentResponse;
 import dev.onepieceapi.contentservice.web.dto.response.ContentSummaryResponse;
+import dev.onepieceapi.contentservice.web.dto.response.NumberedReferenceResponse;
 import dev.onepieceapi.contentservice.web.dto.response.PageResponse;
 import dev.onepieceapi.contentservice.web.dto.response.VersionResponse;
 import dev.onepieceapi.contentservice.web.mapper.ContentResponseMapper;
@@ -42,8 +45,9 @@ import java.util.UUID;
 /**
  * The arc section: every endpoint of {@link ContentController}, plus creating a content
  * and editing its draft (UF-CNT-01, UF-CNT-02), which take {@code content:write}, and the
- * list narrowed to the arcs of a saga. The saga an arc points to is answered as it is
- * today, looked up once for the whole page.
+ * list narrowed to the arcs of a saga; and the arcs a chapter or an episode may be linked
+ * to. The saga an arc points to is answered as it is today, looked up once for the whole
+ * page.
  */
 @RestController
 @RequestMapping(ApiPaths.ARCS)
@@ -54,12 +58,15 @@ class ArcController extends ContentController<Arc, ArcResponse, ArcNamesResponse
 
 	private final SagaLinks sagas;
 
+	private final ArcLinks links;
+
 	@Autowired
-	ArcController(ArcService service, SagaLinks sagas) {
+	ArcController(ArcService service, SagaLinks sagas, ArcLinks links) {
 		super(service,
 				access -> StoryResponseMapper.toVersionResponse(access, sagas.referencesFor(List.of(access.body()))));
 		this.service = service;
 		this.sagas = sagas;
+		this.links = links;
 	}
 
 	/**
@@ -79,6 +86,16 @@ class ArcController extends ContentController<Arc, ArcResponse, ArcNamesResponse
 			AuthenticatedCaller caller) {
 		var references = this.sagas.referencesFor(rows.stream().map(row -> row.version().body()).toList());
 		return rows.stream().map(row -> StoryResponseMapper.toSummaryResponse(row, references)).toList();
+	}
+
+	/**
+	 * The arcs a chapter or an episode may be linked to: those with a version that passed
+	 * review, by number, narrowed by what their number or a title contains.
+	 */
+	@GetMapping(ApiPaths.CONTENT_LINKABLE)
+	PageResponse<NumberedReferenceResponse> linkable(@ParameterObject @Valid LinkableNumberedRequest request) {
+		var page = this.links.linkable(request.q(), request.pageOrDefault(), request.sizeOrDefault());
+		return PageResponse.from(page.map(StoryResponseMapper::toResponse));
 	}
 
 	/**

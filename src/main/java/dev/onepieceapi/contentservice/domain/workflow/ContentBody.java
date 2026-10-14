@@ -44,6 +44,16 @@ public interface ContentBody<T extends ContentBody<T>> {
 		return DEFAULT_NAME_FIELD;
 	}
 
+	/**
+	 * Whether no two contents of the entity may share a name in a language; true unless
+	 * the entity says otherwise - a chapter or an episode may repeat a title, its number
+	 * being what tells them apart (implementation plan of the story structure, section
+	 * 7).
+	 */
+	default boolean uniqueNames() {
+		return true;
+	}
+
 	/** The language codes something was written in. */
 	Set<String> languages();
 

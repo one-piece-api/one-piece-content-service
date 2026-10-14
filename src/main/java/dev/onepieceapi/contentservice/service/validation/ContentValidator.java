@@ -75,6 +75,7 @@ public class ContentValidator<T extends ContentBody<T>, E extends VersionBodyEnt
 	public void validateDraft(UUID contentId, Optional<T> previous, T body) {
 		requireKnownLanguages(body);
 		requireValidRevision(previous, body);
+		requireValidFields(body);
 		requireValidRelations(body);
 		requireUniqueValues(contentId, body, slugOf(body));
 	}
@@ -96,6 +97,13 @@ public class ContentValidator<T extends ContentBody<T>, E extends VersionBodyEnt
 	 * and again at submission; nothing by default.
 	 */
 	protected void requireValidRelations(T body) {
+	}
+
+	/**
+	 * What the entity says about the values of its own fields beyond their length - e.g.
+	 * the countries of a release; checked on every save, nothing by default.
+	 */
+	protected void requireValidFields(T body) {
 	}
 
 	/**
@@ -168,11 +176,13 @@ public class ContentValidator<T extends ContentBody<T>, E extends VersionBodyEnt
 		if (!key.isMissing() && this.versionRepository.naturalKeyIsTakenByAnother(key.value(), contentId)) {
 			taken.add(new FieldViolation(key.field(), ALREADY_USED));
 		}
-		body.names().forEach((language, name) -> {
-			if (this.versionRepository.nameIsTakenByAnother(language, name, contentId)) {
-				taken.add(new FieldViolation(NAME_FIELD.formatted(language, body.nameField()), ALREADY_USED));
-			}
-		});
+		if (body.uniqueNames()) {
+			body.names().forEach((language, name) -> {
+				if (this.versionRepository.nameIsTakenByAnother(language, name, contentId)) {
+					taken.add(new FieldViolation(NAME_FIELD.formatted(language, body.nameField()), ALREADY_USED));
+				}
+			});
+		}
 		if (!taken.isEmpty()) {
 			throw new ValueAlreadyUsedException(taken);
 		}

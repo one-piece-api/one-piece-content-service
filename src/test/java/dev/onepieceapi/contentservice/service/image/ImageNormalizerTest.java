@@ -7,10 +7,12 @@ import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.HexFormat;
 
 import static dev.onepieceapi.contentservice.service.image.TestImages.PROFILE;
+import static dev.onepieceapi.contentservice.service.image.TestImages.VOLUME_PROFILE;
 import static dev.onepieceapi.contentservice.service.image.TestImages.drawn;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -65,6 +67,20 @@ class ImageNormalizerTest {
 
 	private static int alphaAt(BufferedImage image, int x, int y) {
 		return image.getRGB(x, y) >>> 24;
+	}
+
+	@Test
+	void aVolumeCoverIsStoredAsTheCanvasOfItsProfileWithoutAnyMetadata() throws IOException {
+		var image = this.normalizer.normalize(drawn(1120, 1600, Color.WHITE), VOLUME_PROFILE);
+
+		BufferedImage stored = decoded(image.bytes());
+		assertThat(stored.getWidth()).isEqualTo(420);
+		assertThat(stored.getHeight()).isEqualTo(600);
+		assertThat(image.width()).isEqualTo(420);
+		assertThat(image.height()).isEqualTo(600);
+		assertThat(alphaAt(stored, 0, 0)).isEqualTo(OPAQUE);
+		String chunks = new String(image.bytes(), StandardCharsets.ISO_8859_1);
+		assertThat(chunks).doesNotContain("tEXt", "iTXt", "zTXt", "eXIf");
 	}
 
 }

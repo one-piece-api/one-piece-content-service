@@ -17,7 +17,9 @@ import dev.onepieceapi.contentservice.persistence.mapper.StoryVersionMapper;
 import dev.onepieceapi.contentservice.persistence.mapper.UserMapper;
 import dev.onepieceapi.contentservice.persistence.repository.ArcVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
+import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
+import dev.onepieceapi.contentservice.persistence.repository.EpisodeVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
 import dev.onepieceapi.contentservice.persistence.repository.SagaVersionRepository;
@@ -108,6 +110,12 @@ class StoryRulesRaceIntegrationTest {
 
 	@Autowired
 	private ArcVersionRepository arcRepository;
+
+	@Autowired
+	private ChapterVersionRepository chapterRepository;
+
+	@Autowired
+	private EpisodeVersionRepository episodeRepository;
 
 	@Autowired
 	private ContentVersionRepository contentVersionRepository;
@@ -220,8 +228,9 @@ class StoryRulesRaceIntegrationTest {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
 		return new ArcService(this.arcRepository, this.contentVersionRepository, this.contentRepository,
 				new ArcValidator(this.arcRepository, this.languageRepository, sagas),
-				new ArcRules(this.contentRepository, sagas), new AuditLogService(this.auditLogRepository, clock),
-				clock);
+				new ArcRules(this.contentRepository, sagas, this.chapterRepository, this.episodeRepository,
+						new RulesProperties(5)),
+				new AuditLogService(this.auditLogRepository, clock), clock);
 	}
 
 	private UUID sagaContent(VersionStatus status) {

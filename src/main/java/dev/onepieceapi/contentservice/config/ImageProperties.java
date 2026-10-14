@@ -9,6 +9,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.util.unit.DataSize;
 import org.springframework.validation.annotation.Validated;
@@ -38,16 +39,19 @@ public record ImageProperties(@NotBlank String baseUrl, Map<EntityType, @Valid P
 	}
 
 	/**
-	 * One entity's profile as configured; see {@link ImageProfile} for each value.
+	 * One entity's profile as configured; see {@link ImageProfile} for each value. The
+	 * minimum size is optional: the canvas size when left out.
 	 */
-	public record Profile(@Positive int width, @Positive int height,
-			@DecimalMin("0.0") @DecimalMax("1.0") double ratioTolerance, @NotNull DataSize maxSize,
-			@Positive long maxPixels, @Positive @Max(100) int minTransparentPercent) {
+	public record Profile(@Positive int width, @Positive int height, @Positive Integer minWidth,
+			@Positive Integer minHeight, @DecimalMin("0.0") @DecimalMax("1.0") double ratioTolerance,
+			@NotNull DataSize maxSize, @Positive long maxPixels, @PositiveOrZero @Max(100) int minTransparentPercent) {
 
 		ImageProfile toDomain() {
 			return ImageProfile.builder()
 				.width(this.width)
 				.height(this.height)
+				.minWidth(this.minWidth == null ? 0 : this.minWidth)
+				.minHeight(this.minHeight == null ? 0 : this.minHeight)
 				.ratioTolerance(this.ratioTolerance)
 				.maxBytes(this.maxSize.toBytes())
 				.maxPixels(this.maxPixels)

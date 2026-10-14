@@ -1,7 +1,7 @@
 info:
   name: arcOpenNewVersion
   type: http
-  seq: 6
+  seq: 7
   tags:
     - Arcs
 

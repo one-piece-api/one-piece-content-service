@@ -12,9 +12,7 @@ import org.springframework.stereotype.Service;
 import java.time.Clock;
 import java.util.Collection;
 import java.util.Map;
-import java.util.Objects;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 /** The sagas as the arcs point to them, and those an arc may be linked to. */
 @Service
@@ -27,7 +25,7 @@ public class SagaLinks extends NumberedLinks<Saga, SagaVersionEntity> {
 
 	/** The sagas the given arcs point to, as {@link #referencesOf}. */
 	public Map<UUID, NumberedReference> referencesFor(Collection<Arc> arcs) {
-		return referencesOf(arcs.stream().map(Arc::sagaContentId).filter(Objects::nonNull).collect(Collectors.toSet()));
+		return referencesFor(arcs, Arc::sagaContentId);
 	}
 
 }
