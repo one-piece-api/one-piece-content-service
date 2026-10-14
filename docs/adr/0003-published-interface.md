@@ -63,3 +63,17 @@ All in migration `V8__published_interface.sql`.
 - The migration fails if two contents online already share a slug: such data must be fixed
   before deploying.
 - Any change to what is online invalidates every cached response of the API at once.
+
+## Addendum - story structure (V16, plan SS6)
+
+- **Views per entity, as the fruit's:** `published.saga|arc|volume|chapter|episode`, one row
+  per content online and language; the slug is the number, the title is read as `name` (what
+  the public API searches and sorts); the summary of what a content points to, one level up
+  (arc → saga; chapter → arc + volume; episode → arc), is joined in the same language.
+- **Derived values are views, not columns of the entities:** `published.{arc,saga}_chapter_span`,
+  `published.{arc,saga}_episode_span` and `published.volume_chapter_span` give count, first and
+  last number and first and last Japanese (`JP`) day, from the contents online only. The
+  entity views `LEFT JOIN` them: a `GROUP BY` side is provably unique, so the planner drops the
+  join when a query (the list) does not read those columns.
+- `published.{volume,chapter}_release` and `published.episode_broadcast` list every country.
+- `published.image` also shows the covers of the volumes online.
