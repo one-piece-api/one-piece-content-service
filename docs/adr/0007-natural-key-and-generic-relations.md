@@ -65,3 +65,16 @@ would multiply fake romaji columns and copies of the same rules.
   `ContentBody#nameField()` names the field in violations (`translations[en].title`).
 - **Number as text:** search and the name-sort fallback convert a non-text key with HQL
   `str()`: a JPA `as(String.class)` emits no SQL cast and PostgreSQL has no `lower(integer)`.
+
+## Addendum - Volume, Chapter, Episode (story structure SS4)
+
+- **Titles may repeat:** `ContentBody#uniqueNames()` (default `true`) lets an entity skip the
+  per-language name uniqueness; false for Volume, Chapter and Episode. Saga and Arc keep it.
+- **Several relations on one entity:** Chapter declares two `RelationDescriptor`s (arc required,
+  volume optional), Episode one (arc optional). Rule classes (`VolumeRules`, `ArcRules`) stay thin
+  wiring over `RelationRules`; `ArcRules` also refuses a retire while online chapters or episodes
+  link to the arc (`ONLINE_ITEMS_LINKED`, detail `{count, chapters|episodes: [{id, number}]}`).
+- **Releases / broadcasts:** a composition of the version (`Release{country, date}`), not a
+  content: no lifecycle, one entry per ISO 3166-1 country, validated by `ReleaseRules`.
+- **Cover:** `/volumes` also takes multipart (part `cover`, JSON `removeImage`); the profile
+  accepts static PNG only, as the image framework does (JPEG/WebP deferred, plan S6 not met).
