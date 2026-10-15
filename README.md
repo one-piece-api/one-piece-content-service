@@ -14,6 +14,10 @@ copertina PNG), **Capitolo** ed **Episodio** (relazioni verso arco/volume, date 
 - **Devil Fruit** (`/devil-fruits`): le stesse operazioni, più il tipo (relazione verso un
   tipo approvato) e l'immagine PNG (salvataggio multipart, validata e normalizzata). Un frutto
   va online solo con il suo tipo online; un tipo con frutti online non si ritira.
+- **Prima apparizione** (frutto, tipo, sottocategoria; ADR-0008): `firstAppearance.chapter`
+  verso un capitolo approvato (`/chapters/linkable`). Frutto e tipo vanno online solo con una
+  prima apparizione in un capitolo online (`FIRST_APPEARANCE_MISSING`, `RELATED_NOT_ONLINE`); un
+  capitolo in cui compaiono elementi online non si ritira (`ONLINE_ITEMS_LINKED`).
 - **Struttura narrativa** (`/sagas`, `/arcs`, `/volumes`, `/chapters`, `/episodes`): stesse
   operazioni, chiave naturale `number`; filtri `?saga=`/`?arc=`/`?volume=`. Un figlio va online
   solo con il padre online (`RELATED_NOT_ONLINE`); un padre con figli online non si ritira
