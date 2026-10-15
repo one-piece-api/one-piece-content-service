@@ -5,6 +5,7 @@ import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.entity.DevilFruitVersionEntity;
 import dev.onepieceapi.contentservice.persistence.mapper.DevilFruitTypeVersionMapper;
 import dev.onepieceapi.contentservice.persistence.mapper.DevilFruitVersionMapper;
+import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitTypeVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
@@ -24,7 +25,8 @@ import java.util.UUID;
  * a type it may be linked to, as every relation ({@link RelationRules}): one of its
  * versions passed review, the same on every save and again at submission. A subcategory,
  * optional, must be one of that type's (implementation plan of the subcategories, S5);
- * none can be named without a type.
+ * none can be named without a type. A first appearance, optional, is a chapter it may be
+ * linked to (implementation plan of the timeline, T7).
  */
 @Component
 public class DevilFruitValidator extends ContentValidator<DevilFruit, DevilFruitVersionEntity> {
@@ -35,11 +37,14 @@ public class DevilFruitValidator extends ContentValidator<DevilFruit, DevilFruit
 
 	private final DevilFruitTypeVersionRepository typeRepository;
 
+	private final ChapterVersionRepository chapterRepository;
+
 	@Autowired
 	public DevilFruitValidator(DevilFruitVersionRepository versionRepository, LanguageRepository languageRepository,
-			DevilFruitTypeVersionRepository typeRepository) {
+			DevilFruitTypeVersionRepository typeRepository, ChapterVersionRepository chapterRepository) {
 		super(versionRepository, languageRepository, DevilFruitVersionMapper::toDomain);
 		this.typeRepository = typeRepository;
+		this.chapterRepository = chapterRepository;
 	}
 
 	@Override
@@ -48,6 +53,7 @@ public class DevilFruitValidator extends ContentValidator<DevilFruit, DevilFruit
 		if (body.subcategoryId() != null && !subcategoryOfType(body.typeContentId(), body.subcategoryId())) {
 			throw new ValueInvalidException(List.of(new FieldViolation(SUBCATEGORY_FIELD, NOT_OF_TYPE)));
 		}
+		RelationRules.requireLinkable(DevilFruitRelations.FIRST_APPEARANCE, body, this.chapterRepository);
 	}
 
 	/**

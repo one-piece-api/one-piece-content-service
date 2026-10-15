@@ -4,6 +4,7 @@ import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitType;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitTypeSubcategory;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitTypeSubcategoryTranslation;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitTypeTranslation;
+import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.domain.security.User;
 import dev.onepieceapi.contentservice.domain.workflow.Version;
 import dev.onepieceapi.contentservice.persistence.entity.DevilFruitTypeSubcategoryEntity;
@@ -30,7 +31,8 @@ public class DevilFruitTypeVersionMapper {
 
 	public Version<DevilFruitType> toDomain(DevilFruitTypeVersionEntity entity) {
 		var body = new DevilFruitType(entity.getRomaji(), toDomain(entity.getTranslations()),
-				entity.getSubcategories().stream().map(DevilFruitTypeVersionMapper::toDomain).toList());
+				entity.getSubcategories().stream().map(DevilFruitTypeVersionMapper::toDomain).toList(),
+				new StoryPoint(entity.getFirstAppearanceChapterId()));
 		return ContentVersionMapper.toDomain(entity.getVersion(), body);
 	}
 
@@ -61,7 +63,8 @@ public class DevilFruitTypeVersionMapper {
 
 	/** Makes the version say what was given, in place of what it said. */
 	public void rewrite(DevilFruitTypeVersionEntity entity, DevilFruitType body, Instant now) {
-		entity.rewrite(body.romaji(), toEmbeddables(body.translations()), toSubcategoryRows(body.subcategories()), now);
+		entity.rewrite(body.romaji(), toEmbeddables(body.translations()), toSubcategoryRows(body.subcategories()),
+				body.firstAppearanceChapterId(), now);
 	}
 
 	private static DevilFruitTypeSubcategory toDomain(DevilFruitTypeSubcategoryEntity subcategory) {
@@ -69,22 +72,24 @@ public class DevilFruitTypeVersionMapper {
 		subcategory.getTranslations()
 			.forEach((language, translation) -> byLanguage.put(language,
 					new DevilFruitTypeSubcategoryTranslation(translation.getName(), translation.getDescription())));
-		return new DevilFruitTypeSubcategory(subcategory.getSubcategoryId(), byLanguage);
+		return new DevilFruitTypeSubcategory(subcategory.getSubcategoryId(), byLanguage,
+				new StoryPoint(subcategory.getFirstAppearanceChapterId()));
 	}
 
 	/**
-	 * The translations of each subcategory by its id, in order; every one has an id by
-	 * now (see {@code ContentBody#identified}).
+	 * What each subcategory says by its id, in order; every one has an id by now (see
+	 * {@code ContentBody#identified}).
 	 */
-	private static Map<UUID, Map<String, SubcategoryTranslationEmbeddable>> toSubcategoryRows(
+	private static Map<UUID, DevilFruitTypeSubcategoryEntity.Written> toSubcategoryRows(
 			List<DevilFruitTypeSubcategory> subcategories) {
-		Map<UUID, Map<String, SubcategoryTranslationEmbeddable>> rows = new LinkedHashMap<>();
+		Map<UUID, DevilFruitTypeSubcategoryEntity.Written> rows = new LinkedHashMap<>();
 		subcategories.forEach(subcategory -> {
 			Map<String, SubcategoryTranslationEmbeddable> byLanguage = new HashMap<>();
 			subcategory.translations()
 				.forEach((language, translation) -> byLanguage.put(language,
 						new SubcategoryTranslationEmbeddable(translation.name(), translation.description())));
-			rows.put(Objects.requireNonNull(subcategory.id(), "a subcategory is saved with its id"), byLanguage);
+			rows.put(Objects.requireNonNull(subcategory.id(), "a subcategory is saved with its id"),
+					new DevilFruitTypeSubcategoryEntity.Written(byLanguage, subcategory.firstAppearanceChapterId()));
 		});
 		return rows;
 	}

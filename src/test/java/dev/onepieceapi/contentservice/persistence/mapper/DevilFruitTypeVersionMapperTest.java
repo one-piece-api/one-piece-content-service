@@ -1,7 +1,10 @@
 package dev.onepieceapi.contentservice.persistence.mapper;
 
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitType;
+import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitTypeSubcategory;
+import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitTypeSubcategoryTranslation;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitTypeTranslation;
+import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.domain.security.User;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.entity.ContentVersionEntity;
@@ -11,6 +14,7 @@ import dev.onepieceapi.contentservice.persistence.entity.UserEmbeddable;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -141,6 +145,24 @@ class DevilFruitTypeVersionMapperTest {
 			.updatedAt(UPDATED)
 			.build();
 		return new DevilFruitTypeVersionEntity(workflow);
+	}
+
+	@Test
+	void theFirstAppearancesOfTheTypeAndOfItsSubcategoriesAreWrittenAndReadBack() {
+		var ofType = new StoryPoint(UUID.randomUUID());
+		var ofSubcategory = new StoryPoint(UUID.randomUUID());
+		var ancient = new DevilFruitTypeSubcategory(UUID.randomUUID(),
+				Map.of("it", new DevilFruitTypeSubcategoryTranslation("Antico", null)), ofSubcategory);
+		var plain = new DevilFruitTypeSubcategory(UUID.randomUUID(), Map.of());
+		var body = new DevilFruitType("Zoan", Map.of(), List.of(ancient, plain), ofType);
+
+		var read = DevilFruitTypeVersionMapper
+			.toDomain(DevilFruitTypeVersionMapper.toFirstDraft(CONTENT_ID, CHOPPER, body, UPDATED))
+			.body();
+
+		assertThat(read.firstAppearance()).isEqualTo(ofType);
+		assertThat(read.subcategories()).extracting(DevilFruitTypeSubcategory::firstAppearance)
+			.containsExactly(ofSubcategory, StoryPoint.NONE);
 	}
 
 }

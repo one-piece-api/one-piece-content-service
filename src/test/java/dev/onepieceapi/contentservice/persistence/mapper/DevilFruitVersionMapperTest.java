@@ -2,6 +2,7 @@ package dev.onepieceapi.contentservice.persistence.mapper;
 
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitTranslation;
+import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.domain.security.User;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.entity.DevilFruitVersionEntity;
@@ -59,6 +60,21 @@ class DevilFruitVersionMapperTest {
 		assertThat(entity.getTranslations()).containsOnlyKeys("en");
 		assertThat(DevilFruitVersionMapper.toDomain(entity).body().translations())
 			.containsExactly(entry("en", new DevilFruitTranslation("Fire", null, null, null)));
+	}
+
+	@Test
+	void theFirstAppearanceIsWrittenAndReadBackAndRewritingWithoutOneClearsIt() {
+		var entity = draft();
+		var chapter = new StoryPoint(UUID.randomUUID());
+		DevilFruitVersionMapper.rewrite(entity, new DevilFruit("Gomu", TYPE_ID, null, Map.of(), null, chapter),
+				CREATED);
+
+		assertThat(entity.getFirstAppearanceChapterId()).isEqualTo(chapter.chapterContentId());
+		assertThat(DevilFruitVersionMapper.toDomain(entity).body().firstAppearance()).isEqualTo(chapter);
+
+		DevilFruitVersionMapper.rewrite(entity, new DevilFruit("Gomu", TYPE_ID, Map.of()), UPDATED);
+
+		assertThat(DevilFruitVersionMapper.toDomain(entity).body().firstAppearance()).isEqualTo(StoryPoint.NONE);
 	}
 
 	private static DevilFruitVersionEntity draft() {

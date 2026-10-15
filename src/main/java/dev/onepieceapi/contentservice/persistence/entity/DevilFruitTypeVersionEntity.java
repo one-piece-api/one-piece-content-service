@@ -57,6 +57,9 @@ public class DevilFruitTypeVersionEntity extends VersionBodyEntity {
 	@OrderColumn(name = "position")
 	private List<DevilFruitTypeSubcategoryEntity> subcategories = new ArrayList<>();
 
+	/** The content of the chapter it first appears in (ADR-0008); null for none. */
+	private UUID firstAppearanceChapterId;
+
 	public DevilFruitTypeVersionEntity(ContentVersionEntity version) {
 		super(version);
 	}
@@ -70,23 +73,25 @@ public class DevilFruitTypeVersionEntity extends VersionBodyEntity {
 	 * Replaces everything the version says, and notes when. A subcategory kept keeps its
 	 * row, rewritten in place: removing it and adding it again would insert its id before
 	 * the old row is deleted.
-	 * @param newSubcategories the translations of each subcategory by its id, in order
+	 * @param newSubcategories what each subcategory says by its id, in order
 	 */
 	public void rewrite(String newRomaji, Map<String, TranslationEmbeddable> newTranslations,
-			Map<UUID, Map<String, SubcategoryTranslationEmbeddable>> newSubcategories, Instant now) {
+			Map<UUID, DevilFruitTypeSubcategoryEntity.Written> newSubcategories, UUID newFirstAppearanceChapterId,
+			Instant now) {
 		setRomaji(newRomaji);
+		this.firstAppearanceChapterId = newFirstAppearanceChapterId;
 		this.translations.clear();
 		this.translations.putAll(newTranslations);
 		Map<UUID, DevilFruitTypeSubcategoryEntity> kept = this.subcategories.stream()
 			.collect(Collectors.toMap(DevilFruitTypeSubcategoryEntity::getSubcategoryId, Function.identity()));
 		List<DevilFruitTypeSubcategoryEntity> ordered = new ArrayList<>();
-		newSubcategories.forEach((subcategoryId, subcategoryTranslations) -> {
+		newSubcategories.forEach((subcategoryId, written) -> {
 			DevilFruitTypeSubcategoryEntity row = kept.get(subcategoryId);
 			if (row == null) {
-				ordered.add(new DevilFruitTypeSubcategoryEntity(subcategoryId, subcategoryTranslations));
+				ordered.add(new DevilFruitTypeSubcategoryEntity(subcategoryId, written));
 			}
 			else {
-				row.rewrite(subcategoryTranslations);
+				row.rewrite(written);
 				ordered.add(row);
 			}
 		});

@@ -2,6 +2,9 @@ package dev.onepieceapi.contentservice.web.controller;
 
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitType;
 import dev.onepieceapi.contentservice.domain.devilfruit.TypeReference;
+import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitTypeSubcategory;
+import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
+import dev.onepieceapi.contentservice.domain.story.NumberedReference;
 import dev.onepieceapi.contentservice.domain.workflow.ActionBlock;
 import dev.onepieceapi.contentservice.domain.workflow.BlockReason;
 import dev.onepieceapi.contentservice.domain.workflow.Content;
@@ -30,6 +33,7 @@ import dev.onepieceapi.contentservice.service.exception.VersionActionForbiddenEx
 import dev.onepieceapi.contentservice.service.exception.VersionIdenticalException;
 import dev.onepieceapi.contentservice.service.exception.VersionIncompleteException;
 import dev.onepieceapi.contentservice.service.exception.VersionNotFoundException;
+import dev.onepieceapi.contentservice.service.story.ChapterLinks;
 import dev.onepieceapi.contentservice.web.security.SecurityConfig;
 import dev.onepieceapi.exception.web.ApplicationExceptionHandler;
 import dev.onepieceapi.exception.web.ConcurrentModificationExceptionHandler;
@@ -103,6 +107,9 @@ class DevilFruitTypeControllerTest {
 
 	@MockitoBean
 	private DevilFruitTypeService service;
+
+	@MockitoBean
+	private ChapterLinks chapters;
 
 	@MockitoBean
 	private DevilFruitTypeLinks links;
@@ -284,6 +291,48 @@ class DevilFruitTypeControllerTest {
 			.andExpect(jsonPath("$.body.translations.it.description").value("Trasforma in animale"))
 			.andExpect(jsonPath("$.body.translations.en.name").doesNotExist())
 			.andExpect(jsonPath("$.body.translations.en.description").value("Turns into an animal"));
+	}
+
+	@Test
+	void aVersionSaysTheFirstAppearancesOfTheTypeAndOfItsSubcategoriesLookedUpAtOnce() throws Exception {
+		var ofType = UUID.fromString("7d3b2a1c-0e9f-4a8b-8c7d-6e5f4a3b2c1d");
+		var ofSubcategory = UUID.fromString("8e4c3b2d-1f0a-4b9c-9d8e-7f6a5b4c3d2e");
+		var ancient = new DevilFruitTypeSubcategory(UUID.randomUUID(), Map.of(), new StoryPoint(ofSubcategory));
+		var body = new DevilFruitType("Zoan", Map.of(), List.of(ancient), new StoryPoint(ofType));
+		var version = Version.<DevilFruitType>builder()
+			.number(1)
+			.status(VersionStatus.DRAFT)
+			.author(NAMI)
+			.body(body)
+			.createdAt(CREATED)
+			.updatedAt(CREATED)
+			.build();
+		when(this.service.getVersion(any(), any(), eq(CONTENT_ID), eq(1))).thenReturn(readOnly(version));
+		when(this.chapters.referencesOf(Set.of(ofType, ofSubcategory)))
+			.thenReturn(Map.of(ofType, new NumberedReference(ofType, 1, Map.of("it", "Romance Dawn")), ofSubcategory,
+					new NumberedReference(ofSubcategory, 2, Map.of())));
+
+		this.mockMvc
+			.perform(get("/devil-fruit-types/" + CONTENT_ID + "/versions/1").with(callerWith(Permission.CONTENT_READ)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.body.firstAppearance.chapter.number").value(1))
+			.andExpect(jsonPath("$.body.firstAppearance.chapter.names.it").value("Romance Dawn"))
+			.andExpect(jsonPath("$.body.subcategories[0].firstAppearance.chapter.id").value(ofSubcategory.toString()))
+			.andExpect(jsonPath("$.body.subcategories[0].firstAppearance.chapter.number").value(2));
+	}
+
+	@Test
+	void aSubcategoryChapterThatCannotBeChosenIsUnprocessableAndNamesItsPosition() throws Exception {
+		var field = "subcategories[0].firstAppearance.chapter";
+		when(this.service.create(any(), any(), any())).thenThrow(new ValueInvalidException(
+				List.of(new FieldViolation(field, "must be a Chapter with an approved version"))));
+
+		this.mockMvc
+			.perform(post("/devil-fruit-types").with(callerWith(Permission.CONTENT_WRITE))
+				.contentType("application/json")
+				.content("{\"subcategories\":[{\"firstAppearance\":{\"chapter\":\"" + CONTENT_ID + "\"}}]}"))
+			.andExpect(status().isUnprocessableContent())
+			.andExpect(jsonPath("$.errors[0].field").value(field));
 	}
 
 	@Test

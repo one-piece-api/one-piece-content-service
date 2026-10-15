@@ -12,9 +12,12 @@ import java.util.UUID;
  * @param id the id of a subcategory the draft already has; left out for a new one, which
  * the server gives its id
  * @param translations name and description per language code
+ * @param firstAppearance the chapter the reader first meets it in; left out for none,
+ * which it may always be
  */
 public record DevilFruitTypeSubcategoryRequest(
 		@Schema(description = "The id of a subcategory the draft already has; left out for a new one") UUID id,
-		Map<String, @Valid DevilFruitTypeSubcategoryTranslationRequest> translations) {
+		Map<String, @Valid DevilFruitTypeSubcategoryTranslationRequest> translations,
+		FirstAppearanceRequest firstAppearance) {
 
 }

@@ -2,6 +2,7 @@ package dev.onepieceapi.contentservice.service.devilfruit;
 
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
 import dev.onepieceapi.contentservice.domain.workflow.BlockReason;
+import dev.onepieceapi.contentservice.service.content.FirstAppearanceRules;
 import dev.onepieceapi.contentservice.service.content.RelationDescriptor;
 
 /**
@@ -20,6 +21,9 @@ public final class DevilFruitRelations {
 		.onlineItemsLinked(BlockReason.ONLINE_FRUITS_LINKED)
 		.itemsName("fruits")
 		.build();
+
+	/** The chapter a fruit first appears in (implementation plan of the timeline, T7). */
+	public static final RelationDescriptor<DevilFruit> FIRST_APPEARANCE = FirstAppearanceRules.relation("fruits");
 
 	private DevilFruitRelations() {
 	}

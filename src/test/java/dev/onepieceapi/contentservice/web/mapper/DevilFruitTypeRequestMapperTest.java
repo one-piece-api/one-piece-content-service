@@ -22,7 +22,7 @@ class DevilFruitTypeRequestMapperTest {
 	@Test
 	void aRequestBecomesWhatItSaysAsTyped() {
 		var request = new DevilFruitTypeRequest(" Zoan ",
-				Map.of("it", new DevilFruitTypeTranslationRequest("Zoo Zoo", " ", null, null)), null);
+				Map.of("it", new DevilFruitTypeTranslationRequest("Zoo Zoo", " ", null, null)), null, null);
 
 		var devilFruitType = DevilFruitTypeRequestMapper.toDomain(request);
 
@@ -33,7 +33,7 @@ class DevilFruitTypeRequestMapperTest {
 
 	@Test
 	void aRequestWithoutTranslationsHasNone() {
-		var devilFruitType = DevilFruitTypeRequestMapper.toDomain(new DevilFruitTypeRequest(null, null, null));
+		var devilFruitType = DevilFruitTypeRequestMapper.toDomain(new DevilFruitTypeRequest(null, null, null, null));
 
 		assertThat(devilFruitType.romaji()).isNull();
 		assertThat(devilFruitType.translations()).isEmpty();
@@ -45,7 +45,7 @@ class DevilFruitTypeRequestMapperTest {
 		translations.put("en", null);
 
 		var devilFruitType = DevilFruitTypeRequestMapper
-			.toDomain(new DevilFruitTypeRequest("Zoan", translations, null));
+			.toDomain(new DevilFruitTypeRequest("Zoan", translations, null, null));
 
 		assertThat(devilFruitType.translations())
 			.containsExactly(entry("en", new DevilFruitTypeTranslation(null, null, null, null)));
@@ -55,8 +55,11 @@ class DevilFruitTypeRequestMapperTest {
 	void aRequestSaysItsSubcategoriesInOrderAnEmptyOneAsNothingWrittenAndNoneAsAnEmptyList() {
 		UUID ancient = UUID.randomUUID();
 		var request = new DevilFruitTypeRequest("Zoan", null,
-				Arrays.asList(new DevilFruitTypeSubcategoryRequest(ancient,
-						Map.of("it", new DevilFruitTypeSubcategoryTranslationRequest("Antico", null))), null));
+				Arrays.asList(
+						new DevilFruitTypeSubcategoryRequest(ancient,
+								Map.of("it", new DevilFruitTypeSubcategoryTranslationRequest("Antico", null)), null),
+						null),
+				null);
 
 		var devilFruitType = DevilFruitTypeRequestMapper.toDomain(request);
 
@@ -64,7 +67,8 @@ class DevilFruitTypeRequestMapperTest {
 				new DevilFruitTypeSubcategory(ancient,
 						Map.of("it", new DevilFruitTypeSubcategoryTranslation("Antico", null))),
 				new DevilFruitTypeSubcategory(null, Map.of()));
-		assertThat(DevilFruitTypeRequestMapper.toDomain(new DevilFruitTypeRequest(null, null, null)).subcategories())
+		assertThat(
+				DevilFruitTypeRequestMapper.toDomain(new DevilFruitTypeRequest(null, null, null, null)).subcategories())
 			.isEmpty();
 	}
 

@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.domain.devilfruittype;
 
+import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
@@ -127,6 +128,34 @@ class DevilFruitTypeTest {
 		assertThat(new DevilFruitType("Zoan", Map.of(), null).subcategories()).isEmpty();
 		assertThat(new DevilFruitType("Zoan", Map.of(), List.of(ancient, mythical)))
 			.isNotEqualTo(new DevilFruitType("Zoan", Map.of(), List.of(mythical, ancient)));
+	}
+
+	@Test
+	void theChaptersOfItsFirstAppearancesAreTheTypesAndThoseOfItsSubcategoriesThatHaveOne() {
+		UUID ofType = UUID.randomUUID();
+		UUID ofSubcategory = UUID.randomUUID();
+		var ancient = new DevilFruitTypeSubcategory(UUID.randomUUID(), Map.of(), new StoryPoint(ofSubcategory));
+		var mythical = new DevilFruitTypeSubcategory(UUID.randomUUID(), Map.of(), new StoryPoint(ofType));
+		var plain = new DevilFruitTypeSubcategory(UUID.randomUUID(), Map.of());
+
+		var type = new DevilFruitType("Zoan", Map.of(), List.of(ancient, mythical, plain), new StoryPoint(ofType));
+
+		assertThat(type.firstAppearanceChapterIds()).containsExactlyInAnyOrder(ofType, ofSubcategory);
+		assertThat(new DevilFruitType("Zoan", Map.of()).firstAppearanceChapterIds()).isEmpty();
+	}
+
+	@Test
+	void normalizingKeepsTheFirstAppearancesOfTheTypeAndOfItsSubcategories() {
+		var chapter = new StoryPoint(UUID.randomUUID());
+		var subcategory = new DevilFruitTypeSubcategory(UUID.randomUUID(),
+				Map.of("it", new DevilFruitTypeSubcategoryTranslation(" Antico ", "Descrizione")), chapter);
+		var type = new DevilFruitType(" Zoan ", Map.of(), List.of(subcategory), chapter);
+
+		var normalized = type.normalized();
+
+		assertThat(normalized.firstAppearance()).isEqualTo(chapter);
+		assertThat(normalized.subcategories().getFirst().firstAppearance()).isEqualTo(chapter);
+		assertThat(new DevilFruitType("Zoan", Map.of(), List.of(), null).lacksFirstAppearance()).isTrue();
 	}
 
 }

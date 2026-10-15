@@ -8,8 +8,9 @@ import java.util.Map;
  *
  * @param translations name and description per language code
  * @param subcategories in the order they are shown; empty for none
+ * @param firstAppearance the chapter the reader first meets it in; null for none
  */
 public record DevilFruitTypeResponse(String romaji, Map<String, DevilFruitTypeTranslationResponse> translations,
-		List<DevilFruitTypeSubcategoryResponse> subcategories) {
+		List<DevilFruitTypeSubcategoryResponse> subcategories, FirstAppearanceResponse firstAppearance) {
 
 }

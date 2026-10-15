@@ -16,9 +16,11 @@ import java.util.Map;
  * @param translations name, description, advantages and disadvantages per language code;
  * a language left out, or with nothing written in it, has no translation
  * @param subcategories every subcategory, in the order they are shown; left out for none
+ * @param firstAppearance the chapter the reader first meets it in; left out for none,
+ * which a draft may be - it is required to go online
  */
 public record DevilFruitTypeRequest(@Size(max = DevilFruitType.ROMAJI_MAX_LENGTH) String romaji,
 		Map<String, @Valid DevilFruitTypeTranslationRequest> translations,
-		List<@Valid DevilFruitTypeSubcategoryRequest> subcategories) {
+		List<@Valid DevilFruitTypeSubcategoryRequest> subcategories, FirstAppearanceRequest firstAppearance) {
 
 }

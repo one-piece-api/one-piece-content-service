@@ -51,10 +51,24 @@ public class RelationRules {
 
 	/** Refuses a save pointing to a content that is not linkable; none named is fine. */
 	public <T> void requireLinkable(RelationDescriptor<T> relation, T body, VersionBodyRepository<?> targets) {
-		UUID target = relation.targetOf(body);
-		if (target != null && !targets.existsWithStatus(target, VersionStatus.approved())) {
-			throw new ValueInvalidException(List.of(new FieldViolation(relation.name(), relation.notLinkable())));
+		notLinkable(relation, body, "", targets).ifPresent(violation -> {
+			throw new ValueInvalidException(List.of(violation));
+		});
+	}
+
+	/**
+	 * What a save pointing to a content that is not linkable breaks, for a relation held
+	 * by a part of the body - e.g. one subcategory of a type - so every part at fault can
+	 * be reported; empty when it is linkable, or none is named.
+	 * @param fieldPrefix where the part is in the request, e.g. {@code subcategories[2].}
+	 */
+	public <T> Optional<FieldViolation> notLinkable(RelationDescriptor<T> relation, T part, String fieldPrefix,
+			VersionBodyRepository<?> targets) {
+		UUID target = relation.targetOf(part);
+		if (target == null || targets.existsWithStatus(target, VersionStatus.approved())) {
+			return Optional.empty();
 		}
+		return Optional.of(new FieldViolation(fieldPrefix + relation.field(), relation.notLinkable()));
 	}
 
 	/** Before an item goes online: holds the related content shared. */
@@ -72,12 +86,22 @@ public class RelationRules {
 	 */
 	public <T> Optional<ActionBlock> targetNotOnline(VersionAction action, RelationDescriptor<T> relation, T body,
 			VersionBodyRepository<?> targets) {
+		return targetNotOnline(action, relation, body, Map.of(), targets);
+	}
+
+	/**
+	 * The same, for a relation held by a part of the body - e.g. one subcategory of a
+	 * type - the detail first naming that part.
+	 * @param part what names the part in the detail, e.g. {@code {subcategoryId}}
+	 */
+	public <T> Optional<ActionBlock> targetNotOnline(VersionAction action, RelationDescriptor<T> relation, T body,
+			Map<String, Object> part, VersionBodyRepository<?> targets) {
 		UUID target = relation.targetOf(body);
 		if (!GOING_ONLINE.contains(action) || target == null
 				|| targets.existsWithStatus(target, Set.of(VersionStatus.PUBLISHED))) {
 			return Optional.empty();
 		}
-		Map<String, Object> detail = new LinkedHashMap<>();
+		Map<String, Object> detail = new LinkedHashMap<>(part);
 		detail.put(relation.name() + ID_SUFFIX, target);
 		targets.findMostRecent(List.of(target), VersionStatus.approved())
 			.stream()

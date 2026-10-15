@@ -1,5 +1,7 @@
 package dev.onepieceapi.contentservice.domain.devilfruittype;
 
+import dev.onepieceapi.contentservice.domain.readertime.FirstAppearing;
+import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.domain.workflow.ContentBody;
 import dev.onepieceapi.contentservice.domain.workflow.NaturalKey;
 import dev.onepieceapi.contentservice.domain.workflow.Text;
@@ -15,6 +17,7 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * What one version of a Devil Fruit Type says
@@ -24,9 +27,13 @@ import java.util.stream.Collectors;
  * {@code Version}, which carry the workflow around it.
  *
  * @param subcategories none for a type without them; never null
+ * @param firstAppearance the chapter the reader first meets it in (implementation plan of
+ * the timeline, T7); {@link StoryPoint#NONE} for none, which is complete - it is required
+ * only to go online
  */
 public record DevilFruitType(String romaji, Map<String, DevilFruitTypeTranslation> translations,
-		List<DevilFruitTypeSubcategory> subcategories) implements ContentBody<DevilFruitType> {
+		List<DevilFruitTypeSubcategory> subcategories,
+		StoryPoint firstAppearance) implements ContentBody<DevilFruitType>, FirstAppearing {
 
 	public static final int ROMAJI_MAX_LENGTH = 100;
 
@@ -47,6 +54,13 @@ public record DevilFruitType(String romaji, Map<String, DevilFruitTypeTranslatio
 
 	public DevilFruitType {
 		subcategories = subcategories == null ? List.of() : List.copyOf(subcategories);
+		firstAppearance = StoryPoint.orNone(firstAppearance);
+	}
+
+	/** A type without a first appearance. */
+	public DevilFruitType(String romaji, Map<String, DevilFruitTypeTranslation> translations,
+			List<DevilFruitTypeSubcategory> subcategories) {
+		this(romaji, translations, subcategories, StoryPoint.NONE);
 	}
 
 	/** A type without subcategories. */
@@ -64,14 +78,14 @@ public record DevilFruitType(String romaji, Map<String, DevilFruitTypeTranslatio
 			}
 		});
 		return new DevilFruitType(Text.stripToNull(this.romaji), written,
-				this.subcategories.stream().map(DevilFruitTypeSubcategory::normalized).toList());
+				this.subcategories.stream().map(DevilFruitTypeSubcategory::normalized).toList(), this.firstAppearance);
 	}
 
 	/** Every subcategory just added gets its id. */
 	@Override
 	public DevilFruitType identified() {
 		return new DevilFruitType(this.romaji, this.translations,
-				this.subcategories.stream().map(DevilFruitTypeSubcategory::identified).toList());
+				this.subcategories.stream().map(DevilFruitTypeSubcategory::identified).toList(), this.firstAppearance);
 	}
 
 	/** The languages of the type and of its subcategories. */
@@ -149,6 +163,14 @@ public record DevilFruitType(String romaji, Map<String, DevilFruitTypeTranslatio
 	public Set<UUID> subcategoryIds() {
 		return this.subcategories.stream()
 			.map(DevilFruitTypeSubcategory::id)
+			.filter(Objects::nonNull)
+			.collect(Collectors.toSet());
+	}
+
+	/** The chapters it and its subcategories first appear in; none chosen is left out. */
+	public Set<UUID> firstAppearanceChapterIds() {
+		return Stream.concat(Stream.of(this), this.subcategories.stream())
+			.map(FirstAppearing::firstAppearanceChapterId)
 			.filter(Objects::nonNull)
 			.collect(Collectors.toSet());
 	}

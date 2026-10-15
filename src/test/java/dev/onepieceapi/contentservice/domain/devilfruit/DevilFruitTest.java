@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.domain.devilfruit;
 
+import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
@@ -79,6 +80,28 @@ class DevilFruitTest {
 		assertThat(new DevilFruit("Gomu", PARAMECIA, translations))
 			.isEqualTo(new DevilFruit("Gomu", PARAMECIA, translations))
 			.isNotEqualTo(new DevilFruit("Gomu", LOGIA, translations));
+	}
+
+	@Test
+	void theFirstAppearanceIsKeptByNormalizingAndByAnotherImageAndTellsFruitsApart() {
+		var translations = Map.of("it", new DevilFruitTranslation("Gom", "Elastico", "Pro", "Contro"));
+		var chapter = new StoryPoint(UUID.randomUUID());
+		var fruit = new DevilFruit(" Gomu ", PARAMECIA, null, translations, null, chapter);
+
+		assertThat(fruit.normalized().firstAppearance()).isEqualTo(chapter);
+		assertThat(fruit.withImage("image").firstAppearance()).isEqualTo(chapter);
+		assertThat(fruit.firstAppearanceChapterId()).isEqualTo(chapter.chapterContentId());
+		assertThat(fruit).isNotEqualTo(new DevilFruit(" Gomu ", PARAMECIA, null, translations, null, StoryPoint.NONE));
+	}
+
+	@Test
+	void aFruitWithoutAFirstAppearanceLacksOneButIsStillComplete() {
+		var fruit = new DevilFruit("Gomu", PARAMECIA, null,
+				Map.of("it", new DevilFruitTranslation("Gom", "Elastico", "Pro", "Contro")), null, null);
+
+		assertThat(fruit.firstAppearance()).isEqualTo(StoryPoint.NONE);
+		assertThat(fruit.lacksFirstAppearance()).isTrue();
+		assertThat(fruit.missingFields(List.of("it"))).isEmpty();
 	}
 
 }

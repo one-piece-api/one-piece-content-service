@@ -7,9 +7,11 @@ import dev.onepieceapi.contentservice.domain.workflow.BlockReason;
 import dev.onepieceapi.contentservice.domain.workflow.Version;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAction;
 import dev.onepieceapi.contentservice.persistence.entity.DevilFruitVersionEntity;
+import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitVersionRepository;
 import dev.onepieceapi.contentservice.service.content.ContentRules;
+import dev.onepieceapi.contentservice.service.content.FirstAppearanceRules;
 import dev.onepieceapi.contentservice.service.content.LinkedItems;
 import dev.onepieceapi.contentservice.service.content.RelationRules;
 import dev.onepieceapi.contentservice.service.devilfruit.DevilFruitRelations;
@@ -31,6 +33,9 @@ import java.util.UUID;
  * always has its subcategory online, so a version of the type cannot go online -
  * published or restored - leaving out a subcategory online fruits name (implementation
  * plan of the subcategories, S7). A type archived with no fruit online is not affected.
+ * Going online also needs a first appearance in a chapter online, and a chapter online
+ * for every subcategory that names one (implementation plan of the timeline, T7): first
+ * what the type itself lacks, then what it points to, then what its fruits need of it.
  * Not even {@code content:admin} lifts it.
  * <p>
  * Each of these holds the type's content exclusively first, so it waits for any fruit
@@ -41,9 +46,13 @@ import java.util.UUID;
 @RequiredArgsConstructor(onConstructor_ = { @Autowired })
 public class DevilFruitTypeRules implements ContentRules<DevilFruitType> {
 
+	private static final String SUBCATEGORY_ID = "subcategoryId";
+
 	private final ContentRepository contentRepository;
 
 	private final DevilFruitVersionRepository fruitRepository;
+
+	private final ChapterVersionRepository chapterRepository;
 
 	private final RulesProperties properties;
 
@@ -53,16 +62,41 @@ public class DevilFruitTypeRules implements ContentRules<DevilFruitType> {
 		if (RelationRules.GOING_ONLINE.contains(action)) {
 			this.contentRepository.lockExclusive(contentId);
 		}
+		DevilFruitType type = version.body();
+		RelationRules.lockTargetBefore(action, DevilFruitTypeRelations.FIRST_APPEARANCE, type, this.contentRepository);
+		type.subcategories()
+			.forEach(subcategory -> RelationRules.lockTargetBefore(action,
+					DevilFruitTypeRelations.SUBCATEGORY_FIRST_APPEARANCE, subcategory, this.contentRepository));
 	}
 
 	@Override
 	public Optional<ActionBlock> blockOf(VersionAction action, UUID contentId, Version<DevilFruitType> version) {
+		DevilFruitType type = version.body();
 		return switch (action) {
 			case RETIRE -> RelationRules.onlineItemsLinked(action, DevilFruitRelations.TYPE, contentId, linkedFruits(),
 					this.properties.blockingPreviewSize());
-			case PUBLISH, RESTORE -> subcategoriesInUse(contentId, version.body());
+			case PUBLISH,
+					RESTORE ->
+				FirstAppearanceRules.missing(action, type)
+					.or(() -> RelationRules.targetNotOnline(action, DevilFruitTypeRelations.FIRST_APPEARANCE, type,
+							this.chapterRepository))
+					.or(() -> subcategoryChapterNotOnline(action, type))
+					.or(() -> subcategoriesInUse(contentId, type));
 			default -> Optional.empty();
 		};
+	}
+
+	/**
+	 * The first subcategory whose first appearance is in a chapter not online, if any.
+	 */
+	private Optional<ActionBlock> subcategoryChapterNotOnline(VersionAction action, DevilFruitType type) {
+		return type.subcategories()
+			.stream()
+			.map(subcategory -> RelationRules.targetNotOnline(action,
+					DevilFruitTypeRelations.SUBCATEGORY_FIRST_APPEARANCE, subcategory,
+					Map.of(SUBCATEGORY_ID, subcategory.id()), this.chapterRepository))
+			.flatMap(Optional::stream)
+			.findFirst();
 	}
 
 	/** The queries of the fruits for the type they point to. */
@@ -88,7 +122,7 @@ public class DevilFruitTypeRules implements ContentRules<DevilFruitType> {
 	/** A fruit by its id and romaji, then the subcategory it names. */
 	private static Map<String, Object> withSubcategory(DevilFruitVersionEntity fruit) {
 		Map<String, Object> named = RelationRules.named(fruit);
-		named.put("subcategoryId", fruit.getSubcategoryId());
+		named.put(SUBCATEGORY_ID, fruit.getSubcategoryId());
 		return named;
 	}
 

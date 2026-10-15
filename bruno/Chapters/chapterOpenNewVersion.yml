@@ -1,7 +1,7 @@
 info:
   name: chapterOpenNewVersion
   type: http
-  seq: 6
+  seq: 7
   tags:
     - Chapters
 
