@@ -1,15 +1,19 @@
 package dev.onepieceapi.contentservice.web.mapper;
 
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
+import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitPhase;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitTranslation;
 import dev.onepieceapi.contentservice.domain.image.ImageChange;
+import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.domain.workflow.ContentFilter;
 import dev.onepieceapi.contentservice.web.dto.request.DevilFruitListRequest;
+import dev.onepieceapi.contentservice.web.dto.request.DevilFruitPhaseRequest;
 import dev.onepieceapi.contentservice.web.dto.request.DevilFruitRequest;
 import dev.onepieceapi.contentservice.web.dto.request.DevilFruitTranslationRequest;
 import lombok.experimental.UtilityClass;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
@@ -23,12 +27,32 @@ public class DevilFruitRequestMapper {
 
 	/** What the request says, as typed: tidying it up is left to the domain. */
 	public DevilFruit toDomain(DevilFruitRequest request) {
+		List<DevilFruitPhase> phases = Optional.ofNullable(request.phases())
+			.orElseGet(List::of)
+			.stream()
+			.map(DevilFruitRequestMapper::toDomain)
+			.toList();
+		return new DevilFruit(request.romaji(), request.type(), request.subcategory(), toDomain(request.translations()),
+				null, FirstAppearanceMapper.toDomain(request.firstAppearance()), phases);
+	}
+
+	/** A phase sent as null holds nothing, which validation then names. */
+	private static DevilFruitPhase toDomain(DevilFruitPhaseRequest phase) {
+		if (phase == null) {
+			return new DevilFruitPhase(StoryPoint.NONE, null, null, null, Map.of());
+		}
+		StoryPoint supersededAt = phase.supersededAt() == null ? StoryPoint.NONE
+				: new StoryPoint(phase.supersededAt().chapter());
+		return new DevilFruitPhase(supersededAt, phase.romaji(), phase.type(), phase.subcategory(),
+				toDomain(phase.translations()));
+	}
+
+	private static Map<String, DevilFruitTranslation> toDomain(Map<String, DevilFruitTranslationRequest> requested) {
 		Map<String, DevilFruitTranslation> translations = new TreeMap<>();
-		Optional.ofNullable(request.translations())
+		Optional.ofNullable(requested)
 			.orElseGet(Map::of)
 			.forEach((language, translation) -> translations.put(language, toDomain(translation)));
-		return new DevilFruit(request.romaji(), request.type(), request.subcategory(), translations, null,
-				FirstAppearanceMapper.toDomain(request.firstAppearance()));
+		return translations;
 	}
 
 	/**

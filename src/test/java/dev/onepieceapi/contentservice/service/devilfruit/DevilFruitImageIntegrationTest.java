@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.service.devilfruit;
 
+import dev.onepieceapi.contentservice.service.event.ChapterNumbers;
 import dev.onepieceapi.contentservice.service.audit.AuditLogService;
 import dev.onepieceapi.contentservice.service.event.EventRulesFixtures;
 import dev.onepieceapi.contentservice.service.image.ImageService;
@@ -156,7 +157,7 @@ class DevilFruitImageIntegrationTest {
 	void setUp() {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
 		var validator = new DevilFruitValidator(this.versionRepository, this.languageRepository, this.typeRepository,
-				this.chapterRepository);
+				this.chapterRepository, new ChapterNumbers(this.chapterRepository));
 		var store = new JpaImageStore(this.imageRepository, clock);
 		var images = new ContentImages(new ImageValidator(), new ImageNormalizer(new PngImageEncoder()), store,
 				PROPERTIES);

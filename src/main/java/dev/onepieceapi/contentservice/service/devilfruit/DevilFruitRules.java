@@ -2,6 +2,8 @@ package dev.onepieceapi.contentservice.service.devilfruit;
 
 import dev.onepieceapi.contentservice.config.RulesProperties;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
+import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitClassification;
+import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitPhase;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitType;
 import dev.onepieceapi.contentservice.domain.workflow.ActionBlock;
 import dev.onepieceapi.contentservice.domain.workflow.BlockReason;
@@ -15,9 +17,11 @@ import dev.onepieceapi.contentservice.persistence.repository.DevilFruitTypeVersi
 import dev.onepieceapi.contentservice.persistence.repository.EventVersionRepository;
 import dev.onepieceapi.contentservice.service.content.ContentRules;
 import dev.onepieceapi.contentservice.service.content.FirstAppearanceRules;
+import dev.onepieceapi.contentservice.service.content.KnowledgePhaseRules;
 import dev.onepieceapi.contentservice.service.content.LinkedItems;
 import dev.onepieceapi.contentservice.service.content.RelationRules;
 import dev.onepieceapi.contentservice.service.event.EventRelations;
+import dev.onepieceapi.contentservice.service.event.ChapterNumbers;
 import dev.onepieceapi.contentservice.service.event.EventReveals;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,6 +34,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.IntStream;
 
 /**
  * What a Devil Fruit needs of its type (implementation plan of the Devil Fruit, D2): the
@@ -52,10 +57,18 @@ import java.util.UUID;
  * first appearance ({@link EventReveals}) - the rule an event follows, seen from the
  * fruit. Both hold the fruit's content exclusively first, so they wait for any event
  * going online with it, which holds it shared.
+ * <p>
+ * Its knowledge phases (T9; ADR-0010) go online under the same rules: the chapter and the
+ * type of each online ({@link DevilFruitRelations#PHASE_CHAPTER},
+ * {@link DevilFruitRelations#PHASE_TYPE}), a subcategory in the online version of the
+ * type in force at the phase, and the phases in the order of the story as the chapters
+ * online number it ({@link KnowledgePhaseRules}).
  */
 @Component
 @RequiredArgsConstructor(onConstructor_ = { @Autowired })
 public class DevilFruitRules implements ContentRules<DevilFruit> {
+
+	private static final String PHASE = "phase";
 
 	private final ContentRepository contentRepository;
 
@@ -67,13 +80,19 @@ public class DevilFruitRules implements ContentRules<DevilFruit> {
 
 	private final EventReveals eventReveals;
 
+	private final ChapterNumbers chapterNumbers;
+
 	private final RulesProperties properties;
 
 	@Override
 	public void lockBefore(VersionAction action, UUID contentId, Version<DevilFruit> version) {
-		RelationRules.lockTargetBefore(action, DevilFruitRelations.TYPE, version.body(), this.contentRepository);
-		RelationRules.lockTargetBefore(action, DevilFruitRelations.FIRST_APPEARANCE, version.body(),
-				this.contentRepository);
+		DevilFruit fruit = version.body();
+		RelationRules.lockTargetBefore(action, DevilFruitRelations.TYPE, fruit, this.contentRepository);
+		RelationRules.lockTargetBefore(action, DevilFruitRelations.FIRST_APPEARANCE, fruit, this.contentRepository);
+		fruit.phases().forEach(phase -> {
+			RelationRules.lockTargetBefore(action, DevilFruitRelations.PHASE_CHAPTER, phase, this.contentRepository);
+			RelationRules.lockTargetBefore(action, DevilFruitRelations.PHASE_TYPE, phase, this.contentRepository);
+		});
 		RelationRules.lockLinkedBefore(action, contentId, this.contentRepository);
 		if (RelationRules.GOING_ONLINE.contains(action)) {
 			this.contentRepository.lockExclusive(contentId);
@@ -88,6 +107,8 @@ public class DevilFruitRules implements ContentRules<DevilFruit> {
 			.or(() -> subcategoryNotOnline(action, fruit))
 			.or(() -> RelationRules.targetNotOnline(action, DevilFruitRelations.FIRST_APPEARANCE, fruit,
 					this.chapterRepository))
+			.or(() -> phaseTargetNotOnline(action, fruit))
+			.or(() -> phasesOutOfOrder(action, fruit))
 			.or(() -> eventsRevealedBefore(action, contentId, fruit))
 			.or(() -> RelationRules.onlineItemsLinked(action, EventRelations.DEVIL_FRUITS, contentId, linkedEvents(),
 					this.properties.blockingPreviewSize()));
@@ -106,28 +127,57 @@ public class DevilFruitRules implements ContentRules<DevilFruit> {
 				this.eventRepository::findOnlineWithDevilFruit);
 	}
 
-	/** Checked once the type is known to be online. */
-	private Optional<ActionBlock> subcategoryNotOnline(VersionAction action, DevilFruit fruit) {
-		UUID typeContentId = fruit.typeContentId();
-		UUID subcategoryId = fruit.subcategoryId();
-		if (!RelationRules.GOING_ONLINE.contains(action) || typeContentId == null || subcategoryId == null
-				|| typeAsOf(typeContentId, Set.of(VersionStatus.PUBLISHED))
-					.flatMap(type -> type.subcategory(subcategoryId))
-					.isPresent()) {
+	/** The chapter, then the type, of the first phase naming one not online. */
+	private Optional<ActionBlock> phaseTargetNotOnline(VersionAction action, DevilFruit fruit) {
+		List<DevilFruitPhase> phases = fruit.phases();
+		return IntStream.range(0, phases.size())
+			.mapToObj(index -> RelationRules
+				.targetNotOnline(action, DevilFruitRelations.PHASE_CHAPTER, phases.get(index), Map.of(PHASE, index),
+						this.chapterRepository)
+				.or(() -> RelationRules.targetNotOnline(action, DevilFruitRelations.PHASE_TYPE, phases.get(index),
+						Map.of(PHASE, index), this.typeRepository)))
+			.flatMap(Optional::stream)
+			.findFirst();
+	}
+
+	/** Checked once every chapter is known to be online. */
+	private Optional<ActionBlock> phasesOutOfOrder(VersionAction action, DevilFruit fruit) {
+		if (!RelationRules.GOING_ONLINE.contains(action) || fruit.phases().isEmpty()) {
 			return Optional.empty();
 		}
-		return Optional.of(subcategoryNotOnline(typeContentId, subcategoryId));
+		return KnowledgePhaseRules.outOfOrderOnline(action, fruit, this.chapterNumbers.online(fruit.chapterIds()));
+	}
+
+	/**
+	 * Checked once the type is known to be online: the subcategory of the fruit, then
+	 * that of each phase, with the type in force there.
+	 */
+	private Optional<ActionBlock> subcategoryNotOnline(VersionAction action, DevilFruit fruit) {
+		if (!RelationRules.GOING_ONLINE.contains(action)) {
+			return Optional.empty();
+		}
+		return fruit.classifications()
+			.stream()
+			.filter(classification -> classification.typeContentId() != null && classification.subcategoryId() != null)
+			.filter(classification -> typeAsOf(classification.typeContentId(), Set.of(VersionStatus.PUBLISHED))
+				.flatMap(type -> type.subcategory(classification.subcategoryId()))
+				.isEmpty())
+			.findFirst()
+			.map(this::subcategoryNotOnline);
 	}
 
 	/**
 	 * Named as the most recent approved version of the type that has it says, when one
-	 * does - the version online may well have left it out.
+	 * does - the version online may well have left it out - and by the phase saying it.
 	 */
-	private ActionBlock subcategoryNotOnline(UUID typeContentId, UUID subcategoryId) {
+	private ActionBlock subcategoryNotOnline(DevilFruitClassification classification) {
 		Map<String, Object> detail = new LinkedHashMap<>();
-		detail.put("typeId", typeContentId);
-		detail.put("subcategoryId", subcategoryId);
-		this.typeRepository.findLastApprovedSubcategory(typeContentId, subcategoryId)
+		if (classification.phase() != null) {
+			detail.put(PHASE, classification.phase());
+		}
+		detail.put("typeId", classification.typeContentId());
+		detail.put("subcategoryId", classification.subcategoryId());
+		this.typeRepository.findLastApprovedSubcategory(classification.typeContentId(), classification.subcategoryId())
 			.ifPresent(subcategory -> detail.put("subcategoryNames", subcategory.names()));
 		return new ActionBlock(BlockReason.SUBCATEGORY_NOT_ONLINE, detail);
 	}

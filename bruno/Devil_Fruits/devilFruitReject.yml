@@ -87,6 +87,34 @@ examples:
                 "id": "",
                 "url": ""
               },
+              "phases": [
+                {
+                  "romaji": "",
+                  "subcategory": {
+                    "id": "",
+                    "names": {}
+                  },
+                  "supersededAt": {
+                    "chapter": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    }
+                  },
+                  "translations": {},
+                  "type": {
+                    "id": "",
+                    "names": {},
+                    "romaji": "",
+                    "subcategories": [
+                      {
+                        "id": "",
+                        "names": {}
+                      }
+                    ]
+                  }
+                }
+              ],
               "romaji": "",
               "subcategory": {
                 "id": "",

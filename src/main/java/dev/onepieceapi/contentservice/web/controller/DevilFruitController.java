@@ -72,8 +72,8 @@ class DevilFruitController extends ContentController<DevilFruit, DevilFruitRespo
 			ImageResponseMapper images) {
 		super(service,
 				access -> DevilFruitResponseMapper.toVersionResponse(access,
-						links.referencesFor(List.of(access.body())),
-						chapters.referencesFor(List.of(access.body()), DevilFruit::firstAppearanceChapterId), images));
+						links.referencesFor(List.of(access.body())), chapters.referencesOf(access.body().chapterIds()),
+						images));
 		this.service = service;
 		this.links = links;
 	}

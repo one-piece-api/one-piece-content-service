@@ -2,9 +2,11 @@ package dev.onepieceapi.contentservice.web.mapper;
 
 import dev.onepieceapi.contentservice.config.ImageProperties;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
+import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitPhase;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitTranslation;
 import dev.onepieceapi.contentservice.domain.devilfruit.SubcategoryReference;
 import dev.onepieceapi.contentservice.domain.devilfruit.TypeReference;
+import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.domain.security.User;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
 import dev.onepieceapi.contentservice.domain.workflow.Version;
@@ -12,8 +14,10 @@ import dev.onepieceapi.contentservice.domain.workflow.VersionAccess;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAction;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.web.dto.request.DevilFruitListRequest;
+import dev.onepieceapi.contentservice.web.dto.request.DevilFruitPhaseRequest;
 import dev.onepieceapi.contentservice.web.dto.request.DevilFruitRequest;
 import dev.onepieceapi.contentservice.web.dto.request.DevilFruitTranslationRequest;
+import dev.onepieceapi.contentservice.web.dto.request.SupersededAtRequest;
 import dev.onepieceapi.contentservice.web.dto.response.SubcategoryReferenceResponse;
 import org.junit.jupiter.api.Test;
 
@@ -41,7 +45,7 @@ class DevilFruitMappersTest {
 	@Test
 	void aRequestBecomesWhatItSaysAsTypedWithItsType() {
 		var request = new DevilFruitRequest(" Gomu Gomu ", TYPE_ID, null,
-				Map.of("it", new DevilFruitTranslationRequest(" Gomu ", null, "Pro", null)), null, null);
+				Map.of("it", new DevilFruitTranslationRequest(" Gomu ", null, "Pro", null)), null, null, null);
 
 		var fruit = DevilFruitRequestMapper.toDomain(request);
 
@@ -56,8 +60,9 @@ class DevilFruitMappersTest {
 		Map<String, DevilFruitTranslationRequest> translations = new HashMap<>();
 		translations.put("it", null);
 
-		var fruit = DevilFruitRequestMapper.toDomain(new DevilFruitRequest(null, null, null, translations, null, null));
-		var bare = DevilFruitRequestMapper.toDomain(new DevilFruitRequest(null, null, null, null, null, null));
+		var fruit = DevilFruitRequestMapper
+			.toDomain(new DevilFruitRequest(null, null, null, translations, null, null, null));
+		var bare = DevilFruitRequestMapper.toDomain(new DevilFruitRequest(null, null, null, null, null, null, null));
 
 		assertThat(fruit.typeContentId()).isNull();
 		assertThat(fruit.translations())
@@ -130,9 +135,48 @@ class DevilFruitMappersTest {
 		UUID mythical = UUID.randomUUID();
 
 		var fruit = DevilFruitRequestMapper
-			.toDomain(new DevilFruitRequest("Uo Uo", TYPE_ID, mythical, null, null, null));
+			.toDomain(new DevilFruitRequest("Uo Uo", TYPE_ID, mythical, null, null, null, null));
 
 		assertThat(fruit.subcategoryId()).isEqualTo(mythical);
+	}
+
+	@Test
+	void aPhaseSaysItsChapterAndNamesItsSubcategoryAsTheTypeInForceHasIt() {
+		UUID mythical = UUID.randomUUID();
+		UUID chapter = UUID.randomUUID();
+		var zoan = new TypeReference(TYPE_ID, "Dobutsu", Map.of(),
+				List.of(new SubcategoryReference(mythical, Map.of("it", "Mitologico"))));
+		var phase = new DevilFruitPhase(new StoryPoint(chapter), null, null, mythical, Map.of());
+		var noChapter = new DevilFruitPhase(StoryPoint.NONE, "Uo Uo", null, null, Map.of());
+		var fruit = new DevilFruit("Hito Hito", TYPE_ID, null, Map.of(), null, StoryPoint.NONE,
+				List.of(phase, noChapter));
+
+		var phases = DevilFruitResponseMapper
+			.toResponse(fruit, Map.of(TYPE_ID, zoan), Map.of(),
+					new ImageResponseMapper(new ImageProperties("/api/content", Map.of())))
+			.phases();
+
+		assertThat(phases.getFirst().supersededAt().chapter().id()).isEqualTo(chapter);
+		assertThat(phases.getFirst().type()).isNull();
+		assertThat(phases.getFirst().subcategory())
+			.isEqualTo(new SubcategoryReferenceResponse(mythical, Map.of("it", "Mitologico")));
+		assertThat(phases.get(1).supersededAt().chapter()).isNull();
+		assertThat(phases.get(1).romaji()).isEqualTo("Uo Uo");
+	}
+
+	@Test
+	void aRequestSaysItsPhasesAndNoListIsNoPhase() {
+		UUID chapter = UUID.randomUUID();
+		var requested = new DevilFruitPhaseRequest(new SupersededAtRequest(chapter), " Gomu ", TYPE_ID, null,
+				Map.of("it", new DevilFruitTranslationRequest(" Gom Gom ", null, null, null)));
+
+		var fruit = DevilFruitRequestMapper
+			.toDomain(new DevilFruitRequest(null, null, null, null, null, null, List.of(requested)));
+
+		assertThat(fruit.phases()).containsExactly(new DevilFruitPhase(new StoryPoint(chapter), " Gomu ", TYPE_ID, null,
+				Map.of("it", new DevilFruitTranslation(" Gom Gom ", null, null, null))));
+		assertThat(DevilFruitRequestMapper.toDomain(new DevilFruitRequest(null, null, null, null, null, null, null))
+			.phases()).isEmpty();
 	}
 
 	private static DevilFruit fruit(UUID type) {

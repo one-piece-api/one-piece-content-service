@@ -64,6 +64,15 @@ public enum BlockReason {
 	 * appearance, so this version cannot be online (T5) - the same rule seen from the
 	 * fruit. The detail names them, {@code events}, with how many there are.
 	 */
-	EVENTS_REVEALED_BEFORE
+	EVENTS_REVEALED_BEFORE,
+
+	/**
+	 * The knowledge phases are not in the order of the story as the chapters online
+	 * number it - each after the first appearance and after the one before
+	 * (implementation plan of the timeline, T9; ADR-0010) - e.g. a chapter was renumbered
+	 * since the save. The detail names the first phase out of order, {@code phase}, by
+	 * its position.
+	 */
+	PHASES_OUT_OF_ORDER
 
 }

@@ -1,12 +1,14 @@
 package dev.onepieceapi.contentservice.service.devilfruittype;
 
 import dev.onepieceapi.contentservice.config.RulesProperties;
+import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitClassification;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitType;
 import dev.onepieceapi.contentservice.domain.workflow.ActionBlock;
 import dev.onepieceapi.contentservice.domain.workflow.BlockReason;
 import dev.onepieceapi.contentservice.domain.workflow.Version;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAction;
 import dev.onepieceapi.contentservice.persistence.entity.DevilFruitVersionEntity;
+import dev.onepieceapi.contentservice.persistence.mapper.DevilFruitVersionMapper;
 import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitVersionRepository;
@@ -21,9 +23,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -37,6 +41,11 @@ import java.util.UUID;
  * for every subcategory that names one (implementation plan of the timeline, T7): first
  * what the type itself lacks, then what it points to, then what its fruits need of it.
  * Not even {@code content:admin} lifts it.
+ * <p>
+ * The knowledge phases of the fruits (implementation plan of the timeline, T9; ADR-0010)
+ * count alike: a type cannot be retired while a phase of an online fruit believes it, and
+ * a version cannot leave out a subcategory such a phase names under it - the type in
+ * force at the phase.
  * <p>
  * Each of these holds the type's content exclusively first, so it waits for any fruit
  * going online with it ({@code DevilFruitRules}) and what it then reads includes that
@@ -73,15 +82,22 @@ public class DevilFruitTypeRules implements ContentRules<DevilFruitType> {
 	public Optional<ActionBlock> blockOf(VersionAction action, UUID contentId, Version<DevilFruitType> version) {
 		DevilFruitType type = version.body();
 		return switch (action) {
-			case RETIRE -> RelationRules.onlineItemsLinked(action, DevilFruitRelations.TYPE, contentId, linkedFruits(),
-					this.properties.blockingPreviewSize());
+			case RETIRE ->
+				RelationRules
+					.onlineItemsLinked(action, DevilFruitRelations.TYPE, contentId, linkedFruits(),
+							this.properties.blockingPreviewSize())
+					.or(() -> RelationRules.onlineItemsLinked(action, DevilFruitRelations.PHASE_TYPE, contentId,
+							new LinkedItems(this.fruitRepository::countOnlineWithPhaseType,
+									this.fruitRepository::findOnlineWithPhaseType),
+							this.properties.blockingPreviewSize()));
 			case PUBLISH,
 					RESTORE ->
 				FirstAppearanceRules.missing(action, type)
 					.or(() -> RelationRules.targetNotOnline(action, DevilFruitTypeRelations.FIRST_APPEARANCE, type,
 							this.chapterRepository))
 					.or(() -> subcategoryChapterNotOnline(action, type))
-					.or(() -> subcategoriesInUse(contentId, type));
+					.or(() -> subcategoriesInUse(contentId, type))
+					.or(() -> subcategoriesInUseByPhases(contentId, type));
 			default -> Optional.empty();
 		};
 	}
@@ -117,6 +133,40 @@ public class DevilFruitTypeRules implements ContentRules<DevilFruitType> {
 			.toList();
 		return Optional.of(new ActionBlock(BlockReason.SUBCATEGORY_IN_USE,
 				Map.of("count", page.getTotalElements(), "fruits", fruits)));
+	}
+
+	/**
+	 * The online fruits with a phase naming, under this type, a subcategory the version
+	 * leaves out - each with the first such phase and its subcategory.
+	 */
+	private Optional<ActionBlock> subcategoriesInUseByPhases(UUID contentId, DevilFruitType type) {
+		Set<UUID> kept = type.subcategoryIds();
+		List<Map<String, Object>> fruits = new ArrayList<>();
+		for (DevilFruitVersionEntity entity : this.fruitRepository.findOnlineWithPhaseSubcategory()) {
+			DevilFruitVersionMapper.toDomain(entity)
+				.body()
+				.classifications()
+				.stream()
+				.filter(classification -> classification.phase() != null
+						&& contentId.equals(classification.typeContentId()) && classification.subcategoryId() != null
+						&& !kept.contains(classification.subcategoryId()))
+				.findFirst()
+				.ifPresent(classification -> fruits.add(withPhaseSubcategory(entity, classification)));
+		}
+		if (fruits.isEmpty()) {
+			return Optional.empty();
+		}
+		return Optional.of(new ActionBlock(BlockReason.SUBCATEGORY_IN_USE, Map.of("count", (long) fruits.size(),
+				"fruits", fruits.subList(0, Math.min(fruits.size(), this.properties.blockingPreviewSize())))));
+	}
+
+	/** A fruit by its id and romaji, then the phase and the subcategory it names. */
+	private static Map<String, Object> withPhaseSubcategory(DevilFruitVersionEntity fruit,
+			DevilFruitClassification classification) {
+		Map<String, Object> named = RelationRules.named(fruit);
+		named.put("phase", classification.phase());
+		named.put(SUBCATEGORY_ID, classification.subcategoryId());
+		return named;
 	}
 
 	/** A fruit by its id and romaji, then the subcategory it names. */

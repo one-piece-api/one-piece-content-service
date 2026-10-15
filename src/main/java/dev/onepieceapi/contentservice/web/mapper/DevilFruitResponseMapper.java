@@ -1,6 +1,7 @@
 package dev.onepieceapi.contentservice.web.mapper;
 
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
+import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitPhase;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitTranslation;
 import dev.onepieceapi.contentservice.domain.devilfruit.SubcategoryReference;
 import dev.onepieceapi.contentservice.domain.devilfruit.TypeReference;
@@ -9,9 +10,11 @@ import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAccess;
 import dev.onepieceapi.contentservice.web.dto.response.ContentSummaryResponse;
 import dev.onepieceapi.contentservice.web.dto.response.DevilFruitNamesResponse;
+import dev.onepieceapi.contentservice.web.dto.response.DevilFruitPhaseResponse;
 import dev.onepieceapi.contentservice.web.dto.response.DevilFruitResponse;
 import dev.onepieceapi.contentservice.web.dto.response.DevilFruitTranslationResponse;
 import dev.onepieceapi.contentservice.web.dto.response.SubcategoryReferenceResponse;
+import dev.onepieceapi.contentservice.web.dto.response.SupersededAtResponse;
 import dev.onepieceapi.contentservice.web.dto.response.TypeReferenceResponse;
 import dev.onepieceapi.contentservice.web.dto.response.VersionResponse;
 import lombok.experimental.UtilityClass;
@@ -21,6 +24,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
 import java.util.UUID;
+import java.util.stream.IntStream;
 
 /**
  * From Devil Fruits to their response bodies: what a version says is mapped here, the
@@ -46,11 +50,32 @@ public class DevilFruitResponseMapper {
 	/** Everything the version says. */
 	public DevilFruitResponse toResponse(DevilFruit fruit, Map<UUID, TypeReference> types,
 			Map<UUID, NumberedReference> chapters, ImageResponseMapper images) {
-		Map<String, DevilFruitTranslationResponse> translations = new TreeMap<>();
-		fruit.translations().forEach((language, translation) -> translations.put(language, toResponse(translation)));
+		List<DevilFruitPhaseResponse> phases = IntStream.range(0, fruit.phases().size())
+			.mapToObj(index -> toPhaseResponse(fruit, index, types, chapters))
+			.toList();
 		return new DevilFruitResponse(fruit.romaji(), toTypeResponse(fruit.typeContentId(), types),
-				toSubcategoryResponse(fruit, types), translations, images.toResponse(fruit.imageId()),
-				FirstAppearanceMapper.toResponse(fruit.firstAppearance(), chapters));
+				toSubcategoryResponse(fruit, types), toResponse(fruit.translations()),
+				images.toResponse(fruit.imageId()), FirstAppearanceMapper.toResponse(fruit.firstAppearance(), chapters),
+				phases);
+	}
+
+	/** Its subcategory named as the type in force at the phase has it. */
+	private static DevilFruitPhaseResponse toPhaseResponse(DevilFruit fruit, int index, Map<UUID, TypeReference> types,
+			Map<UUID, NumberedReference> chapters) {
+		DevilFruitPhase phase = fruit.phases().get(index);
+		UUID chapter = phase.supersededAtChapterId();
+		var supersededAt = new SupersededAtResponse(
+				chapter == null ? null : StoryResponseMapper.toReferenceResponse(chapter, chapters));
+		return new DevilFruitPhaseResponse(supersededAt, phase.romaji(), toTypeResponse(phase.typeContentId(), types),
+				toSubcategoryResponse(fruit.typeInForceAt(index), phase.subcategoryId(), types),
+				toResponse(phase.translations()));
+	}
+
+	private static Map<String, DevilFruitTranslationResponse> toResponse(
+			Map<String, DevilFruitTranslation> translations) {
+		Map<String, DevilFruitTranslationResponse> responses = new TreeMap<>();
+		translations.forEach((language, translation) -> responses.put(language, toResponse(translation)));
+		return responses;
 	}
 
 	/**
@@ -66,11 +91,15 @@ public class DevilFruitResponseMapper {
 	 * when the type no longer has it, which a read must not fail for; null for none.
 	 */
 	public SubcategoryReferenceResponse toSubcategoryResponse(DevilFruit fruit, Map<UUID, TypeReference> types) {
-		UUID subcategoryId = fruit.subcategoryId();
+		return toSubcategoryResponse(fruit.typeContentId(), fruit.subcategoryId(), types);
+	}
+
+	private static SubcategoryReferenceResponse toSubcategoryResponse(UUID typeContentId, UUID subcategoryId,
+			Map<UUID, TypeReference> types) {
 		if (subcategoryId == null) {
 			return null;
 		}
-		return Optional.ofNullable(types.get(fruit.typeContentId()))
+		return Optional.ofNullable(types.get(typeContentId))
 			.flatMap(type -> type.subcategory(subcategoryId))
 			.map(DevilFruitResponseMapper::toResponse)
 			.orElseGet(() -> new SubcategoryReferenceResponse(subcategoryId, Map.of()));

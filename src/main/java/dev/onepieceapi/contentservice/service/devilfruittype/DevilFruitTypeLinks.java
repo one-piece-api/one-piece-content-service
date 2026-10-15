@@ -1,6 +1,7 @@
 package dev.onepieceapi.contentservice.service.devilfruittype;
 
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
+import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitClassification;
 import dev.onepieceapi.contentservice.domain.devilfruit.SubcategoryReference;
 import dev.onepieceapi.contentservice.domain.devilfruit.TypeReference;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitType;
@@ -27,11 +28,11 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * What the Devil Fruit Types and the Devil Fruits say of each other (implementation plan
@@ -75,20 +76,27 @@ public class DevilFruitTypeLinks {
 	 */
 	public Map<UUID, TypeReference> referencesFor(Collection<DevilFruit> fruits) {
 		Set<UUID> typeIds = fruits.stream()
-			.map(DevilFruit::typeContentId)
-			.filter(Objects::nonNull)
+			.flatMap(fruit -> Stream.concat(Stream.ofNullable(fruit.typeContentId()), fruit.phaseTypeIds().stream()))
 			.collect(Collectors.toSet());
 		Map<UUID, TypeReference> types = new HashMap<>(referencesOf(typeIds));
-		for (DevilFruit fruit : fruits) {
-			TypeReference type = types.get(fruit.typeContentId());
-			UUID subcategoryId = fruit.subcategoryId();
-			if (type != null && subcategoryId != null && type.subcategory(subcategoryId).isEmpty()) {
-				this.typeRepository.findLastApprovedSubcategory(type.id(), subcategoryId)
-					.ifPresent(dropped -> types.put(type.id(),
-							type.withDropped(new SubcategoryReference(dropped.id(), dropped.names()))));
-			}
-		}
+		fruits.stream()
+			.flatMap(fruit -> fruit.classifications().stream())
+			.forEach(classification -> addDropped(types, classification));
 		return types;
+	}
+
+	/**
+	 * Adds the subcategory to its type when the type has since left it out (the fruit's
+	 * own or a phase's, with the type in force there).
+	 */
+	private void addDropped(Map<UUID, TypeReference> types, DevilFruitClassification classification) {
+		TypeReference type = types.get(classification.typeContentId());
+		UUID subcategoryId = classification.subcategoryId();
+		if (type != null && subcategoryId != null && type.subcategory(subcategoryId).isEmpty()) {
+			this.typeRepository.findLastApprovedSubcategory(type.id(), subcategoryId)
+				.ifPresent(dropped -> types.put(type.id(),
+						type.withDropped(new SubcategoryReference(dropped.id(), dropped.names()))));
+		}
 	}
 
 	/**

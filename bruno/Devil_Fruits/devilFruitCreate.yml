@@ -15,6 +15,17 @@ http:
         "firstAppearance": {
           "chapter": ""
         },
+        "phases": [
+          {
+            "romaji": "",
+            "subcategory": "",
+            "supersededAt": {
+              "chapter": ""
+            },
+            "translations": {},
+            "type": ""
+          }
+        ],
         "removeImage": false,
         "romaji": "",
         "subcategory": "",
@@ -43,6 +54,17 @@ examples:
             "firstAppearance": {
               "chapter": ""
             },
+            "phases": [
+              {
+                "romaji": "",
+                "subcategory": "",
+                "supersededAt": {
+                  "chapter": ""
+                },
+                "translations": {},
+                "type": ""
+              }
+            ],
             "removeImage": false,
             "romaji": "",
             "subcategory": "",
@@ -100,6 +122,17 @@ examples:
             "firstAppearance": {
               "chapter": ""
             },
+            "phases": [
+              {
+                "romaji": "",
+                "subcategory": "",
+                "supersededAt": {
+                  "chapter": ""
+                },
+                "translations": {},
+                "type": ""
+              }
+            ],
             "removeImage": false,
             "romaji": "",
             "subcategory": "",
@@ -141,6 +174,17 @@ examples:
             "firstAppearance": {
               "chapter": ""
             },
+            "phases": [
+              {
+                "romaji": "",
+                "subcategory": "",
+                "supersededAt": {
+                  "chapter": ""
+                },
+                "translations": {},
+                "type": ""
+              }
+            ],
             "removeImage": false,
             "romaji": "",
             "subcategory": "",

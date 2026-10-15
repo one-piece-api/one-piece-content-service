@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.service.devilfruit;
 
+import dev.onepieceapi.contentservice.service.event.ChapterNumbers;
 import dev.onepieceapi.contentservice.service.audit.AuditLogService;
 import dev.onepieceapi.contentservice.service.devilfruittype.DevilFruitTypeService;
 import dev.onepieceapi.contentservice.service.devilfruittype.DevilFruitTypeRules;
@@ -160,7 +161,7 @@ class DevilFruitRulesIntegrationTest {
 		this.fruits = new DevilFruitService(
 				new DevilFruitDefinition(this.fruitRepository,
 						new DevilFruitValidator(this.fruitRepository, this.languageRepository, this.typeRepository,
-								this.chapterRepository),
+								this.chapterRepository, new ChapterNumbers(this.chapterRepository)),
 						EventRulesFixtures.devilFruitRules(this.contentRepository, this.typeRepository,
 								this.chapterRepository, this.fruitRepository, this.eventRepository)),
 				this.contentVersionRepository, this.contentRepository, auditLogService, clock,

@@ -33,7 +33,8 @@ import java.util.UUID;
  * (implementation plan of the timeline, T7) - a chapter cannot be retired while fruits,
  * or types (by themselves or through a subcategory), are online first appearing in it,
  * nor while events are online occurring, ending or revealed in it (implementation plan of
- * the timeline, T5), holding it exclusively first. Nothing of its own on top.
+ * the timeline, T5), nor while fruits are online with a knowledge phase superseded in it
+ * (T9), holding it exclusively first. Nothing of its own on top.
  */
 @Component
 @RequiredArgsConstructor(onConstructor_ = { @Autowired })
@@ -66,6 +67,7 @@ public class ChapterRules implements ContentRules<Chapter> {
 			.or(() -> RelationRules.targetNotOnline(action, StoryRelations.CHAPTER_VOLUME, version.body(),
 					this.volumeRepository))
 			.or(() -> fruitsLinked(action, contentId))
+			.or(() -> fruitPhasesLinked(action, contentId))
 			.or(() -> typesLinked(action, contentId))
 			.or(() -> eventsLinked(action, contentId));
 	}
@@ -81,6 +83,13 @@ public class ChapterRules implements ContentRules<Chapter> {
 		var types = new LinkedItems(this.typeRepository::countOnlineFirstAppearingIn,
 				this.typeRepository::findOnlineFirstAppearingIn);
 		return RelationRules.onlineItemsLinked(action, DevilFruitTypeRelations.FIRST_APPEARANCE, contentId, types,
+				this.properties.blockingPreviewSize());
+	}
+
+	private Optional<ActionBlock> fruitPhasesLinked(VersionAction action, UUID contentId) {
+		var fruits = new LinkedItems(this.fruitRepository::countOnlineWithPhaseIn,
+				this.fruitRepository::findOnlineWithPhaseIn);
+		return RelationRules.onlineItemsLinked(action, DevilFruitRelations.PHASE_CHAPTER, contentId, fruits,
 				this.properties.blockingPreviewSize());
 	}
 

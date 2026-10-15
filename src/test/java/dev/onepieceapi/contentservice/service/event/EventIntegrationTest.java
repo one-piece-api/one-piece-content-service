@@ -177,7 +177,7 @@ class EventIntegrationTest {
 		this.fruits = new DevilFruitService(
 				new DevilFruitDefinition(this.fruitRepository,
 						new DevilFruitValidator(this.fruitRepository, this.languageRepository, this.typeRepository,
-								this.chapterRepository),
+								this.chapterRepository, new ChapterNumbers(this.chapterRepository)),
 						EventRulesFixtures.devilFruitRules(this.contentRepository, this.typeRepository,
 								this.chapterRepository, this.fruitRepository, this.eventRepository)),
 				this.contentVersionRepository, this.contentRepository, auditLogService, clock,

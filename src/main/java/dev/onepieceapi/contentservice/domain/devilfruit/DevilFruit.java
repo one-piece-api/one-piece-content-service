@@ -1,6 +1,8 @@
 package dev.onepieceapi.contentservice.domain.devilfruit;
 
-import dev.onepieceapi.contentservice.domain.readertime.FirstAppearing;
+import dev.onepieceapi.contentservice.domain.readertime.KnowledgePhase;
+import dev.onepieceapi.contentservice.domain.readertime.KnowledgePhases;
+import dev.onepieceapi.contentservice.domain.readertime.PhaseRevealing;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.domain.workflow.ContentBody;
 import dev.onepieceapi.contentservice.domain.workflow.NaturalKey;
@@ -10,10 +12,15 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.IntStream;
 
 /**
  * What one version of a Devil Fruit says (implementation plan of the Devil Fruit, D1,
@@ -33,10 +40,13 @@ import java.util.UUID;
  * @param firstAppearance the chapter the reader first meets it in (implementation plan of
  * the timeline, T7); {@link StoryPoint#NONE} for none, which is complete - it is required
  * only to go online
+ * @param phases what the reader believed before each reveal (implementation plan of the
+ * timeline, T9; ADR-0010), in the order of the story; empty for none. The fields above
+ * stay the truth
  */
 public record DevilFruit(String romaji, UUID typeContentId, UUID subcategoryId,
-		Map<String, DevilFruitTranslation> translations, String imageId,
-		StoryPoint firstAppearance) implements ContentBody<DevilFruit>, FirstAppearing {
+		Map<String, DevilFruitTranslation> translations, String imageId, StoryPoint firstAppearance,
+		List<DevilFruitPhase> phases) implements ContentBody<DevilFruit>, PhaseRevealing {
 
 	public static final int ROMAJI_MAX_LENGTH = 100;
 
@@ -53,9 +63,18 @@ public record DevilFruit(String romaji, UUID typeContentId, UUID subcategoryId,
 
 	private static final String DISADVANTAGES_FIELD = "translations[%s].disadvantages";
 
-	/** Nothing chosen is {@link StoryPoint#NONE}, not null. */
+	private static final String PHASE_DESCRIPTION_FIELD = "phases[%d].translations[%s].description";
+
+	/** Nothing chosen is {@link StoryPoint#NONE}, no phase an empty list. */
 	public DevilFruit {
 		firstAppearance = StoryPoint.orNone(firstAppearance);
+		phases = phases == null ? List.of() : List.copyOf(phases);
+	}
+
+	/** A fruit without knowledge phases. */
+	public DevilFruit(String romaji, UUID typeContentId, UUID subcategoryId,
+			Map<String, DevilFruitTranslation> translations, String imageId, StoryPoint firstAppearance) {
+		this(romaji, typeContentId, subcategoryId, translations, imageId, firstAppearance, List.of());
 	}
 
 	/** A fruit without a first appearance. */
@@ -78,7 +97,7 @@ public record DevilFruit(String romaji, UUID typeContentId, UUID subcategoryId,
 	/** The same fruit with another image, or none. */
 	public DevilFruit withImage(String newImageId) {
 		return new DevilFruit(this.romaji, this.typeContentId, this.subcategoryId, this.translations, newImageId,
-				this.firstAppearance);
+				this.firstAppearance, this.phases);
 	}
 
 	@Override
@@ -91,14 +110,18 @@ public record DevilFruit(String romaji, UUID typeContentId, UUID subcategoryId,
 			}
 		});
 		return new DevilFruit(Text.stripToNull(this.romaji), this.typeContentId, this.subcategoryId, written,
-				this.imageId, this.firstAppearance);
+				this.imageId, this.firstAppearance, this.phases.stream().map(DevilFruitPhase::normalized).toList());
 	}
 
+	/** Those of the fruit and of its phases: a phase too is written per language. */
 	@Override
 	public Set<String> languages() {
-		return this.translations.keySet();
+		Set<String> languages = new TreeSet<>(this.translations.keySet());
+		this.phases.forEach(phase -> languages.addAll(phase.languages()));
+		return languages;
 	}
 
+	/** The names of the truth: those of the phases take no part in uniqueness. */
 	@Override
 	public Map<String, String> names() {
 		Map<String, String> names = new TreeMap<>();
@@ -117,7 +140,8 @@ public record DevilFruit(String romaji, UUID typeContentId, UUID subcategoryId,
 
 	/**
 	 * The romaji and the type, then a name, a description, advantages and disadvantages
-	 * per language - every one missing.
+	 * per language - every one missing; then the description of the last phase per
+	 * language, so no reader before the last reveal meets the whole truth (T9).
 	 */
 	@Override
 	public List<String> missingFields(Collection<String> languages) {
@@ -143,6 +167,12 @@ public record DevilFruit(String romaji, UUID typeContentId, UUID subcategoryId,
 				missing.add(DISADVANTAGES_FIELD.formatted(language));
 			}
 		}
+		if (!this.phases.isEmpty()) {
+			int last = this.phases.size() - 1;
+			languages.stream()
+				.filter(language -> this.phases.get(last).translationIn(language).description() == null)
+				.forEach(language -> missing.add(PHASE_DESCRIPTION_FIELD.formatted(last, language)));
+		}
 		return missing;
 	}
 
@@ -151,6 +181,67 @@ public record DevilFruit(String romaji, UUID typeContentId, UUID subcategoryId,
 	 */
 	public DevilFruitTranslation translationIn(String language) {
 		return this.translations.getOrDefault(language, DevilFruitTranslation.NONE);
+	}
+
+	/**
+	 * The type in force at a phase: its own, else that of the first later phase defining
+	 * one, else the truth.
+	 */
+	public UUID typeInForceAt(int phase) {
+		return KnowledgePhases.resolve(this.phases.subList(phase, this.phases.size()), any -> true,
+				DevilFruitPhase::typeContentId, this.typeContentId);
+	}
+
+	/**
+	 * The type and subcategory of the fruit, then those of each phase defining them, with
+	 * the type in force there.
+	 */
+	public List<DevilFruitClassification> classifications() {
+		List<DevilFruitClassification> classifications = new ArrayList<>();
+		classifications.add(new DevilFruitClassification(this.typeContentId, this.subcategoryId, null));
+		IntStream.range(0, this.phases.size())
+			.filter(index -> this.phases.get(index).definesClassification())
+			.forEach(index -> classifications.add(
+					new DevilFruitClassification(typeInForceAt(index), this.phases.get(index).subcategoryId(), index)));
+		return classifications;
+	}
+
+	/** The types its phases define, those chosen only. */
+	public List<UUID> phaseTypeIds() {
+		return this.phases.stream().map(DevilFruitPhase::typeContentId).filter(Objects::nonNull).toList();
+	}
+
+	/**
+	 * The fruit as a reader believes it where only these phases are still believed
+	 * (implementation plan of the timeline, T9): each field from the first such phase
+	 * defining it, else the truth; the type and the subcategory together. No phase is
+	 * left on it. Whether the values themselves are revealed yet - a type first appearing
+	 * later - is the reader's filter to say, not the fruit's.
+	 * @param believed the phases still believed, e.g. {@link KnowledgePhases#believedAt}
+	 */
+	public DevilFruit asBelieved(Predicate<? super KnowledgePhase> believed) {
+		UUID type = KnowledgePhases.resolve(this.phases, believed, DevilFruitPhase::typeContentId, this.typeContentId);
+		UUID subcategory = KnowledgePhases.resolve(this.phases, believed, DevilFruitPhase::definesClassification,
+				DevilFruitPhase::subcategoryId, this.subcategoryId);
+		Map<String, DevilFruitTranslation> believedTranslations = new TreeMap<>();
+		languages().forEach(language -> {
+			DevilFruitTranslation translation = new DevilFruitTranslation(
+					believed(believed, language, DevilFruitTranslation::name),
+					believed(believed, language, DevilFruitTranslation::description),
+					believed(believed, language, DevilFruitTranslation::advantages),
+					believed(believed, language, DevilFruitTranslation::disadvantages));
+			if (!translation.isEmpty()) {
+				believedTranslations.put(language, translation);
+			}
+		});
+		return new DevilFruit(KnowledgePhases.resolve(this.phases, believed, DevilFruitPhase::romaji, this.romaji),
+				type, subcategory, believedTranslations, this.imageId, this.firstAppearance, List.of());
+	}
+
+	private String believed(Predicate<? super KnowledgePhase> believed, String language,
+			Function<DevilFruitTranslation, String> field) {
+		return KnowledgePhases.resolve(this.phases, believed, phase -> field.apply(phase.translationIn(language)),
+				field.apply(translationIn(language)));
 	}
 
 }

@@ -1,6 +1,7 @@
 package dev.onepieceapi.contentservice.web.controller;
 
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
+import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitPhase;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitTranslation;
 import dev.onepieceapi.contentservice.domain.devilfruit.TypeReference;
 import dev.onepieceapi.contentservice.domain.image.ImageChange;
@@ -265,7 +266,7 @@ class DevilFruitControllerTest {
 			.updatedAt(CREATED)
 			.build(), Set.of());
 		when(this.service.getVersion(any(), any(), eq(CONTENT_ID), eq(1))).thenReturn(access);
-		when(this.chapters.referencesFor(anyCollection(), any()))
+		when(this.chapters.referencesOf(anyCollection()))
 			.thenReturn(Map.of(CHAPTER_ID, new NumberedReference(CHAPTER_ID, 1, Map.of("it", "Romance Dawn"))));
 
 		this.mockMvc
@@ -327,6 +328,83 @@ class DevilFruitControllerTest {
 				.with(callerWith(Permission.CONTENT_PUBLISH)))
 			.andExpect(status().isConflict())
 			.andExpect(jsonPath("$.reason").value("FIRST_APPEARANCE_MISSING"));
+	}
+
+	@Test
+	void creatingAFruitPassesOnItsPhasesInOrder() throws Exception {
+		var draft = new VersionAccess<>(version(VersionStatus.DRAFT, TYPE_ID), EnumSet.of(VersionAction.EDIT));
+		when(this.service.create(any(), any(), any(), any())).thenReturn(new Content<>(CONTENT_ID, List.of(draft)));
+
+		var request = post("/devil-fruits").with(callerWith(Permission.CONTENT_WRITE))
+			.contentType("application/json")
+			.content("{\"romaji\":\"Hito Hito\",\"phases\":[{\"supersededAt\":{\"chapter\":\"" + CHAPTER_ID
+					+ "\"},\"romaji\":\"Gomu Gomu\",\"type\":\"" + TYPE_ID
+					+ "\",\"translations\":{\"en\":{\"name\":\"Gum-Gum Fruit\"}}}]}");
+		this.mockMvc.perform(request).andExpect(status().isCreated());
+
+		var written = ArgumentCaptor.forClass(DevilFruit.class);
+		verify(this.service).create(any(), any(), written.capture(), eq(ImageChange.KEEP));
+		assertThat(written.getValue().phases())
+			.containsExactly(new DevilFruitPhase(new StoryPoint(CHAPTER_ID), "Gomu Gomu", TYPE_ID, null,
+					Map.of("en", new DevilFruitTranslation("Gum-Gum Fruit", null, null, null))));
+	}
+
+	@Test
+	void aVersionSaysItsPhasesWithTheirChapterAndTypeAsTheyAreToday() throws Exception {
+		var phase = new DevilFruitPhase(new StoryPoint(CHAPTER_ID), "Gomu Gomu", TYPE_ID, null, Map.of());
+		var body = new DevilFruit("Hito Hito", null, null, Map.of(), null, StoryPoint.NONE, List.of(phase));
+		var access = new VersionAccess<>(Version.<DevilFruit>builder()
+			.number(1)
+			.status(VersionStatus.DRAFT)
+			.author(NAMI)
+			.body(body)
+			.createdAt(CREATED)
+			.updatedAt(CREATED)
+			.build(), Set.of());
+		when(this.service.getVersion(any(), any(), eq(CONTENT_ID), eq(1))).thenReturn(access);
+		when(this.links.referencesFor(anyCollection())).thenReturn(Map.of(TYPE_ID, PARAMECIA));
+		when(this.chapters.referencesOf(anyCollection()))
+			.thenReturn(Map.of(CHAPTER_ID, new NumberedReference(CHAPTER_ID, 100, Map.of("it", "Leggenda"))));
+
+		this.mockMvc
+			.perform(get("/devil-fruits/" + CONTENT_ID + "/versions/1").with(callerWith(Permission.CONTENT_READ)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.body.phases[0].supersededAt.chapter.number").value(100))
+			.andExpect(jsonPath("$.body.phases[0].romaji").value("Gomu Gomu"))
+			.andExpect(jsonPath("$.body.phases[0].type.id").value(TYPE_ID.toString()))
+			.andExpect(jsonPath("$.body.phases[0].subcategory").doesNotExist());
+	}
+
+	@Test
+	void aPhaseRomajiTooLongIsABadRequest() throws Exception {
+		var request = post("/devil-fruits").with(callerWith(Permission.CONTENT_WRITE))
+			.contentType("application/json")
+			.content("{\"phases\":[{\"romaji\":\"" + "a".repeat(DevilFruit.ROMAJI_MAX_LENGTH + 1) + "\"}]}");
+
+		this.mockMvc.perform(request).andExpect(status().isBadRequest());
+	}
+
+	@Test
+	void aPhaseOutOfOrderIsUnprocessableOnSaveAndAConflictGoingOnline() throws Exception {
+		var invalid = List
+			.of(new FieldViolation("phases[1].supersededAt.chapter", "must come after the previous phase"));
+		when(this.service.create(any(), any(), any(), any())).thenThrow(new ValueInvalidException(invalid));
+		var block = new ActionBlock(BlockReason.PHASES_OUT_OF_ORDER, Map.of("phase", 1));
+		when(this.service.publish(any(), any(), eq(CONTENT_ID), eq(1)))
+			.thenThrow(new VersionActionBlockedException(VersionAction.PUBLISH, block));
+
+		this.mockMvc
+			.perform(post("/devil-fruits").with(callerWith(Permission.CONTENT_WRITE))
+				.contentType("application/json")
+				.content("{\"phases\":[]}"))
+			.andExpect(status().isUnprocessableContent())
+			.andExpect(jsonPath("$.errors[0].field").value("phases[1].supersededAt.chapter"));
+		this.mockMvc
+			.perform(post("/devil-fruits/" + CONTENT_ID + "/versions/1/publish")
+				.with(callerWith(Permission.CONTENT_PUBLISH)))
+			.andExpect(status().isConflict())
+			.andExpect(jsonPath("$.reason").value("PHASES_OUT_OF_ORDER"))
+			.andExpect(jsonPath("$.detail.phase").value(1));
 	}
 
 	@Test

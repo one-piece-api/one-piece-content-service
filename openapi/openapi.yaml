@@ -6067,6 +6067,7 @@ components:
           - REVEAL_MISSING
           - REVEALED_BEFORE_PARTICIPANT
           - EVENTS_REVEALED_BEFORE
+          - PHASES_OUT_OF_ORDER
     ChapterNamesResponse:
       type: object
       properties:
@@ -6766,6 +6767,43 @@ components:
           $ref: "#/components/schemas/SubcategoryReferenceResponse"
         type:
           $ref: "#/components/schemas/TypeReferenceResponse"
+    DevilFruitPhaseRequest:
+      type: object
+      properties:
+        romaji:
+          type: string
+          maxLength: 100
+          minLength: 0
+        subcategory:
+          type: string
+          format: uuid
+          description: The id of a subcategory of the type in force at the phase
+        supersededAt:
+          $ref: "#/components/schemas/SupersededAtRequest"
+        translations:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/DevilFruitTranslationRequest"
+        type:
+          type: string
+          format: uuid
+          description: The content id of the Devil Fruit Type believed; left out when
+            not part of it
+    DevilFruitPhaseResponse:
+      type: object
+      properties:
+        romaji:
+          type: string
+        subcategory:
+          $ref: "#/components/schemas/SubcategoryReferenceResponse"
+        supersededAt:
+          $ref: "#/components/schemas/SupersededAtResponse"
+        translations:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/DevilFruitTranslationResponse"
+        type:
+          $ref: "#/components/schemas/TypeReferenceResponse"
     DevilFruitReferenceResponse:
       type: object
       properties:
@@ -6783,6 +6821,10 @@ components:
       properties:
         firstAppearance:
           $ref: "#/components/schemas/FirstAppearanceRequest"
+        phases:
+          type: array
+          items:
+            $ref: "#/components/schemas/DevilFruitPhaseRequest"
         removeImage:
           type: boolean
         romaji:
@@ -6809,6 +6851,10 @@ components:
           $ref: "#/components/schemas/FirstAppearanceResponse"
         image:
           $ref: "#/components/schemas/ImageResponse"
+        phases:
+          type: array
+          items:
+            $ref: "#/components/schemas/DevilFruitPhaseResponse"
         romaji:
           type: string
         subcategory:
@@ -7611,6 +7657,18 @@ components:
           type: object
           additionalProperties:
             type: string
+    SupersededAtRequest:
+      type: object
+      properties:
+        chapter:
+          type: string
+          format: uuid
+          description: The content id of the chapter
+    SupersededAtResponse:
+      type: object
+      properties:
+        chapter:
+          $ref: "#/components/schemas/NumberedReferenceResponse"
     TypeReferenceResponse:
       type: object
       properties:

@@ -26,7 +26,8 @@ public final class EventRulesFixtures {
 
 	public static DevilFruitRules devilFruitRules(ContentRepository contents, DevilFruitTypeVersionRepository types,
 			ChapterVersionRepository chapters, DevilFruitVersionRepository fruits, EventVersionRepository events) {
-		return new DevilFruitRules(contents, types, chapters, events, reveals(fruits, events, chapters), PROPERTIES);
+		return new DevilFruitRules(contents, types, chapters, events, reveals(fruits, events, chapters),
+				new ChapterNumbers(chapters), PROPERTIES);
 	}
 
 }

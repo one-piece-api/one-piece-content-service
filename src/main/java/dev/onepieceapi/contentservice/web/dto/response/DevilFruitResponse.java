@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.web.dto.response;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -10,9 +11,11 @@ import java.util.Map;
  * @param translations name, description, advantages and disadvantages per language code
  * @param image its image; null for none
  * @param firstAppearance the chapter the reader first meets it in; null for none
+ * @param phases what the reader believed before each reveal, in the order of the story;
+ * empty for none
  */
 public record DevilFruitResponse(String romaji, TypeReferenceResponse type, SubcategoryReferenceResponse subcategory,
 		Map<String, DevilFruitTranslationResponse> translations, ImageResponse image,
-		FirstAppearanceResponse firstAppearance) {
+		FirstAppearanceResponse firstAppearance, List<DevilFruitPhaseResponse> phases) {
 
 }

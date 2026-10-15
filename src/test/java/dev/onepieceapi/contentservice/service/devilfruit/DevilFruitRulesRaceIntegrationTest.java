@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.service.devilfruit;
 
+import dev.onepieceapi.contentservice.service.event.ChapterNumbers;
 import dev.onepieceapi.contentservice.service.audit.AuditLogService;
 import dev.onepieceapi.contentservice.service.devilfruittype.DevilFruitTypeService;
 import dev.onepieceapi.contentservice.service.devilfruittype.DevilFruitTypeRules;
@@ -309,10 +310,12 @@ class DevilFruitRulesRaceIntegrationTest {
 
 	private DevilFruitService fruitService(DevilFruitTypeVersionRepository types) {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
-		return new DevilFruitService(new DevilFruitDefinition(this.fruitRepository,
-				new DevilFruitValidator(this.fruitRepository, this.languageRepository, types, this.chapterRepository),
-				EventRulesFixtures.devilFruitRules(this.contentRepository, types, this.chapterRepository,
-						this.fruitRepository, this.eventRepository)),
+		return new DevilFruitService(
+				new DevilFruitDefinition(this.fruitRepository,
+						new DevilFruitValidator(this.fruitRepository, this.languageRepository, types,
+								this.chapterRepository, new ChapterNumbers(this.chapterRepository)),
+						EventRulesFixtures.devilFruitRules(this.contentRepository, types, this.chapterRepository,
+								this.fruitRepository, this.eventRepository)),
 				this.contentVersionRepository, this.contentRepository,
 				new AuditLogService(this.auditLogRepository, clock), clock, mock(ContentImages.class));
 	}

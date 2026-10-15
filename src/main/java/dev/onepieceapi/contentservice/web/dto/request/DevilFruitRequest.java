@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -22,6 +23,8 @@ import java.util.UUID;
  * a language left out, or with nothing written in it, has no translation
  * @param firstAppearance the chapter the reader first meets it in; left out for none,
  * which a draft may be - it is required to go online
+ * @param phases what the reader believed before each reveal (implementation plan of the
+ * timeline, T9), in the order of the story; left out for none
  * @param removeImage true to remove the draft's image; not together with an uploaded one.
  * Left out, the image is kept - or replaced, when one is uploaded with the request
  */
@@ -29,7 +32,7 @@ public record DevilFruitRequest(@Size(max = DevilFruit.ROMAJI_MAX_LENGTH) String
 		@Schema(description = "The content id of its Devil Fruit Type") UUID type,
 		@Schema(description = "The id of a subcategory of its Devil Fruit Type; left out for none") UUID subcategory,
 		Map<String, @Valid DevilFruitTranslationRequest> translations, Boolean removeImage,
-		FirstAppearanceRequest firstAppearance) {
+		FirstAppearanceRequest firstAppearance, List<@Valid DevilFruitPhaseRequest> phases) {
 
 	/** Whether the image is to be removed; not saying so keeps it. */
 	public boolean removesImage() {
