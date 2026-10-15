@@ -66,8 +66,11 @@ public final class ApiPaths {
 
 	public static final String EPISODES = "/episodes";
 
+	/** The events (implementation plan of the timeline, TL2). */
+	public static final String EVENTS = "/events";
+
 	public static final List<String> CONTENT_SECTIONS = List.of(DEVIL_FRUIT_TYPES, DEVIL_FRUITS, SAGAS, ARCS, VOLUMES,
-			CHAPTERS, EPISODES);
+			CHAPTERS, EPISODES, EVENTS);
 
 	/**
 	 * The types a fruit may be linked to - an endpoint of the Devil Fruit Type section

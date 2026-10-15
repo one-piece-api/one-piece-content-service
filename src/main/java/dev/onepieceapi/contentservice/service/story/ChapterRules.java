@@ -9,12 +9,14 @@ import dev.onepieceapi.contentservice.persistence.repository.ArcVersionRepositor
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitTypeVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitVersionRepository;
+import dev.onepieceapi.contentservice.persistence.repository.EventVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.VolumeVersionRepository;
 import dev.onepieceapi.contentservice.service.content.ContentRules;
 import dev.onepieceapi.contentservice.service.content.LinkedItems;
 import dev.onepieceapi.contentservice.service.content.RelationRules;
 import dev.onepieceapi.contentservice.service.devilfruit.DevilFruitRelations;
 import dev.onepieceapi.contentservice.service.devilfruittype.DevilFruitTypeRelations;
+import dev.onepieceapi.contentservice.service.event.EventRelations;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -30,7 +32,8 @@ import java.util.UUID;
  * one, holding both shared first - and for the first appearances as the target
  * (implementation plan of the timeline, T7) - a chapter cannot be retired while fruits,
  * or types (by themselves or through a subcategory), are online first appearing in it,
- * holding it exclusively first. Nothing of its own on top.
+ * nor while events are online occurring, ending or revealed in it (implementation plan of
+ * the timeline, T5), holding it exclusively first. Nothing of its own on top.
  */
 @Component
 @RequiredArgsConstructor(onConstructor_ = { @Autowired })
@@ -45,6 +48,8 @@ public class ChapterRules implements ContentRules<Chapter> {
 	private final DevilFruitVersionRepository fruitRepository;
 
 	private final DevilFruitTypeVersionRepository typeRepository;
+
+	private final EventVersionRepository eventRepository;
 
 	private final RulesProperties properties;
 
@@ -61,7 +66,8 @@ public class ChapterRules implements ContentRules<Chapter> {
 			.or(() -> RelationRules.targetNotOnline(action, StoryRelations.CHAPTER_VOLUME, version.body(),
 					this.volumeRepository))
 			.or(() -> fruitsLinked(action, contentId))
-			.or(() -> typesLinked(action, contentId));
+			.or(() -> typesLinked(action, contentId))
+			.or(() -> eventsLinked(action, contentId));
 	}
 
 	private Optional<ActionBlock> fruitsLinked(VersionAction action, UUID contentId) {
@@ -75,6 +81,14 @@ public class ChapterRules implements ContentRules<Chapter> {
 		var types = new LinkedItems(this.typeRepository::countOnlineFirstAppearingIn,
 				this.typeRepository::findOnlineFirstAppearingIn);
 		return RelationRules.onlineItemsLinked(action, DevilFruitTypeRelations.FIRST_APPEARANCE, contentId, types,
+				this.properties.blockingPreviewSize());
+	}
+
+	/** One block for the events, whether they occur, end or are revealed in it. */
+	private Optional<ActionBlock> eventsLinked(VersionAction action, UUID contentId) {
+		var events = new LinkedItems(this.eventRepository::countOnlineInChapter,
+				this.eventRepository::findOnlineInChapter);
+		return RelationRules.onlineItemsLinked(action, EventRelations.OCCURS_AT_CHAPTER, contentId, events,
 				this.properties.blockingPreviewSize());
 	}
 

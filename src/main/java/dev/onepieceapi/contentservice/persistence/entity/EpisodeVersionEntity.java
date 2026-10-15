@@ -16,6 +16,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -60,8 +61,8 @@ public class EpisodeVersionEntity extends VersionBodyEntity {
 	}
 
 	@Override
-	public NaturalKey naturalKey() {
-		return new NaturalKey(Fields.number, this.number);
+	public Optional<NaturalKey> naturalKey() {
+		return Optional.of(new NaturalKey(Fields.number, this.number));
 	}
 
 	/** Replaces everything the version says, and notes when. */

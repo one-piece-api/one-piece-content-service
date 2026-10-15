@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
@@ -110,8 +111,8 @@ public record DevilFruit(String romaji, UUID typeContentId, UUID subcategoryId,
 	}
 
 	@Override
-	public NaturalKey naturalKey() {
-		return new NaturalKey(ROMAJI_FIELD, this.romaji);
+	public Optional<NaturalKey> naturalKey() {
+		return Optional.of(new NaturalKey(ROMAJI_FIELD, this.romaji));
 	}
 
 	/**

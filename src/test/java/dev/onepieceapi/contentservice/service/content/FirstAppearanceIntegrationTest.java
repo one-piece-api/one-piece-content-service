@@ -29,14 +29,15 @@ import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitTypeVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitVersionRepository;
+import dev.onepieceapi.contentservice.persistence.repository.EventVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
 import dev.onepieceapi.contentservice.persistence.repository.VolumeVersionRepository;
 import dev.onepieceapi.contentservice.service.audit.AuditLogService;
 import dev.onepieceapi.contentservice.service.devilfruit.DevilFruitDefinition;
-import dev.onepieceapi.contentservice.service.devilfruit.DevilFruitRules;
 import dev.onepieceapi.contentservice.service.devilfruit.DevilFruitService;
 import dev.onepieceapi.contentservice.service.devilfruittype.DevilFruitTypeRules;
 import dev.onepieceapi.contentservice.service.devilfruittype.DevilFruitTypeService;
+import dev.onepieceapi.contentservice.service.event.EventRulesFixtures;
 import dev.onepieceapi.contentservice.service.exception.ValueInvalidException;
 import dev.onepieceapi.contentservice.service.exception.VersionActionBlockedException;
 import dev.onepieceapi.contentservice.service.image.ContentImages;
@@ -121,6 +122,9 @@ class FirstAppearanceIntegrationTest {
 	private ChapterVersionRepository chapterRepository;
 
 	@Autowired
+	private EventVersionRepository eventRepository;
+
+	@Autowired
 	private ArcVersionRepository arcRepository;
 
 	@Autowired
@@ -170,7 +174,8 @@ class FirstAppearanceIntegrationTest {
 				new DevilFruitDefinition(this.fruitRepository,
 						new DevilFruitValidator(this.fruitRepository, this.languageRepository, this.typeRepository,
 								this.chapterRepository),
-						new DevilFruitRules(this.contentRepository, this.typeRepository, this.chapterRepository)),
+						EventRulesFixtures.devilFruitRules(this.contentRepository, this.typeRepository,
+								this.chapterRepository, this.fruitRepository, this.eventRepository)),
 				this.contentVersionRepository, this.contentRepository, auditLogService, clock,
 				mock(ContentImages.class));
 		this.types = new DevilFruitTypeService(this.typeRepository, this.contentVersionRepository,
@@ -184,7 +189,7 @@ class FirstAppearanceIntegrationTest {
 				new ChapterValidator(this.chapterRepository, this.languageRepository, this.arcRepository,
 						this.volumeRepository),
 				new ChapterRules(this.contentRepository, this.arcRepository, this.volumeRepository,
-						this.fruitRepository, this.typeRepository, properties),
+						this.fruitRepository, this.typeRepository, this.eventRepository, properties),
 				auditLogService, clock);
 		this.paramecia = typeContent(PUBLISHED, type("Paramecia", onlineChapter()));
 	}

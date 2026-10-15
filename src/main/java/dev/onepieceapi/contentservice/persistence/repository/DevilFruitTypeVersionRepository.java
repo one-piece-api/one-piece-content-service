@@ -21,8 +21,8 @@ import java.util.UUID;
 public interface DevilFruitTypeVersionRepository extends VersionBodyRepository<DevilFruitTypeVersionEntity> {
 
 	@Override
-	default String naturalKeyAttribute() {
-		return DevilFruitTypeVersionEntity.Fields.romaji;
+	default Optional<String> naturalKeyAttribute() {
+		return Optional.of(DevilFruitTypeVersionEntity.Fields.romaji);
 	}
 
 	@Override

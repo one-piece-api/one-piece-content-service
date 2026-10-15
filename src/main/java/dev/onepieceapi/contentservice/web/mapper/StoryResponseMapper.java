@@ -147,7 +147,7 @@ public class StoryResponseMapper {
 		return releases.stream().map(release -> new ReleaseResponse(release.country(), release.date())).toList();
 	}
 
-	private static Map<String, StoryTranslationResponse> toResponses(Map<String, StoryTranslation> translations) {
+	public Map<String, StoryTranslationResponse> toResponses(Map<String, StoryTranslation> translations) {
 		Map<String, StoryTranslationResponse> byLanguage = new TreeMap<>();
 		translations.forEach((language, translation) -> byLanguage.put(language,
 				new StoryTranslationResponse(translation.title(), translation.description())));

@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 import java.time.Instant;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -15,8 +16,8 @@ import java.util.UUID;
 public interface SagaVersionRepository extends VersionBodyRepository<SagaVersionEntity> {
 
 	@Override
-	default String naturalKeyAttribute() {
-		return SagaVersionEntity.Fields.number;
+	default Optional<String> naturalKeyAttribute() {
+		return Optional.of(SagaVersionEntity.Fields.number);
 	}
 
 	@Override

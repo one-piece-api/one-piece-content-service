@@ -122,14 +122,14 @@ public class StoryVersionMapper {
 	}
 
 	/** Sorted by language code, so the same version always reads the same way. */
-	private static Map<String, StoryTranslation> toDomain(Map<String, StoryTranslationEmbeddable> translations) {
+	public Map<String, StoryTranslation> toDomain(Map<String, StoryTranslationEmbeddable> translations) {
 		Map<String, StoryTranslation> byLanguage = new TreeMap<>();
 		translations.forEach((language, translation) -> byLanguage.put(language,
 				new StoryTranslation(translation.getName(), translation.getDescription())));
 		return byLanguage;
 	}
 
-	private static Map<String, StoryTranslationEmbeddable> toEmbeddables(Map<String, StoryTranslation> translations) {
+	public Map<String, StoryTranslationEmbeddable> toEmbeddables(Map<String, StoryTranslation> translations) {
 		Map<String, StoryTranslationEmbeddable> byLanguage = new HashMap<>();
 		translations.forEach((language, translation) -> byLanguage.put(language,
 				new StoryTranslationEmbeddable(translation.title(), translation.description())));

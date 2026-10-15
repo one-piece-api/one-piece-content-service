@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -39,12 +40,14 @@ public class VersionBodySpecifications {
 
 	private static final String RELATION_SUFFIX = "ContentId";
 
+	private static final String MANY_SUFFIX = "s";
+
 	/**
 	 * The whole list query: one row per content among {@code statuses}, then each filter
 	 * that was actually given.
 	 */
 	public <E extends VersionBodyEntity> Specification<E> listOf(Collection<VersionStatus> statuses,
-			ContentFilter filter, Clock clock, String naturalKey) {
+			ContentFilter filter, Clock clock, Optional<String> naturalKey) {
 		List<Specification<E>> conditions = new ArrayList<>();
 		conditions.add(mostRecentIn(statuses));
 		filter.text().ifPresent(text -> conditions.add(matching(text, naturalKey)));
@@ -93,10 +96,20 @@ public class VersionBodySpecifications {
 	/**
 	 * "This version points, through this relation, to this content": the relation is the
 	 * attribute of the entity named as it, with {@code ContentId} after (a fruit's
-	 * {@code type} is its {@code typeContentId}).
+	 * {@code type} is its {@code typeContentId}) - or, for a relation to many, with
+	 * {@code ContentIds} after, holding them all (an event's {@code devilFruit} is its
+	 * {@code devilFruitContentIds}).
 	 */
 	public <E extends VersionBodyEntity> Specification<E> relatedTo(String relation, UUID contentId) {
-		return (root, query, cb) -> cb.equal(root.get(relation + RELATION_SUFFIX), contentId);
+		return (root, query, cb) -> {
+			String many = relation + RELATION_SUFFIX + MANY_SUFFIX;
+			boolean toMany = root.getModel()
+				.getAttributes()
+				.stream()
+				.anyMatch(attribute -> attribute.getName().equals(many));
+			return toMany ? cb.isMember(contentId, root.<Collection<UUID>>get(many))
+					: cb.equal(root.get(relation + RELATION_SUFFIX), contentId);
+		};
 	}
 
 	public <E extends VersionBodyEntity> Specification<E> updatedSince(Instant instant) {
@@ -107,14 +120,15 @@ public class VersionBodySpecifications {
 	}
 
 	/**
-	 * Case-insensitive "contains", on the natural key (the attribute named so) or on the
-	 * name in any language.
+	 * Case-insensitive "contains", on the natural key (the attribute named so), when the
+	 * entity has one, or on the name in any language.
 	 */
-	public <E extends VersionBodyEntity> Specification<E> matching(String text, String naturalKey) {
+	public <E extends VersionBodyEntity> Specification<E> matching(String text, Optional<String> naturalKey) {
 		return (root, query, cb) -> {
 			String pattern = "%" + escapeLike(text.toLowerCase(Locale.ROOT)) + "%";
-			Predicate inNaturalKey = contains(cb, naturalKeyText(root, cb, naturalKey), pattern);
-			return cb.or(inNaturalKey, cb.exists(anyNameContaining(pattern, root, query.subquery(Integer.class), cb)));
+			Predicate inName = cb.exists(anyNameContaining(pattern, root, query.subquery(Integer.class), cb));
+			return naturalKey.map(key -> cb.or(contains(cb, naturalKeyText(root, cb, key), pattern), inName))
+				.orElse(inName);
 		};
 	}
 

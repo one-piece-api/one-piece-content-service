@@ -61,8 +61,8 @@ class VolumeTest {
 
 		assertThat(volume.names()).containsExactly(entry("it", "L'alba"));
 		assertThat(volume.languages()).containsExactlyInAnyOrder("it", "en");
-		assertThat(volume.naturalKey().field()).isEqualTo("number");
-		assertThat(volume.naturalKey().value()).isEqualTo(0);
+		assertThat(volume.naturalKey().orElseThrow().field()).isEqualTo("number");
+		assertThat(volume.naturalKey().orElseThrow().value()).isEqualTo(0);
 		assertThat(volume.uniqueNames()).isFalse();
 		assertThat(new Volume(null, null, null, null, null).releases()).isEmpty();
 	}

@@ -1,0 +1,6 @@
+info:
+  name: Events
+  type: folder
+
+request:
+  auth: inherit

@@ -143,8 +143,8 @@ class ContentServiceTest {
 	record Note(String romaji, Map<String, String> names) implements ContentBody<Note> {
 
 		@Override
-		public NaturalKey naturalKey() {
-			return new NaturalKey("romaji", this.romaji);
+		public Optional<NaturalKey> naturalKey() {
+			return Optional.of(new NaturalKey("romaji", this.romaji));
 		}
 
 		@Override
@@ -178,8 +178,8 @@ class ContentServiceTest {
 		}
 
 		@Override
-		public NaturalKey naturalKey() {
-			return new NaturalKey("romaji", this.romaji);
+		public Optional<NaturalKey> naturalKey() {
+			return Optional.of(new NaturalKey("romaji", this.romaji));
 		}
 
 		void write(Note body, Instant now) {

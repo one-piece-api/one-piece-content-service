@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -26,8 +27,8 @@ public record Saga(Integer number, Map<String, StoryTranslation> translations) i
 	}
 
 	@Override
-	public NaturalKey naturalKey() {
-		return new NaturalKey(NUMBER_FIELD, this.number);
+	public Optional<NaturalKey> naturalKey() {
+		return Optional.of(new NaturalKey(NUMBER_FIELD, this.number));
 	}
 
 	@Override

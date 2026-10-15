@@ -3,12 +3,13 @@ package dev.onepieceapi.contentservice.domain.workflow;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 /**
  * What one version of a content says, whatever its entity: what the generic workflow
  * needs to know of it (docs/user-flows/content-editorial-workflow.md 3). Every entity has
- * a natural key and a name per language; each one adds its own fields, e.g.
+ * a name per language, most of them a natural key too; each one adds its own fields, e.g.
  * {@code DevilFruitType}.
  *
  * @param <T> the entity's own record, so that {@link #normalized()} gives one back
@@ -20,20 +21,20 @@ public interface ContentBody<T extends ContentBody<T>> {
 
 	/**
 	 * One value shared by every language, unique within the entity - also what the public
-	 * address comes from.
+	 * address comes from; empty for an entity that has none, whose contents are addressed
+	 * by their id only, e.g. an event (implementation plan of the timeline, TL2). None by
+	 * default.
 	 */
-	NaturalKey naturalKey();
-
-	/**
-	 * The natural key as text, e.g. to name the content; {@code null} while not written.
-	 */
-	default String naturalKeyText() {
-		return naturalKey().text();
+	default Optional<NaturalKey> naturalKey() {
+		return Optional.empty();
 	}
 
-	/** The field holding the natural key, named as a request names it. */
-	default String naturalKeyField() {
-		return naturalKey().field();
+	/**
+	 * The natural key as text, e.g. to name the content; {@code null} while not written,
+	 * or for an entity without one.
+	 */
+	default String naturalKeyText() {
+		return naturalKey().map(NaturalKey::text).orElse(null);
 	}
 
 	/**

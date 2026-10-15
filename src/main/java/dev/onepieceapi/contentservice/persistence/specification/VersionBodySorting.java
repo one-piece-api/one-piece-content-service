@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Turns the sort a caller asks for, expressed in {@link ContentSortField}s, into the
@@ -39,7 +40,7 @@ public class VersionBodySorting {
 	private interface SortKey {
 
 		Expression<?> of(Root<? extends VersionBodyEntity> root, CriteriaBuilder cb, String language,
-				String naturalKey);
+				Optional<String> naturalKey);
 
 	}
 
@@ -48,8 +49,8 @@ public class VersionBodySorting {
 	static {
 		KEYS.put(ContentSortField.UPDATED_AT,
 				(root, cb, language, naturalKey) -> workflowOf(root).get(ContentVersionEntity.Fields.updatedAt));
-		KEYS.put(ContentSortField.ROMAJI, (root, cb, language, naturalKey) -> naturalKeyOf(root, cb, naturalKey));
-		KEYS.put(ContentSortField.NUMBER, (root, cb, language, naturalKey) -> naturalKeyOf(root, cb, naturalKey));
+		KEYS.put(ContentSortField.ROMAJI, VersionBodySorting::naturalKeyOf);
+		KEYS.put(ContentSortField.NUMBER, VersionBodySorting::naturalKeyOf);
 		KEYS.put(ContentSortField.NAME, VersionBodySorting::nameOf);
 		KEYS.put(ContentSortField.AUTHOR, (root, cb, language, naturalKey) -> authorOf(root));
 		KEYS.put(ContentSortField.STATUS, (root, cb, language, naturalKey) -> statusRankOf(root, cb));
@@ -62,11 +63,11 @@ public class VersionBodySorting {
 	 * The list query ordered as {@code requested}, or by the default sort; then by
 	 * content, so that rows with equal values keep a stable order across pages. Rows
 	 * missing the value sorted by come last in either direction; {@code naturalKey} names
-	 * the attribute holding the entity's natural key. A count query is left alone: the
-	 * order would not change it.
+	 * the attribute holding the entity's natural key - a sort by it reads the name for an
+	 * entity without one. A count query is left alone: the order would not change it.
 	 */
 	public <E extends VersionBodyEntity> Specification<E> orderedBy(Sort requested, String language,
-			String naturalKey) {
+			Optional<String> naturalKey) {
 		return (root, query, cb) -> {
 			if (!isCount(query)) {
 				query.orderBy(
@@ -77,7 +78,7 @@ public class VersionBodySorting {
 	}
 
 	private static List<Order> ordersFor(Sort sort, Root<? extends VersionBodyEntity> root, CriteriaBuilder cb,
-			String language, String naturalKey) {
+			String language, Optional<String> naturalKey) {
 		List<Order> orders = new ArrayList<>();
 		sort.forEach(order -> orders.add(toOrder(order, root, cb, language, naturalKey)));
 		orders.add(cb.asc(workflowOf(root).get(ContentVersionEntity.Fields.contentId)));
@@ -85,7 +86,7 @@ public class VersionBodySorting {
 	}
 
 	private static Order toOrder(Sort.Order order, Root<? extends VersionBodyEntity> root, CriteriaBuilder cb,
-			String language, String naturalKey) {
+			String language, Optional<String> naturalKey) {
 		Expression<?> key = keyOf(order).of(root, cb, language, naturalKey);
 		return order.isAscending() ? cb.asc(key, Nulls.LAST) : cb.desc(key, Nulls.LAST);
 	}
@@ -98,23 +99,32 @@ public class VersionBodySorting {
 	}
 
 	/**
-	 * The name in {@code language}, or else the natural key - case-insensitive. Joins the
-	 * one translation in that language, if the version has it.
+	 * The name in {@code language}, or else the natural key when the entity has one -
+	 * case-insensitive. Joins the one translation in that language, if the version has
+	 * it.
 	 */
 	private static Expression<String> nameOf(Root<? extends VersionBodyEntity> root, CriteriaBuilder cb,
-			String language, String naturalKey) {
+			String language, Optional<String> naturalKey) {
 		MapJoin<? extends VersionBodyEntity, String, TranslationEmbeddable> translation = root
 			.joinMap(VersionBodyEntity.TRANSLATIONS, JoinType.LEFT);
 		translation.on(cb.equal(translation.key(), language));
 		Expression<String> name = translation.value().get(TranslationEmbeddable.Fields.name);
-		return cb.coalesce(cb.lower(name), cb.lower(VersionBodySpecifications.naturalKeyText(root, cb, naturalKey)));
+		return naturalKey.<Expression<String>>map(
+				key -> cb.coalesce(cb.lower(name), cb.lower(VersionBodySpecifications.naturalKeyText(root, cb, key))))
+			.orElseGet(() -> cb.lower(name));
 	}
 
-	/** A text case-insensitive, any other value - e.g. a number - in its own order. */
+	/**
+	 * A text case-insensitive, any other value - e.g. a number - in its own order; the
+	 * name, for an entity without a natural key.
+	 */
 	private static Expression<?> naturalKeyOf(Root<? extends VersionBodyEntity> root, CriteriaBuilder cb,
-			String naturalKey) {
-		Path<?> key = root.get(naturalKey);
-		return String.class.equals(key.getJavaType()) ? cb.lower(root.get(naturalKey)) : key;
+			String language, Optional<String> naturalKey) {
+		if (naturalKey.isEmpty()) {
+			return nameOf(root, cb, language, naturalKey);
+		}
+		Path<?> key = root.get(naturalKey.get());
+		return String.class.equals(key.getJavaType()) ? cb.lower(root.get(naturalKey.get())) : key;
 	}
 
 	private static Path<String> authorOf(Root<? extends VersionBodyEntity> root) {

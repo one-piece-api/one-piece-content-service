@@ -50,8 +50,8 @@ class ArcTest {
 		assertThat(arc.names()).containsExactly(entry("it", "Romance Dawn"));
 		assertThat(arc.languages()).containsExactlyInAnyOrder("it", "en");
 		assertThat(arc.nameField()).isEqualTo("title");
-		assertThat(arc.naturalKey().field()).isEqualTo("number");
-		assertThat(arc.naturalKey().value()).isEqualTo(1);
+		assertThat(arc.naturalKey().orElseThrow().field()).isEqualTo("number");
+		assertThat(arc.naturalKey().orElseThrow().value()).isEqualTo(1);
 	}
 
 	@Test

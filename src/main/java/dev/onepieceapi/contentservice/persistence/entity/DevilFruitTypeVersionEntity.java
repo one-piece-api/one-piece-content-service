@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -65,8 +66,8 @@ public class DevilFruitTypeVersionEntity extends VersionBodyEntity {
 	}
 
 	@Override
-	public NaturalKey naturalKey() {
-		return new NaturalKey(Fields.romaji, this.romaji);
+	public Optional<NaturalKey> naturalKey() {
+		return Optional.of(new NaturalKey(Fields.romaji, this.romaji));
 	}
 
 	/**

@@ -1534,6 +1534,7 @@ paths:
           - VOLUME
           - CHAPTER
           - EPISODE
+          - EVENT
       - in: query
         name: author
         required: false
@@ -3721,6 +3722,688 @@ paths:
       tags:
       - Episodes
       x-required-permission: content:write
+  /events:
+    get:
+      operationId: eventList
+      parameters:
+      - in: query
+        name: status
+        required: false
+        schema:
+          type: string
+          enum:
+          - DRAFT
+          - IN_REVIEW
+          - REJECTED
+          - READY_TO_PUBLISH
+          - PUBLISHED
+          - ARCHIVED
+          - RETIRED
+          - SUPERSEDED
+      - in: query
+        name: q
+        required: false
+        schema:
+          type: string
+      - in: query
+        name: author
+        required: false
+        schema:
+          type: string
+      - in: query
+        name: updatedWithinDays
+        required: false
+        schema:
+          type: integer
+          format: int32
+          minimum: 0
+      - description: The content id of a Devil Fruit taking part
+        in: query
+        name: devilFruit
+        required: false
+        schema:
+          type: string
+          format: uuid
+          description: The content id of a Devil Fruit taking part
+      - description: Zero-based page index (0..N)
+        in: query
+        name: page
+        required: false
+        schema:
+          type: integer
+          default: 0
+          minimum: 0
+      - description: The size of the page to be returned
+        in: query
+        name: size
+        required: false
+        schema:
+          type: integer
+          default: 20
+          minimum: 1
+      - description: "Sorting criteria in the format: property,(asc|desc). Default\
+          \ sort order is ascending. Multiple sort criteria are supported."
+        in: query
+        name: sort
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PageResponseContentSummaryResponseEventNamesResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Events
+      x-required-permission: content:read
+    post:
+      operationId: eventCreate
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EventRequest"
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContentResponse"
+          description: Created
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Events
+      x-required-permission: content:write
+  /events/authors:
+    get:
+      operationId: eventAuthors
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Events
+      x-required-permission: content:read
+  /events/summary:
+    get:
+      operationId: eventSummary
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContentListSummaryResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Events
+      x-required-permission: content:read
+  /events/{id}:
+    get:
+      operationId: eventGet
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContentResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Events
+      x-required-permission: content:read
+  /events/{id}/versions:
+    post:
+      operationId: eventOpenNewVersion
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewVersionRequest"
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseEventResponse"
+          description: Created
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Events
+      x-required-permission: content:write
+  /events/{id}/versions/{number}:
+    delete:
+      operationId: eventDelete
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "204":
+          description: No Content
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Events
+      x-required-permission: content:write
+    get:
+      operationId: eventVersion
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseEventResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Events
+      x-required-permission: content:read
+    put:
+      operationId: eventEdit
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EventRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseEventResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Events
+      x-required-permission: content:write
+  /events/{id}/versions/{number}/approve:
+    post:
+      operationId: eventApprove
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseEventResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Events
+      x-required-permission: content:review
+  /events/{id}/versions/{number}/archive:
+    post:
+      operationId: eventArchive
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseEventResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Events
+      x-required-permission: content:publish
+  /events/{id}/versions/{number}/claim:
+    post:
+      operationId: eventClaim
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseEventResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Events
+      x-required-permission: content:review
+  /events/{id}/versions/{number}/events:
+    get:
+      operationId: eventEvents
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VersionEventResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Events
+      x-required-permission: content:read
+  /events/{id}/versions/{number}/publish:
+    post:
+      operationId: eventPublish
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseEventResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Events
+      x-required-permission: content:publish
+  /events/{id}/versions/{number}/pull-back:
+    post:
+      operationId: eventPullBack
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseEventResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Events
+      x-required-permission: content:write
+  /events/{id}/versions/{number}/recover:
+    post:
+      operationId: eventRecover
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseEventResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Events
+      x-required-permission: content:publish
+  /events/{id}/versions/{number}/reject:
+    post:
+      operationId: eventReject
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RejectVersionRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseEventResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Events
+      x-required-permission: content:review
+  /events/{id}/versions/{number}/release:
+    post:
+      operationId: eventRelease
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseEventResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Events
+      x-required-permission: content:review
+  /events/{id}/versions/{number}/restore:
+    post:
+      operationId: eventRestore
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseEventResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Events
+      x-required-permission: content:publish
+  /events/{id}/versions/{number}/retire:
+    post:
+      operationId: eventRetire
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseEventResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Events
+      x-required-permission: content:retire
+  /events/{id}/versions/{number}/return-to-draft:
+    post:
+      operationId: eventReturnToDraft
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseEventResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Events
+      x-required-permission: content:write
+  /events/{id}/versions/{number}/submit:
+    post:
+      operationId: eventSubmit
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseEventResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Events
+      x-required-permission: content:write
   /images/{id}:
     get:
       operationId: imageGet
@@ -5297,6 +5980,7 @@ components:
           - VOLUME
           - CHAPTER
           - EPISODE
+          - EVENT
         label:
           type: string
         occurredAt:
@@ -5380,6 +6064,9 @@ components:
           - RELATED_NOT_ONLINE
           - ONLINE_ITEMS_LINKED
           - FIRST_APPEARANCE_MISSING
+          - REVEAL_MISSING
+          - REVEALED_BEFORE_PARTICIPANT
+          - EVENTS_REVEALED_BEFORE
     ChapterNamesResponse:
       type: object
       properties:
@@ -5833,6 +6520,76 @@ components:
         versionNumber:
           type: integer
           format: int32
+    ContentSummaryResponseEventNamesResponse:
+      type: object
+      properties:
+        allowedActions:
+          type: array
+          items:
+            type: string
+            enum:
+            - EDIT
+            - DELETE
+            - SUBMIT
+            - PULL_BACK
+            - CLAIM
+            - RELEASE
+            - APPROVE
+            - REJECT
+            - RETURN_TO_DRAFT
+            - PUBLISH
+            - ARCHIVE
+            - RECOVER
+            - RETIRE
+            - RESTORE
+            - OPEN_NEW_VERSION
+        author:
+          $ref: "#/components/schemas/UserResponse"
+        body:
+          $ref: "#/components/schemas/EventNamesResponse"
+        id:
+          type: string
+          format: uuid
+        onlineVersionNumber:
+          type: integer
+          format: int32
+        overrideActions:
+          type: array
+          items:
+            type: string
+            enum:
+            - EDIT
+            - DELETE
+            - SUBMIT
+            - PULL_BACK
+            - CLAIM
+            - RELEASE
+            - APPROVE
+            - REJECT
+            - RETURN_TO_DRAFT
+            - PUBLISH
+            - ARCHIVE
+            - RECOVER
+            - RETIRE
+            - RESTORE
+            - OPEN_NEW_VERSION
+        status:
+          type: string
+          enum:
+          - DRAFT
+          - IN_REVIEW
+          - REJECTED
+          - READY_TO_PUBLISH
+          - PUBLISHED
+          - ARCHIVED
+          - RETIRED
+          - SUPERSEDED
+        updatedAt:
+          type: string
+          format: date-time
+        versionNumber:
+          type: integer
+          format: int32
     ContentSummaryResponseSagaNamesResponse:
       type: object
       properties:
@@ -6009,6 +6766,18 @@ components:
           $ref: "#/components/schemas/SubcategoryReferenceResponse"
         type:
           $ref: "#/components/schemas/TypeReferenceResponse"
+    DevilFruitReferenceResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        names:
+          type: object
+          additionalProperties:
+            type: string
+        romaji:
+          type: string
     DevilFruitRequest:
       type: object
       properties:
@@ -6251,6 +7020,78 @@ components:
           type: object
           additionalProperties:
             $ref: "#/components/schemas/StoryTranslationResponse"
+    EventNamesResponse:
+      type: object
+      properties:
+        names:
+          type: object
+          additionalProperties:
+            type: string
+        occursAt:
+          $ref: "#/components/schemas/EventTimeResponse"
+    EventParticipantsRequest:
+      type: object
+      properties:
+        devilFruits:
+          type: array
+          description: The content ids of the Devil Fruits
+          items:
+            type: string
+            format: uuid
+    EventParticipantsResponse:
+      type: object
+      properties:
+        devilFruits:
+          type: array
+          items:
+            $ref: "#/components/schemas/DevilFruitReferenceResponse"
+    EventRequest:
+      type: object
+      properties:
+        endsAt:
+          $ref: "#/components/schemas/EventTimeRequest"
+        occursAt:
+          $ref: "#/components/schemas/EventTimeRequest"
+        participants:
+          $ref: "#/components/schemas/EventParticipantsRequest"
+        revealedAt:
+          $ref: "#/components/schemas/RevealedAtRequest"
+        translations:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/StoryTranslationRequest"
+    EventResponse:
+      type: object
+      properties:
+        endsAt:
+          $ref: "#/components/schemas/EventTimeResponse"
+        occursAt:
+          $ref: "#/components/schemas/EventTimeResponse"
+        participants:
+          $ref: "#/components/schemas/EventParticipantsResponse"
+        revealedAt:
+          $ref: "#/components/schemas/RevealedAtResponse"
+        translations:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/StoryTranslationResponse"
+    EventTimeRequest:
+      type: object
+      description: Exactly one of chapter or worldDate
+      properties:
+        chapter:
+          type: string
+          format: uuid
+          description: The content id of a chapter
+        worldDate:
+          $ref: "#/components/schemas/WorldDateRequest"
+    EventTimeResponse:
+      type: object
+      properties:
+        chapter:
+          $ref: "#/components/schemas/NumberedReferenceResponse"
+        worldDate:
+          $ref: "#/components/schemas/WorldDateResponse"
     FieldViolation:
       type: object
       properties:
@@ -6392,6 +7233,25 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ContentSummaryResponseEpisodeNamesResponse"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+    PageResponseContentSummaryResponseEventNamesResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/ContentSummaryResponseEventNamesResponse"
         page:
           type: integer
           format: int32
@@ -6565,6 +7425,19 @@ components:
         date:
           type: string
           format: date
+    RevealedAtRequest:
+      type: object
+      properties:
+        chapter:
+          type: string
+          format: uuid
+          description: The content id of the chapter; left out for the chapter the
+            event occurs in
+    RevealedAtResponse:
+      type: object
+      properties:
+        chapter:
+          $ref: "#/components/schemas/NumberedReferenceResponse"
     SagaNamesResponse:
       type: object
       properties:
@@ -6667,6 +7540,7 @@ components:
           - VOLUME
           - CHAPTER
           - EPISODE
+          - EVENT
         onlineVersionNumber:
           type: integer
           format: int32
@@ -7177,6 +8051,86 @@ components:
         updatedAt:
           type: string
           format: date-time
+    VersionResponseEventResponse:
+      type: object
+      properties:
+        allowedActions:
+          type: array
+          items:
+            type: string
+            enum:
+            - EDIT
+            - DELETE
+            - SUBMIT
+            - PULL_BACK
+            - CLAIM
+            - RELEASE
+            - APPROVE
+            - REJECT
+            - RETURN_TO_DRAFT
+            - PUBLISH
+            - ARCHIVE
+            - RECOVER
+            - RETIRE
+            - RESTORE
+            - OPEN_NEW_VERSION
+        author:
+          $ref: "#/components/schemas/UserResponse"
+        basedOn:
+          type: integer
+          format: int32
+        blockedActions:
+          type: array
+          items:
+            $ref: "#/components/schemas/BlockedActionResponse"
+        body:
+          $ref: "#/components/schemas/EventResponse"
+        claimant:
+          $ref: "#/components/schemas/UserResponse"
+        createdAt:
+          type: string
+          format: date-time
+        everPublished:
+          type: boolean
+        number:
+          type: integer
+          format: int32
+        overrideActions:
+          type: array
+          items:
+            type: string
+            enum:
+            - EDIT
+            - DELETE
+            - SUBMIT
+            - PULL_BACK
+            - CLAIM
+            - RELEASE
+            - APPROVE
+            - REJECT
+            - RETURN_TO_DRAFT
+            - PUBLISH
+            - ARCHIVE
+            - RECOVER
+            - RETIRE
+            - RESTORE
+            - OPEN_NEW_VERSION
+        rejectionReason:
+          type: string
+        status:
+          type: string
+          enum:
+          - DRAFT
+          - IN_REVIEW
+          - REJECTED
+          - READY_TO_PUBLISH
+          - PUBLISHED
+          - ARCHIVED
+          - RETIRED
+          - SUPERSEDED
+        updatedAt:
+          type: string
+          format: date-time
     VersionResponseSagaResponse:
       type: object
       properties:
@@ -7472,6 +8426,31 @@ components:
       properties:
         title:
           type: string
+    WorldDateRequest:
+      type: object
+      properties:
+        approximate:
+          type: boolean
+          description: Whether the years are not known for sure; false when left out
+        yearFrom:
+          type: integer
+          format: int32
+        yearTo:
+          type: integer
+          format: int32
+      required:
+      - yearFrom
+    WorldDateResponse:
+      type: object
+      properties:
+        approximate:
+          type: boolean
+        yearFrom:
+          type: integer
+          format: int32
+        yearTo:
+          type: integer
+          format: int32
   securitySchemes:
     keycloak:
       flows:

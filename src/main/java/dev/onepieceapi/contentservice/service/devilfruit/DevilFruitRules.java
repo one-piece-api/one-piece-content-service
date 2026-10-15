@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.service.devilfruit;
 
+import dev.onepieceapi.contentservice.config.RulesProperties;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitType;
 import dev.onepieceapi.contentservice.domain.workflow.ActionBlock;
@@ -11,9 +12,13 @@ import dev.onepieceapi.contentservice.persistence.mapper.DevilFruitTypeVersionMa
 import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitTypeVersionRepository;
+import dev.onepieceapi.contentservice.persistence.repository.EventVersionRepository;
 import dev.onepieceapi.contentservice.service.content.ContentRules;
 import dev.onepieceapi.contentservice.service.content.FirstAppearanceRules;
+import dev.onepieceapi.contentservice.service.content.LinkedItems;
 import dev.onepieceapi.contentservice.service.content.RelationRules;
+import dev.onepieceapi.contentservice.service.event.EventRelations;
+import dev.onepieceapi.contentservice.service.event.EventReveals;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -40,6 +45,13 @@ import java.util.UUID;
  * one of the type's versions online holds it exclusively ({@code DevilFruitTypeRules}):
  * the two never run at the same time, so neither can read a type that the other is about
  * to change.
+ * <p>
+ * What events owe a fruit (implementation plan of the timeline, T5): it cannot be retired
+ * while online events have it taking part ({@link EventRelations#DEVIL_FRUITS}), and a
+ * version goes online only if no online event it takes part in is revealed before its
+ * first appearance ({@link EventReveals}) - the rule an event follows, seen from the
+ * fruit. Both hold the fruit's content exclusively first, so they wait for any event
+ * going online with it, which holds it shared.
  */
 @Component
 @RequiredArgsConstructor(onConstructor_ = { @Autowired })
@@ -51,11 +63,21 @@ public class DevilFruitRules implements ContentRules<DevilFruit> {
 
 	private final ChapterVersionRepository chapterRepository;
 
+	private final EventVersionRepository eventRepository;
+
+	private final EventReveals eventReveals;
+
+	private final RulesProperties properties;
+
 	@Override
 	public void lockBefore(VersionAction action, UUID contentId, Version<DevilFruit> version) {
 		RelationRules.lockTargetBefore(action, DevilFruitRelations.TYPE, version.body(), this.contentRepository);
 		RelationRules.lockTargetBefore(action, DevilFruitRelations.FIRST_APPEARANCE, version.body(),
 				this.contentRepository);
+		RelationRules.lockLinkedBefore(action, contentId, this.contentRepository);
+		if (RelationRules.GOING_ONLINE.contains(action)) {
+			this.contentRepository.lockExclusive(contentId);
+		}
 	}
 
 	@Override
@@ -65,7 +87,23 @@ public class DevilFruitRules implements ContentRules<DevilFruit> {
 			.or(() -> RelationRules.targetNotOnline(action, DevilFruitRelations.TYPE, fruit, this.typeRepository))
 			.or(() -> subcategoryNotOnline(action, fruit))
 			.or(() -> RelationRules.targetNotOnline(action, DevilFruitRelations.FIRST_APPEARANCE, fruit,
-					this.chapterRepository));
+					this.chapterRepository))
+			.or(() -> eventsRevealedBefore(action, contentId, fruit))
+			.or(() -> RelationRules.onlineItemsLinked(action, EventRelations.DEVIL_FRUITS, contentId, linkedEvents(),
+					this.properties.blockingPreviewSize()));
+	}
+
+	/** Checked once the chapter of the first appearance is known to be online. */
+	private Optional<ActionBlock> eventsRevealedBefore(VersionAction action, UUID contentId, DevilFruit fruit) {
+		return RelationRules.GOING_ONLINE.contains(action)
+				? this.eventReveals.eventsRevealedBefore(contentId, fruit.firstAppearanceChapterId())
+				: Optional.empty();
+	}
+
+	/** The queries of the events for the fruits taking part in them. */
+	private LinkedItems linkedEvents() {
+		return new LinkedItems(this.eventRepository::countOnlineWithDevilFruit,
+				this.eventRepository::findOnlineWithDevilFruit);
 	}
 
 	/** Checked once the type is known to be online. */

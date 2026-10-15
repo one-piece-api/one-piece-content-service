@@ -3,6 +3,7 @@ package dev.onepieceapi.contentservice.service.story;
 import dev.onepieceapi.contentservice.domain.story.NumberedReference;
 import dev.onepieceapi.contentservice.domain.workflow.ContentBody;
 import dev.onepieceapi.contentservice.domain.workflow.ContentFilter;
+import dev.onepieceapi.contentservice.domain.workflow.NaturalKey;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSortField;
 import dev.onepieceapi.contentservice.domain.workflow.Version;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
@@ -80,7 +81,8 @@ public class NumberedLinks<T extends ContentBody<T>, E extends VersionBodyEntity
 
 	private NumberedReference referenceOf(E version) {
 		T body = this.toDomain.apply(version).body();
-		return new NumberedReference(version.getContentId(), (Integer) body.naturalKey().value(), body.names());
+		return new NumberedReference(version.getContentId(),
+				(Integer) body.naturalKey().map(NaturalKey::value).orElse(null), body.names());
 	}
 
 }

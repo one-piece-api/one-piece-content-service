@@ -52,9 +52,9 @@ class SagaTest {
 		assertThat(saga.names()).containsExactly(entry("it", "East Blue"));
 		assertThat(saga.languages()).containsExactlyInAnyOrder("it", "en");
 		assertThat(saga.nameField()).isEqualTo("title");
-		assertThat(saga.naturalKey().field()).isEqualTo("number");
-		assertThat(saga.naturalKey().value()).isEqualTo(1);
-		assertThat(new Saga(null, Map.of()).naturalKey().isMissing()).isTrue();
+		assertThat(saga.naturalKey().orElseThrow().field()).isEqualTo("number");
+		assertThat(saga.naturalKey().orElseThrow().value()).isEqualTo(1);
+		assertThat(new Saga(null, Map.of()).naturalKey().orElseThrow().isMissing()).isTrue();
 	}
 
 	@Test

@@ -24,6 +24,7 @@ import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitTypeVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitVersionRepository;
+import dev.onepieceapi.contentservice.persistence.repository.EventVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.EpisodeVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
 import dev.onepieceapi.contentservice.persistence.repository.SagaVersionRepository;
@@ -126,6 +127,9 @@ class StoryItemsRulesRaceIntegrationTest {
 
 	@Autowired
 	private ChapterVersionRepository chapterRepository;
+
+	@Autowired
+	private EventVersionRepository eventRepository;
 
 	@Autowired
 	private EpisodeVersionRepository episodeRepository;
@@ -237,7 +241,7 @@ class StoryItemsRulesRaceIntegrationTest {
 		return new ChapterService(this.chapterRepository, this.contentVersionRepository, this.contentRepository,
 				new ChapterValidator(this.chapterRepository, this.languageRepository, arcs, this.volumeRepository),
 				new ChapterRules(this.contentRepository, arcs, this.volumeRepository, this.fruitRepository,
-						this.typeRepository, new RulesProperties(5)),
+						this.typeRepository, this.eventRepository, new RulesProperties(5)),
 				new AuditLogService(this.auditLogRepository, clock), clock);
 	}
 

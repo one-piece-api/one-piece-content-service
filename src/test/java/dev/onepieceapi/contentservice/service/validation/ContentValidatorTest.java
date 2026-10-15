@@ -111,8 +111,8 @@ class ContentValidatorTest {
 		}
 
 		@Override
-		public NaturalKey naturalKey() {
-			return new NaturalKey("romaji", this.romaji);
+		public Optional<NaturalKey> naturalKey() {
+			return Optional.of(new NaturalKey("romaji", this.romaji));
 		}
 
 		@Override

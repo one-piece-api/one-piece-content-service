@@ -14,6 +14,7 @@ import lombok.experimental.FieldNameConstants;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * What one version of a saga says (implementation plan of the story structure, S2): its
@@ -42,8 +43,8 @@ public class SagaVersionEntity extends VersionBodyEntity {
 	}
 
 	@Override
-	public NaturalKey naturalKey() {
-		return new NaturalKey(Fields.number, this.number);
+	public Optional<NaturalKey> naturalKey() {
+		return Optional.of(new NaturalKey(Fields.number, this.number));
 	}
 
 	/** Replaces everything the version says, and notes when. */

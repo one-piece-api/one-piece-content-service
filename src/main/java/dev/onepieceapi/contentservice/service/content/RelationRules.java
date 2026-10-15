@@ -1,7 +1,6 @@
 package dev.onepieceapi.contentservice.service.content;
 
 import dev.onepieceapi.contentservice.domain.workflow.ActionBlock;
-import dev.onepieceapi.contentservice.domain.workflow.NaturalKey;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAction;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.entity.VersionBodyEntity;
@@ -23,7 +22,8 @@ import java.util.UUID;
 
 /**
  * The rules every relation follows (implementation plan of the Devil Fruit, D2; of the
- * story structure, S5), written once for any {@link RelationDescriptor}:
+ * story structure, S5), written once for any {@link RelationDescriptor}, for each content
+ * it points to:
  * <ul>
  * <li>on every save, the related content is <em>linkable</em> - one of its versions
  * passed review, which it never stops being; an id naming nothing and a content with
@@ -33,7 +33,7 @@ import java.util.UUID;
  * <li>the related content cannot be retired while online items point to it.</li>
  * </ul>
  * Not even {@code content:admin} lifts them: it relaxes who may act, not the data. Going
- * online holds the related content shared first, retiring it holds it exclusively: the
+ * online holds the related contents shared first, retiring one holds it exclusively: the
  * two never run at the same time, so neither reads what the other is about to change. The
  * {@link ContentRules} of each entity call them, and add their own on top.
  */
@@ -49,6 +49,8 @@ public class RelationRules {
 
 	private static final String COUNT = "count";
 
+	private static final String NAMES = "names";
+
 	/** Refuses a save pointing to a content that is not linkable; none named is fine. */
 	public <T> void requireLinkable(RelationDescriptor<T> relation, T body, VersionBodyRepository<?> targets) {
 		notLinkable(relation, body, "", targets).ifPresent(violation -> {
@@ -57,32 +59,35 @@ public class RelationRules {
 	}
 
 	/**
-	 * What a save pointing to a content that is not linkable breaks, for a relation held
-	 * by a part of the body - e.g. one subcategory of a type - so every part at fault can
-	 * be reported; empty when it is linkable, or none is named.
+	 * What a save pointing to a content that is not linkable breaks - the first one, for
+	 * a relation to many - also for a relation held by a part of the body, e.g. one
+	 * subcategory of a type, so every part at fault can be reported; empty when every one
+	 * is linkable, or none is named.
 	 * @param fieldPrefix where the part is in the request, e.g. {@code subcategories[2].}
 	 */
 	public <T> Optional<FieldViolation> notLinkable(RelationDescriptor<T> relation, T part, String fieldPrefix,
 			VersionBodyRepository<?> targets) {
-		UUID target = relation.targetOf(part);
-		if (target == null || targets.existsWithStatus(target, VersionStatus.approved())) {
-			return Optional.empty();
-		}
-		return Optional.of(new FieldViolation(fieldPrefix + relation.field(), relation.notLinkable()));
+		return relation.targetsOf(part)
+			.stream()
+			.filter(target -> !targets.existsWithStatus(target, VersionStatus.approved()))
+			.findFirst()
+			.map(target -> new FieldViolation(fieldPrefix + relation.fieldOf(target), relation.notLinkable()));
 	}
 
-	/** Before an item goes online: holds the related content shared. */
+	/**
+	 * Before an item goes online: holds the related contents shared, in the order of
+	 * their ids, so two items holding the same ones never wait for each other.
+	 */
 	public <T> void lockTargetBefore(VersionAction action, RelationDescriptor<T> relation, T body,
 			ContentRepository contents) {
-		UUID target = relation.targetOf(body);
-		if (GOING_ONLINE.contains(action) && target != null) {
-			contents.lockShared(target);
+		if (GOING_ONLINE.contains(action)) {
+			relation.targetsOf(body).stream().sorted().forEach(contents::lockShared);
 		}
 	}
 
 	/**
-	 * Refuses an item going online while its related content is not, naming that content
-	 * as it was last approved.
+	 * Refuses an item going online while a related content is not - the first one, for a
+	 * relation to many - naming that content as it was last approved.
 	 */
 	public <T> Optional<ActionBlock> targetNotOnline(VersionAction action, RelationDescriptor<T> relation, T body,
 			VersionBodyRepository<?> targets) {
@@ -96,20 +101,27 @@ public class RelationRules {
 	 */
 	public <T> Optional<ActionBlock> targetNotOnline(VersionAction action, RelationDescriptor<T> relation, T body,
 			Map<String, Object> part, VersionBodyRepository<?> targets) {
-		UUID target = relation.targetOf(body);
-		if (!GOING_ONLINE.contains(action) || target == null
-				|| targets.existsWithStatus(target, Set.of(VersionStatus.PUBLISHED))) {
+		if (!GOING_ONLINE.contains(action)) {
 			return Optional.empty();
 		}
+		return relation.targetsOf(body)
+			.stream()
+			.filter(target -> !targets.existsWithStatus(target, Set.of(VersionStatus.PUBLISHED)))
+			.findFirst()
+			.map(target -> notOnline(relation, target, part, targets));
+	}
+
+	private static ActionBlock notOnline(RelationDescriptor<?> relation, UUID target, Map<String, Object> part,
+			VersionBodyRepository<?> targets) {
 		Map<String, Object> detail = new LinkedHashMap<>(part);
 		detail.put(relation.name() + ID_SUFFIX, target);
 		targets.findMostRecent(List.of(target), VersionStatus.approved())
 			.stream()
 			.findFirst()
-			.map(VersionBodyEntity::naturalKey)
+			.flatMap(VersionBodyEntity::naturalKey)
 			.filter(key -> !key.isMissing())
 			.ifPresent(key -> detail.put(relation.name() + StringUtils.capitalize(key.field()), key.value()));
-		return Optional.of(new ActionBlock(relation.targetNotOnline(), detail));
+		return new ActionBlock(relation.targetNotOnline(), detail);
 	}
 
 	/** Before the related content is retired: holds it exclusively. */
@@ -141,12 +153,15 @@ public class RelationRules {
 			.of(new ActionBlock(relation.onlineItemsLinked(), Map.of(COUNT, count, relation.itemsName(), named)));
 	}
 
-	/** An item by its id and natural key, e.g. {@code {id, romaji}}. */
+	/**
+	 * An item by its id and natural key, e.g. {@code {id, romaji}}; by its names, e.g.
+	 * the titles of an event, for an entity without a natural key: {@code {id, names}}.
+	 */
 	public Map<String, Object> named(VersionBodyEntity item) {
-		NaturalKey key = item.naturalKey();
 		Map<String, Object> named = new LinkedHashMap<>();
 		named.put(ID, item.getContentId());
-		named.put(key.field(), key.value());
+		item.naturalKey()
+			.ifPresentOrElse(key -> named.put(key.field(), key.value()), () -> named.put(NAMES, item.names()));
 		return named;
 	}
 

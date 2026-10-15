@@ -94,7 +94,7 @@ public class StoryRequestMapper {
 	}
 
 	/** A language sent with nothing in it is a language with nothing written. */
-	private static Map<String, StoryTranslation> toDomain(Map<String, StoryTranslationRequest> requested) {
+	public Map<String, StoryTranslation> toDomain(Map<String, StoryTranslationRequest> requested) {
 		Map<String, StoryTranslation> translations = new TreeMap<>();
 		Optional.ofNullable(requested)
 			.orElseGet(Map::of)

@@ -16,14 +16,16 @@ import lombok.NonNull;
 import lombok.experimental.FieldNameConstants;
 
 import java.time.Instant;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
  * What one version of a content says, in the table of its entity - the part every entity
  * shares (docs/user-flows/content-editorial-workflow.md 3.1), its natural key being
- * declared by each entity (see {@link #naturalKey()}). It shares its id with the
- * {@link ContentVersionEntity} carrying the workflow of that version, and is saved and
- * removed together with it. Each entity extends it with its own fields, e.g.
+ * declared by each entity that has one (see {@link #naturalKey()}). It shares its id with
+ * the {@link ContentVersionEntity} carrying the workflow of that version, and is saved
+ * and removed together with it. Each entity extends it with its own fields, e.g.
  * {@link DevilFruitTypeVersionEntity}, and keeps its localized fields in a map named
  * {@value #TRANSLATIONS} whose values have a {@code name}: the generic list queries
  * search and sort by it.
@@ -52,15 +54,28 @@ public abstract class VersionBodyEntity {
 	/**
 	 * What identifies the content, as this version says it (3.3): the field of the entity
 	 * holding it, named as the attribute its repository sorts and searches by (see
-	 * {@code VersionBodyRepository#naturalKeyAttribute()}).
+	 * {@code VersionBodyRepository#naturalKeyAttribute()}); empty for an entity that has
+	 * none, e.g. an event. None by default.
 	 */
-	public abstract NaturalKey naturalKey();
+	public Optional<NaturalKey> naturalKey() {
+		return Optional.empty();
+	}
 
 	/**
-	 * The natural key as text, e.g. to name the version; {@code null} while not written.
+	 * The natural key as text, e.g. to name the version; {@code null} while not written,
+	 * or for an entity without one.
 	 */
 	public String naturalKeyText() {
-		return naturalKey().text();
+		return naturalKey().map(NaturalKey::text).orElse(null);
+	}
+
+	/**
+	 * The name per language code, for the languages that have one: what a content is
+	 * called by where it is listed in a refusal - only for an entity without a natural
+	 * key, the others being called by it. None by default.
+	 */
+	public Map<String, String> names() {
+		return Map.of();
 	}
 
 	/** The content this version belongs to. */

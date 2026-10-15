@@ -29,12 +29,13 @@ import java.util.stream.Collectors;
  * The rules every content must meet, whatever its entity
  * (docs/user-flows/content-editorial-workflow.md 3.3), each checked among the contents of
  * the same entity. To be saved as a draft: only languages of the catalog, a natural key
- * (see {@link ContentBody#naturalKey}) that gives a slug, and a slug and names no other
- * content has - a draft may be incomplete. To be submitted, in this order, stopping at
- * the first rule broken: complete in every language of the catalog (what is required is
- * the entity's to say, see {@link ContentBody#missingFields}), a natural key that gives a
- * slug, still unique, and different from every other version of its content. Each entity
- * has its own, extending this one, e.g. {@link DevilFruitTypeValidator}.
+ * (see {@link ContentBody#naturalKey}), when the entity has one, that gives a slug, and a
+ * slug and names no other content has - a draft may be incomplete. To be submitted, in
+ * this order, stopping at the first rule broken: complete in every language of the
+ * catalog (what is required is the entity's to say, see
+ * {@link ContentBody#missingFields}), a natural key that gives a slug, still unique, and
+ * different from every other version of its content. Each entity has its own, extending
+ * this one, e.g. {@link DevilFruitTypeValidator}.
  *
  * @param <T> what a version of the entity says
  * @param <E> the entity's version table
@@ -146,15 +147,16 @@ public class ContentValidator<T extends ContentBody<T>, E extends VersionBodyEnt
 
 	/**
 	 * The slug of the natural key - the public address of the content - refused when the
-	 * key gives none; empty while no key is written.
+	 * key gives none; empty while no key is written, and for an entity without one.
 	 */
 	private Optional<String> slugOf(T body) {
-		NaturalKey key = body.naturalKey();
-		if (key.isMissing()) {
-			return Optional.empty();
-		}
-		return Optional.of(this.versionRepository.slugOf(key.text())
+		return writtenKey(body).map(key -> this.versionRepository.slugOf(key.text())
 			.orElseThrow(() -> new ValueInvalidException(List.of(new FieldViolation(key.field(), NO_SLUG)))));
+	}
+
+	/** The natural key, when the entity has one and it is written. */
+	private static Optional<NaturalKey> writtenKey(ContentBody<?> body) {
+		return body.naturalKey().filter(key -> !key.isMissing());
 	}
 
 	/**
@@ -166,16 +168,15 @@ public class ContentValidator<T extends ContentBody<T>, E extends VersionBodyEnt
 	private void requireUniqueValues(UUID contentId, T body, Optional<String> slug) {
 		requireUnusedValues(contentId, body);
 		slug.filter(value -> this.versionRepository.slugIsTakenByAnother(value, contentId)).ifPresent(value -> {
-			throw new SlugAlreadyUsedException(value, List.of(new FieldViolation(body.naturalKeyField(), SLUG_TAKEN)));
+			String keyField = writtenKey(body).map(NaturalKey::field).orElseThrow();
+			throw new SlugAlreadyUsedException(value, List.of(new FieldViolation(keyField, SLUG_TAKEN)));
 		});
 	}
 
 	private void requireUnusedValues(UUID contentId, T body) {
 		List<FieldViolation> taken = new ArrayList<>();
-		NaturalKey key = body.naturalKey();
-		if (!key.isMissing() && this.versionRepository.naturalKeyIsTakenByAnother(key.value(), contentId)) {
-			taken.add(new FieldViolation(key.field(), ALREADY_USED));
-		}
+		writtenKey(body).filter(key -> this.versionRepository.naturalKeyIsTakenByAnother(key.value(), contentId))
+			.ifPresent(key -> taken.add(new FieldViolation(key.field(), ALREADY_USED)));
 		if (body.uniqueNames()) {
 			body.names().forEach((language, name) -> {
 				if (this.versionRepository.nameIsTakenByAnother(language, name, contentId)) {

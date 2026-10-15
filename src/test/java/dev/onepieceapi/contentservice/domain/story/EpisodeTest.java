@@ -52,7 +52,7 @@ class EpisodeTest {
 			.build();
 
 		assertThat(episode.names()).containsExactly(entry("it", "Sono Rufy!"));
-		assertThat(episode.naturalKey().value()).isEqualTo(1);
+		assertThat(episode.naturalKey().orElseThrow().value()).isEqualTo(1);
 		assertThat(episode.uniqueNames()).isFalse();
 		assertThat(new Episode(null, null, null, null, null).broadcasts()).isEmpty();
 	}

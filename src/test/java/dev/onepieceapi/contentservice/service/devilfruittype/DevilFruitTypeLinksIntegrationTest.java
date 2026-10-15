@@ -3,7 +3,6 @@ package dev.onepieceapi.contentservice.service.devilfruittype;
 import dev.onepieceapi.contentservice.service.audit.AuditLogService;
 import dev.onepieceapi.contentservice.service.devilfruit.DevilFruitDefinition;
 import dev.onepieceapi.contentservice.service.devilfruit.DevilFruitService;
-import dev.onepieceapi.contentservice.service.devilfruit.DevilFruitRules;
 
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitTranslation;
@@ -27,7 +26,9 @@ import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitTypeVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitVersionRepository;
+import dev.onepieceapi.contentservice.persistence.repository.EventVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
+import dev.onepieceapi.contentservice.service.event.EventRulesFixtures;
 import dev.onepieceapi.contentservice.service.image.ContentImages;
 import dev.onepieceapi.contentservice.service.validation.DevilFruitValidator;
 import org.junit.jupiter.api.BeforeEach;
@@ -97,6 +98,9 @@ class DevilFruitTypeLinksIntegrationTest {
 	private ChapterVersionRepository chapterRepository;
 
 	@Autowired
+	private EventVersionRepository eventRepository;
+
+	@Autowired
 	private DevilFruitVersionRepository fruitRepository;
 
 	@Autowired
@@ -134,7 +138,8 @@ class DevilFruitTypeLinksIntegrationTest {
 				new DevilFruitDefinition(this.fruitRepository,
 						new DevilFruitValidator(this.fruitRepository, this.languageRepository, this.typeRepository,
 								this.chapterRepository),
-						new DevilFruitRules(this.contentRepository, this.typeRepository, this.chapterRepository)),
+						EventRulesFixtures.devilFruitRules(this.contentRepository, this.typeRepository,
+								this.chapterRepository, this.fruitRepository, this.eventRepository)),
 				this.contentVersionRepository, this.contentRepository,
 				new AuditLogService(this.auditLogRepository, clock), clock, mock(ContentImages.class));
 		this.links = new DevilFruitTypeLinks(this.typeRepository, this.fruitRepository, clock);

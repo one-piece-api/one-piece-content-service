@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -17,8 +18,8 @@ import java.util.UUID;
 public interface ArcVersionRepository extends VersionBodyRepository<ArcVersionEntity> {
 
 	@Override
-	default String naturalKeyAttribute() {
-		return ArcVersionEntity.Fields.number;
+	default Optional<String> naturalKeyAttribute() {
+		return Optional.of(ArcVersionEntity.Fields.number);
 	}
 
 	/** How many arcs are online in this saga. */

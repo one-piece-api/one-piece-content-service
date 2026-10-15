@@ -43,6 +43,27 @@ public enum BlockReason {
 	 * The item has no first appearance, which it needs to be online (implementation plan
 	 * of the timeline, T7): the spoiler filter could not place it. No detail.
 	 */
-	FIRST_APPEARANCE_MISSING
+	FIRST_APPEARANCE_MISSING,
+
+	/**
+	 * The event has nowhere the reader learns of it - no revealed-at chapter, and it does
+	 * not occur in a chapter - which it needs to be online (implementation plan of the
+	 * timeline, T5): the spoiler filter could not place it. No detail.
+	 */
+	REVEAL_MISSING,
+
+	/**
+	 * The event is revealed before Devil Fruits taking part in it first appear, so it
+	 * cannot be online (T5): the reader would learn of a fruit through it. The detail
+	 * names them, {@code fruits}, with how many there are.
+	 */
+	REVEALED_BEFORE_PARTICIPANT,
+
+	/**
+	 * Online events the Devil Fruit takes part in are revealed before its new first
+	 * appearance, so this version cannot be online (T5) - the same rule seen from the
+	 * fruit. The detail names them, {@code events}, with how many there are.
+	 */
+	EVENTS_REVEALED_BEFORE
 
 }

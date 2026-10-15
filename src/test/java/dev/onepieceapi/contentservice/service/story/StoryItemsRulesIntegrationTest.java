@@ -15,6 +15,7 @@ import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitTypeVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitVersionRepository;
+import dev.onepieceapi.contentservice.persistence.repository.EventVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.EpisodeVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ImageRepository;
 import dev.onepieceapi.contentservice.persistence.repository.JpaImageStore;
@@ -119,6 +120,9 @@ class StoryItemsRulesIntegrationTest {
 	private ChapterVersionRepository chapterRepository;
 
 	@Autowired
+	private EventVersionRepository eventRepository;
+
+	@Autowired
 	private EpisodeVersionRepository episodeRepository;
 
 	@Autowired
@@ -173,7 +177,7 @@ class StoryItemsRulesIntegrationTest {
 				new ChapterValidator(this.chapterRepository, this.languageRepository, this.arcRepository,
 						this.volumeRepository),
 				new ChapterRules(this.contentRepository, this.arcRepository, this.volumeRepository,
-						this.fruitRepository, this.typeRepository, new RulesProperties(5)),
+						this.fruitRepository, this.typeRepository, this.eventRepository, new RulesProperties(5)),
 				auditLogService, clock);
 		this.episodes = new EpisodeService(this.episodeRepository, this.contentVersionRepository,
 				this.contentRepository,

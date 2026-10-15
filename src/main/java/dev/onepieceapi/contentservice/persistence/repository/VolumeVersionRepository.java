@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 
 import java.time.Instant;
 import java.util.Collection;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -17,8 +18,8 @@ import java.util.UUID;
 public interface VolumeVersionRepository extends VersionBodyRepository<VolumeVersionEntity> {
 
 	@Override
-	default String naturalKeyAttribute() {
-		return VolumeVersionEntity.Fields.number;
+	default Optional<String> naturalKeyAttribute() {
+		return Optional.of(VolumeVersionEntity.Fields.number);
 	}
 
 	/** Whether a version in one of these statuses has this cover. */

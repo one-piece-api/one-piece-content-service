@@ -108,8 +108,8 @@ public record DevilFruitType(String romaji, Map<String, DevilFruitTypeTranslatio
 	}
 
 	@Override
-	public NaturalKey naturalKey() {
-		return new NaturalKey(ROMAJI_FIELD, this.romaji);
+	public Optional<NaturalKey> naturalKey() {
+		return Optional.of(new NaturalKey(ROMAJI_FIELD, this.romaji));
 	}
 
 	/**

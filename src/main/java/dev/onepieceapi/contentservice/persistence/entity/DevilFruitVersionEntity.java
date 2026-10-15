@@ -15,6 +15,7 @@ import lombok.experimental.FieldNameConstants;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -62,8 +63,8 @@ public class DevilFruitVersionEntity extends VersionBodyEntity {
 	}
 
 	@Override
-	public NaturalKey naturalKey() {
-		return new NaturalKey(Fields.romaji, this.romaji);
+	public Optional<NaturalKey> naturalKey() {
+		return Optional.of(new NaturalKey(Fields.romaji, this.romaji));
 	}
 
 	/** Replaces everything the version says, and notes when. */

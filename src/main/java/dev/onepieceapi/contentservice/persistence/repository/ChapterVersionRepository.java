@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -17,8 +18,8 @@ import java.util.UUID;
 public interface ChapterVersionRepository extends VersionBodyRepository<ChapterVersionEntity> {
 
 	@Override
-	default String naturalKeyAttribute() {
-		return ChapterVersionEntity.Fields.number;
+	default Optional<String> naturalKeyAttribute() {
+		return Optional.of(ChapterVersionEntity.Fields.number);
 	}
 
 	/** How many chapters are online in this arc. */

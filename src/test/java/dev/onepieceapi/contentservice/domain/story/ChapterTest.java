@@ -71,8 +71,8 @@ class ChapterTest {
 
 		assertThat(chapter.names()).containsExactly(entry("it", "L'alba"));
 		assertThat(chapter.languages()).containsExactlyInAnyOrder("it", "en");
-		assertThat(chapter.naturalKey().field()).isEqualTo("number");
-		assertThat(chapter.naturalKey().value()).isEqualTo(0);
+		assertThat(chapter.naturalKey().orElseThrow().field()).isEqualTo("number");
+		assertThat(chapter.naturalKey().orElseThrow().value()).isEqualTo(0);
 		assertThat(chapter.nameField()).isEqualTo("title");
 		assertThat(chapter.uniqueNames()).isFalse();
 	}

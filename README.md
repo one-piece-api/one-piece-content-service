@@ -4,7 +4,8 @@ Backend applicativo (Spring Boot) per il workflow editoriale dei contenuti One P
 lineare di versioni per contenuto, revisione con presa in carico, pubblicazione, ritiro e
 ripristino, su un framework generico per entità. Entità: **Devil Fruit Type** e **Devil Fruit**
 (con relazione al tipo e immagine) e la struttura narrativa — **Saga, Arco, Volume** (con
-copertina PNG), **Capitolo** ed **Episodio** (relazioni verso arco/volume, date per paese). Espone:
+copertina PNG), **Capitolo** ed **Episodio** (relazioni verso arco/volume, date per paese) e
+l'**Evento** (tempo del mondo, rivelazione, frutti partecipanti). Espone:
 
 - **Catalogo lingue** (`/languages`): lettura, aggiunta, rimozione di una lingua non in uso.
 - **Devil Fruit Type** (`/devil-fruit-types`): lista paginata, catena di versioni,
@@ -22,6 +23,14 @@ copertina PNG), **Capitolo** ed **Episodio** (relazioni verso arco/volume, date 
   operazioni, chiave naturale `number`; filtri `?saga=`/`?arc=`/`?volume=`. Un figlio va online
   solo con il padre online (`RELATED_NOT_ONLINE`); un padre con figli online non si ritira
   (`ONLINE_ITEMS_LINKED`).
+- **Evento** (`/events`; ADR-0009): nessuna chiave naturale (indirizzato per id, titolo non unico).
+  `occursAt`/`endsAt` = `{"chapter": id}` oppure `{"worldDate": {yearFrom, yearTo, approximate}}`
+  (una data del mondo finisce entro `content.timeline.story-start-year`, 1522); `revealedAt.chapter`
+  opzionale (altrimenti vale il capitolo di `occursAt`); `participants.devilFruits`, filtro
+  `?devilFruit=`. Ordine verificato al salvataggio (`endsAt`/`revealedAt` non prima di `occursAt`).
+  Online solo con una rivelazione (`REVEAL_MISSING`), capitoli e frutti online e nessun frutto che
+  compaia dopo la rivelazione (`REVEALED_BEFORE_PARTICIPANT`; lato frutto `EVENTS_REVEALED_BEFORE`);
+  frutti e capitoli usati da eventi online non si ritirano (`ONLINE_ITEMS_LINKED`).
 - **Dashboard** (`/dashboard`): contatori per stato, attività recente del chiamante
   (dall'audit log) e pagine per stato trasversali alle entità.
 

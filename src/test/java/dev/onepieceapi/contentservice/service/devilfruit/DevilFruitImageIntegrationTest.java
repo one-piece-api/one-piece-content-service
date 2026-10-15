@@ -1,6 +1,7 @@
 package dev.onepieceapi.contentservice.service.devilfruit;
 
 import dev.onepieceapi.contentservice.service.audit.AuditLogService;
+import dev.onepieceapi.contentservice.service.event.EventRulesFixtures;
 import dev.onepieceapi.contentservice.service.image.ImageService;
 
 import dev.onepieceapi.contentservice.config.ImageProperties;
@@ -22,6 +23,7 @@ import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitTypeVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitVersionRepository;
+import dev.onepieceapi.contentservice.persistence.repository.EventVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ImageRepository;
 import dev.onepieceapi.contentservice.persistence.repository.JpaImageStore;
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
@@ -112,6 +114,9 @@ class DevilFruitImageIntegrationTest {
 	private ChapterVersionRepository chapterRepository;
 
 	@Autowired
+	private EventVersionRepository eventRepository;
+
+	@Autowired
 	private DevilFruitVersionRepository versionRepository;
 
 	@Autowired
@@ -157,7 +162,8 @@ class DevilFruitImageIntegrationTest {
 				PROPERTIES);
 		this.service = new DevilFruitService(
 				new DevilFruitDefinition(this.versionRepository, validator,
-						new DevilFruitRules(this.contentRepository, this.typeRepository, this.chapterRepository)),
+						EventRulesFixtures.devilFruitRules(this.contentRepository, this.typeRepository,
+								this.chapterRepository, this.versionRepository, this.eventRepository)),
 				this.contentVersionRepository, this.contentRepository,
 				new AuditLogService(this.auditLogRepository, clock), clock, images);
 		this.imageService = new ImageService(store, this.versionRepository, this.volumeRepository);

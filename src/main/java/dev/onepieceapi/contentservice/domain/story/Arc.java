@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -29,8 +30,8 @@ public record Arc(Integer number, UUID sagaContentId,
 	}
 
 	@Override
-	public NaturalKey naturalKey() {
-		return new NaturalKey(Saga.NUMBER_FIELD, this.number);
+	public Optional<NaturalKey> naturalKey() {
+		return Optional.of(new NaturalKey(Saga.NUMBER_FIELD, this.number));
 	}
 
 	@Override

@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -22,8 +23,8 @@ import java.util.UUID;
 public interface DevilFruitVersionRepository extends VersionBodyRepository<DevilFruitVersionEntity> {
 
 	@Override
-	default String naturalKeyAttribute() {
-		return DevilFruitVersionEntity.Fields.romaji;
+	default Optional<String> naturalKeyAttribute() {
+		return Optional.of(DevilFruitVersionEntity.Fields.romaji);
 	}
 
 	/**

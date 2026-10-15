@@ -39,9 +39,12 @@ public interface VersionBodyRepository<E extends VersionBodyEntity>
 	/**
 	 * The attribute of the entity holding its natural key (see
 	 * {@link VersionBodyEntity#naturalKey()}): what the list searches and sorts by, and
-	 * what must be unique.
+	 * what must be unique; empty for an entity without one, whose list searches and sorts
+	 * by the names only. None by default.
 	 */
-	String naturalKeyAttribute();
+	default Optional<String> naturalKeyAttribute() {
+		return Optional.empty();
+	}
 
 	/**
 	 * One page of the list: one row per content, by its most recent version among
@@ -136,8 +139,10 @@ public interface VersionBodyRepository<E extends VersionBodyEntity>
 	 * natural key - whatever the case a text is written in.
 	 */
 	default boolean naturalKeyIsTakenByAnother(Object value, UUID contentId) {
-		return exists(VersionBodySpecifications.<E>withNaturalKey(naturalKeyAttribute(), value)
-			.and(VersionBodySpecifications.notOf(contentId)));
+		return naturalKeyAttribute()
+			.map(attribute -> exists(VersionBodySpecifications.<E>withNaturalKey(attribute, value)
+				.and(VersionBodySpecifications.notOf(contentId))))
+			.orElse(false);
 	}
 
 	/**
@@ -152,18 +157,25 @@ public interface VersionBodyRepository<E extends VersionBodyEntity>
 	/**
 	 * Whether another content of this entity has this slug - from the natural key of one
 	 * of its versions, in any status, or as a slug it had online. Two romaji differing
-	 * only in accents or punctuation give the same slug. Written by each repository: it
-	 * reads the entity's table.
+	 * only in accents or punctuation give the same slug. Written by each repository of an
+	 * entity with a natural key: it reads the entity's table. An entity without one has
+	 * no slug, which no other content can take.
 	 */
-	boolean slugIsTakenByAnother(String slug, UUID contentId);
+	default boolean slugIsTakenByAnother(String slug, UUID contentId) {
+		return false;
+	}
 
 	/**
 	 * Gives the content of this version the slug of its natural key, as it goes online:
 	 * added to its slug history, or marked as assigned again if it had it before. Written
-	 * by each repository: it reads the entity's table.
+	 * by each repository of an entity with a natural key: it reads the entity's table. An
+	 * entity without one has no slug to assign: nothing is written.
 	 * @return 0 when the slug belongs to another content, which no other check prevents
-	 * only for two saves of the same value at the same instant
+	 * only for two saves of the same value at the same instant; 1 for an entity without a
+	 * slug
 	 */
-	int assignSlug(UUID versionId, Instant assignedAt);
+	default int assignSlug(UUID versionId, Instant assignedAt) {
+		return 1;
+	}
 
 }

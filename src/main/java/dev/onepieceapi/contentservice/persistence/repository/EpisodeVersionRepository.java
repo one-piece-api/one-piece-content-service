@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -17,8 +18,8 @@ import java.util.UUID;
 public interface EpisodeVersionRepository extends VersionBodyRepository<EpisodeVersionEntity> {
 
 	@Override
-	default String naturalKeyAttribute() {
-		return EpisodeVersionEntity.Fields.number;
+	default Optional<String> naturalKeyAttribute() {
+		return Optional.of(EpisodeVersionEntity.Fields.number);
 	}
 
 	/** How many episodes are online in this arc. */

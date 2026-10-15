@@ -18,6 +18,7 @@ would multiply fake romaji columns and copies of the same rules.
   `SlugAlreadyUsedException` read it. A text compares case-insensitively, a number as it is.
   Devil Fruit and Type declare `romaji`; the slug queries stay per repository (they read the
   entity's table).
+  *Amended by ADR-0009:* the natural key is optional (`Optional`, empty for the Event).
 - **Generic relations.** A `RelationDescriptor` (name, target, reason codes, name of the
   linked items) describes one relation; `RelationRules` applies the DF-D2 rules to any of
   them: target linkable on save (`422`), target online on publish/restore (`409`), target
