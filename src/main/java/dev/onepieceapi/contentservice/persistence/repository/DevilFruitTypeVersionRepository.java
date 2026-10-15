@@ -4,10 +4,12 @@ import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitTypeSubcat
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.entity.DevilFruitTypeVersionEntity;
 import dev.onepieceapi.contentservice.persistence.mapper.DevilFruitTypeVersionMapper;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -65,5 +67,27 @@ public interface DevilFruitTypeVersionRepository extends VersionBodyRepository<D
 			.flatMap(type -> type.body().subcategory(subcategoryId).stream())
 			.findFirst();
 	}
+
+	/**
+	 * How many types are online first appearing in this chapter, or having a subcategory
+	 * that does (ADR-0008).
+	 */
+	@Query("""
+			select count(d) from DevilFruitTypeVersionEntity d join d.version v
+			where v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED
+				and (d.firstAppearanceChapterId = :chapterContentId
+					or exists (select 1 from DevilFruitTypeSubcategoryEntity s
+						where s member of d.subcategories and s.firstAppearanceChapterId = :chapterContentId))""")
+	long countOnlineFirstAppearingIn(UUID chapterContentId);
+
+	/** The same types, by romaji: as many as the page asks for. */
+	@Query("""
+			select d from DevilFruitTypeVersionEntity d join fetch d.version v
+			where v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED
+				and (d.firstAppearanceChapterId = :chapterContentId
+					or exists (select 1 from DevilFruitTypeSubcategoryEntity s
+						where s member of d.subcategories and s.firstAppearanceChapterId = :chapterContentId))
+			order by d.romaji""")
+	List<DevilFruitTypeVersionEntity> findOnlineFirstAppearingIn(UUID chapterContentId, Pageable pageable);
 
 }

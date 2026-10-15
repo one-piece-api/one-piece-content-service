@@ -8,8 +8,10 @@ import java.util.UUID;
  *
  * @param id the same in every version of the type that keeps it
  * @param translations name and description per language code
+ * @param firstAppearance the chapter the reader first meets it in; null for none
  */
 public record DevilFruitTypeSubcategoryResponse(UUID id,
-		Map<String, DevilFruitTypeSubcategoryTranslationResponse> translations) {
+		Map<String, DevilFruitTypeSubcategoryTranslationResponse> translations,
+		FirstAppearanceResponse firstAppearance) {
 
 }

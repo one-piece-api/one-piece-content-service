@@ -22,6 +22,8 @@ import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentVersionRepository;
+import dev.onepieceapi.contentservice.persistence.repository.DevilFruitTypeVersionRepository;
+import dev.onepieceapi.contentservice.persistence.repository.DevilFruitVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.EpisodeVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
 import dev.onepieceapi.contentservice.persistence.repository.SagaVersionRepository;
@@ -106,6 +108,12 @@ class StoryItemsRulesRaceIntegrationTest {
 	private final User vivi = new User(UUID.randomUUID(), "vivi", "vivi@onepiece.local");
 
 	private final User luffy = new User(UUID.randomUUID(), "luffy", "luffy@onepiece.local");
+
+	@Autowired
+	private DevilFruitTypeVersionRepository typeRepository;
+
+	@Autowired
+	private DevilFruitVersionRepository fruitRepository;
 
 	@Autowired
 	private SagaVersionRepository sagaRepository;
@@ -228,7 +236,8 @@ class StoryItemsRulesRaceIntegrationTest {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
 		return new ChapterService(this.chapterRepository, this.contentVersionRepository, this.contentRepository,
 				new ChapterValidator(this.chapterRepository, this.languageRepository, arcs, this.volumeRepository),
-				new ChapterRules(this.contentRepository, arcs, this.volumeRepository),
+				new ChapterRules(this.contentRepository, arcs, this.volumeRepository, this.fruitRepository,
+						this.typeRepository, new RulesProperties(5)),
 				new AuditLogService(this.auditLogRepository, clock), clock);
 	}
 

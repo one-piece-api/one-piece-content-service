@@ -41,7 +41,7 @@ class DevilFruitMappersTest {
 	@Test
 	void aRequestBecomesWhatItSaysAsTypedWithItsType() {
 		var request = new DevilFruitRequest(" Gomu Gomu ", TYPE_ID, null,
-				Map.of("it", new DevilFruitTranslationRequest(" Gomu ", null, "Pro", null)), null);
+				Map.of("it", new DevilFruitTranslationRequest(" Gomu ", null, "Pro", null)), null, null);
 
 		var fruit = DevilFruitRequestMapper.toDomain(request);
 
@@ -56,8 +56,8 @@ class DevilFruitMappersTest {
 		Map<String, DevilFruitTranslationRequest> translations = new HashMap<>();
 		translations.put("it", null);
 
-		var fruit = DevilFruitRequestMapper.toDomain(new DevilFruitRequest(null, null, null, translations, null));
-		var bare = DevilFruitRequestMapper.toDomain(new DevilFruitRequest(null, null, null, null, null));
+		var fruit = DevilFruitRequestMapper.toDomain(new DevilFruitRequest(null, null, null, translations, null, null));
+		var bare = DevilFruitRequestMapper.toDomain(new DevilFruitRequest(null, null, null, null, null, null));
 
 		assertThat(fruit.typeContentId()).isNull();
 		assertThat(fruit.translations())
@@ -84,7 +84,7 @@ class DevilFruitMappersTest {
 		var access = new VersionAccess<>(version(TYPE_ID), EnumSet.of(VersionAction.SUBMIT));
 		var types = Map.of(TYPE_ID, PARAMECIA);
 
-		var version = DevilFruitResponseMapper.toVersionResponse(access, types,
+		var version = DevilFruitResponseMapper.toVersionResponse(access, types, Map.of(),
 				new ImageResponseMapper(new ImageProperties("/api/content", Map.of())));
 		var row = DevilFruitResponseMapper.toSummaryResponse(
 				new ContentSummary<>(CONTENT_ID, version(TYPE_ID), null, access.allowedActions()), types);
@@ -129,7 +129,8 @@ class DevilFruitMappersTest {
 	void aRequestSaysItsSubcategory() {
 		UUID mythical = UUID.randomUUID();
 
-		var fruit = DevilFruitRequestMapper.toDomain(new DevilFruitRequest("Uo Uo", TYPE_ID, mythical, null, null));
+		var fruit = DevilFruitRequestMapper
+			.toDomain(new DevilFruitRequest("Uo Uo", TYPE_ID, mythical, null, null, null));
 
 		assertThat(fruit.subcategoryId()).isEqualTo(mythical);
 	}

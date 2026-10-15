@@ -86,6 +86,9 @@ public final class ApiPaths {
 	/** The volumes a chapter may be linked to. */
 	public static final String VOLUMES_LINKABLE = VOLUMES + CONTENT_LINKABLE;
 
+	/** The chapters a first appearance may name. */
+	public static final String CHAPTERS_LINKABLE = CHAPTERS + CONTENT_LINKABLE;
+
 	/** The section itself: its list, and where a new content is posted. */
 	public static final String CONTENT_LIST = "";
 

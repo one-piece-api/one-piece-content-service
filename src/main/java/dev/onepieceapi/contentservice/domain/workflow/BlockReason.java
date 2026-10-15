@@ -37,6 +37,12 @@ public enum BlockReason {
 	 * Items online still point to the content through a relation (S5); the detail names
 	 * them, e.g. {@code arcs}.
 	 */
-	ONLINE_ITEMS_LINKED
+	ONLINE_ITEMS_LINKED,
+
+	/**
+	 * The item has no first appearance, which it needs to be online (implementation plan
+	 * of the timeline, T7): the spoiler filter could not place it. No detail.
+	 */
+	FIRST_APPEARANCE_MISSING
 
 }

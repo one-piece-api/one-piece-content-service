@@ -4,6 +4,7 @@ import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitTranslation;
 import dev.onepieceapi.contentservice.domain.devilfruit.SubcategoryReference;
 import dev.onepieceapi.contentservice.domain.devilfruit.TypeReference;
+import dev.onepieceapi.contentservice.domain.story.NumberedReference;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAccess;
 import dev.onepieceapi.contentservice.web.dto.response.ContentSummaryResponse;
@@ -24,16 +25,16 @@ import java.util.UUID;
 /**
  * From Devil Fruits to their response bodies: what a version says is mapped here, the
  * workflow around it by {@link ContentResponseMapper}. The type a fruit points to is
- * given already looked up - as today, for a whole page at once - so the mapper reads no
- * database.
+ * given already looked up, as is the chapter it first appears in - as today, for a whole
+ * page at once - so the mapper reads no database.
  */
 @UtilityClass
 public class DevilFruitResponseMapper {
 
 	/** A version of a Devil Fruit as its caller meets it, with everything it says. */
 	public VersionResponse<DevilFruitResponse> toVersionResponse(VersionAccess<DevilFruit> access,
-			Map<UUID, TypeReference> types, ImageResponseMapper images) {
-		return ContentResponseMapper.toVersionResponse(access, fruit -> toResponse(fruit, types, images));
+			Map<UUID, TypeReference> types, Map<UUID, NumberedReference> chapters, ImageResponseMapper images) {
+		return ContentResponseMapper.toVersionResponse(access, fruit -> toResponse(fruit, types, chapters, images));
 	}
 
 	/** A row of the list of Devil Fruits. */
@@ -43,11 +44,13 @@ public class DevilFruitResponseMapper {
 	}
 
 	/** Everything the version says. */
-	public DevilFruitResponse toResponse(DevilFruit fruit, Map<UUID, TypeReference> types, ImageResponseMapper images) {
+	public DevilFruitResponse toResponse(DevilFruit fruit, Map<UUID, TypeReference> types,
+			Map<UUID, NumberedReference> chapters, ImageResponseMapper images) {
 		Map<String, DevilFruitTranslationResponse> translations = new TreeMap<>();
 		fruit.translations().forEach((language, translation) -> translations.put(language, toResponse(translation)));
 		return new DevilFruitResponse(fruit.romaji(), toTypeResponse(fruit.typeContentId(), types),
-				toSubcategoryResponse(fruit, types), translations, images.toResponse(fruit.imageId()));
+				toSubcategoryResponse(fruit, types), translations, images.toResponse(fruit.imageId()),
+				FirstAppearanceMapper.toResponse(fruit.firstAppearance(), chapters));
 	}
 
 	/**

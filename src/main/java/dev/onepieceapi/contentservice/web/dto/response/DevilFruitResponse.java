@@ -9,8 +9,10 @@ import java.util.Map;
  * @param subcategory the subcategory of that type it names; null for none
  * @param translations name, description, advantages and disadvantages per language code
  * @param image its image; null for none
+ * @param firstAppearance the chapter the reader first meets it in; null for none
  */
 public record DevilFruitResponse(String romaji, TypeReferenceResponse type, SubcategoryReferenceResponse subcategory,
-		Map<String, DevilFruitTranslationResponse> translations, ImageResponse image) {
+		Map<String, DevilFruitTranslationResponse> translations, ImageResponse image,
+		FirstAppearanceResponse firstAppearance) {
 
 }

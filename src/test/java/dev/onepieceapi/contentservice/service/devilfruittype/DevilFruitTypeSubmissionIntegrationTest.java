@@ -16,6 +16,7 @@ import dev.onepieceapi.contentservice.persistence.entity.DevilFruitTypeVersionEn
 import dev.onepieceapi.contentservice.persistence.entity.TranslationEmbeddable;
 import dev.onepieceapi.contentservice.persistence.mapper.UserMapper;
 import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
+import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitTypeVersionRepository;
@@ -105,6 +106,9 @@ class DevilFruitTypeSubmissionIntegrationTest {
 	private final User zoro = new User(UUID.randomUUID(), "zoro", "zoro@onepiece.local");
 
 	@Autowired
+	private ChapterVersionRepository chapterRepository;
+
+	@Autowired
 	private DevilFruitTypeVersionRepository versionRepository;
 
 	@Autowired
@@ -135,10 +139,11 @@ class DevilFruitTypeSubmissionIntegrationTest {
 	void setUp() {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
 		var auditLogService = new AuditLogService(this.auditLogRepository, clock);
-		var validator = new DevilFruitTypeValidator(this.versionRepository, this.languageRepository);
+		var validator = new DevilFruitTypeValidator(this.versionRepository, this.languageRepository,
+				this.chapterRepository);
 		this.service = new DevilFruitTypeService(this.versionRepository, this.contentVersionRepository,
-				this.contentRepository, validator,
-				new DevilFruitTypeRules(this.contentRepository, this.fruitRepository, new RulesProperties(5)),
+				this.contentRepository, validator, new DevilFruitTypeRules(this.contentRepository, this.fruitRepository,
+						this.chapterRepository, new RulesProperties(5)),
 				auditLogService, clock);
 
 		this.zoan = content();

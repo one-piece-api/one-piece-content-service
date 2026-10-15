@@ -12,6 +12,9 @@ http:
     type: json
     data: |-
       {
+        "firstAppearance": {
+          "chapter": ""
+        },
         "removeImage": false,
         "romaji": "",
         "subcategory": "",
@@ -37,6 +40,9 @@ examples:
         type: json
         data: |-
           {
+            "firstAppearance": {
+              "chapter": ""
+            },
             "removeImage": false,
             "romaji": "",
             "subcategory": "",
@@ -91,6 +97,9 @@ examples:
         type: json
         data: |-
           {
+            "firstAppearance": {
+              "chapter": ""
+            },
             "removeImage": false,
             "romaji": "",
             "subcategory": "",
@@ -129,6 +138,9 @@ examples:
         type: json
         data: |-
           {
+            "firstAppearance": {
+              "chapter": ""
+            },
             "removeImage": false,
             "romaji": "",
             "subcategory": "",

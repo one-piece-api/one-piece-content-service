@@ -21,6 +21,7 @@ import dev.onepieceapi.contentservice.service.exception.ValueAlreadyUsedExceptio
 import dev.onepieceapi.contentservice.service.exception.ValueInvalidException;
 import dev.onepieceapi.contentservice.service.exception.VersionActionBlockedException;
 import dev.onepieceapi.contentservice.service.story.ArcLinks;
+import dev.onepieceapi.contentservice.service.story.ChapterLinks;
 import dev.onepieceapi.contentservice.service.story.ChapterService;
 import dev.onepieceapi.contentservice.service.story.VolumeLinks;
 import dev.onepieceapi.contentservice.web.security.SecurityConfig;
@@ -53,6 +54,7 @@ import java.util.UUID;
 import static dev.onepieceapi.contentservice.web.controller.TestCallers.callerWith;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -103,6 +105,9 @@ class ChapterControllerTest {
 
 	@MockitoBean
 	private VolumeLinks volumes;
+
+	@MockitoBean
+	private ChapterLinks links;
 
 	@Test
 	void aVersionSaysItsArcAndVolumeAsTheyAreTodayAndItsExtrasAndWhichActionsAreBlocked() throws Exception {
@@ -312,6 +317,53 @@ class ChapterControllerTest {
 			.andExpect(jsonPath("$.errorCode").value("CONTENT_VERSION_ACTION_BLOCKED"))
 			.andExpect(jsonPath("$.reason").value("RELATED_NOT_ONLINE"))
 			.andExpect(jsonPath("$.detail.arcId").value(ARC_ID.toString()));
+	}
+
+	@Test
+	void retiringWhileFruitsOnlineFirstAppearInItIsAConflictNamingThem() throws Exception {
+		var fruit = UUID.fromString("3e2d1c0b-9a8f-4e7d-8c6b-5a4f3e2d1c0b");
+		var block = new ActionBlock(BlockReason.ONLINE_ITEMS_LINKED,
+				Map.of("count", 1L, "fruits", List.of(Map.of("id", fruit, "romaji", "Gomu Gomu"))));
+		when(this.service.retire(any(), any(), eq(CONTENT_ID), eq(1)))
+			.thenThrow(new VersionActionBlockedException(VersionAction.RETIRE, block));
+
+		this.mockMvc
+			.perform(post("/chapters/" + CONTENT_ID + "/versions/1/retire").with(callerWith(Permission.CONTENT_RETIRE)))
+			.andExpect(status().isConflict())
+			.andExpect(jsonPath("$.reason").value("ONLINE_ITEMS_LINKED"))
+			.andExpect(jsonPath("$.detail.count").value(1))
+			.andExpect(jsonPath("$.detail.fruits[0].romaji").value("Gomu Gomu"));
+	}
+
+	@Test
+	void theChaptersAFirstAppearanceMayNameAreListedForWhoeverWrites() throws Exception {
+		var romanceDawn = new NumberedReference(CONTENT_ID, 1, Map.of("it", "Romance Dawn"));
+		when(this.links.linkable(any(), anyInt(), anyInt()))
+			.thenReturn(new PageImpl<>(List.of(romanceDawn), PageRequest.of(1, 5), 6));
+
+		this.mockMvc
+			.perform(get("/chapters/linkable").param("q", "dawn")
+				.param("page", "1")
+				.param("size", "5")
+				.with(callerWith(Permission.CONTENT_WRITE)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.totalElements").value(6))
+			.andExpect(jsonPath("$.content[0].id").value(CONTENT_ID.toString()))
+			.andExpect(jsonPath("$.content[0].number").value(1))
+			.andExpect(jsonPath("$.content[0].names.it").value("Romance Dawn"));
+		verify(this.links).linkable("dawn", 1, 5);
+	}
+
+	@Test
+	void theLinkableChaptersAreFirstPageTwentyByDefaultAndNotForWhoOnlyReads() throws Exception {
+		when(this.links.linkable(any(), anyInt(), anyInt())).thenReturn(new PageImpl<>(List.of()));
+
+		this.mockMvc.perform(get("/chapters/linkable").with(callerWith(Permission.CONTENT_WRITE)))
+			.andExpect(status().isOk());
+		verify(this.links).linkable(null, 0, 20);
+		this.mockMvc.perform(get("/chapters/linkable").with(callerWith(Permission.CONTENT_READ)))
+			.andExpect(status().isForbidden());
+		this.mockMvc.perform(get("/chapters/linkable")).andExpect(status().isUnauthorized());
 	}
 
 	@ParameterizedTest

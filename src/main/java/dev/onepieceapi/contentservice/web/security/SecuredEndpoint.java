@@ -49,6 +49,7 @@ enum SecuredEndpoint {
 	LINKABLE_SAGAS(HttpMethod.GET, ApiPaths.SAGAS_LINKABLE, Permission.CONTENT_WRITE),
 	LINKABLE_ARCS(HttpMethod.GET, ApiPaths.ARCS_LINKABLE, Permission.CONTENT_WRITE),
 	LINKABLE_VOLUMES(HttpMethod.GET, ApiPaths.VOLUMES_LINKABLE, Permission.CONTENT_WRITE),
+	LINKABLE_CHAPTERS(HttpMethod.GET, ApiPaths.CHAPTERS_LINKABLE, Permission.CONTENT_WRITE),
 
 	// An image, for whoever sees a version using it - decided inside the service, like
 	// the versions themselves.

@@ -5,6 +5,7 @@ import dev.onepieceapi.contentservice.domain.workflow.ContentSortField;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
 import dev.onepieceapi.contentservice.service.devilfruittype.DevilFruitTypeLinks;
 import dev.onepieceapi.contentservice.service.devilfruittype.DevilFruitTypeService;
+import dev.onepieceapi.contentservice.service.story.ChapterLinks;
 import dev.onepieceapi.contentservice.web.ApiPaths;
 import dev.onepieceapi.contentservice.web.dto.request.ContentListRequest;
 import dev.onepieceapi.contentservice.web.dto.request.DevilFruitTypeRequest;
@@ -60,8 +61,9 @@ class DevilFruitTypeController
 	private final DevilFruitTypeLinks links;
 
 	@Autowired
-	DevilFruitTypeController(DevilFruitTypeService service, DevilFruitTypeLinks links) {
-		super(service, DevilFruitTypeResponseMapper::toVersionResponse);
+	DevilFruitTypeController(DevilFruitTypeService service, DevilFruitTypeLinks links, ChapterLinks chapters) {
+		super(service, access -> DevilFruitTypeResponseMapper.toVersionResponse(access,
+				chapters.referencesOf(access.body().firstAppearanceChapterIds())));
 		this.service = service;
 		this.links = links;
 	}
@@ -118,7 +120,7 @@ class DevilFruitTypeController
 			@RequestBody @Valid DevilFruitTypeRequest request, @AuthenticationPrincipal AuthenticatedCaller caller) {
 		DevilFruitType written = DevilFruitTypeRequestMapper.toDomain(request);
 		var version = this.service.edit(caller.permissions(), caller.user(), id, number, written);
-		return DevilFruitTypeResponseMapper.toVersionResponse(version);
+		return versionResponse(version);
 	}
 
 }

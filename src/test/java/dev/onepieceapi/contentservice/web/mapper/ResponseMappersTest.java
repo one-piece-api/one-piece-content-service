@@ -173,7 +173,7 @@ class ResponseMappersTest {
 
 	@Test
 	void theBodyOfADevilFruitTypeHasEveryTranslationSortedByLanguage() {
-		var body = DevilFruitTypeResponseMapper.toResponse(ZOAN);
+		var body = DevilFruitTypeResponseMapper.toResponse(ZOAN, Map.of());
 
 		assertThat(body.romaji()).isEqualTo("Zoan");
 		assertThat(body.translations()).containsExactly(
@@ -194,7 +194,7 @@ class ResponseMappersTest {
 	@Test
 	void theDevilFruitTypeMapperPlugsItsBodiesIntoTheSharedResponses() {
 		var access = new VersionAccess<>(rejected(2), EnumSet.noneOf(VersionAction.class));
-		var version = DevilFruitTypeResponseMapper.toVersionResponse(access);
+		var version = DevilFruitTypeResponseMapper.toVersionResponse(access, Map.of());
 		var row = DevilFruitTypeResponseMapper
 			.toSummaryResponse(new ContentSummary<>(CONTENT_ID, rejected(2), null, access.allowedActions()), 0);
 

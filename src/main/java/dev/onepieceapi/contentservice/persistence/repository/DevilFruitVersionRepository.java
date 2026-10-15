@@ -62,6 +62,24 @@ public interface DevilFruitVersionRepository extends VersionBodyRepository<Devil
 			order by d.romaji""")
 	List<DevilFruitVersionEntity> findOnlineLinkedTo(UUID typeContentId, Pageable pageable);
 
+	/** How many fruits are online first appearing in this chapter (ADR-0008). */
+	@Query("""
+			select count(d) from DevilFruitVersionEntity d join d.version v
+			where d.firstAppearanceChapterId = :chapterContentId
+				and v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED""")
+	long countOnlineFirstAppearingIn(UUID chapterContentId);
+
+	/**
+	 * The fruits online first appearing in this chapter, by romaji: as many as the page
+	 * asks for.
+	 */
+	@Query("""
+			select d from DevilFruitVersionEntity d join fetch d.version v
+			where d.firstAppearanceChapterId = :chapterContentId
+				and v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED
+			order by d.romaji""")
+	List<DevilFruitVersionEntity> findOnlineFirstAppearingIn(UUID chapterContentId, Pageable pageable);
+
 	/**
 	 * The fruits online with this type naming a subcategory outside the given ones, by
 	 * romaji: as many as the page asks for, and how many there are.

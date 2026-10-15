@@ -1,5 +1,7 @@
 package dev.onepieceapi.contentservice.domain.devilfruit;
 
+import dev.onepieceapi.contentservice.domain.readertime.FirstAppearing;
+import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.domain.workflow.ContentBody;
 import dev.onepieceapi.contentservice.domain.workflow.NaturalKey;
 import dev.onepieceapi.contentservice.domain.workflow.Text;
@@ -27,9 +29,13 @@ import java.util.UUID;
  * subcategories, S5); null for none, which is complete
  * @param imageId its image (implementation plan of the Devil Fruit, D5), optional and not
  * localized; part of the version, so a different image is a different version
+ * @param firstAppearance the chapter the reader first meets it in (implementation plan of
+ * the timeline, T7); {@link StoryPoint#NONE} for none, which is complete - it is required
+ * only to go online
  */
 public record DevilFruit(String romaji, UUID typeContentId, UUID subcategoryId,
-		Map<String, DevilFruitTranslation> translations, String imageId) implements ContentBody<DevilFruit> {
+		Map<String, DevilFruitTranslation> translations, String imageId,
+		StoryPoint firstAppearance) implements ContentBody<DevilFruit>, FirstAppearing {
 
 	public static final int ROMAJI_MAX_LENGTH = 100;
 
@@ -46,6 +52,17 @@ public record DevilFruit(String romaji, UUID typeContentId, UUID subcategoryId,
 
 	private static final String DISADVANTAGES_FIELD = "translations[%s].disadvantages";
 
+	/** Nothing chosen is {@link StoryPoint#NONE}, not null. */
+	public DevilFruit {
+		firstAppearance = StoryPoint.orNone(firstAppearance);
+	}
+
+	/** A fruit without a first appearance. */
+	public DevilFruit(String romaji, UUID typeContentId, UUID subcategoryId,
+			Map<String, DevilFruitTranslation> translations, String imageId) {
+		this(romaji, typeContentId, subcategoryId, translations, imageId, StoryPoint.NONE);
+	}
+
 	/** A fruit without a subcategory or an image. */
 	public DevilFruit(String romaji, UUID typeContentId, Map<String, DevilFruitTranslation> translations) {
 		this(romaji, typeContentId, null, translations, null);
@@ -59,7 +76,8 @@ public record DevilFruit(String romaji, UUID typeContentId, UUID subcategoryId,
 
 	/** The same fruit with another image, or none. */
 	public DevilFruit withImage(String newImageId) {
-		return new DevilFruit(this.romaji, this.typeContentId, this.subcategoryId, this.translations, newImageId);
+		return new DevilFruit(this.romaji, this.typeContentId, this.subcategoryId, this.translations, newImageId,
+				this.firstAppearance);
 	}
 
 	@Override
@@ -72,7 +90,7 @@ public record DevilFruit(String romaji, UUID typeContentId, UUID subcategoryId,
 			}
 		});
 		return new DevilFruit(Text.stripToNull(this.romaji), this.typeContentId, this.subcategoryId, written,
-				this.imageId);
+				this.imageId, this.firstAppearance);
 	}
 
 	@Override

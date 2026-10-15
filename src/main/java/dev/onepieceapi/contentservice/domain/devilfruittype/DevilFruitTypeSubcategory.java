@@ -1,5 +1,8 @@
 package dev.onepieceapi.contentservice.domain.devilfruittype;
 
+import dev.onepieceapi.contentservice.domain.readertime.FirstAppearing;
+import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
+
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.UUID;
@@ -12,8 +15,21 @@ import java.util.UUID;
  *
  * @param id null for a subcategory just added, until the version is saved
  * @param translations name and description per language code
+ * @param firstAppearance the chapter the reader first meets it in (implementation plan of
+ * the timeline, T7); {@link StoryPoint#NONE} for none, which is always complete
  */
-public record DevilFruitTypeSubcategory(UUID id, Map<String, DevilFruitTypeSubcategoryTranslation> translations) {
+public record DevilFruitTypeSubcategory(UUID id, Map<String, DevilFruitTypeSubcategoryTranslation> translations,
+		StoryPoint firstAppearance) implements FirstAppearing {
+
+	/** Nothing chosen is {@link StoryPoint#NONE}, not null. */
+	public DevilFruitTypeSubcategory {
+		firstAppearance = StoryPoint.orNone(firstAppearance);
+	}
+
+	/** A subcategory without a first appearance. */
+	public DevilFruitTypeSubcategory(UUID id, Map<String, DevilFruitTypeSubcategoryTranslation> translations) {
+		this(id, translations, StoryPoint.NONE);
+	}
 
 	DevilFruitTypeSubcategory normalized() {
 		Map<String, DevilFruitTypeSubcategoryTranslation> written = new TreeMap<>();
@@ -23,12 +39,13 @@ public record DevilFruitTypeSubcategory(UUID id, Map<String, DevilFruitTypeSubca
 				written.put(language, normalized);
 			}
 		});
-		return new DevilFruitTypeSubcategory(this.id, written);
+		return new DevilFruitTypeSubcategory(this.id, written, this.firstAppearance);
 	}
 
 	/** The same subcategory with an id: its own, or a new one when it has none yet. */
 	DevilFruitTypeSubcategory identified() {
-		return this.id != null ? this : new DevilFruitTypeSubcategory(UUID.randomUUID(), this.translations);
+		return this.id != null ? this
+				: new DevilFruitTypeSubcategory(UUID.randomUUID(), this.translations, this.firstAppearance);
 	}
 
 	/** The name per language code, for the languages that have one. */

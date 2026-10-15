@@ -7,6 +7,7 @@ import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAccess;
 import dev.onepieceapi.contentservice.service.devilfruit.DevilFruitService;
 import dev.onepieceapi.contentservice.service.devilfruittype.DevilFruitTypeLinks;
+import dev.onepieceapi.contentservice.service.story.ChapterLinks;
 import dev.onepieceapi.contentservice.web.ApiPaths;
 import dev.onepieceapi.contentservice.web.dto.request.DevilFruitListRequest;
 import dev.onepieceapi.contentservice.web.dto.request.DevilFruitRequest;
@@ -67,9 +68,12 @@ class DevilFruitController extends ContentController<DevilFruit, DevilFruitRespo
 	private final DevilFruitTypeLinks links;
 
 	@Autowired
-	DevilFruitController(DevilFruitService service, DevilFruitTypeLinks links, ImageResponseMapper images) {
-		super(service, access -> DevilFruitResponseMapper.toVersionResponse(access,
-				links.referencesFor(List.of(access.body())), images));
+	DevilFruitController(DevilFruitService service, DevilFruitTypeLinks links, ChapterLinks chapters,
+			ImageResponseMapper images) {
+		super(service,
+				access -> DevilFruitResponseMapper.toVersionResponse(access,
+						links.referencesFor(List.of(access.body())),
+						chapters.referencesFor(List.of(access.body()), DevilFruit::firstAppearanceChapterId), images));
 		this.service = service;
 		this.links = links;
 	}

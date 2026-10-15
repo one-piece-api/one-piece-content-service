@@ -30,7 +30,8 @@ public class DevilFruitTypeRequestMapper {
 			.stream()
 			.map(DevilFruitTypeRequestMapper::toDomain)
 			.toList();
-		return new DevilFruitType(request.romaji(), translations, subcategories);
+		return new DevilFruitType(request.romaji(), translations, subcategories,
+				FirstAppearanceMapper.toDomain(request.firstAppearance()));
 	}
 
 	/** A language sent with nothing in it is a language with nothing written. */
@@ -49,7 +50,8 @@ public class DevilFruitTypeRequestMapper {
 		Optional.ofNullable(subcategory.translations())
 			.orElseGet(Map::of)
 			.forEach((language, translation) -> translations.put(language, toDomain(translation)));
-		return new DevilFruitTypeSubcategory(subcategory.id(), translations);
+		return new DevilFruitTypeSubcategory(subcategory.id(), translations,
+				FirstAppearanceMapper.toDomain(subcategory.firstAppearance()));
 	}
 
 	private static DevilFruitTypeSubcategoryTranslation toDomain(

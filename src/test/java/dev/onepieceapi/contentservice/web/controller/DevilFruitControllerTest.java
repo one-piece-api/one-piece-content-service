@@ -4,8 +4,10 @@ import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitTranslation;
 import dev.onepieceapi.contentservice.domain.devilfruit.TypeReference;
 import dev.onepieceapi.contentservice.domain.image.ImageChange;
+import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.domain.security.Permission;
 import dev.onepieceapi.contentservice.domain.security.User;
+import dev.onepieceapi.contentservice.domain.story.NumberedReference;
 import dev.onepieceapi.contentservice.domain.workflow.ActionBlock;
 import dev.onepieceapi.contentservice.domain.workflow.BlockReason;
 import dev.onepieceapi.contentservice.domain.workflow.BlockedAction;
@@ -22,6 +24,7 @@ import dev.onepieceapi.contentservice.service.exception.ContentErrorCode;
 import dev.onepieceapi.contentservice.service.exception.ImageRefusedException;
 import dev.onepieceapi.contentservice.service.exception.ValueInvalidException;
 import dev.onepieceapi.contentservice.service.exception.VersionActionBlockedException;
+import dev.onepieceapi.contentservice.service.story.ChapterLinks;
 import dev.onepieceapi.contentservice.web.dto.response.ImageResponse;
 import dev.onepieceapi.contentservice.web.mapper.ImageResponseMapper;
 import dev.onepieceapi.contentservice.web.security.SecurityConfig;
@@ -77,6 +80,8 @@ class DevilFruitControllerTest {
 
 	private static final UUID TYPE_ID = UUID.fromString("0f6c3e5a-4b7d-4c1e-9a58-3d2b1c0e7f11");
 
+	private static final UUID CHAPTER_ID = UUID.fromString("7d3b2a1c-0e9f-4a8b-8c7d-6e5f4a3b2c1d");
+
 	private static final Instant CREATED = Instant.parse("2026-10-07T08:00:00Z");
 
 	private static final User NAMI = new User(UUID.fromString("11111111-1111-1111-1111-111111111111"), "nami",
@@ -93,6 +98,9 @@ class DevilFruitControllerTest {
 
 	@MockitoBean
 	private DevilFruitTypeLinks links;
+
+	@MockitoBean
+	private ChapterLinks chapters;
 
 	@MockitoBean
 	private ImageResponseMapper images;
@@ -243,6 +251,82 @@ class DevilFruitControllerTest {
 			.andExpect(jsonPath("$.errorCode").value("CONTENT_VERSION_ACTION_BLOCKED"))
 			.andExpect(jsonPath("$.reason").value("TYPE_NOT_ONLINE"))
 			.andExpect(jsonPath("$.detail.typeRomaji").value("Paramecia"));
+	}
+
+	@Test
+	void aVersionSaysItsFirstAppearanceAsTheChapterIsToday() throws Exception {
+		var body = new DevilFruit("Gomu Gomu", TYPE_ID, null, Map.of(), null, new StoryPoint(CHAPTER_ID));
+		var access = new VersionAccess<>(Version.<DevilFruit>builder()
+			.number(1)
+			.status(VersionStatus.DRAFT)
+			.author(NAMI)
+			.body(body)
+			.createdAt(CREATED)
+			.updatedAt(CREATED)
+			.build(), Set.of());
+		when(this.service.getVersion(any(), any(), eq(CONTENT_ID), eq(1))).thenReturn(access);
+		when(this.chapters.referencesFor(anyCollection(), any()))
+			.thenReturn(Map.of(CHAPTER_ID, new NumberedReference(CHAPTER_ID, 1, Map.of("it", "Romance Dawn"))));
+
+		this.mockMvc
+			.perform(get("/devil-fruits/" + CONTENT_ID + "/versions/1").with(callerWith(Permission.CONTENT_READ)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.body.firstAppearance.chapter.id").value(CHAPTER_ID.toString()))
+			.andExpect(jsonPath("$.body.firstAppearance.chapter.number").value(1))
+			.andExpect(jsonPath("$.body.firstAppearance.chapter.names.it").value("Romance Dawn"));
+	}
+
+	@Test
+	void aVersionWithoutAFirstAppearanceSaysNone() throws Exception {
+		var access = new VersionAccess<>(version(VersionStatus.DRAFT, TYPE_ID), Set.of());
+		when(this.service.getVersion(any(), any(), eq(CONTENT_ID), eq(1))).thenReturn(access);
+
+		this.mockMvc
+			.perform(get("/devil-fruits/" + CONTENT_ID + "/versions/1").with(callerWith(Permission.CONTENT_READ)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.body.firstAppearance").doesNotExist());
+	}
+
+	@Test
+	void creatingAFruitPassesOnItsFirstAppearance() throws Exception {
+		var draft = new VersionAccess<>(version(VersionStatus.DRAFT, TYPE_ID), EnumSet.of(VersionAction.EDIT));
+		when(this.service.create(any(), any(), any(), any())).thenReturn(new Content<>(CONTENT_ID, List.of(draft)));
+
+		var request = post("/devil-fruits").with(callerWith(Permission.CONTENT_WRITE))
+			.contentType("application/json")
+			.content("{\"romaji\":\"Gomu Gomu\",\"firstAppearance\":{\"chapter\":\"" + CHAPTER_ID + "\"}}");
+		this.mockMvc.perform(request).andExpect(status().isCreated());
+
+		var written = ArgumentCaptor.forClass(DevilFruit.class);
+		verify(this.service).create(any(), any(), written.capture(), eq(ImageChange.KEEP));
+		assertThat(written.getValue().firstAppearance()).isEqualTo(new StoryPoint(CHAPTER_ID));
+	}
+
+	@Test
+	void aChapterThatCannotBeChosenIsUnprocessableAndNamesItsField() throws Exception {
+		var invalid = List
+			.of(new FieldViolation("firstAppearance.chapter", "must be a Chapter with an approved version"));
+		when(this.service.create(any(), any(), any(), any())).thenThrow(new ValueInvalidException(invalid));
+
+		var request = post("/devil-fruits").with(callerWith(Permission.CONTENT_WRITE))
+			.contentType("application/json")
+			.content("{\"firstAppearance\":{\"chapter\":\"" + CHAPTER_ID + "\"}}");
+		this.mockMvc.perform(request)
+			.andExpect(status().isUnprocessableContent())
+			.andExpect(jsonPath("$.errors[0].field").value("firstAppearance.chapter"));
+	}
+
+	@Test
+	void publishingWithoutAFirstAppearanceIsAConflictWithItsReason() throws Exception {
+		var block = new ActionBlock(BlockReason.FIRST_APPEARANCE_MISSING, Map.of());
+		when(this.service.publish(any(), any(), eq(CONTENT_ID), eq(1)))
+			.thenThrow(new VersionActionBlockedException(VersionAction.PUBLISH, block));
+
+		this.mockMvc
+			.perform(post("/devil-fruits/" + CONTENT_ID + "/versions/1/publish")
+				.with(callerWith(Permission.CONTENT_PUBLISH)))
+			.andExpect(status().isConflict())
+			.andExpect(jsonPath("$.reason").value("FIRST_APPEARANCE_MISSING"));
 	}
 
 	@Test

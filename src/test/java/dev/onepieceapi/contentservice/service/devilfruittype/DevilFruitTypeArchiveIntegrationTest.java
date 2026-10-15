@@ -5,6 +5,7 @@ import dev.onepieceapi.contentservice.service.audit.AuditLogService;
 import dev.onepieceapi.contentservice.config.RulesProperties;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitType;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitTypeTranslation;
+import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.domain.security.Permission;
 import dev.onepieceapi.contentservice.domain.security.User;
 import dev.onepieceapi.contentservice.domain.workflow.EntityType;
@@ -14,14 +15,16 @@ import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.entity.ContentEntity;
 import dev.onepieceapi.contentservice.persistence.entity.ContentVersionEntity;
 import dev.onepieceapi.contentservice.persistence.entity.DevilFruitTypeVersionEntity;
-import dev.onepieceapi.contentservice.persistence.entity.TranslationEmbeddable;
+import dev.onepieceapi.contentservice.persistence.mapper.DevilFruitTypeVersionMapper;
 import dev.onepieceapi.contentservice.persistence.mapper.UserMapper;
 import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
+import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitTypeVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
+import dev.onepieceapi.contentservice.service.content.OnlineChapters;
 import dev.onepieceapi.contentservice.service.exception.VersionActionConflictException;
 import dev.onepieceapi.contentservice.service.exception.VersionActionForbiddenException;
 import dev.onepieceapi.contentservice.service.exception.VersionNotFoundException;
@@ -43,6 +46,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -100,6 +104,9 @@ class DevilFruitTypeArchiveIntegrationTest {
 	private final User vivi = new User(UUID.randomUUID(), "vivi", "vivi@onepiece.local");
 
 	@Autowired
+	private ChapterVersionRepository chapterRepository;
+
+	@Autowired
 	private DevilFruitTypeVersionRepository versionRepository;
 
 	@Autowired
@@ -120,6 +127,9 @@ class DevilFruitTypeArchiveIntegrationTest {
 	@Autowired
 	private TestEntityManager entityManager;
 
+	/** The chapter online every type seeded first appears in. */
+	private StoryPoint firstAppearance;
+
 	private DevilFruitTypeService service;
 
 	private UUID logia;
@@ -130,12 +140,14 @@ class DevilFruitTypeArchiveIntegrationTest {
 
 	@BeforeEach
 	void setUp() {
+		this.firstAppearance = OnlineChapters.onlineChapter(this.contentRepository, this.chapterRepository);
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
 		var auditLogService = new AuditLogService(this.auditLogRepository, clock);
-		var validator = new DevilFruitTypeValidator(this.versionRepository, this.languageRepository);
+		var validator = new DevilFruitTypeValidator(this.versionRepository, this.languageRepository,
+				this.chapterRepository);
 		this.service = new DevilFruitTypeService(this.versionRepository, this.contentVersionRepository,
-				this.contentRepository, validator,
-				new DevilFruitTypeRules(this.contentRepository, this.fruitRepository, new RulesProperties(5)),
+				this.contentRepository, validator, new DevilFruitTypeRules(this.contentRepository, this.fruitRepository,
+						this.chapterRepository, new RulesProperties(5)),
 				auditLogService, clock);
 
 		this.logia = content();
@@ -306,12 +318,9 @@ class DevilFruitTypeArchiveIntegrationTest {
 		var body = new DevilFruitType(romaji,
 				Map.of("it", new DevilFruitTypeTranslation(romaji + " IT", "descrizione", "vantaggi", "svantaggi"),
 						"en",
-						new DevilFruitTypeTranslation(romaji + " EN", "description", "advantages", "disadvantages")));
-		version.setRomaji(body.romaji());
-		body.translations()
-			.forEach((language, translation) -> version.getTranslations()
-				.put(language, new TranslationEmbeddable(translation.name(), translation.description(),
-						translation.advantages(), translation.disadvantages())));
+						new DevilFruitTypeTranslation(romaji + " EN", "description", "advantages", "disadvantages")),
+				List.of(), this.firstAppearance);
+		DevilFruitTypeVersionMapper.rewrite(version, body, EARLIER);
 		this.versionRepository.save(version);
 	}
 

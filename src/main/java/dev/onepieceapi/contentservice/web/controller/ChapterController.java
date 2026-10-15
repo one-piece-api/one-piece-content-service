@@ -4,15 +4,18 @@ import dev.onepieceapi.contentservice.domain.story.Chapter;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSortField;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
 import dev.onepieceapi.contentservice.service.story.ArcLinks;
+import dev.onepieceapi.contentservice.service.story.ChapterLinks;
 import dev.onepieceapi.contentservice.service.story.ChapterService;
 import dev.onepieceapi.contentservice.service.story.VolumeLinks;
 import dev.onepieceapi.contentservice.web.ApiPaths;
 import dev.onepieceapi.contentservice.web.dto.request.ChapterListRequest;
 import dev.onepieceapi.contentservice.web.dto.request.ChapterRequest;
+import dev.onepieceapi.contentservice.web.dto.request.LinkableNumberedRequest;
 import dev.onepieceapi.contentservice.web.dto.response.ChapterNamesResponse;
 import dev.onepieceapi.contentservice.web.dto.response.ChapterResponse;
 import dev.onepieceapi.contentservice.web.dto.response.ContentResponse;
 import dev.onepieceapi.contentservice.web.dto.response.ContentSummaryResponse;
+import dev.onepieceapi.contentservice.web.dto.response.NumberedReferenceResponse;
 import dev.onepieceapi.contentservice.web.dto.response.PageResponse;
 import dev.onepieceapi.contentservice.web.dto.response.VersionResponse;
 import dev.onepieceapi.contentservice.web.mapper.ContentResponseMapper;
@@ -43,8 +46,9 @@ import java.util.UUID;
 /**
  * The chapter section: every endpoint of {@link ContentController}, plus creating a
  * content and editing its draft (UF-CNT-01, UF-CNT-02), which take {@code content:write},
- * and the list narrowed to the chapters of an arc or a volume. The arc and the volume a
- * chapter points to are answered as they are today, looked up once for the whole page.
+ * the list narrowed to the chapters of an arc or a volume, and the chapters a first
+ * appearance may name. The arc and the volume a chapter points to are answered as they
+ * are today, looked up once for the whole page.
  */
 @RestController
 @RequestMapping(ApiPaths.CHAPTERS)
@@ -57,8 +61,10 @@ class ChapterController extends ContentController<Chapter, ChapterResponse, Chap
 
 	private final VolumeLinks volumes;
 
+	private final ChapterLinks links;
+
 	@Autowired
-	ChapterController(ChapterService service, ArcLinks arcs, VolumeLinks volumes) {
+	ChapterController(ChapterService service, ArcLinks arcs, VolumeLinks volumes, ChapterLinks links) {
 		super(service,
 				access -> StoryResponseMapper.toVersionResponse(access,
 						arcs.referencesFor(List.of(access.body()), Chapter::arcContentId),
@@ -66,6 +72,7 @@ class ChapterController extends ContentController<Chapter, ChapterResponse, Chap
 		this.service = service;
 		this.arcs = arcs;
 		this.volumes = volumes;
+		this.links = links;
 	}
 
 	/**
@@ -89,6 +96,17 @@ class ChapterController extends ContentController<Chapter, ChapterResponse, Chap
 		return rows.stream()
 			.map(row -> StoryResponseMapper.toSummaryResponse(row, arcReferences, volumeReferences))
 			.toList();
+	}
+
+	/**
+	 * The chapters a first appearance may name (implementation plan of the timeline, T7):
+	 * those with a version that passed review, by number, narrowed by what their number
+	 * or a title contains.
+	 */
+	@GetMapping(ApiPaths.CONTENT_LINKABLE)
+	PageResponse<NumberedReferenceResponse> linkable(@ParameterObject @Valid LinkableNumberedRequest request) {
+		var page = this.links.linkable(request.q(), request.pageOrDefault(), request.sizeOrDefault());
+		return PageResponse.from(page.map(StoryResponseMapper::toResponse));
 	}
 
 	/**

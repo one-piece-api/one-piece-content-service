@@ -4,6 +4,8 @@ import dev.onepieceapi.contentservice.service.audit.AuditLogService;
 
 import dev.onepieceapi.contentservice.config.RulesProperties;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitType;
+import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitTypeTranslation;
+import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.domain.security.Permission;
 import dev.onepieceapi.contentservice.domain.security.User;
 import dev.onepieceapi.contentservice.domain.workflow.EntityType;
@@ -12,14 +14,16 @@ import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.entity.ContentEntity;
 import dev.onepieceapi.contentservice.persistence.entity.ContentVersionEntity;
 import dev.onepieceapi.contentservice.persistence.entity.DevilFruitTypeVersionEntity;
-import dev.onepieceapi.contentservice.persistence.entity.TranslationEmbeddable;
+import dev.onepieceapi.contentservice.persistence.mapper.DevilFruitTypeVersionMapper;
 import dev.onepieceapi.contentservice.persistence.mapper.UserMapper;
 import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
+import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitTypeVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
+import dev.onepieceapi.contentservice.service.content.OnlineChapters;
 import dev.onepieceapi.contentservice.service.exception.VersionActionConflictException;
 import dev.onepieceapi.contentservice.service.validation.DevilFruitTypeValidator;
 import org.junit.jupiter.api.Test;
@@ -42,6 +46,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Callable;
@@ -99,6 +104,9 @@ class DevilFruitTypeRaceIntegrationTest {
 	private final User vivi = new User(UUID.randomUUID(), "vivi", "vivi@onepiece.local");
 
 	private final User luffy = new User(UUID.randomUUID(), "luffy", "luffy@onepiece.local");
+
+	@Autowired
+	private ChapterVersionRepository chapterRepository;
 
 	@Autowired
 	private DevilFruitTypeVersionRepository versionRepository;
@@ -288,14 +296,15 @@ class DevilFruitTypeRaceIntegrationTest {
 
 	private DevilFruitTypeService service(DevilFruitTypeVersionRepository versions,
 			ContentVersionRepository contentVersions) {
-		return service(versions, contentVersions,
-				new DevilFruitTypeRules(this.contentRepository, this.fruitRepository, new RulesProperties(5)));
+		return service(versions, contentVersions, new DevilFruitTypeRules(this.contentRepository, this.fruitRepository,
+				this.chapterRepository, new RulesProperties(5)));
 	}
 
 	private DevilFruitTypeService service(DevilFruitTypeVersionRepository versions,
 			ContentVersionRepository contentVersions, DevilFruitTypeRules rules) {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
-		var validator = new DevilFruitTypeValidator(this.versionRepository, this.languageRepository);
+		var validator = new DevilFruitTypeValidator(this.versionRepository, this.languageRepository,
+				this.chapterRepository);
 		return new DevilFruitTypeService(versions, contentVersions, this.contentRepository, validator, rules,
 				new AuditLogService(this.auditLogRepository, clock), clock);
 	}
@@ -317,6 +326,7 @@ class DevilFruitTypeRaceIntegrationTest {
 	private UUID seedContent(VersionStatus... statuses) {
 		UUID contentId = UUID.randomUUID();
 		this.contentRepository.save(new ContentEntity(contentId, EntityType.DEVIL_FRUIT_TYPE, NOW));
+		StoryPoint firstAppearance = OnlineChapters.onlineChapter(this.contentRepository, this.chapterRepository);
 		for (int index = 0; index < statuses.length; index++) {
 			var workflow = ContentVersionEntity.builder()
 				.contentId(contentId)
@@ -327,9 +337,12 @@ class DevilFruitTypeRaceIntegrationTest {
 				.updatedAt(NOW)
 				.build();
 			var version = new DevilFruitTypeVersionEntity(workflow);
-			version.setRomaji("Logia " + contentId + " v" + (index + 1));
-			version.getTranslations()
-				.put("it", new TranslationEmbeddable("Rogia", "Trasforma in un elemento", null, null));
+			DevilFruitTypeVersionMapper.rewrite(version,
+					new DevilFruitType("Logia " + contentId + " v" + (index + 1),
+							Map.of("it",
+									new DevilFruitTypeTranslation("Rogia", "Trasforma in un elemento", null, null)),
+							List.of(), firstAppearance),
+					NOW);
 			this.versionRepository.save(version);
 		}
 		return contentId;

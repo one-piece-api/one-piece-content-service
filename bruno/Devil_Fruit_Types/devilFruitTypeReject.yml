@@ -76,9 +76,23 @@ examples:
               }
             ],
             "body": {
+              "firstAppearance": {
+                "chapter": {
+                  "id": "",
+                  "names": {},
+                  "number": 0
+                }
+              },
               "romaji": "",
               "subcategories": [
                 {
+                  "firstAppearance": {
+                    "chapter": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    }
+                  },
                   "id": "",
                   "translations": {}
                 }
