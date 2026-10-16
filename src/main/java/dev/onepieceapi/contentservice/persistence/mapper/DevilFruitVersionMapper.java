@@ -6,6 +6,7 @@ import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitTranslation;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.domain.workflow.Version;
 import dev.onepieceapi.contentservice.persistence.entity.DevilFruitRevealEntity;
+import dev.onepieceapi.contentservice.persistence.entity.DevilFruitRevealTranslationEmbeddable;
 import dev.onepieceapi.contentservice.persistence.entity.DevilFruitVersionEntity;
 import dev.onepieceapi.contentservice.persistence.entity.TranslationEmbeddable;
 import lombok.experimental.UtilityClass;
@@ -39,12 +40,48 @@ public class DevilFruitVersionMapper {
 
 	private static DevilFruitReveal toDomain(DevilFruitRevealEntity reveal) {
 		return new DevilFruitReveal(new StoryPoint(reveal.getRevealedAtChapterId()), reveal.getRomaji(),
-				reveal.getTypeContentId(), reveal.getSubcategoryId(), toDomain(reveal.getTranslations()));
+				reveal.getTypeContentId(), reveal.getSubcategoryId(), believed(reveal.getTranslations()),
+				titles(reveal.getTranslations()));
 	}
 
 	private static DevilFruitRevealEntity.Written toWritten(DevilFruitReveal reveal) {
 		return new DevilFruitRevealEntity.Written(reveal.revealedAtChapterId(), reveal.romaji(), reveal.typeContentId(),
-				reveal.subcategoryId(), toEmbeddables(reveal.translations()));
+				reveal.subcategoryId(), toRevealEmbeddables(reveal));
+	}
+
+	/** The believed fields of a reveal, without the languages that hold a title only. */
+	private static Map<String, DevilFruitTranslation> believed(
+			Map<String, DevilFruitRevealTranslationEmbeddable> translations) {
+		Map<String, DevilFruitTranslation> byLanguage = new TreeMap<>();
+		translations.forEach((language, translation) -> {
+			var believed = new DevilFruitTranslation(translation.getName(), translation.getDescription(),
+					translation.getAdvantages(), translation.getDisadvantages());
+			if (!believed.isEmpty()) {
+				byLanguage.put(language, believed);
+			}
+		});
+		return byLanguage;
+	}
+
+	private static Map<String, String> titles(Map<String, DevilFruitRevealTranslationEmbeddable> translations) {
+		Map<String, String> byLanguage = new TreeMap<>();
+		translations.forEach((language, translation) -> {
+			if (translation.getTitle() != null) {
+				byLanguage.put(language, translation.getTitle());
+			}
+		});
+		return byLanguage;
+	}
+
+	/** A row per language with a believed field or a title. */
+	private static Map<String, DevilFruitRevealTranslationEmbeddable> toRevealEmbeddables(DevilFruitReveal reveal) {
+		Map<String, DevilFruitRevealTranslationEmbeddable> byLanguage = new HashMap<>();
+		reveal.languages().forEach(language -> {
+			DevilFruitTranslation believed = reveal.translationIn(language);
+			byLanguage.put(language, new DevilFruitRevealTranslationEmbeddable(believed.name(), believed.description(),
+					believed.advantages(), believed.disadvantages(), reveal.titleIn(language)));
+		});
+		return byLanguage;
 	}
 
 	/** Sorted by language code, so the same version always reads the same way. */

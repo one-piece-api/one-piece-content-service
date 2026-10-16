@@ -147,7 +147,7 @@ class DevilFruitMappersTest {
 		var zoan = new TypeReference(TYPE_ID, "Dobutsu", Map.of(),
 				List.of(new SubcategoryReference(mythical, Map.of("it", "Mitologico"))));
 		var reveal = new DevilFruitReveal(new StoryPoint(chapter), null, null, mythical, Map.of());
-		var noChapter = new DevilFruitReveal(StoryPoint.NONE, "Uo Uo", null, null, Map.of());
+		var noChapter = new DevilFruitReveal(StoryPoint.NONE, "Uo Uo", null, null, Map.of(), Map.of("it", "Uo"));
 		var fruit = new DevilFruit("Hito Hito", TYPE_ID, null, Map.of(), null, StoryPoint.NONE,
 				List.of(reveal, noChapter));
 
@@ -162,19 +162,22 @@ class DevilFruitMappersTest {
 			.isEqualTo(new SubcategoryReferenceResponse(mythical, Map.of("it", "Mitologico")));
 		assertThat(reveals.get(1).revealedAt().chapter()).isNull();
 		assertThat(reveals.get(1).romaji()).isEqualTo("Uo Uo");
+		assertThat(reveals.get(1).titles()).containsExactly(entry("it", "Uo"));
 	}
 
 	@Test
 	void aRequestSaysItsRevealsAndNoListIsNoReveal() {
 		UUID chapter = UUID.randomUUID();
 		var requested = new DevilFruitRevealRequest(new RevealedAtRequest(chapter), " Gomu ", TYPE_ID, null,
-				Map.of("it", new DevilFruitTranslationRequest(" Gom Gom ", null, null, null)));
+				Map.of("it", new DevilFruitTranslationRequest(" Gom Gom ", null, null, null)),
+				Map.of("it", " Il frutto è Nika "));
 
 		var fruit = DevilFruitRequestMapper
 			.toDomain(new DevilFruitRequest(null, null, null, null, null, null, List.of(requested)));
 
 		assertThat(fruit.reveals()).containsExactly(new DevilFruitReveal(new StoryPoint(chapter), " Gomu ", TYPE_ID,
-				null, Map.of("it", new DevilFruitTranslation(" Gom Gom ", null, null, null))));
+				null, Map.of("it", new DevilFruitTranslation(" Gom Gom ", null, null, null)),
+				Map.of("it", " Il frutto è Nika ")));
 		assertThat(DevilFruitRequestMapper.toDomain(new DevilFruitRequest(null, null, null, null, null, null, null))
 			.reveals()).isEmpty();
 	}

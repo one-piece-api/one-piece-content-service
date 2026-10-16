@@ -65,6 +65,8 @@ public record DevilFruit(String romaji, UUID typeContentId, UUID subcategoryId,
 
 	private static final String REVEAL_DESCRIPTION_FIELD = "reveals[%d].translations[%s].description";
 
+	private static final String REVEAL_TITLE_FIELD = "reveals[%d].titles[%s]";
+
 	/** Nothing chosen is {@link StoryPoint#NONE}, no reveal an empty list. */
 	public DevilFruit {
 		firstAppearance = StoryPoint.orNone(firstAppearance);
@@ -141,7 +143,8 @@ public record DevilFruit(String romaji, UUID typeContentId, UUID subcategoryId,
 	/**
 	 * The romaji and the type, then a name, a description, advantages and disadvantages
 	 * per language - every one missing; then the description of the last reveal per
-	 * language, so no reader before the last reveal meets the whole truth (T9).
+	 * language, so no reader before the last reveal meets the whole truth (T9); and the
+	 * title of every reveal per language (T10). Neither is asked on save.
 	 */
 	@Override
 	public List<String> missingFields(Collection<String> languages) {
@@ -172,6 +175,14 @@ public record DevilFruit(String romaji, UUID typeContentId, UUID subcategoryId,
 			languages.stream()
 				.filter(language -> this.reveals.get(last).translationIn(language).description() == null)
 				.forEach(language -> missing.add(REVEAL_DESCRIPTION_FIELD.formatted(last, language)));
+		}
+		for (int index = 0; index < this.reveals.size(); index++) {
+			DevilFruitReveal reveal = this.reveals.get(index);
+			for (String language : languages) {
+				if (reveal.titleIn(language) == null) {
+					missing.add(REVEAL_TITLE_FIELD.formatted(index, language));
+				}
+			}
 		}
 		return missing;
 	}

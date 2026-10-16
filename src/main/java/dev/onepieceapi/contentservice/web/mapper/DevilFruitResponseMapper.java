@@ -68,7 +68,7 @@ public class DevilFruitResponseMapper {
 				chapter == null ? null : StoryResponseMapper.toReferenceResponse(chapter, chapters));
 		return new DevilFruitRevealResponse(revealedAt, reveal.romaji(), toTypeResponse(reveal.typeContentId(), types),
 				toSubcategoryResponse(fruit.typeInForceAt(index), reveal.subcategoryId(), types),
-				toResponse(reveal.translations()));
+				toResponse(reveal.translations()), reveal.titles());
 	}
 
 	private static Map<String, DevilFruitTranslationResponse> toResponse(

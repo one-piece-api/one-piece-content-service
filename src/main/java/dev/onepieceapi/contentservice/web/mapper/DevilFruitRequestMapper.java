@@ -44,7 +44,7 @@ public class DevilFruitRequestMapper {
 		StoryPoint revealedAt = reveal.revealedAt() == null ? StoryPoint.NONE
 				: new StoryPoint(reveal.revealedAt().chapter());
 		return new DevilFruitReveal(revealedAt, reveal.romaji(), reveal.type(), reveal.subcategory(),
-				toDomain(reveal.translations()));
+				toDomain(reveal.translations()), reveal.titles());
 	}
 
 	private static Map<String, DevilFruitTranslation> toDomain(Map<String, DevilFruitTranslationRequest> requested) {

@@ -7,6 +7,7 @@ import dev.onepieceapi.contentservice.domain.workflow.Text;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.UUID;
 
 /**
@@ -25,14 +26,28 @@ import java.util.UUID;
  * of it
  * @param subcategoryId the subcategory believed; null for none
  * @param translations what was believed per language code; a field null is not part of it
+ * @param titles the short title of the reveal per language code (T10) - not a believed
+ * value, so it never makes the reveal define a field
  */
 public record DevilFruitReveal(StoryPoint revealedAt, String romaji, UUID typeContentId, UUID subcategoryId,
-		Map<String, DevilFruitTranslation> translations) implements Reveal {
+		Map<String, DevilFruitTranslation> translations, Map<String, String> titles) implements Reveal {
 
-	/** Nothing chosen is {@link StoryPoint#NONE}, no translation an empty map. */
+	/** The longest title of a reveal. */
+	public static final int TITLE_MAX_LENGTH = 60;
+
+	/**
+	 * Nothing chosen is {@link StoryPoint#NONE}, no translation or title an empty map.
+	 */
 	public DevilFruitReveal {
 		revealedAt = StoryPoint.orNone(revealedAt);
 		translations = translations == null ? Map.of() : translations;
+		titles = titles == null ? Map.of() : titles;
+	}
+
+	/** A reveal with no title yet. */
+	public DevilFruitReveal(StoryPoint revealedAt, String romaji, UUID typeContentId, UUID subcategoryId,
+			Map<String, DevilFruitTranslation> translations) {
+		this(revealedAt, romaji, typeContentId, subcategoryId, translations, Map.of());
 	}
 
 	DevilFruitReveal normalized() {
@@ -43,10 +58,18 @@ public record DevilFruitReveal(StoryPoint revealedAt, String romaji, UUID typeCo
 				written.put(language, normalized);
 			}
 		});
+		Map<String, String> writtenTitles = new TreeMap<>();
+		this.titles.forEach((language, title) -> {
+			String stripped = Text.stripToNull(title);
+			if (stripped != null) {
+				writtenTitles.put(language, stripped);
+			}
+		});
 		return new DevilFruitReveal(this.revealedAt, Text.stripToNull(this.romaji), this.typeContentId,
-				this.subcategoryId, written);
+				this.subcategoryId, written, writtenTitles);
 	}
 
+	/** A title alone defines nothing: it is about the reveal, not a believed value. */
 	@Override
 	public boolean definesNothing() {
 		return this.romaji == null && !definesClassification()
@@ -70,8 +93,15 @@ public record DevilFruitReveal(StoryPoint revealedAt, String romaji, UUID typeCo
 		return this.translations.getOrDefault(language, DevilFruitTranslation.NONE);
 	}
 
-	Set<String> languages() {
-		return this.translations.keySet();
+	/** The title of the reveal in this language; null when none was written. */
+	public String titleIn(String language) {
+		return this.titles.get(language);
+	}
+
+	public Set<String> languages() {
+		Set<String> languages = new TreeSet<>(this.translations.keySet());
+		languages.addAll(this.titles.keySet());
+		return languages;
 	}
 
 }

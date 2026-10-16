@@ -70,3 +70,36 @@ these are not events (ADR-0009).
 - The frontend (TL4) edits and compares reveals and translates `REVEALS_OUT_OF_ORDER`. The public
   `asOfChapter` resolution comes in TL5/TL6, on the shared `GomuGomuReveals` fixture.
 - Other entities (Devil Fruit Type, story structure) can adopt `Revealing` additively.
+
+## Addendum: Reveal title (TL3b)
+
+### Context
+
+An editor needs a one-glance label for each reveal ("The fruit is Nika"), and the
+timeline reads forward in the UI (plan T10, T11), so a chapter alone says too little.
+
+### Decision
+
+- Each reveal has a **title per language** (max 60), `DevilFruitReveal.titles`. It is about the
+  reveal, not a believed value: `definesNothing()` is unchanged, so a title alone does not
+  satisfy "at least one field per reveal".
+- **Required at submission** for every reveal and every language
+  (`VERSION_INCOMPLETE`, field `reveals[i].titles[lang]`), never on save, so drafts can be saved
+  piece by piece.
+- Storage `V21`: nullable `title` on `devil_fruit_version_reveal_translation`, mapped by a
+  dedicated `DevilFruitRevealTranslationEmbeddable` rather than the shared
+  `TranslationEmbeddable`, which would give the fruit's own translations a column they never use.
+- A language holding only a title counts among the languages of the version; a title takes part
+  in equality, so changing only a title makes a new version not identical.
+- Over-long titles are `400` (bean validation), like the other lengths.
+
+### Alternatives
+
+- **No title, chapter only**: discarded by the owner (2026-10-16).
+- **`title` in the shared `TranslationEmbeddable`**: leaks a reveal-only field into every translation.
+
+### Consequences
+
+- The public `revealHistory` carries the titles in TL5.
+- The backend compares versions only for equality: the frontend (TL4) compares reveals field by field and
+  includes the title.

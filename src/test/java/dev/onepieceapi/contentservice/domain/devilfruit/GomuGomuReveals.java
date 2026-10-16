@@ -44,14 +44,17 @@ public final class GomuGomuReveals {
 
 	/** Until chapter 100: only a first description. */
 	public static final DevilFruitReveal FIRST_BELIEF = new DevilFruitReveal(new StoryPoint(CHAPTER_100), null, null,
-			null, Map.of("it", new DevilFruitTranslation(null, "Gomma, niente di più", null, null), "en",
-					new DevilFruitTranslation(null, "Rubber, nothing more", null, null)));
+			null,
+			Map.of("it", new DevilFruitTranslation(null, "Gomma, niente di più", null, null), "en",
+					new DevilFruitTranslation(null, "Rubber, nothing more", null, null)),
+			Map.of("it", "Il frutto ha un nome", "en", "The fruit gets a name"));
 
 	/** Until chapter 1044: the Gomu Gomu no Mi, a Paramecia, of no subcategory. */
 	public static final DevilFruitReveal GOMU_GOMU = new DevilFruitReveal(new StoryPoint(CHAPTER_1044),
 			"Gomu Gomu no Mi", PARAMECIA, null,
 			Map.of("it", new DevilFruitTranslation("Frutto Gom Gom", "Un corpo di gomma", null, null), "en",
-					new DevilFruitTranslation("Gum-Gum Fruit", "A body of rubber", null, null)));
+					new DevilFruitTranslation("Gum-Gum Fruit", "A body of rubber", null, null)),
+			Map.of("it", "Il frutto è Nika", "en", "The fruit is Nika"));
 
 	private GomuGomuReveals() {
 	}

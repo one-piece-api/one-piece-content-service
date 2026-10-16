@@ -190,7 +190,8 @@ class RevealIntegrationTest {
 	void revealsAreReadAgainInOrderAndARewriteWithFewerKeepsOnlyThose() {
 		UUID logia = typeContent(PUBLISHED, type("Logia", List.of()));
 		var believed = new DevilFruitReveal(new StoryPoint(chapter(PUBLISHED, 2)), "Gomu Gomu", logia, null,
-				Map.of("it", new DevilFruitTranslation("Gom Gom", null, null, null)));
+				Map.of("it", new DevilFruitTranslation("Gom Gom", null, null, null)),
+				Map.of("it", "Il frutto è Gomu Gomu", "en", "The fruit is Gomu Gomu"));
 		var last = reveal(chapter(PUBLISHED, 3), "Gomu Gomu no Mi");
 
 		UUID fruit = this.fruits.create(EDITOR, this.chopper, fruit(believed, last), ImageChange.KEEP).id();
@@ -257,7 +258,8 @@ class RevealIntegrationTest {
 	@Test
 	void theLastRevealWithoutADescriptionInEveryLanguageIsNotSubmitted() {
 		var undescribed = new DevilFruitReveal(new StoryPoint(chapter(PUBLISHED, 2)), "Gomu", null, null,
-				Map.of("it", new DevilFruitTranslation(null, "Gomma", null, null)));
+				Map.of("it", new DevilFruitTranslation(null, "Gomma", null, null)),
+				Map.of("it", "Titolo", "en", "Title"));
 		UUID fruit = this.fruits.create(EDITOR, this.chopper, fruit(undescribed), ImageChange.KEEP).id();
 
 		var refused = catchThrowableOfType(VersionIncompleteException.class,
@@ -265,6 +267,32 @@ class RevealIntegrationTest {
 
 		assertThat(violationsOf(refused)).extracting(FieldViolation::field)
 			.containsExactly("reveals[0].translations[en].description");
+	}
+
+	@Test
+	void aRevealWithoutTitlesIsSavedButNotSubmittedAndATitleOnlyLanguageIsKept() {
+		var untitled = new DevilFruitReveal(new StoryPoint(chapter(PUBLISHED, 2)), "Gomu", null, null,
+				Map.of("it", new DevilFruitTranslation(null, "Gomma", null, null), "en",
+						new DevilFruitTranslation(null, "Rubber", null, null)),
+				Map.of("it", "Rivelazione"));
+		UUID fruit = this.fruits.create(EDITOR, this.chopper, fruit(untitled), ImageChange.KEEP).id();
+		stored();
+
+		assertThat(this.fruits.getVersion(EDITOR, this.chopper, fruit, 1).version().body().reveals())
+			.containsExactly(untitled);
+
+		var refused = catchThrowableOfType(VersionIncompleteException.class,
+				() -> this.fruits.submit(EDITOR, this.chopper, fruit, 1));
+
+		assertThat(violationsOf(refused)).extracting(FieldViolation::field).containsExactly("reveals[0].titles[en]");
+
+		var titleOnly = new DevilFruitReveal(new StoryPoint(chapter(PUBLISHED, 3)), "Gomu", null, null,
+				Map.of("it", new DevilFruitTranslation(null, "Gomma", null, null)), Map.of("en", "Reveal"));
+		this.fruits.edit(EDITOR, this.chopper, fruit, 1, fruit(titleOnly));
+		stored();
+
+		assertThat(this.fruits.getVersion(EDITOR, this.chopper, fruit, 1).version().body().reveals())
+			.containsExactly(titleOnly);
 	}
 
 	@Test
@@ -373,7 +401,8 @@ class RevealIntegrationTest {
 	private static DevilFruitReveal reveal(UUID chapter, String romaji) {
 		return new DevilFruitReveal(new StoryPoint(chapter), romaji, null, null,
 				Map.of("it", new DevilFruitTranslation(null, "Gomma", null, null), "en",
-						new DevilFruitTranslation(null, "Rubber", null, null)));
+						new DevilFruitTranslation(null, "Rubber", null, null)),
+				Map.of("it", "Rivelazione", "en", "Reveal"));
 	}
 
 	private static Map<String, DevilFruitTranslation> fruitTranslations() {

@@ -11,8 +11,10 @@ import java.util.Map;
  * @param type the Devil Fruit Type believed, as it is today; null when not part of it
  * @param subcategory the subcategory believed, of the type in force at the reveal
  * @param translations what was believed per language code
+ * @param titles the short title of the reveal per language code
  */
 public record DevilFruitRevealResponse(RevealedAtResponse revealedAt, String romaji, TypeReferenceResponse type,
-		SubcategoryReferenceResponse subcategory, Map<String, DevilFruitTranslationResponse> translations) {
+		SubcategoryReferenceResponse subcategory, Map<String, DevilFruitTranslationResponse> translations,
+		Map<String, String> titles) {
 
 }

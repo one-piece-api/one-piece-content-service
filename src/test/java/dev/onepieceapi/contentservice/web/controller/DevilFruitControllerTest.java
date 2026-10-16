@@ -339,19 +339,20 @@ class DevilFruitControllerTest {
 			.contentType("application/json")
 			.content("{\"romaji\":\"Hito Hito\",\"reveals\":[{\"revealedAt\":{\"chapter\":\"" + CHAPTER_ID
 					+ "\"},\"romaji\":\"Gomu Gomu\",\"type\":\"" + TYPE_ID
-					+ "\",\"translations\":{\"en\":{\"name\":\"Gum-Gum Fruit\"}}}]}");
+					+ "\",\"translations\":{\"en\":{\"name\":\"Gum-Gum Fruit\"}},\"titles\":{\"en\":\"The fruit is Nika\"}}]}");
 		this.mockMvc.perform(request).andExpect(status().isCreated());
 
 		var written = ArgumentCaptor.forClass(DevilFruit.class);
 		verify(this.service).create(any(), any(), written.capture(), eq(ImageChange.KEEP));
-		assertThat(written.getValue().reveals())
-			.containsExactly(new DevilFruitReveal(new StoryPoint(CHAPTER_ID), "Gomu Gomu", TYPE_ID, null,
-					Map.of("en", new DevilFruitTranslation("Gum-Gum Fruit", null, null, null))));
+		assertThat(written.getValue().reveals()).containsExactly(new DevilFruitReveal(new StoryPoint(CHAPTER_ID),
+				"Gomu Gomu", TYPE_ID, null, Map.of("en", new DevilFruitTranslation("Gum-Gum Fruit", null, null, null)),
+				Map.of("en", "The fruit is Nika")));
 	}
 
 	@Test
 	void aVersionSaysItsRevealsWithTheirChapterAndTypeAsTheyAreToday() throws Exception {
-		var reveal = new DevilFruitReveal(new StoryPoint(CHAPTER_ID), "Gomu Gomu", TYPE_ID, null, Map.of());
+		var reveal = new DevilFruitReveal(new StoryPoint(CHAPTER_ID), "Gomu Gomu", TYPE_ID, null, Map.of(),
+				Map.of("it", "Il frutto è Nika"));
 		var body = new DevilFruit("Hito Hito", null, null, Map.of(), null, StoryPoint.NONE, List.of(reveal));
 		var access = new VersionAccess<>(Version.<DevilFruit>builder()
 			.number(1)
@@ -371,6 +372,7 @@ class DevilFruitControllerTest {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.body.reveals[0].revealedAt.chapter.number").value(100))
 			.andExpect(jsonPath("$.body.reveals[0].romaji").value("Gomu Gomu"))
+			.andExpect(jsonPath("$.body.reveals[0].titles.it").value("Il frutto è Nika"))
 			.andExpect(jsonPath("$.body.reveals[0].type.id").value(TYPE_ID.toString()))
 			.andExpect(jsonPath("$.body.reveals[0].subcategory").doesNotExist());
 	}
@@ -380,6 +382,16 @@ class DevilFruitControllerTest {
 		var request = post("/devil-fruits").with(callerWith(Permission.CONTENT_WRITE))
 			.contentType("application/json")
 			.content("{\"reveals\":[{\"romaji\":\"" + "a".repeat(DevilFruit.ROMAJI_MAX_LENGTH + 1) + "\"}]}");
+
+		this.mockMvc.perform(request).andExpect(status().isBadRequest());
+	}
+
+	@Test
+	void aRevealTitleTooLongIsABadRequest() throws Exception {
+		var request = post("/devil-fruits").with(callerWith(Permission.CONTENT_WRITE))
+			.contentType("application/json")
+			.content("{\"reveals\":[{\"titles\":{\"it\":\"" + "a".repeat(DevilFruitReveal.TITLE_MAX_LENGTH + 1)
+					+ "\"}}]}");
 
 		this.mockMvc.perform(request).andExpect(status().isBadRequest());
 	}

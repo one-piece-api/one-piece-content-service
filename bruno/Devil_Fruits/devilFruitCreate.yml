@@ -23,6 +23,7 @@ http:
             },
             "romaji": "",
             "subcategory": "",
+            "titles": {},
             "translations": {},
             "type": ""
           }
@@ -62,6 +63,7 @@ examples:
                 },
                 "romaji": "",
                 "subcategory": "",
+                "titles": {},
                 "translations": {},
                 "type": ""
               }
@@ -130,6 +132,7 @@ examples:
                 },
                 "romaji": "",
                 "subcategory": "",
+                "titles": {},
                 "translations": {},
                 "type": ""
               }
@@ -182,6 +185,7 @@ examples:
                 },
                 "romaji": "",
                 "subcategory": "",
+                "titles": {},
                 "translations": {},
                 "type": ""
               }

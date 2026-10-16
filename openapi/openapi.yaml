@@ -6841,6 +6841,11 @@ components:
           type: string
           format: uuid
           description: The id of a subcategory of the type in force at the reveal
+        titles:
+          type: object
+          additionalProperties:
+            type: string
+          description: Short title of the reveal per language code; required at submission
         translations:
           type: object
           additionalProperties:
@@ -6859,6 +6864,10 @@ components:
           type: string
         subcategory:
           $ref: "#/components/schemas/SubcategoryReferenceResponse"
+        titles:
+          type: object
+          additionalProperties:
+            type: string
         translations:
           type: object
           additionalProperties:

@@ -40,12 +40,13 @@ public class DevilFruitRevealEntity {
 	private UUID subcategoryId;
 
 	/**
-	 * What was believed per language code; a language nothing was saved for is absent.
+	 * What was believed per language code, with the title of the reveal; a language
+	 * nothing was saved for is absent.
 	 */
 	@ElementCollection
 	@CollectionTable(name = "devil_fruit_version_reveal_translation", joinColumns = @JoinColumn(name = "reveal_id"))
 	@MapKeyColumn(name = "language_code")
-	private Map<String, TranslationEmbeddable> translations = new HashMap<>();
+	private Map<String, DevilFruitRevealTranslationEmbeddable> translations = new HashMap<>();
 
 	public DevilFruitRevealEntity(Written written) {
 		this.id = UUID.randomUUID();
@@ -64,7 +65,7 @@ public class DevilFruitRevealEntity {
 
 	/** What a reveal says, as a version is written. */
 	public record Written(UUID revealedAtChapterId, String romaji, UUID typeContentId, UUID subcategoryId,
-			Map<String, TranslationEmbeddable> translations) {
+			Map<String, DevilFruitRevealTranslationEmbeddable> translations) {
 	}
 
 }

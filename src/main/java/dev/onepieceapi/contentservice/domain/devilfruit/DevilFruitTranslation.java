@@ -28,7 +28,7 @@ public record DevilFruitTranslation(String name, String description, String adva
 	}
 
 	/** Nothing written in this language. */
-	boolean isEmpty() {
+	public boolean isEmpty() {
 		return Stream.of(this.name, this.description, this.advantages, this.disadvantages).allMatch(Objects::isNull);
 	}
 
