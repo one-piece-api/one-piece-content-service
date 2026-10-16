@@ -65,3 +65,14 @@ both a natural key and single-target relations.
   retiring a chapter one more on `event_version`.
 - Characters will join as one more participant table and one more `targets(...)` relation,
   additively (`participants.characters`).
+
+## Addendum (2026-10-16, TL4): the list in the order of the world
+
+- **Decision.** The events list sorts by `occursAt` (`EventSortField`), its default: world dates by
+  first year, then chapters by the number of their last approved version, then events with no time;
+  `desc` reverses the first two, events with no time stay last. `romaji`/`number` are no longer
+  accepted for events (no natural key).
+- **How.** An entity may declare sorts of its own: `VersionBodyRepository.ownSorting()` (keys +
+  default sort, none by default) feeds `VersionBodySorting`; `EventSorting` holds the event's.
+- **Alternative rejected.** `occursAt` in the shared `ContentSortField` guarded per entity: every
+  entity would accept a sort only one has.

@@ -44,6 +44,34 @@ public class VersionBodySorting {
 
 	}
 
+	/**
+	 * A sort an entity has besides those of every entity, e.g. the events by when they
+	 * occur: the values a row is ordered by, one after the other.
+	 *
+	 * @param <E> the entity's version table
+	 */
+	@FunctionalInterface
+	public interface OwnSortKey<E extends VersionBodyEntity> {
+
+		List<Expression<?>> of(Root<E> root, CriteriaQuery<?> query, CriteriaBuilder cb);
+
+	}
+
+	/**
+	 * The sorts an entity has of its own, by the name a request gives them, and the sort
+	 * its list shows when none is asked for.
+	 *
+	 * @param <E> the entity's version table
+	 */
+	public record OwnSorting<E extends VersionBodyEntity>(Map<String, OwnSortKey<E>> keys, Sort defaultSort) {
+
+		/** None of its own: the sorts of every entity, last update first by default. */
+		public static <E extends VersionBodyEntity> OwnSorting<E> none() {
+			return new OwnSorting<>(Map.of(), DEFAULT_SORT);
+		}
+
+	}
+
 	private static final Map<ContentSortField, SortKey> KEYS = new EnumMap<>(ContentSortField.class);
 
 	static {
@@ -68,27 +96,42 @@ public class VersionBodySorting {
 	 */
 	public <E extends VersionBodyEntity> Specification<E> orderedBy(Sort requested, String language,
 			Optional<String> naturalKey) {
+		return orderedBy(requested, language, naturalKey, OwnSorting.none());
+	}
+
+	/**
+	 * As {@link #orderedBy(Sort, String, Optional)}, with the sorts the entity has of its
+	 * own and the default it gives its list.
+	 */
+	public <E extends VersionBodyEntity> Specification<E> orderedBy(Sort requested, String language,
+			Optional<String> naturalKey, OwnSorting<E> own) {
 		return (root, query, cb) -> {
 			if (!isCount(query)) {
-				query.orderBy(
-						ordersFor(requested.isSorted() ? requested : DEFAULT_SORT, root, cb, language, naturalKey));
+				query.orderBy(ordersFor(requested.isSorted() ? requested : own.defaultSort(), root, query, cb, language,
+						naturalKey, own));
 			}
 			return null;
 		};
 	}
 
-	private static List<Order> ordersFor(Sort sort, Root<? extends VersionBodyEntity> root, CriteriaBuilder cb,
-			String language, Optional<String> naturalKey) {
+	private static <E extends VersionBodyEntity> List<Order> ordersFor(Sort sort, Root<E> root, CriteriaQuery<?> query,
+			CriteriaBuilder cb, String language, Optional<String> naturalKey, OwnSorting<E> own) {
 		List<Order> orders = new ArrayList<>();
-		sort.forEach(order -> orders.add(toOrder(order, root, cb, language, naturalKey)));
+		sort.forEach(order -> keysOf(order, root, query, cb, language, naturalKey, own)
+			.forEach(key -> orders.add(order.isAscending() ? cb.asc(key, Nulls.LAST) : cb.desc(key, Nulls.LAST))));
 		orders.add(cb.asc(workflowOf(root).get(ContentVersionEntity.Fields.contentId)));
 		return orders;
 	}
 
-	private static Order toOrder(Sort.Order order, Root<? extends VersionBodyEntity> root, CriteriaBuilder cb,
-			String language, Optional<String> naturalKey) {
-		Expression<?> key = keyOf(order).of(root, cb, language, naturalKey);
-		return order.isAscending() ? cb.asc(key, Nulls.LAST) : cb.desc(key, Nulls.LAST);
+	/**
+	 * The values a row is ordered by for this sort: the entity's own, else one of every
+	 * entity's.
+	 */
+	private static <E extends VersionBodyEntity> List<Expression<?>> keysOf(Sort.Order order, Root<E> root,
+			CriteriaQuery<?> query, CriteriaBuilder cb, String language, Optional<String> naturalKey,
+			OwnSorting<E> own) {
+		OwnSortKey<E> ownKey = own.keys().get(order.getProperty());
+		return ownKey != null ? ownKey.of(root, query, cb) : List.of(keyOf(order).of(root, cb, language, naturalKey));
 	}
 
 	/** The field has been validated on the way in: an unknown one here is a bug. */

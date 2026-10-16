@@ -65,6 +65,7 @@ import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabas
 import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
@@ -422,6 +423,43 @@ class EventIntegrationTest {
 		var page = this.events.list(EDITOR, this.chopper, filter, PageRequest.of(0, 20), "en");
 
 		assertThat(page.getContent()).extracting(ContentSummary::contentId).containsExactly(ofGomu);
+	}
+
+	@Test
+	void theListComesInTheOrderOfTheWorldWorldDatesFirstThenChaptersThenEventsWithoutATime() {
+		UUID chapterTwo = chapter(PUBLISHED, 2);
+		UUID chapterFive = chapter(PUBLISHED, 5);
+		UUID inChapterFive = eventContent(DRAFT, event(new ChapterTime(chapterFive)));
+		UUID untimed = eventContent(DRAFT, event(null));
+		UUID around1500 = eventContent(DRAFT, event(world(1500, null, true)));
+		UUID inChapterTwo = eventContent(DRAFT, event(new ChapterTime(chapterTwo)));
+		UUID from1200 = eventContent(DRAFT, event(world(1200, 1300, false)));
+		stored();
+
+		assertThat(eventIds(PageRequest.of(0, 20))).containsExactly(from1200, around1500, inChapterTwo, inChapterFive,
+				untimed);
+		assertThat(eventIds(PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "occursAt"))))
+			.containsExactly(inChapterFive, inChapterTwo, around1500, from1200, untimed);
+	}
+
+	@Test
+	void aChapterIsPlacedByTheNumberItWasLastApprovedWith() {
+		UUID chapterThree = chapter(PUBLISHED, 3);
+		UUID renumbered = chapter(PUBLISHED, 1);
+		OnlineChapters.version(this.chapterRepository, renumbered, 2, DRAFT, 9);
+		UUID inChapterThree = eventContent(DRAFT, event(new ChapterTime(chapterThree)));
+		UUID inRenumbered = eventContent(DRAFT, event(new ChapterTime(renumbered)));
+		stored();
+
+		assertThat(eventIds(PageRequest.of(0, 20))).containsExactly(inRenumbered, inChapterThree);
+	}
+
+	private List<UUID> eventIds(PageRequest pageable) {
+		return this.events.list(EDITOR, this.chopper, new ContentFilter(null, null, null, null), pageable, "en")
+			.getContent()
+			.stream()
+			.map(ContentSummary::contentId)
+			.toList();
 	}
 
 	private ValueInvalidException refused(Event written) {

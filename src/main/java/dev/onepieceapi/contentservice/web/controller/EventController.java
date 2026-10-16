@@ -1,7 +1,7 @@
 package dev.onepieceapi.contentservice.web.controller;
 
 import dev.onepieceapi.contentservice.domain.event.Event;
-import dev.onepieceapi.contentservice.domain.workflow.ContentSortField;
+import dev.onepieceapi.contentservice.domain.event.EventSortField;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
 import dev.onepieceapi.contentservice.service.devilfruit.DevilFruitLinks;
 import dev.onepieceapi.contentservice.service.event.EventService;
@@ -73,12 +73,13 @@ class EventController extends ContentController<Event, EventResponse, EventNames
 
 	/**
 	 * One page of the list, narrowed to the events of a Devil Fruit when asked. A search
-	 * reads the titles; a sort by {@code name} reads the title in the language of the
+	 * reads the titles; with no sort asked for, the events come in the order of the world
+	 * ({@code occursAt}). A sort by {@code name} reads the title in the language of the
 	 * standard {@code Accept-Language} header.
 	 */
 	@GetMapping(ApiPaths.CONTENT_LIST)
 	PageResponse<ContentSummaryResponse<EventNamesResponse>> list(@ParameterObject @Valid EventListRequest request,
-			@ParameterObject @SortableBy(ContentSortField.class) Pageable pageable,
+			@ParameterObject @SortableBy(EventSortField.class) Pageable pageable,
 			@AuthenticationPrincipal AuthenticatedCaller caller, Locale locale) {
 		return listPage(EventRequestMapper.toFilter(request), pageable, caller, locale);
 	}

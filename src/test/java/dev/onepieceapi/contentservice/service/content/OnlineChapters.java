@@ -44,9 +44,19 @@ public final class OnlineChapters {
 	public static UUID chapter(ContentRepository contents, ChapterVersionRepository chapters, VersionStatus status,
 			int number) {
 		UUID contentId = contents.save(new ContentEntity(UUID.randomUUID(), EntityType.CHAPTER, EARLIER)).getId();
+		version(chapters, contentId, 1, status, number);
+		return contentId;
+	}
+
+	/**
+	 * One more version of a chapter, with this version number, status and chapter number.
+	 */
+	public static void version(ChapterVersionRepository chapters, UUID contentId, int versionNumber,
+			VersionStatus status, int number) {
 		var version = new ChapterVersionEntity(ContentVersionEntity.builder()
 			.contentId(contentId)
-			.versionNumber(1)
+			.versionNumber(versionNumber)
+			.basedOnNumber(versionNumber == 1 ? null : versionNumber - 1)
 			.author(UserMapper.toEmbeddable(AUTHOR))
 			.status(status)
 			.createdAt(EARLIER)
@@ -54,7 +64,6 @@ public final class OnlineChapters {
 			.build());
 		StoryVersionMapper.rewrite(version, Chapter.builder().number(number).build(), EARLIER);
 		chapters.save(version);
-		return contentId;
 	}
 
 }

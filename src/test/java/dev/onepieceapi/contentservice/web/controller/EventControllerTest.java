@@ -152,6 +152,19 @@ class EventControllerTest {
 	}
 
 	@Test
+	void theListSortsByWhenEventsOccurButNotByANaturalKeyTheyDoNotHave() throws Exception {
+		when(this.service.list(any(), any(), any(), any(), any()))
+			.thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 20), 0));
+
+		this.mockMvc.perform(get("/events").param("sort", "occursAt,desc").with(callerWith(Permission.CONTENT_READ)))
+			.andExpect(status().isOk());
+		this.mockMvc.perform(get("/events").param("sort", "romaji").with(callerWith(Permission.CONTENT_READ)))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.errors[0].message")
+				.value("can only be sorted by [author, name, occursAt, status, updatedAt]"));
+	}
+
+	@Test
 	void theListIsNarrowedToTheEventsOfAFruit() throws Exception {
 		when(this.service.list(any(), any(), any(), any(), any()))
 			.thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 20), 0));

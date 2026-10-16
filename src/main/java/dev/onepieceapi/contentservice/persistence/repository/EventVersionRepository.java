@@ -1,6 +1,8 @@
 package dev.onepieceapi.contentservice.persistence.repository;
 
 import dev.onepieceapi.contentservice.persistence.entity.EventVersionEntity;
+import dev.onepieceapi.contentservice.persistence.specification.EventSorting;
+import dev.onepieceapi.contentservice.persistence.specification.VersionBodySorting;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 
@@ -13,6 +15,12 @@ import java.util.UUID;
  * none of a slug; here, the events online that a Devil Fruit or a chapter is used by.
  */
 public interface EventVersionRepository extends VersionBodyRepository<EventVersionEntity> {
+
+	/** By when they occur, in the order of the world - also the default of the list. */
+	@Override
+	default VersionBodySorting.OwnSorting<EventVersionEntity> ownSorting() {
+		return EventSorting.SORTING;
+	}
 
 	/** How many events are online with this Devil Fruit taking part. */
 	@Query("""

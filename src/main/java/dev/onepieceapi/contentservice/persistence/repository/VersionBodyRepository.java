@@ -47,6 +47,14 @@ public interface VersionBodyRepository<E extends VersionBodyEntity>
 	}
 
 	/**
+	 * The sorts the entity has of its own and the default of its list; by default none,
+	 * last update first.
+	 */
+	default VersionBodySorting.OwnSorting<E> ownSorting() {
+		return VersionBodySorting.OwnSorting.none();
+	}
+
+	/**
 	 * One page of the list: one row per content, by its most recent version among
 	 * {@code statuses}, filtered and sorted as asked; a sort by name reads it in
 	 * {@code language}.
@@ -54,7 +62,7 @@ public interface VersionBodyRepository<E extends VersionBodyEntity>
 	default Page<E> search(Collection<VersionStatus> statuses, ContentFilter filter, Clock clock, Pageable pageable,
 			String language) {
 		var specification = VersionBodySpecifications.<E>listOf(statuses, filter, clock, naturalKeyAttribute())
-			.and(VersionBodySorting.orderedBy(pageable.getSort(), language, naturalKeyAttribute()));
+			.and(VersionBodySorting.orderedBy(pageable.getSort(), language, naturalKeyAttribute(), ownSorting()));
 		return findAll(specification, PageRequest.of(pageable.getPageNumber(), pageable.getPageSize()));
 	}
 
