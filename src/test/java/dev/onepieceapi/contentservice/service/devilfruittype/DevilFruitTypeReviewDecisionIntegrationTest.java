@@ -1,5 +1,8 @@
 package dev.onepieceapi.contentservice.service.devilfruittype;
 
+import dev.onepieceapi.contentservice.persistence.mapper.DevilFruitTypeVersionMapper;
+import dev.onepieceapi.contentservice.service.content.OnlineChapters;
+import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.service.audit.AuditLogService;
 
 import dev.onepieceapi.contentservice.config.RulesProperties;
@@ -12,7 +15,6 @@ import dev.onepieceapi.contentservice.domain.workflow.VersionEvent;
 import dev.onepieceapi.contentservice.persistence.entity.ContentEntity;
 import dev.onepieceapi.contentservice.persistence.entity.ContentVersionEntity;
 import dev.onepieceapi.contentservice.persistence.entity.DevilFruitTypeVersionEntity;
-import dev.onepieceapi.contentservice.persistence.entity.TranslationEmbeddable;
 import dev.onepieceapi.contentservice.persistence.mapper.UserMapper;
 import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
@@ -137,6 +139,9 @@ class DevilFruitTypeReviewDecisionIntegrationTest {
 
 	private UUID paramecia;
 
+	/** The chapter online every type seeded first appears in. */
+	private StoryPoint firstAppearance;
+
 	@BeforeEach
 	void setUp() {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
@@ -148,6 +153,7 @@ class DevilFruitTypeReviewDecisionIntegrationTest {
 						this.chapterRepository, new RulesProperties(5)),
 				auditLogService, clock);
 
+		this.firstAppearance = OnlineChapters.onlineChapter(this.contentRepository, this.chapterRepository);
 		this.logia = content();
 		version(this.logia,
 				ContentVersionEntity.builder().status(IN_REVIEW).claimant(UserMapper.toEmbeddable(this.zoro)), "Logia");
@@ -305,12 +311,9 @@ class DevilFruitTypeReviewDecisionIntegrationTest {
 		var body = new DevilFruitType(romaji,
 				Map.of("it", new DevilFruitTypeTranslation(romaji + " IT", "descrizione", "vantaggi", "svantaggi"),
 						"en",
-						new DevilFruitTypeTranslation(romaji + " EN", "description", "advantages", "disadvantages")));
-		version.setRomaji(body.romaji());
-		body.translations()
-			.forEach((language, translation) -> version.getTranslations()
-				.put(language, new TranslationEmbeddable(translation.name(), translation.description(),
-						translation.advantages(), translation.disadvantages())));
+						new DevilFruitTypeTranslation(romaji + " EN", "description", "advantages", "disadvantages")),
+				List.of(), this.firstAppearance);
+		DevilFruitTypeVersionMapper.rewrite(version, body, EARLIER);
 		this.versionRepository.save(version);
 	}
 

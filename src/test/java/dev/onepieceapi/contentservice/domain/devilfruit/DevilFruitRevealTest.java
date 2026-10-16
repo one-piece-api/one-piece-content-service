@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import static dev.onepieceapi.contentservice.domain.devilfruit.GomuGomuReveals.CHAPTER_1;
 import static dev.onepieceapi.contentservice.domain.devilfruit.GomuGomuReveals.CHAPTER_1044;
 import static dev.onepieceapi.contentservice.domain.devilfruit.GomuGomuReveals.PARAMECIA;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -22,7 +23,7 @@ class DevilFruitRevealTest {
 
 	private static DevilFruit withReveals(DevilFruitReveal... reveals) {
 		return new DevilFruit("Hito Hito no Mi", GomuGomuReveals.ZOAN, null,
-				Map.of("it", GomuGomuReveals.TRUTH_IT, "en", GomuGomuReveals.TRUTH_EN), null, StoryPoint.NONE,
+				Map.of("it", GomuGomuReveals.TRUTH_IT, "en", GomuGomuReveals.TRUTH_EN), null, new StoryPoint(CHAPTER_1),
 				List.of(reveals));
 	}
 

@@ -113,14 +113,18 @@ public record DevilFruitType(String romaji, Map<String, DevilFruitTypeTranslatio
 	}
 
 	/**
-	 * The romaji, then a name, a description, advantages and disadvantages per language,
-	 * then a name and a description per language of each subcategory - every one missing.
+	 * The romaji and the first appearance, then a name, a description, advantages and
+	 * disadvantages per language, then a name and a description per language of each
+	 * subcategory - every one missing.
 	 */
 	@Override
 	public List<String> missingFields(Collection<String> languages) {
 		List<String> missing = new ArrayList<>();
 		if (this.romaji == null) {
 			missing.add(ROMAJI_FIELD);
+		}
+		if (lacksFirstAppearance()) {
+			missing.add(FIELD);
 		}
 		for (String language : languages) {
 			DevilFruitTypeTranslation translation = translationIn(language);
