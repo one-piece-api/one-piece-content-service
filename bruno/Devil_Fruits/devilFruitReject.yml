@@ -87,19 +87,19 @@ examples:
                 "id": "",
                 "url": ""
               },
-              "phases": [
+              "reveals": [
                 {
-                  "romaji": "",
-                  "subcategory": {
-                    "id": "",
-                    "names": {}
-                  },
-                  "supersededAt": {
+                  "revealedAt": {
                     "chapter": {
                       "id": "",
                       "names": {},
                       "number": 0
                     }
+                  },
+                  "romaji": "",
+                  "subcategory": {
+                    "id": "",
+                    "names": {}
                   },
                   "translations": {},
                   "type": {

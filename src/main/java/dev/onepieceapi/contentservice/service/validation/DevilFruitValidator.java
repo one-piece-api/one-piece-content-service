@@ -2,7 +2,7 @@ package dev.onepieceapi.contentservice.service.validation;
 
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitClassification;
-import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitPhase;
+import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitReveal;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.entity.DevilFruitVersionEntity;
 import dev.onepieceapi.contentservice.persistence.mapper.DevilFruitTypeVersionMapper;
@@ -11,7 +11,7 @@ import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepos
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitTypeVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
-import dev.onepieceapi.contentservice.service.content.KnowledgePhaseRules;
+import dev.onepieceapi.contentservice.service.content.RevealRules;
 import dev.onepieceapi.contentservice.service.content.RelationRules;
 import dev.onepieceapi.contentservice.service.devilfruit.DevilFruitRelations;
 import dev.onepieceapi.contentservice.service.event.ChapterNumbers;
@@ -33,9 +33,9 @@ import java.util.UUID;
  * none can be named without a type. A first appearance, optional, is a chapter it may be
  * linked to (implementation plan of the timeline, T7).
  * <p>
- * Its knowledge phases (T9; ADR-0010) follow the {@link KnowledgePhaseRules}; the chapter
- * and the type of each are relations like the fruit's, and a subcategory one of the type
- * in force at the phase. Every phase at fault is reported at once.
+ * Its reveals (T9; ADR-0010) follow the {@link RevealRules}; the chapter and the type of
+ * each are relations like the fruit's, and a subcategory one of the type in force at the
+ * reveal. Every reveal at fault is reported at once.
  */
 @Component
 public class DevilFruitValidator extends ContentValidator<DevilFruit, DevilFruitVersionEntity> {
@@ -44,8 +44,8 @@ public class DevilFruitValidator extends ContentValidator<DevilFruit, DevilFruit
 
 	private static final String NOT_OF_TYPE = "must be a subcategory of its Devil Fruit Type, as last approved";
 
-	private static final String NOT_OF_PHASE_TYPE = "must be a subcategory"
-			+ " of the phase's Devil Fruit Type, as last approved";
+	private static final String NOT_OF_REVEAL_TYPE = "must be a subcategory"
+			+ " of the reveal's Devil Fruit Type, as last approved";
 
 	private final DevilFruitTypeVersionRepository typeRepository;
 
@@ -65,7 +65,7 @@ public class DevilFruitValidator extends ContentValidator<DevilFruit, DevilFruit
 
 	@Override
 	protected void requireValidFields(DevilFruit body) {
-		List<FieldViolation> violations = KnowledgePhaseRules.incomplete(body);
+		List<FieldViolation> violations = RevealRules.incomplete(body);
 		if (!violations.isEmpty()) {
 			throw new ValueInvalidException(violations);
 		}
@@ -78,40 +78,39 @@ public class DevilFruitValidator extends ContentValidator<DevilFruit, DevilFruit
 			throw new ValueInvalidException(List.of(new FieldViolation(SUBCATEGORY_FIELD, NOT_OF_TYPE)));
 		}
 		RelationRules.requireLinkable(DevilFruitRelations.FIRST_APPEARANCE, body, this.chapterRepository);
-		requireValidPhases(body);
+		requireValidReveals(body);
 	}
 
 	/** Linkable first: an order is only read between chapters that may be chosen. */
-	private void requireValidPhases(DevilFruit body) {
+	private void requireValidReveals(DevilFruit body) {
 		List<FieldViolation> violations = new ArrayList<>();
-		List<DevilFruitPhase> phases = body.phases();
-		for (int index = 0; index < phases.size(); index++) {
-			String prefix = KnowledgePhaseRules.PHASE_PREFIX.formatted(index);
+		List<DevilFruitReveal> reveals = body.reveals();
+		for (int index = 0; index < reveals.size(); index++) {
+			String prefix = RevealRules.REVEAL_PREFIX.formatted(index);
 			RelationRules
-				.notLinkable(DevilFruitRelations.PHASE_CHAPTER, phases.get(index), prefix, this.chapterRepository)
+				.notLinkable(DevilFruitRelations.REVEAL_CHAPTER, reveals.get(index), prefix, this.chapterRepository)
 				.ifPresent(violations::add);
-			RelationRules.notLinkable(DevilFruitRelations.PHASE_TYPE, phases.get(index), prefix, this.typeRepository)
+			RelationRules.notLinkable(DevilFruitRelations.REVEAL_TYPE, reveals.get(index), prefix, this.typeRepository)
 				.ifPresent(violations::add);
 		}
 		if (violations.isEmpty()) {
 			body.classifications()
 				.stream()
-				.filter(classification -> classification.phase() != null && classification.subcategoryId() != null)
+				.filter(classification -> classification.reveal() != null && classification.subcategoryId() != null)
 				.filter(classification -> !subcategoryOfType(classification.typeContentId(),
 						classification.subcategoryId()))
-				.map(DevilFruitValidator::notOfPhaseType)
+				.map(DevilFruitValidator::notOfRevealType)
 				.forEach(violations::add);
-			violations.addAll(KnowledgePhaseRules.outOfOrder(body, this.chapterNumbers.approved(body.chapterIds())));
+			violations.addAll(RevealRules.outOfOrder(body, this.chapterNumbers.approved(body.chapterIds())));
 		}
 		if (!violations.isEmpty()) {
 			throw new ValueInvalidException(violations);
 		}
 	}
 
-	private static FieldViolation notOfPhaseType(DevilFruitClassification classification) {
-		return new FieldViolation(
-				KnowledgePhaseRules.PHASE_PREFIX.formatted(classification.phase()) + SUBCATEGORY_FIELD,
-				NOT_OF_PHASE_TYPE);
+	private static FieldViolation notOfRevealType(DevilFruitClassification classification) {
+		return new FieldViolation(RevealRules.REVEAL_PREFIX.formatted(classification.reveal()) + SUBCATEGORY_FIELD,
+				NOT_OF_REVEAL_TYPE);
 	}
 
 	/**

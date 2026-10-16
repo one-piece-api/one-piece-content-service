@@ -7,9 +7,9 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * The reference case of the knowledge phases (implementation plan of the timeline, T9;
- * ADR-0010), shared by the resolution tests here and by the public API's in TL6: the Hito
- * Hito no Mi, Model: Nika, met at chapter 1 as the Gomu Gomu no Mi, a Paramecia.
+ * The reference case of the reveals (implementation plan of the timeline, T9; ADR-0010),
+ * shared by the resolution tests here and by the public API's in TL6: the Hito Hito no
+ * Mi, Model: Nika, met at chapter 1 as the Gomu Gomu no Mi, a Paramecia.
  * <ul>
  * <li>until chapter 100 the reader believed a first description ("rubber, nothing
  * more");</li>
@@ -19,7 +19,7 @@ import java.util.UUID;
  * </ul>
  * Chapters are named by fixed ids; {@link #NUMBERS} numbers them.
  */
-public final class GomuGomuPhases {
+public final class GomuGomuReveals {
 
 	public static final UUID ZOAN = UUID.fromString("a0000000-0000-0000-0000-00000000200a");
 
@@ -43,19 +43,20 @@ public final class GomuGomuPhases {
 			"The fruit of the sun god", "Frees its eater", "Tiring");
 
 	/** Until chapter 100: only a first description. */
-	public static final DevilFruitPhase FIRST_BELIEF = new DevilFruitPhase(new StoryPoint(CHAPTER_100), null, null,
+	public static final DevilFruitReveal FIRST_BELIEF = new DevilFruitReveal(new StoryPoint(CHAPTER_100), null, null,
 			null, Map.of("it", new DevilFruitTranslation(null, "Gomma, niente di più", null, null), "en",
 					new DevilFruitTranslation(null, "Rubber, nothing more", null, null)));
 
 	/** Until chapter 1044: the Gomu Gomu no Mi, a Paramecia, of no subcategory. */
-	public static final DevilFruitPhase GOMU_GOMU = new DevilFruitPhase(new StoryPoint(CHAPTER_1044), "Gomu Gomu no Mi",
-			PARAMECIA, null, Map.of("it", new DevilFruitTranslation("Frutto Gom Gom", "Un corpo di gomma", null, null),
-					"en", new DevilFruitTranslation("Gum-Gum Fruit", "A body of rubber", null, null)));
+	public static final DevilFruitReveal GOMU_GOMU = new DevilFruitReveal(new StoryPoint(CHAPTER_1044),
+			"Gomu Gomu no Mi", PARAMECIA, null,
+			Map.of("it", new DevilFruitTranslation("Frutto Gom Gom", "Un corpo di gomma", null, null), "en",
+					new DevilFruitTranslation("Gum-Gum Fruit", "A body of rubber", null, null)));
 
-	private GomuGomuPhases() {
+	private GomuGomuReveals() {
 	}
 
-	/** The fruit as it is stored: the truth, and both phases. */
+	/** The fruit as it is stored: the truth, and both reveals. */
 	public static DevilFruit fruit() {
 		return new DevilFruit("Hito Hito no Mi, Model: Nika", ZOAN, MYTHICAL, Map.of("it", TRUTH_IT, "en", TRUTH_EN),
 				null, new StoryPoint(CHAPTER_1), List.of(FIRST_BELIEF, GOMU_GOMU));

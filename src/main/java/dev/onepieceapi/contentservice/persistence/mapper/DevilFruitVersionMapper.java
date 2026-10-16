@@ -1,11 +1,11 @@
 package dev.onepieceapi.contentservice.persistence.mapper;
 
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
-import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitPhase;
+import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitReveal;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitTranslation;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.domain.workflow.Version;
-import dev.onepieceapi.contentservice.persistence.entity.DevilFruitPhaseEntity;
+import dev.onepieceapi.contentservice.persistence.entity.DevilFruitRevealEntity;
 import dev.onepieceapi.contentservice.persistence.entity.DevilFruitVersionEntity;
 import dev.onepieceapi.contentservice.persistence.entity.TranslationEmbeddable;
 import lombok.experimental.UtilityClass;
@@ -26,7 +26,7 @@ public class DevilFruitVersionMapper {
 		var body = new DevilFruit(entity.getRomaji(), entity.getTypeContentId(), entity.getSubcategoryId(),
 				toDomain(entity.getTranslations()), entity.getImageId(),
 				new StoryPoint(entity.getFirstAppearanceChapterId()),
-				entity.getPhases().stream().map(DevilFruitVersionMapper::toDomain).toList());
+				entity.getReveals().stream().map(DevilFruitVersionMapper::toDomain).toList());
 		return ContentVersionMapper.toDomain(entity.getVersion(), body);
 	}
 
@@ -34,17 +34,17 @@ public class DevilFruitVersionMapper {
 	public void rewrite(DevilFruitVersionEntity entity, DevilFruit body, Instant now) {
 		entity.rewrite(body.romaji(), body.typeContentId(), body.subcategoryId(), toEmbeddables(body.translations()),
 				body.imageId(), body.firstAppearanceChapterId(), now);
-		entity.rewritePhases(body.phases().stream().map(DevilFruitVersionMapper::toWritten).toList());
+		entity.rewriteReveals(body.reveals().stream().map(DevilFruitVersionMapper::toWritten).toList());
 	}
 
-	private static DevilFruitPhase toDomain(DevilFruitPhaseEntity phase) {
-		return new DevilFruitPhase(new StoryPoint(phase.getSupersededAtChapterId()), phase.getRomaji(),
-				phase.getTypeContentId(), phase.getSubcategoryId(), toDomain(phase.getTranslations()));
+	private static DevilFruitReveal toDomain(DevilFruitRevealEntity reveal) {
+		return new DevilFruitReveal(new StoryPoint(reveal.getRevealedAtChapterId()), reveal.getRomaji(),
+				reveal.getTypeContentId(), reveal.getSubcategoryId(), toDomain(reveal.getTranslations()));
 	}
 
-	private static DevilFruitPhaseEntity.Written toWritten(DevilFruitPhase phase) {
-		return new DevilFruitPhaseEntity.Written(phase.supersededAtChapterId(), phase.romaji(), phase.typeContentId(),
-				phase.subcategoryId(), toEmbeddables(phase.translations()));
+	private static DevilFruitRevealEntity.Written toWritten(DevilFruitReveal reveal) {
+		return new DevilFruitRevealEntity.Written(reveal.revealedAtChapterId(), reveal.romaji(), reveal.typeContentId(),
+				reveal.subcategoryId(), toEmbeddables(reveal.translations()));
 	}
 
 	/** Sorted by language code, so the same version always reads the same way. */

@@ -16,21 +16,21 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * A knowledge phase of one version of a Devil Fruit (ADR-0010): a child of
- * {@link DevilFruitVersionEntity}, saved and removed only through it. A phase has no
+ * A reveal of one version of a Devil Fruit (ADR-0010): a child of
+ * {@link DevilFruitVersionEntity}, saved and removed only through it. A reveal has no
  * identity across versions: its row is the one at its position.
  */
 @Entity
-@Table(name = "devil_fruit_version_phase")
+@Table(name = "devil_fruit_version_reveal")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class DevilFruitPhaseEntity {
+public class DevilFruitRevealEntity {
 
 	@Id
 	private UUID id;
 
-	/** The content of the chapter that supersedes it; null while not chosen. */
-	private UUID supersededAtChapterId;
+	/** The content of the chapter it happens in; null while not chosen. */
+	private UUID revealedAtChapterId;
 
 	private String romaji;
 
@@ -43,18 +43,18 @@ public class DevilFruitPhaseEntity {
 	 * What was believed per language code; a language nothing was saved for is absent.
 	 */
 	@ElementCollection
-	@CollectionTable(name = "devil_fruit_version_phase_translation", joinColumns = @JoinColumn(name = "phase_id"))
+	@CollectionTable(name = "devil_fruit_version_reveal_translation", joinColumns = @JoinColumn(name = "reveal_id"))
 	@MapKeyColumn(name = "language_code")
 	private Map<String, TranslationEmbeddable> translations = new HashMap<>();
 
-	public DevilFruitPhaseEntity(Written written) {
+	public DevilFruitRevealEntity(Written written) {
 		this.id = UUID.randomUUID();
 		rewrite(written);
 	}
 
-	/** Replaces what the phase says. */
+	/** Replaces what the reveal says. */
 	public void rewrite(Written written) {
-		this.supersededAtChapterId = written.supersededAtChapterId();
+		this.revealedAtChapterId = written.revealedAtChapterId();
 		this.romaji = written.romaji();
 		this.typeContentId = written.typeContentId();
 		this.subcategoryId = written.subcategoryId();
@@ -62,8 +62,8 @@ public class DevilFruitPhaseEntity {
 		this.translations.putAll(written.translations());
 	}
 
-	/** What a phase says, as a version is written. */
-	public record Written(UUID supersededAtChapterId, String romaji, UUID typeContentId, UUID subcategoryId,
+	/** What a reveal says, as a version is written. */
+	public record Written(UUID revealedAtChapterId, String romaji, UUID typeContentId, UUID subcategoryId,
 			Map<String, TranslationEmbeddable> translations) {
 	}
 

@@ -67,12 +67,11 @@ public enum BlockReason {
 	EVENTS_REVEALED_BEFORE,
 
 	/**
-	 * The knowledge phases are not in the order of the story as the chapters online
-	 * number it - each after the first appearance and after the one before
-	 * (implementation plan of the timeline, T9; ADR-0010) - e.g. a chapter was renumbered
-	 * since the save. The detail names the first phase out of order, {@code phase}, by
-	 * its position.
+	 * The reveals are not in the order of the story as the chapters online number it -
+	 * each after the first appearance and after the one before (implementation plan of
+	 * the timeline, T9; ADR-0010) - e.g. a chapter was renumbered since the save. The
+	 * detail names the first reveal out of order, {@code reveal}, by its position.
 	 */
-	PHASES_OUT_OF_ORDER
+	REVEALS_OUT_OF_ORDER
 
 }

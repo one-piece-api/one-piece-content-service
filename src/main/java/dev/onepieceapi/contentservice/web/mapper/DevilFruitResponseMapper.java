@@ -1,7 +1,7 @@
 package dev.onepieceapi.contentservice.web.mapper;
 
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
-import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitPhase;
+import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitReveal;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitTranslation;
 import dev.onepieceapi.contentservice.domain.devilfruit.SubcategoryReference;
 import dev.onepieceapi.contentservice.domain.devilfruit.TypeReference;
@@ -10,11 +10,11 @@ import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAccess;
 import dev.onepieceapi.contentservice.web.dto.response.ContentSummaryResponse;
 import dev.onepieceapi.contentservice.web.dto.response.DevilFruitNamesResponse;
-import dev.onepieceapi.contentservice.web.dto.response.DevilFruitPhaseResponse;
+import dev.onepieceapi.contentservice.web.dto.response.DevilFruitRevealResponse;
 import dev.onepieceapi.contentservice.web.dto.response.DevilFruitResponse;
 import dev.onepieceapi.contentservice.web.dto.response.DevilFruitTranslationResponse;
 import dev.onepieceapi.contentservice.web.dto.response.SubcategoryReferenceResponse;
-import dev.onepieceapi.contentservice.web.dto.response.SupersededAtResponse;
+import dev.onepieceapi.contentservice.web.dto.response.RevealedAtResponse;
 import dev.onepieceapi.contentservice.web.dto.response.TypeReferenceResponse;
 import dev.onepieceapi.contentservice.web.dto.response.VersionResponse;
 import lombok.experimental.UtilityClass;
@@ -50,25 +50,25 @@ public class DevilFruitResponseMapper {
 	/** Everything the version says. */
 	public DevilFruitResponse toResponse(DevilFruit fruit, Map<UUID, TypeReference> types,
 			Map<UUID, NumberedReference> chapters, ImageResponseMapper images) {
-		List<DevilFruitPhaseResponse> phases = IntStream.range(0, fruit.phases().size())
-			.mapToObj(index -> toPhaseResponse(fruit, index, types, chapters))
+		List<DevilFruitRevealResponse> reveals = IntStream.range(0, fruit.reveals().size())
+			.mapToObj(index -> toRevealResponse(fruit, index, types, chapters))
 			.toList();
 		return new DevilFruitResponse(fruit.romaji(), toTypeResponse(fruit.typeContentId(), types),
 				toSubcategoryResponse(fruit, types), toResponse(fruit.translations()),
 				images.toResponse(fruit.imageId()), FirstAppearanceMapper.toResponse(fruit.firstAppearance(), chapters),
-				phases);
+				reveals);
 	}
 
-	/** Its subcategory named as the type in force at the phase has it. */
-	private static DevilFruitPhaseResponse toPhaseResponse(DevilFruit fruit, int index, Map<UUID, TypeReference> types,
-			Map<UUID, NumberedReference> chapters) {
-		DevilFruitPhase phase = fruit.phases().get(index);
-		UUID chapter = phase.supersededAtChapterId();
-		var supersededAt = new SupersededAtResponse(
+	/** Its subcategory named as the type in force at the reveal has it. */
+	private static DevilFruitRevealResponse toRevealResponse(DevilFruit fruit, int index,
+			Map<UUID, TypeReference> types, Map<UUID, NumberedReference> chapters) {
+		DevilFruitReveal reveal = fruit.reveals().get(index);
+		UUID chapter = reveal.revealedAtChapterId();
+		var revealedAt = new RevealedAtResponse(
 				chapter == null ? null : StoryResponseMapper.toReferenceResponse(chapter, chapters));
-		return new DevilFruitPhaseResponse(supersededAt, phase.romaji(), toTypeResponse(phase.typeContentId(), types),
-				toSubcategoryResponse(fruit.typeInForceAt(index), phase.subcategoryId(), types),
-				toResponse(phase.translations()));
+		return new DevilFruitRevealResponse(revealedAt, reveal.romaji(), toTypeResponse(reveal.typeContentId(), types),
+				toSubcategoryResponse(fruit.typeInForceAt(index), reveal.subcategoryId(), types),
+				toResponse(reveal.translations()));
 	}
 
 	private static Map<String, DevilFruitTranslationResponse> toResponse(

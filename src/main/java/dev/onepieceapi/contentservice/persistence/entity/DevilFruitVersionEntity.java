@@ -63,11 +63,11 @@ public class DevilFruitVersionEntity extends VersionBodyEntity {
 	@MapKeyColumn(name = "language_code")
 	private Map<String, TranslationEmbeddable> translations = new HashMap<>();
 
-	/** Its knowledge phases (ADR-0010), in the order of the story. */
+	/** Its reveals (ADR-0010), in the order of the story. */
 	@OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
 	@JoinColumn(name = "version_id", nullable = false)
 	@OrderColumn(name = "position")
-	private List<DevilFruitPhaseEntity> phases = new ArrayList<>();
+	private List<DevilFruitRevealEntity> reveals = new ArrayList<>();
 
 	public DevilFruitVersionEntity(ContentVersionEntity version) {
 		super(version);
@@ -78,7 +78,7 @@ public class DevilFruitVersionEntity extends VersionBodyEntity {
 		return Optional.of(new NaturalKey(Fields.romaji, this.romaji));
 	}
 
-	/** Replaces everything the version says but its phases, and notes when. */
+	/** Replaces everything the version says but its reveals, and notes when. */
 	public void rewrite(String newRomaji, UUID newTypeContentId, UUID newSubcategoryId,
 			Map<String, TranslationEmbeddable> newTranslations, String newImageId, UUID newFirstAppearanceChapterId,
 			Instant now) {
@@ -93,19 +93,19 @@ public class DevilFruitVersionEntity extends VersionBodyEntity {
 	}
 
 	/**
-	 * Replaces the phases, each keeping its row by position, rewritten in place; those
+	 * Replaces the reveals, each keeping its row by position, rewritten in place; those
 	 * beyond the new ones are removed.
 	 */
-	public void rewritePhases(List<DevilFruitPhaseEntity.Written> newPhases) {
-		for (int index = 0; index < newPhases.size(); index++) {
-			if (index < this.phases.size()) {
-				this.phases.get(index).rewrite(newPhases.get(index));
+	public void rewriteReveals(List<DevilFruitRevealEntity.Written> newReveals) {
+		for (int index = 0; index < newReveals.size(); index++) {
+			if (index < this.reveals.size()) {
+				this.reveals.get(index).rewrite(newReveals.get(index));
 			}
 			else {
-				this.phases.add(new DevilFruitPhaseEntity(newPhases.get(index)));
+				this.reveals.add(new DevilFruitRevealEntity(newReveals.get(index)));
 			}
 		}
-		this.phases.subList(newPhases.size(), this.phases.size()).clear();
+		this.reveals.subList(newReveals.size(), this.reveals.size()).clear();
 	}
 
 }

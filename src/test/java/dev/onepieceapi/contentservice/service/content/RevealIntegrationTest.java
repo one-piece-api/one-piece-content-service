@@ -2,7 +2,7 @@ package dev.onepieceapi.contentservice.service.content;
 
 import dev.onepieceapi.contentservice.config.RulesProperties;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
-import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitPhase;
+import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitReveal;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitTranslation;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitType;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitTypeSubcategory;
@@ -83,16 +83,16 @@ import static org.mockito.Mockito.mock;
 import static org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase.Replace;
 
 /**
- * The knowledge phases of a Devil Fruit (implementation plan of the timeline, T9;
- * ADR-0010) against a real PostgreSQL (Testcontainers): written and read again in order,
- * refused on save when out of the story's order or naming what cannot be linked, kept
- * offline while what they name is, and holding online the chapters and types they name.
+ * The reveals of a Devil Fruit (implementation plan of the timeline, T9; ADR-0010)
+ * against a real PostgreSQL (Testcontainers): written and read again in order, refused on
+ * save when out of the story's order or naming what cannot be linked, kept offline while
+ * what they name is, and holding online the chapters and types they name.
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = Replace.NONE)
 @ImportAutoConfiguration(FlywayAutoConfiguration.class)
 @Testcontainers
-class KnowledgePhaseIntegrationTest {
+class RevealIntegrationTest {
 
 	@Container
 	@ServiceConnection
@@ -187,30 +187,30 @@ class KnowledgePhaseIntegrationTest {
 	}
 
 	@Test
-	void phasesAreReadAgainInOrderAndARewriteWithFewerKeepsOnlyThose() {
+	void revealsAreReadAgainInOrderAndARewriteWithFewerKeepsOnlyThose() {
 		UUID logia = typeContent(PUBLISHED, type("Logia", List.of()));
-		var believed = new DevilFruitPhase(new StoryPoint(chapter(PUBLISHED, 2)), "Gomu Gomu", logia, null,
+		var believed = new DevilFruitReveal(new StoryPoint(chapter(PUBLISHED, 2)), "Gomu Gomu", logia, null,
 				Map.of("it", new DevilFruitTranslation("Gom Gom", null, null, null)));
-		var last = phase(chapter(PUBLISHED, 3), "Gomu Gomu no Mi");
+		var last = reveal(chapter(PUBLISHED, 3), "Gomu Gomu no Mi");
 
 		UUID fruit = this.fruits.create(EDITOR, this.chopper, fruit(believed, last), ImageChange.KEEP).id();
 		stored();
 
-		assertThat(this.fruits.getVersion(EDITOR, this.chopper, fruit, 1).version().body().phases())
+		assertThat(this.fruits.getVersion(EDITOR, this.chopper, fruit, 1).version().body().reveals())
 			.containsExactly(believed, last);
 
 		this.fruits.edit(EDITOR, this.chopper, fruit, 1, fruit(last));
 		stored();
 
-		assertThat(this.fruits.getVersion(EDITOR, this.chopper, fruit, 1).version().body().phases())
+		assertThat(this.fruits.getVersion(EDITOR, this.chopper, fruit, 1).version().body().reveals())
 			.containsExactly(last);
 	}
 
 	@Test
-	void aSaveIsRefusedForAnEmptyPhaseAndAPhaseWithoutChapterBeforeWhatPhasesPointTo() {
-		var empty = new DevilFruitPhase(new StoryPoint(chapter(PUBLISHED, 2)), null, null, null, Map.of());
-		var noChapter = new DevilFruitPhase(StoryPoint.NONE, "Gomu", null, null, Map.of());
-		var draft = phase(chapter(DRAFT, 4), "Gomu Gomu");
+	void aSaveIsRefusedForAnEmptyRevealAndARevealWithoutChapterBeforeWhatRevealsPointTo() {
+		var empty = new DevilFruitReveal(new StoryPoint(chapter(PUBLISHED, 2)), null, null, null, Map.of());
+		var noChapter = new DevilFruitReveal(StoryPoint.NONE, "Gomu", null, null, Map.of());
+		var draft = reveal(chapter(DRAFT, 4), "Gomu Gomu");
 
 		var incomplete = catchThrowableOfType(ValueInvalidException.class,
 				() -> this.fruits.create(EDITOR, this.chopper, fruit(empty, noChapter, draft), ImageChange.KEEP));
@@ -218,45 +218,45 @@ class KnowledgePhaseIntegrationTest {
 				() -> this.fruits.create(EDITOR, this.chopper, fruit(draft), ImageChange.KEEP));
 
 		assertThat(violationsOf(incomplete)).containsExactly(
-				new FieldViolation("phases[0]", "must define at least one field"),
-				new FieldViolation("phases[1].supersededAt.chapter", "is required"));
+				new FieldViolation("reveals[0]", "must define at least one field"),
+				new FieldViolation("reveals[1].revealedAt.chapter", "is required"));
 		assertThat(violationsOf(unlinkable)).containsExactly(
-				new FieldViolation("phases[0].supersededAt.chapter", "must be a Chapter with an approved version"));
+				new FieldViolation("reveals[0].revealedAt.chapter", "must be a Chapter with an approved version"));
 	}
 
 	@Test
-	void aSaveIsRefusedForPhasesOutOfTheStorysOrder() {
-		var early = phase(this.first.chapterContentId(), "Gomu");
-		var late = phase(chapter(PUBLISHED, 10), "Gomu Gomu");
-		var back = phase(chapter(PUBLISHED, 5), "Gomu Gomu no Mi");
+	void aSaveIsRefusedForRevealsOutOfTheStorysOrder() {
+		var early = reveal(this.first.chapterContentId(), "Gomu");
+		var late = reveal(chapter(PUBLISHED, 10), "Gomu Gomu");
+		var back = reveal(chapter(PUBLISHED, 5), "Gomu Gomu no Mi");
 
 		var refused = catchThrowableOfType(ValueInvalidException.class,
 				() -> this.fruits.create(EDITOR, this.chopper, fruit(early, late, back), ImageChange.KEEP));
 
 		assertThat(violationsOf(refused)).containsExactly(
-				new FieldViolation("phases[0].supersededAt.chapter", "must come after the first appearance"),
-				new FieldViolation("phases[2].supersededAt.chapter", "must come after the previous phase"));
+				new FieldViolation("reveals[0].revealedAt.chapter", "must come after the first appearance"),
+				new FieldViolation("reveals[2].revealedAt.chapter", "must come after the previous reveal"));
 	}
 
 	@Test
-	void aPhaseSubcategoryMustBeOfTheTypeInForceThereTakenFromALaterPhaseOrTheTruth() {
+	void aRevealSubcategoryMustBeOfTheTypeInForceThereTakenFromALaterRevealOrTheTruth() {
 		UUID mythical = UUID.randomUUID();
 		UUID zoan = typeContent(PUBLISHED, type("Dobutsu", List.of(subcategory(mythical))));
-		var onlySubcategory = new DevilFruitPhase(new StoryPoint(chapter(PUBLISHED, 2)), null, null, mythical,
+		var onlySubcategory = new DevilFruitReveal(new StoryPoint(chapter(PUBLISHED, 2)), null, null, mythical,
 				Map.of());
-		var ofItsType = new DevilFruitPhase(new StoryPoint(chapter(PUBLISHED, 3)), null, zoan, mythical, Map.of());
+		var ofItsType = new DevilFruitReveal(new StoryPoint(chapter(PUBLISHED, 3)), null, zoan, mythical, Map.of());
 
 		var refused = catchThrowableOfType(ValueInvalidException.class,
 				() -> this.fruits.create(EDITOR, this.chopper, fruit(onlySubcategory), ImageChange.KEEP));
 		var created = this.fruits.create(EDITOR, this.chopper, fruit(onlySubcategory, ofItsType), ImageChange.KEEP);
 
-		assertThat(violationsOf(refused)).extracting(FieldViolation::field).containsExactly("phases[0].subcategory");
-		assertThat(created.versions().getFirst().body().phases()).hasSize(2);
+		assertThat(violationsOf(refused)).extracting(FieldViolation::field).containsExactly("reveals[0].subcategory");
+		assertThat(created.versions().getFirst().body().reveals()).hasSize(2);
 	}
 
 	@Test
-	void theLastPhaseWithoutADescriptionInEveryLanguageIsNotSubmitted() {
-		var undescribed = new DevilFruitPhase(new StoryPoint(chapter(PUBLISHED, 2)), "Gomu", null, null,
+	void theLastRevealWithoutADescriptionInEveryLanguageIsNotSubmitted() {
+		var undescribed = new DevilFruitReveal(new StoryPoint(chapter(PUBLISHED, 2)), "Gomu", null, null,
 				Map.of("it", new DevilFruitTranslation(null, "Gomma", null, null)));
 		UUID fruit = this.fruits.create(EDITOR, this.chopper, fruit(undescribed), ImageChange.KEEP).id();
 
@@ -264,13 +264,13 @@ class KnowledgePhaseIntegrationTest {
 				() -> this.fruits.submit(EDITOR, this.chopper, fruit, 1));
 
 		assertThat(violationsOf(refused)).extracting(FieldViolation::field)
-			.containsExactly("phases[0].translations[en].description");
+			.containsExactly("reveals[0].translations[en].description");
 	}
 
 	@Test
-	void aNewVersionDifferingOnlyByAPhaseIsNotIdentical() {
-		var phase = phase(chapter(PUBLISHED, 2), "Gomu Gomu");
-		UUID fruit = fruitContent(PUBLISHED, fruit(phase));
+	void aNewVersionDifferingOnlyByARevealIsNotIdentical() {
+		var reveal = reveal(chapter(PUBLISHED, 2), "Gomu Gomu");
+		UUID fruit = fruitContent(PUBLISHED, fruit(reveal));
 		stored();
 		this.fruits.openNewVersion(EDITOR, this.chopper, fruit, 1);
 
@@ -278,16 +278,16 @@ class KnowledgePhaseIntegrationTest {
 				() -> this.fruits.submit(EDITOR, this.chopper, fruit, 2)))
 			.isNotNull();
 
-		this.fruits.edit(EDITOR, this.chopper, fruit, 2, fruit(phase(phase.supersededAtChapterId(), "Gomu Gomu 2")));
+		this.fruits.edit(EDITOR, this.chopper, fruit, 2, fruit(reveal(reveal.revealedAtChapterId(), "Gomu Gomu 2")));
 
 		assertThat(this.fruits.submit(EDITOR, this.chopper, fruit, 2).version().status())
 			.isEqualTo(VersionStatus.IN_REVIEW);
 	}
 
 	@Test
-	void aFruitGoesOnlineOnlyWhileThePhaseChaptersAreAndIsToldWhichPhase() {
+	void aFruitGoesOnlineOnlyWhileTheRevealChaptersAreAndIsToldWhichReveal() {
 		UUID retired = chapter(RETIRED, 7);
-		UUID fruit = fruitContent(READY_TO_PUBLISH, fruit(phase(retired, "Gomu Gomu")));
+		UUID fruit = fruitContent(READY_TO_PUBLISH, fruit(reveal(retired, "Gomu Gomu")));
 		stored();
 
 		var refused = catchThrowableOfType(VersionActionBlockedException.class,
@@ -295,28 +295,28 @@ class KnowledgePhaseIntegrationTest {
 
 		assertThat(refused.getDetails()).containsEntry("reason", BlockReason.RELATED_NOT_ONLINE);
 		assertThat(refused.getDetails().get("detail"))
-			.isEqualTo(Map.of("phase", 0, "supersededAtChapterId", retired, "supersededAtChapterNumber", 7));
+			.isEqualTo(Map.of("reveal", 0, "revealedAtChapterId", retired, "revealedAtChapterNumber", 7));
 	}
 
 	@Test
-	void aFruitWhosePhasesAreOutOfOrderOnlineIsNotPublished() {
+	void aFruitWhoseRevealsAreOutOfOrderOnlineIsNotPublished() {
 		UUID fruit = fruitContent(READY_TO_PUBLISH,
-				fruit(phase(chapter(PUBLISHED, 10), "Gomu"), phase(chapter(PUBLISHED, 5), "Gomu Gomu")));
+				fruit(reveal(chapter(PUBLISHED, 10), "Gomu"), reveal(chapter(PUBLISHED, 5), "Gomu Gomu")));
 		stored();
 
 		var refused = catchThrowableOfType(VersionActionBlockedException.class,
 				() -> this.fruits.publish(ADMIN, this.vivi, fruit, 1));
 
-		assertThat(refused.getDetails()).containsEntry("reason", BlockReason.PHASES_OUT_OF_ORDER);
-		assertThat(refused.getDetails().get("detail")).isEqualTo(Map.of("phase", 1));
+		assertThat(refused.getDetails()).containsEntry("reason", BlockReason.REVEALS_OUT_OF_ORDER);
+		assertThat(refused.getDetails().get("detail")).isEqualTo(Map.of("reveal", 1));
 	}
 
 	@Test
-	void aFruitGoesOnlineOnlyWhileAPhaseSubcategoryIsOnline() {
+	void aFruitGoesOnlineOnlyWhileARevealSubcategoryIsOnline() {
 		UUID mythical = UUID.randomUUID();
 		UUID zoan = typeContent(PUBLISHED, type("Dobutsu", List.of()));
 		UUID fruit = fruitContent(READY_TO_PUBLISH,
-				fruit(new DevilFruitPhase(new StoryPoint(chapter(PUBLISHED, 2)), null, zoan, mythical, Map.of())));
+				fruit(new DevilFruitReveal(new StoryPoint(chapter(PUBLISHED, 2)), null, zoan, mythical, Map.of())));
 		stored();
 
 		var refused = catchThrowableOfType(VersionActionBlockedException.class,
@@ -324,7 +324,7 @@ class KnowledgePhaseIntegrationTest {
 
 		assertThat(refused.getDetails()).containsEntry("reason", BlockReason.SUBCATEGORY_NOT_ONLINE);
 		assertThat(refused.getDetails().get("detail"))
-			.isEqualTo(Map.of("phase", 0, "typeId", zoan, "subcategoryId", mythical));
+			.isEqualTo(Map.of("reveal", 0, "typeId", zoan, "subcategoryId", mythical));
 	}
 
 	@Test
@@ -332,7 +332,7 @@ class KnowledgePhaseIntegrationTest {
 		UUID chapter = chapter(PUBLISHED, 2);
 		UUID logia = typeContent(PUBLISHED, type("Logia", List.of()));
 		UUID fruit = fruitContent(PUBLISHED,
-				fruit(new DevilFruitPhase(new StoryPoint(chapter), "Gomu", logia, null,
+				fruit(new DevilFruitReveal(new StoryPoint(chapter), "Gomu", logia, null,
 						Map.of("it", new DevilFruitTranslation(null, "Gomma", null, null), "en",
 								new DevilFruitTranslation(null, "Rubber", null, null)))));
 		stored();
@@ -354,7 +354,7 @@ class KnowledgePhaseIntegrationTest {
 		UUID zoan = typeContent(PUBLISHED, type("Dobutsu", List.of(subcategory(mythical))));
 		typeVersion(zoan, 2, READY_TO_PUBLISH, type("Dobutsu", List.of()));
 		fruitContent(PUBLISHED,
-				fruit(new DevilFruitPhase(new StoryPoint(chapter(PUBLISHED, 2)), null, zoan, mythical, Map.of())));
+				fruit(new DevilFruitReveal(new StoryPoint(chapter(PUBLISHED, 2)), null, zoan, mythical, Map.of())));
 		stored();
 
 		var refused = catchThrowableOfType(VersionActionBlockedException.class,
@@ -364,14 +364,14 @@ class KnowledgePhaseIntegrationTest {
 	}
 
 	/** Complete in both languages, first appearing in the chapter numbered 1. */
-	private DevilFruit fruit(DevilFruitPhase... phases) {
+	private DevilFruit fruit(DevilFruitReveal... reveals) {
 		return new DevilFruit("Hito Hito", this.paramecia, null, fruitTranslations(), null, this.first,
-				List.of(phases));
+				List.of(reveals));
 	}
 
-	/** Superseded at this chapter, describing the fruit in both languages. */
-	private static DevilFruitPhase phase(UUID chapter, String romaji) {
-		return new DevilFruitPhase(new StoryPoint(chapter), romaji, null, null,
+	/** Revealed at this chapter, describing the fruit in both languages. */
+	private static DevilFruitReveal reveal(UUID chapter, String romaji) {
+		return new DevilFruitReveal(new StoryPoint(chapter), romaji, null, null,
 				Map.of("it", new DevilFruitTranslation(null, "Gomma", null, null), "en",
 						new DevilFruitTranslation(null, "Rubber", null, null)));
 	}

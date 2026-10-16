@@ -81,52 +81,52 @@ public interface DevilFruitVersionRepository extends VersionBodyRepository<Devil
 			order by d.romaji""")
 	List<DevilFruitVersionEntity> findOnlineFirstAppearingIn(UUID chapterContentId, Pageable pageable);
 
-	/** How many fruits are online with a knowledge phase superseded in this chapter. */
+	/** How many fruits are online with a reveal superseded in this chapter. */
 	@Query("""
-			select count(distinct d) from DevilFruitVersionEntity d join d.version v join d.phases p
-			where p.supersededAtChapterId = :chapterContentId
+			select count(distinct d) from DevilFruitVersionEntity d join d.version v join d.reveals p
+			where p.revealedAtChapterId = :chapterContentId
 				and v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED""")
-	long countOnlineWithPhaseIn(UUID chapterContentId);
+	long countOnlineWithRevealIn(UUID chapterContentId);
 
 	/**
-	 * The fruits online with a knowledge phase superseded in this chapter, by romaji: as
-	 * many as the page asks for.
-	 */
-	@Query("""
-			select distinct d from DevilFruitVersionEntity d join fetch d.version v join d.phases p
-			where p.supersededAtChapterId = :chapterContentId
-				and v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED
-			order by d.romaji""")
-	List<DevilFruitVersionEntity> findOnlineWithPhaseIn(UUID chapterContentId, Pageable pageable);
-
-	/** How many fruits are online with a knowledge phase believing this type. */
-	@Query("""
-			select count(distinct d) from DevilFruitVersionEntity d join d.version v join d.phases p
-			where p.typeContentId = :typeContentId
-				and v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED""")
-	long countOnlineWithPhaseType(UUID typeContentId);
-
-	/**
-	 * The fruits online with a knowledge phase believing this type, by romaji: as many as
+	 * The fruits online with a reveal superseded in this chapter, by romaji: as many as
 	 * the page asks for.
 	 */
 	@Query("""
-			select distinct d from DevilFruitVersionEntity d join fetch d.version v join d.phases p
+			select distinct d from DevilFruitVersionEntity d join fetch d.version v join d.reveals p
+			where p.revealedAtChapterId = :chapterContentId
+				and v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED
+			order by d.romaji""")
+	List<DevilFruitVersionEntity> findOnlineWithRevealIn(UUID chapterContentId, Pageable pageable);
+
+	/** How many fruits are online with a reveal believing this type. */
+	@Query("""
+			select count(distinct d) from DevilFruitVersionEntity d join d.version v join d.reveals p
+			where p.typeContentId = :typeContentId
+				and v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED""")
+	long countOnlineWithRevealType(UUID typeContentId);
+
+	/**
+	 * The fruits online with a reveal believing this type, by romaji: as many as the page
+	 * asks for.
+	 */
+	@Query("""
+			select distinct d from DevilFruitVersionEntity d join fetch d.version v join d.reveals p
 			where p.typeContentId = :typeContentId
 				and v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED
 			order by d.romaji""")
-	List<DevilFruitVersionEntity> findOnlineWithPhaseType(UUID typeContentId, Pageable pageable);
+	List<DevilFruitVersionEntity> findOnlineWithRevealType(UUID typeContentId, Pageable pageable);
 
 	/**
-	 * The fruits online with a knowledge phase naming a subcategory, by romaji - few: the
-	 * type each believes it of is read from the domain (ADR-0010).
+	 * The fruits online with a reveal naming a subcategory, by romaji - few: the type
+	 * each believes it of is read from the domain (ADR-0010).
 	 */
 	@Query("""
-			select distinct d from DevilFruitVersionEntity d join fetch d.version v join d.phases p
+			select distinct d from DevilFruitVersionEntity d join fetch d.version v join d.reveals p
 			where p.subcategoryId is not null
 				and v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED
 			order by d.romaji""")
-	List<DevilFruitVersionEntity> findOnlineWithPhaseSubcategory();
+	List<DevilFruitVersionEntity> findOnlineWithRevealSubcategory();
 
 	/**
 	 * The fruits online with this type naming a subcategory outside the given ones, by
