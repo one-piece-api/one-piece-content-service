@@ -1,5 +1,8 @@
 package dev.onepieceapi.contentservice.service.devilfruittype;
 
+import dev.onepieceapi.contentservice.persistence.mapper.DevilFruitTypeVersionMapper;
+import dev.onepieceapi.contentservice.service.content.OnlineChapters;
+import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.service.audit.AuditLogService;
 
 import dev.onepieceapi.contentservice.config.RulesProperties;
@@ -13,7 +16,6 @@ import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.entity.ContentEntity;
 import dev.onepieceapi.contentservice.persistence.entity.ContentVersionEntity;
 import dev.onepieceapi.contentservice.persistence.entity.DevilFruitTypeVersionEntity;
-import dev.onepieceapi.contentservice.persistence.entity.TranslationEmbeddable;
 import dev.onepieceapi.contentservice.persistence.mapper.UserMapper;
 import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
@@ -135,6 +137,9 @@ class DevilFruitTypeSubmissionIntegrationTest {
 
 	private UUID logia;
 
+	/** The chapter online every complete type first appears in. */
+	private StoryPoint firstAppearance;
+
 	@BeforeEach
 	void setUp() {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
@@ -146,6 +151,7 @@ class DevilFruitTypeSubmissionIntegrationTest {
 						this.chapterRepository, new RulesProperties(5)),
 				auditLogService, clock);
 
+		this.firstAppearance = OnlineChapters.onlineChapter(this.contentRepository, this.chapterRepository);
 		this.zoan = content();
 		version(this.zoan, 1, SUPERSEDED, this.chopper, complete("Dobutsu"));
 		version(this.zoan, 2, PUBLISHED, this.chopper, complete("Zoan"));
@@ -187,15 +193,17 @@ class DevilFruitTypeSubmissionIntegrationTest {
 		var refused = catchThrowableOfType(VersionIncompleteException.class,
 				() -> this.service.submit(EDITOR, this.nami, empty, 1));
 
-		assertThat(fieldsOf(refused)).containsExactly("romaji", "translations[en].name", "translations[en].description",
-				"translations[en].advantages", "translations[en].disadvantages", "translations[it].name",
-				"translations[it].description", "translations[it].advantages", "translations[it].disadvantages");
+		assertThat(fieldsOf(refused)).containsExactly("romaji", "firstAppearance.chapter", "translations[en].name",
+				"translations[en].description", "translations[en].advantages", "translations[en].disadvantages",
+				"translations[it].name", "translations[it].description", "translations[it].advantages",
+				"translations[it].disadvantages");
 	}
 
 	@Test
 	void aLanguageOfTheCatalogLeftOutMakesTheDraftIncomplete() {
 		UUID italianOnly = content();
-		var body = new DevilFruitType("Kodai", Map.of("it", translation("Antico", "Antico description")));
+		var body = new DevilFruitType("Kodai", Map.of("it", translation("Antico", "Antico description")), List.of(),
+				this.firstAppearance);
 		version(italianOnly, 1, DRAFT, this.nami, body);
 		stored();
 
@@ -210,8 +218,10 @@ class DevilFruitTypeSubmissionIntegrationTest {
 	@Test
 	void advantagesAndDisadvantagesAreRequiredForReviewInEveryLanguage() {
 		UUID withoutTradeOffs = content();
-		var body = new DevilFruitType("Kodai", Map.of("it", translation("Antico", "Antico descrizione"), "en",
-				new DevilFruitTypeTranslation("Ancient", "Ancient description", null, null)));
+		var body = new DevilFruitType("Kodai",
+				Map.of("it", translation("Antico", "Antico descrizione"), "en",
+						new DevilFruitTypeTranslation("Ancient", "Ancient description", null, null)),
+				List.of(), this.firstAppearance);
 		version(withoutTradeOffs, 1, DRAFT, this.nami, body);
 		stored();
 
@@ -375,13 +385,13 @@ class DevilFruitTypeSubmissionIntegrationTest {
 	 * A body complete in both languages of the catalog, its names derived from the
 	 * romaji.
 	 */
-	private static DevilFruitType complete(String romaji) {
+	private DevilFruitType complete(String romaji) {
 		return complete(romaji, romaji);
 	}
 
-	private static DevilFruitType complete(String romaji, String name) {
+	private DevilFruitType complete(String romaji, String name) {
 		return new DevilFruitType(romaji, Map.of("it", translation(name + " IT", name + " descrizione"), "en",
-				translation(name + " EN", name + " description")));
+				translation(name + " EN", name + " description")), List.of(), this.firstAppearance);
 	}
 
 	/** Advantages and disadvantages filled: a test names only the fields it is about. */
@@ -418,11 +428,7 @@ class DevilFruitTypeSubmissionIntegrationTest {
 			.updatedAt(EARLIER)
 			.build();
 		var version = new DevilFruitTypeVersionEntity(workflow);
-		version.setRomaji(body.romaji());
-		body.translations()
-			.forEach((language, translation) -> version.getTranslations()
-				.put(language, new TranslationEmbeddable(translation.name(), translation.description(),
-						translation.advantages(), translation.disadvantages())));
+		DevilFruitTypeVersionMapper.rewrite(version, body, EARLIER);
 		this.versionRepository.save(version);
 	}
 

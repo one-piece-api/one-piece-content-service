@@ -22,9 +22,6 @@ public class FirstAppearanceRules {
 	/** The relation as a block names it: {@code firstAppearanceChapterId}. */
 	private static final String NAME = "firstAppearanceChapter";
 
-	/** The relation as a request names it. */
-	private static final String FIELD = "firstAppearance.chapter";
-
 	private static final String NOT_LINKABLE = "must be a Chapter with an approved version";
 
 	/**
@@ -35,7 +32,7 @@ public class FirstAppearanceRules {
 	public <T extends FirstAppearing> RelationDescriptor<T> relation(String itemsName) {
 		return RelationDescriptor.<T>builder()
 			.name(NAME)
-			.field(FIELD)
+			.field(FirstAppearing.FIELD)
 			.target(FirstAppearing::firstAppearanceChapterId)
 			.notLinkable(NOT_LINKABLE)
 			.targetNotOnline(BlockReason.RELATED_NOT_ONLINE)

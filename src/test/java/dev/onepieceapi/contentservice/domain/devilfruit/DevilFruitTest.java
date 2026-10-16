@@ -56,19 +56,20 @@ class DevilFruitTest {
 	}
 
 	@Test
-	void theTypeIsRequiredForReviewLikeTheRomajiAndBeforeTheTexts() {
+	void theTypeAndTheFirstAppearanceAreRequiredForReviewLikeTheRomajiAndBeforeTheTexts() {
 		var empty = new DevilFruit(null, null, Map.of());
 
-		assertThat(empty.missingFields(List.of("en", "it"))).containsExactly("romaji", "type", "translations[en].name",
-				"translations[en].description", "translations[en].advantages", "translations[en].disadvantages",
-				"translations[it].name", "translations[it].description", "translations[it].advantages",
-				"translations[it].disadvantages");
+		assertThat(empty.missingFields(List.of("en", "it"))).containsExactly("romaji", "type",
+				"firstAppearance.chapter", "translations[en].name", "translations[en].description",
+				"translations[en].advantages", "translations[en].disadvantages", "translations[it].name",
+				"translations[it].description", "translations[it].advantages", "translations[it].disadvantages");
 	}
 
 	@Test
 	void aCompleteFruitMissesNothing() {
-		var complete = new DevilFruit("Gomu Gomu", PARAMECIA,
-				Map.of("it", new DevilFruitTranslation("Gom", "Elastico", "Pro", "Contro")));
+		var complete = new DevilFruit("Gomu Gomu", PARAMECIA, null,
+				Map.of("it", new DevilFruitTranslation("Gom", "Elastico", "Pro", "Contro")), null,
+				new StoryPoint(UUID.randomUUID()));
 
 		assertThat(complete.missingFields(List.of("it"))).isEmpty();
 	}
@@ -95,13 +96,13 @@ class DevilFruitTest {
 	}
 
 	@Test
-	void aFruitWithoutAFirstAppearanceLacksOneButIsStillComplete() {
+	void aFruitWithoutAFirstAppearanceLacksOneAndIsNotCompleteForReview() {
 		var fruit = new DevilFruit("Gomu", PARAMECIA, null,
 				Map.of("it", new DevilFruitTranslation("Gom", "Elastico", "Pro", "Contro")), null, null);
 
 		assertThat(fruit.firstAppearance()).isEqualTo(StoryPoint.NONE);
 		assertThat(fruit.lacksFirstAppearance()).isTrue();
-		assertThat(fruit.missingFields(List.of("it"))).isEmpty();
+		assertThat(fruit.missingFields(List.of("it"))).containsExactly("firstAppearance.chapter");
 	}
 
 }

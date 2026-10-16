@@ -1,5 +1,7 @@
 package dev.onepieceapi.contentservice.service.devilfruit;
 
+import dev.onepieceapi.contentservice.service.content.OnlineChapters;
+import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.service.audit.AuditLogService;
 import dev.onepieceapi.contentservice.service.image.ImageService;
 
@@ -147,6 +149,9 @@ class DevilFruitImageIntegrationTest {
 
 	private UUID paramecia;
 
+	/** The chapter online every complete fruit first appears in. */
+	private StoryPoint firstAppearance;
+
 	@BeforeEach
 	void setUp() {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
@@ -161,6 +166,7 @@ class DevilFruitImageIntegrationTest {
 				this.contentVersionRepository, this.contentRepository,
 				new AuditLogService(this.auditLogRepository, clock), clock, images);
 		this.imageService = new ImageService(store, this.versionRepository, this.volumeRepository);
+		this.firstAppearance = OnlineChapters.onlineChapter(this.contentRepository, this.chapterRepository);
 
 		this.paramecia = this.entityManager
 			.persist(new ContentEntity(UUID.randomUUID(), EntityType.DEVIL_FRUIT_TYPE, EARLIER))
@@ -196,7 +202,8 @@ class DevilFruitImageIntegrationTest {
 		stored();
 
 		assertThat(refused.getErrorCode()).isEqualTo(ContentErrorCode.IMAGE_NOT_TRANSPARENT);
-		assertThat(this.jdbc.queryForObject("SELECT count(*) FROM content", Long.class)).isEqualTo(1);
+		// Only the type and the chapter seeded.
+		assertThat(this.jdbc.queryForObject("SELECT count(*) FROM content", Long.class)).isEqualTo(2);
 		assertThat(this.imageRepository.count()).isZero();
 	}
 
@@ -345,9 +352,10 @@ class DevilFruitImageIntegrationTest {
 	}
 
 	private DevilFruit complete(String romaji) {
-		return new DevilFruit(romaji, this.paramecia,
+		return new DevilFruit(romaji, this.paramecia, null,
 				Map.of("it", new DevilFruitTranslation(romaji + " it", "Descrizione", "Pro", "Contro"), "en",
-						new DevilFruitTranslation(romaji + " no Mi", "Description", "Pros", "Cons")));
+						new DevilFruitTranslation(romaji + " no Mi", "Description", "Pros", "Cons")),
+				null, this.firstAppearance);
 	}
 
 	/** The usual disc with a blue corner: another image. */

@@ -22,9 +22,12 @@ deferred, and the shape must not change when it arrives.
   `{[subcategoryId,] firstAppearanceChapterId, firstAppearanceChapterNumber}`), chapter retire
   refused while online items point to it (`409 ONLINE_ITEMS_LINKED`, fruits first, then
   types including their subcategories).
-- **Required only to go online.** A draft without one is complete (review is not blocked);
-  `PUBLISH` / `RESTORE` of a fruit or type without one is `409 FIRST_APPEARANCE_MISSING`,
-  checked before what the item points to. For a subcategory it stays optional.
+- **Required to submit and to go online** (revised 2026-10-16, owner, timeline TL4: the editor
+  learns it before review, not at publish). A fruit or type without one is incomplete:
+  submitting is `422 VERSION_INCOMPLETE` naming `firstAppearance.chapter` (`missingFields`);
+  saving stays free. `PUBLISH` / `RESTORE` without one stays `409 FIRST_APPEARANCE_MISSING`,
+  checked before what the item points to - a safety net for versions approved before the
+  revision. For a subcategory it stays optional.
 - **`RelationDescriptor.field`.** A relation's request field may differ from its block name
   (`firstAppearance.chapter` vs `firstAppearanceChapterId`); defaults to the name, so the
   existing relations are unchanged.
@@ -41,8 +44,9 @@ deferred, and the shape must not change when it arrives.
 
 - **Plain `UUID firstAppearanceChapterId` on each body**: simplest now, but the episode would
   add a sibling field on every entity and every rule; the value keeps it in one place.
-- **Required in completeness (`missingFields`)**: would block submitting drafts and review of
-  existing items; the rule is about going online, so it lives in the entity rules.
+- **Required only to go online** (the first decision, until 2026-10-16): the editor found out
+  only when publishing, after a full review round. Nothing is online yet, so making it part of
+  completeness blocks no existing item.
 - **Separate relation code (`CHAPTER_NOT_ONLINE`)**: the generic codes of ADR-0007 already
   carry the relation name in the detail keys.
 

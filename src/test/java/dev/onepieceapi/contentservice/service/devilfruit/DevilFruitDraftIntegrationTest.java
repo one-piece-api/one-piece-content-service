@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.service.devilfruit;
 
+import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.service.audit.AuditLogService;
 
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
@@ -25,6 +26,7 @@ import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
 import dev.onepieceapi.contentservice.service.exception.ValueAlreadyUsedException;
 import dev.onepieceapi.contentservice.service.exception.ValueInvalidException;
 import dev.onepieceapi.contentservice.service.exception.VersionIdenticalException;
+import dev.onepieceapi.contentservice.service.content.OnlineChapters;
 import dev.onepieceapi.contentservice.service.exception.VersionIncompleteException;
 import dev.onepieceapi.contentservice.service.image.ContentImages;
 import dev.onepieceapi.contentservice.service.validation.DevilFruitValidator;
@@ -131,6 +133,9 @@ class DevilFruitDraftIntegrationTest {
 
 	private UUID gomuGomu;
 
+	/** The chapter online every complete fruit first appears in. */
+	private StoryPoint firstAppearance;
+
 	@BeforeEach
 	void setUp() {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
@@ -143,6 +148,7 @@ class DevilFruitDraftIntegrationTest {
 				this.contentVersionRepository, this.contentRepository, auditLogService, clock,
 				mock(ContentImages.class));
 
+		this.firstAppearance = OnlineChapters.onlineChapter(this.contentRepository, this.chapterRepository);
 		this.paramecia = typeContent("Paramecia", PUBLISHED);
 		this.zoan = typeContent("Zoan", PUBLISHED);
 		this.logia = typeContent("Logia", DRAFT);
@@ -309,10 +315,11 @@ class DevilFruitDraftIntegrationTest {
 	}
 
 	/** Complete in both languages of the catalog, so only the type can be missing. */
-	private static DevilFruit complete(String romaji, UUID type) {
-		return new DevilFruit(romaji, type,
+	private DevilFruit complete(String romaji, UUID type) {
+		return new DevilFruit(romaji, type, null,
 				Map.of("it", new DevilFruitTranslation(romaji + " it", "Descrizione", "Pro", "Contro"), "en",
-						new DevilFruitTranslation(romaji + " no Mi", "Description", "Pros", "Cons")));
+						new DevilFruitTranslation(romaji + " no Mi", "Description", "Pros", "Cons")),
+				null, this.firstAppearance);
 	}
 
 	/** What was done so far is written and read again from the database. */
