@@ -7,6 +7,8 @@ import dev.onepieceapi.contentservice.service.content.FirstAppearanceRules;
 import dev.onepieceapi.contentservice.service.content.RevealRules;
 import dev.onepieceapi.contentservice.service.content.RelationDescriptor;
 
+import java.util.UUID;
+
 /**
  * The relations of a Devil Fruit (implementation plan of the Devil Fruit, D1, D2). Its
  * type keeps the reason codes it had before the rules were made generic: the wire does
@@ -34,12 +36,26 @@ public final class DevilFruitRelations {
 	 */
 	public static final RelationDescriptor<DevilFruitReveal> REVEAL_CHAPTER = RevealRules.relation("fruits");
 
-	/** The type a reveal believes, when it defines one. */
+	/** The type a reveal makes known, when it holds one (T13). */
 	public static final RelationDescriptor<DevilFruitReveal> REVEAL_TYPE = RelationDescriptor
 		.<DevilFruitReveal>builder()
 		.name("revealType")
 		.field("type")
-		.target(DevilFruitReveal::typeContentId)
+		.target(DevilFruitRelations::revealTypeId)
+		.notLinkable("must be a Devil Fruit Type with an approved version")
+		.targetNotOnline(BlockReason.RELATED_NOT_ONLINE)
+		.onlineItemsLinked(BlockReason.ONLINE_ITEMS_LINKED)
+		.itemsName("fruits")
+		.build();
+
+	/**
+	 * The type known at the first appearance, when the initial knowledge holds one
+	 * (implementation plan of the timeline, T13).
+	 */
+	public static final RelationDescriptor<DevilFruit> INITIAL_TYPE = RelationDescriptor.<DevilFruit>builder()
+		.name("initialType")
+		.field(DevilFruit.INITIAL_KNOWLEDGE_PREFIX + "type")
+		.target(DevilFruitRelations::initialTypeId)
 		.notLinkable("must be a Devil Fruit Type with an approved version")
 		.targetNotOnline(BlockReason.RELATED_NOT_ONLINE)
 		.onlineItemsLinked(BlockReason.ONLINE_ITEMS_LINKED)
@@ -47,6 +63,14 @@ public final class DevilFruitRelations {
 		.build();
 
 	private DevilFruitRelations() {
+	}
+
+	private static UUID revealTypeId(DevilFruitReveal reveal) {
+		return reveal.values().typeContentId();
+	}
+
+	private static UUID initialTypeId(DevilFruit fruit) {
+		return fruit.initialKnowledge().typeContentId();
 	}
 
 }

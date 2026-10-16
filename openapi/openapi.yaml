@@ -6754,6 +6754,38 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/StatusCountResponse"
+    DevilFruitBeliefRequest:
+      type: object
+      properties:
+        romaji:
+          type: string
+          maxLength: 100
+          minLength: 0
+        subcategory:
+          type: string
+          format: uuid
+          description: The id of a subcategory of that type
+        translations:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/DevilFruitTranslationRequest"
+        type:
+          type: string
+          format: uuid
+          description: The content id of a Devil Fruit Type
+    DevilFruitBeliefResponse:
+      type: object
+      properties:
+        romaji:
+          type: string
+        subcategory:
+          $ref: "#/components/schemas/SubcategoryReferenceResponse"
+        translations:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/DevilFruitTranslationResponse"
+        type:
+          $ref: "#/components/schemas/TypeReferenceResponse"
     DevilFruitNamesResponse:
       type: object
       properties:
@@ -6784,6 +6816,8 @@ components:
       properties:
         firstAppearance:
           $ref: "#/components/schemas/FirstAppearanceRequest"
+        initialKnowledge:
+          $ref: "#/components/schemas/DevilFruitBeliefRequest"
         removeImage:
           type: boolean
         reveals:
@@ -6814,6 +6848,8 @@ components:
           $ref: "#/components/schemas/FirstAppearanceResponse"
         image:
           $ref: "#/components/schemas/ImageResponse"
+        initialKnowledge:
+          $ref: "#/components/schemas/DevilFruitBeliefResponse"
         reveals:
           type: array
           items:
@@ -6831,6 +6867,21 @@ components:
     DevilFruitRevealRequest:
       type: object
       properties:
+        fields:
+          type: array
+          description: The fields the reader learns at the reveal
+          items:
+            type: string
+            description: A field the reader learns at a reveal; type stands for the
+              subcategory too
+            enum:
+            - name
+            - romaji
+            - type
+            - description
+            - advantages
+            - disadvantages
+          uniqueItems: true
         revealedAt:
           $ref: "#/components/schemas/RevealedAtRequest"
         romaji:
@@ -6840,7 +6891,7 @@ components:
         subcategory:
           type: string
           format: uuid
-          description: The id of a subcategory of the type in force at the reveal
+          description: The id of a subcategory of that type
         titles:
           type: object
           additionalProperties:
@@ -6853,11 +6904,24 @@ components:
         type:
           type: string
           format: uuid
-          description: The content id of the Devil Fruit Type believed; left out when
-            not part of it
+          description: "The content id of the Devil Fruit Type learned, when not yet\
+            \ the truth"
     DevilFruitRevealResponse:
       type: object
       properties:
+        fields:
+          type: array
+          items:
+            type: string
+            description: A field the reader learns at a reveal; type stands for the
+              subcategory too
+            enum:
+            - name
+            - romaji
+            - type
+            - description
+            - advantages
+            - disadvantages
         revealedAt:
           $ref: "#/components/schemas/RevealedAtResponse"
         romaji:

@@ -18,9 +18,8 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.UUID;
-import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /**
  * What one version of a Devil Fruit says (implementation plan of the Devil Fruit, D1,
@@ -40,43 +39,49 @@ import java.util.stream.IntStream;
  * @param firstAppearance the chapter the reader first meets it in (implementation plan of
  * the timeline, T7); {@link StoryPoint#NONE} for none, which is complete - it is required
  * only to go online
- * @param reveals what the reader believed before each reveal (implementation plan of the
- * timeline, T9; ADR-0010), in the order of the story; empty for none. The fields above
- * stay the truth
+ * @param initialKnowledge what the reader knows at the first appearance of the fields a
+ * reveal changes later (implementation plan of the timeline, T13);
+ * {@link DevilFruitBelief#NONE} for none
+ * @param reveals what the reader learns at each reveal (T13; ADR-0010), in the order of
+ * the story; empty for none. The fields above stay the truth
  */
 public record DevilFruit(String romaji, UUID typeContentId, UUID subcategoryId,
 		Map<String, DevilFruitTranslation> translations, String imageId, StoryPoint firstAppearance,
+		DevilFruitBelief initialKnowledge,
 		List<DevilFruitReveal> reveals) implements ContentBody<DevilFruit>, Revealing {
 
 	public static final int ROMAJI_MAX_LENGTH = 100;
+
+	/** Where the initial knowledge is in a request. */
+	public static final String INITIAL_KNOWLEDGE_PREFIX = "initialKnowledge.";
+
+	/** Where a reveal is in a request, e.g. {@code reveals[2].}. */
+	public static final String REVEAL_PREFIX = "reveals[%d].";
 
 	private static final String ROMAJI_FIELD = "romaji";
 
 	private static final String TYPE_FIELD = "type";
 
 	/** Named as request validation names them, so a client reads both the same way. */
-	private static final String NAME_FIELD = "translations[%s].name";
-
-	private static final String DESCRIPTION_FIELD = "translations[%s].description";
-
-	private static final String ADVANTAGES_FIELD = "translations[%s].advantages";
-
-	private static final String DISADVANTAGES_FIELD = "translations[%s].disadvantages";
-
-	private static final String REVEAL_DESCRIPTION_FIELD = "reveals[%d].translations[%s].description";
+	private static final String TRANSLATED_FIELD = "translations[%s].%s";
 
 	private static final String REVEAL_TITLE_FIELD = "reveals[%d].titles[%s]";
 
-	/** Nothing chosen is {@link StoryPoint#NONE}, no reveal an empty list. */
+	/**
+	 * Nothing chosen is {@link StoryPoint#NONE}, no initial knowledge
+	 * {@link DevilFruitBelief#NONE}, no reveal an empty list.
+	 */
 	public DevilFruit {
 		firstAppearance = StoryPoint.orNone(firstAppearance);
+		initialKnowledge = initialKnowledge == null ? DevilFruitBelief.NONE : initialKnowledge;
 		reveals = reveals == null ? List.of() : List.copyOf(reveals);
 	}
 
 	/** A fruit without reveals. */
 	public DevilFruit(String romaji, UUID typeContentId, UUID subcategoryId,
 			Map<String, DevilFruitTranslation> translations, String imageId, StoryPoint firstAppearance) {
-		this(romaji, typeContentId, subcategoryId, translations, imageId, firstAppearance, List.of());
+		this(romaji, typeContentId, subcategoryId, translations, imageId, firstAppearance, DevilFruitBelief.NONE,
+				List.of());
 	}
 
 	/** A fruit without a first appearance. */
@@ -99,7 +104,7 @@ public record DevilFruit(String romaji, UUID typeContentId, UUID subcategoryId,
 	/** The same fruit with another image, or none. */
 	public DevilFruit withImage(String newImageId) {
 		return new DevilFruit(this.romaji, this.typeContentId, this.subcategoryId, this.translations, newImageId,
-				this.firstAppearance, this.reveals);
+				this.firstAppearance, this.initialKnowledge, this.reveals);
 	}
 
 	@Override
@@ -112,18 +117,23 @@ public record DevilFruit(String romaji, UUID typeContentId, UUID subcategoryId,
 			}
 		});
 		return new DevilFruit(Text.stripToNull(this.romaji), this.typeContentId, this.subcategoryId, written,
-				this.imageId, this.firstAppearance, this.reveals.stream().map(DevilFruitReveal::normalized).toList());
+				this.imageId, this.firstAppearance, this.initialKnowledge.normalized(),
+				this.reveals.stream().map(DevilFruitReveal::normalized).toList());
 	}
 
-	/** Those of the fruit and of its reveals: a reveal too is written per language. */
+	/**
+	 * Those of the fruit, of its initial knowledge and of its reveals: each is written
+	 * per language.
+	 */
 	@Override
 	public Set<String> languages() {
 		Set<String> languages = new TreeSet<>(this.translations.keySet());
+		languages.addAll(this.initialKnowledge.languages());
 		this.reveals.forEach(reveal -> languages.addAll(reveal.languages()));
 		return languages;
 	}
 
-	/** The names of the truth: those of the reveals take no part in uniqueness. */
+	/** The names of the truth: those believed take no part in uniqueness. */
 	@Override
 	public Map<String, String> names() {
 		Map<String, String> names = new TreeMap<>();
@@ -142,10 +152,10 @@ public record DevilFruit(String romaji, UUID typeContentId, UUID subcategoryId,
 
 	/**
 	 * The romaji, the type and the first appearance, then a name, a description,
-	 * advantages and disadvantages per language - every one missing; then the description
-	 * of the last reveal per language, so no reader before the last reveal meets the
-	 * whole truth (T9); and the title of every reveal per language (T10). Neither is
-	 * asked on save.
+	 * advantages and disadvantages per language - every one missing; then every
+	 * translated value the initial knowledge or a reveal holds, in every language it is
+	 * missing from (T13), and the title of every reveal per language (T10). None of these
+	 * is asked on save.
 	 */
 	@Override
 	public List<String> missingFields(Collection<String> languages) {
@@ -161,31 +171,33 @@ public record DevilFruit(String romaji, UUID typeContentId, UUID subcategoryId,
 		}
 		for (String language : languages) {
 			DevilFruitTranslation translation = translationIn(language);
-			if (translation.name() == null) {
-				missing.add(NAME_FIELD.formatted(language));
-			}
-			if (translation.description() == null) {
-				missing.add(DESCRIPTION_FIELD.formatted(language));
-			}
-			if (translation.advantages() == null) {
-				missing.add(ADVANTAGES_FIELD.formatted(language));
-			}
-			if (translation.disadvantages() == null) {
-				missing.add(DISADVANTAGES_FIELD.formatted(language));
+			for (DevilFruitField field : DevilFruitField.values()) {
+				if (field.isTranslated() && field.in(translation) == null) {
+					missing.add(TRANSLATED_FIELD.formatted(language, field.fieldName()));
+				}
 			}
 		}
-		if (!this.reveals.isEmpty()) {
-			int last = this.reveals.size() - 1;
-			languages.stream()
-				.filter(language -> this.reveals.get(last).translationIn(language).description() == null)
-				.forEach(language -> missing.add(REVEAL_DESCRIPTION_FIELD.formatted(last, language)));
-		}
+		missing.addAll(missingTranslations(INITIAL_KNOWLEDGE_PREFIX, this.initialKnowledge, languages));
 		for (int index = 0; index < this.reveals.size(); index++) {
 			DevilFruitReveal reveal = this.reveals.get(index);
+			missing.addAll(missingTranslations(REVEAL_PREFIX.formatted(index), reveal.values(), languages));
 			for (String language : languages) {
 				if (reveal.titleIn(language) == null) {
 					missing.add(REVEAL_TITLE_FIELD.formatted(index, language));
 				}
+			}
+		}
+		return missing;
+	}
+
+	private static List<String> missingTranslations(String prefix, DevilFruitBelief belief,
+			Collection<String> languages) {
+		List<String> missing = new ArrayList<>();
+		for (DevilFruitField field : DevilFruitField.values()) {
+			if (field.isTranslated() && belief.holds(field)) {
+				languages.stream()
+					.filter(language -> !belief.holds(field, language))
+					.forEach(language -> missing.add(prefix + TRANSLATED_FIELD.formatted(language, field.fieldName())));
 			}
 		}
 		return missing;
@@ -199,64 +211,89 @@ public record DevilFruit(String romaji, UUID typeContentId, UUID subcategoryId,
 	}
 
 	/**
-	 * The type in force at a reveal: its own, else that of the first later reveal
-	 * defining one, else the truth.
-	 */
-	public UUID typeInForceAt(int reveal) {
-		return Reveals.resolve(this.reveals.subList(reveal, this.reveals.size()), any -> true,
-				DevilFruitReveal::typeContentId, this.typeContentId);
-	}
-
-	/**
-	 * The type and subcategory of the fruit, then those of each reveal defining them,
-	 * with the type in force there.
+	 * The type and subcategory of the fruit, then those of its initial knowledge and of
+	 * each reveal holding them.
 	 */
 	public List<DevilFruitClassification> classifications() {
 		List<DevilFruitClassification> classifications = new ArrayList<>();
-		classifications.add(new DevilFruitClassification(this.typeContentId, this.subcategoryId, null));
-		IntStream.range(0, this.reveals.size())
-			.filter(index -> this.reveals.get(index).definesClassification())
-			.forEach(index -> classifications.add(new DevilFruitClassification(typeInForceAt(index),
-					this.reveals.get(index).subcategoryId(), index)));
+		classifications.add(new DevilFruitClassification(this.typeContentId, this.subcategoryId, null, false));
+		if (this.initialKnowledge.holds(DevilFruitField.TYPE)) {
+			classifications.add(new DevilFruitClassification(this.initialKnowledge.typeContentId(),
+					this.initialKnowledge.subcategoryId(), null, true));
+		}
+		for (int index = 0; index < this.reveals.size(); index++) {
+			DevilFruitBelief values = this.reveals.get(index).values();
+			if (values.holds(DevilFruitField.TYPE)) {
+				classifications
+					.add(new DevilFruitClassification(values.typeContentId(), values.subcategoryId(), index, false));
+			}
+		}
 		return classifications;
 	}
 
-	/** The types its reveals define, those chosen only. */
-	public List<UUID> revealTypeIds() {
-		return this.reveals.stream().map(DevilFruitReveal::typeContentId).filter(Objects::nonNull).toList();
+	/** The types its initial knowledge and its reveals hold, those chosen only. */
+	public List<UUID> beliefTypeIds() {
+		return Stream.concat(Stream.of(this.initialKnowledge), this.reveals.stream().map(DevilFruitReveal::values))
+			.map(DevilFruitBelief::typeContentId)
+			.filter(Objects::nonNull)
+			.toList();
+	}
+
+	/** The positions of the reveals naming this field, in order. */
+	public List<Integer> revealsOf(DevilFruitField field) {
+		List<Integer> positions = new ArrayList<>();
+		for (int index = 0; index < this.reveals.size(); index++) {
+			if (this.reveals.get(index).reveals(field)) {
+				positions.add(index);
+			}
+		}
+		return positions;
 	}
 
 	/**
-	 * The fruit as a reader believes it where only these reveals are still believed
-	 * (implementation plan of the timeline, T9): each field from the first such reveal
-	 * defining it, else the truth; the type and the subcategory together. No reveal is
-	 * left on it. Whether the values themselves are revealed yet - a type first appearing
-	 * later - is the reader's filter to say, not the fruit's.
-	 * @param believed the reveals still believed, e.g. {@link Reveals#believedAt}
+	 * The fruit as a reader knows it having reached these reveals (implementation plan of
+	 * the timeline, T13): a field no reveal names is the truth; otherwise the value of
+	 * the last reveal reached naming it - the truth when it holds none - else the initial
+	 * knowledge, unknown (null) when that holds none either. The type and the subcategory
+	 * go together. Neither initial knowledge nor reveal is left on it. Whether the values
+	 * themselves are revealed yet - a type first appearing later - is the reader's filter
+	 * to say, not the fruit's.
+	 * @param reached the reveals reached, e.g. {@link Reveals#reachedAt}
 	 */
-	public DevilFruit asBelieved(Predicate<? super Reveal> believed) {
-		UUID type = Reveals.resolve(this.reveals, believed, DevilFruitReveal::typeContentId, this.typeContentId);
-		UUID subcategory = Reveals.resolve(this.reveals, believed, DevilFruitReveal::definesClassification,
-				DevilFruitReveal::subcategoryId, this.subcategoryId);
-		Map<String, DevilFruitTranslation> believedTranslations = new TreeMap<>();
+	public DevilFruit knownAt(Predicate<? super Reveal> reached) {
+		DevilFruitBelief type = sourceOf(DevilFruitField.TYPE, reached);
+		Map<String, DevilFruitTranslation> known = new TreeMap<>();
 		languages().forEach(language -> {
 			DevilFruitTranslation translation = new DevilFruitTranslation(
-					believed(believed, language, DevilFruitTranslation::name),
-					believed(believed, language, DevilFruitTranslation::description),
-					believed(believed, language, DevilFruitTranslation::advantages),
-					believed(believed, language, DevilFruitTranslation::disadvantages));
+					knownIn(DevilFruitField.NAME, language, reached),
+					knownIn(DevilFruitField.DESCRIPTION, language, reached),
+					knownIn(DevilFruitField.ADVANTAGES, language, reached),
+					knownIn(DevilFruitField.DISADVANTAGES, language, reached));
 			if (!translation.isEmpty()) {
-				believedTranslations.put(language, translation);
+				known.put(language, translation);
 			}
 		});
-		return new DevilFruit(Reveals.resolve(this.reveals, believed, DevilFruitReveal::romaji, this.romaji), type,
-				subcategory, believedTranslations, this.imageId, this.firstAppearance, List.of());
+		return new DevilFruit(sourceOf(DevilFruitField.ROMAJI, reached).romaji(), type.typeContentId(),
+				type.subcategoryId(), known, this.imageId, this.firstAppearance, DevilFruitBelief.NONE, List.of());
 	}
 
-	private String believed(Predicate<? super Reveal> believed, String language,
-			Function<DevilFruitTranslation, String> field) {
-		return Reveals.resolve(this.reveals, believed, reveal -> field.apply(reveal.translationIn(language)),
-				field.apply(translationIn(language)));
+	private String knownIn(DevilFruitField field, String language, Predicate<? super Reveal> reached) {
+		return field.in(sourceOf(field, reached).translationIn(language));
+	}
+
+	/**
+	 * Where a field reads from: the truth, the values of a reveal or the initial
+	 * knowledge. A reveal holding no value for it - the last one - gives the truth.
+	 */
+	private DevilFruitBelief sourceOf(DevilFruitField field, Predicate<? super Reveal> reached) {
+		DevilFruitBelief truth = new DevilFruitBelief(this.romaji, this.typeContentId, this.subcategoryId,
+				this.translations);
+		if (!Reveals.named(this.reveals, reveal -> reveal.reveals(field))) {
+			return truth;
+		}
+		return Reveals.lastReached(this.reveals, reached, reveal -> reveal.reveals(field))
+			.map(reveal -> reveal.values().holds(field) ? reveal.values() : truth)
+			.orElse(this.initialKnowledge);
 	}
 
 }

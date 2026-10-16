@@ -1,20 +1,24 @@
 package dev.onepieceapi.contentservice.web.dto.response;
 
+import dev.onepieceapi.contentservice.web.dto.request.RevealedField;
+
+import java.util.List;
 import java.util.Map;
 
 /**
- * One reveal of a Devil Fruit (implementation plan of the timeline, T9; ADR-0010): only
- * the fields revealed at its chapter, each with the value believed before; a field null
- * is not part of it.
+ * One reveal of a Devil Fruit (implementation plan of the timeline, T13; ADR-0010): the
+ * fields the reader learns at its chapter and, for those not yet the truth, the value
+ * learned; a value null is not part of it.
  *
- * @param revealedAt where the reader learns better
- * @param type the Devil Fruit Type believed, as it is today; null when not part of it
- * @param subcategory the subcategory believed, of the type in force at the reveal
- * @param translations what was believed per language code
+ * @param revealedAt where the reader learns
  * @param titles the short title of the reveal per language code
+ * @param fields the fields learned there, in a fixed order
+ * @param type the Devil Fruit Type learned, as it is today; null when not part of it
+ * @param subcategory a subcategory of that type
+ * @param translations the translated values learned per language code
  */
-public record DevilFruitRevealResponse(RevealedAtResponse revealedAt, String romaji, TypeReferenceResponse type,
-		SubcategoryReferenceResponse subcategory, Map<String, DevilFruitTranslationResponse> translations,
-		Map<String, String> titles) {
+public record DevilFruitRevealResponse(RevealedAtResponse revealedAt, Map<String, String> titles,
+		List<RevealedField> fields, String romaji, TypeReferenceResponse type, SubcategoryReferenceResponse subcategory,
+		Map<String, DevilFruitTranslationResponse> translations) {
 
 }

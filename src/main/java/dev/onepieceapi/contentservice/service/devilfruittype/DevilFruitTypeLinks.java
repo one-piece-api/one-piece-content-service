@@ -76,7 +76,7 @@ public class DevilFruitTypeLinks {
 	 */
 	public Map<UUID, TypeReference> referencesFor(Collection<DevilFruit> fruits) {
 		Set<UUID> typeIds = fruits.stream()
-			.flatMap(fruit -> Stream.concat(Stream.ofNullable(fruit.typeContentId()), fruit.revealTypeIds().stream()))
+			.flatMap(fruit -> Stream.concat(Stream.ofNullable(fruit.typeContentId()), fruit.beliefTypeIds().stream()))
 			.collect(Collectors.toSet());
 		Map<UUID, TypeReference> types = new HashMap<>(referencesOf(typeIds));
 		fruits.stream()
@@ -87,7 +87,7 @@ public class DevilFruitTypeLinks {
 
 	/**
 	 * Adds the subcategory to its type when the type has since left it out (the fruit's
-	 * own or a reveal's, with the type in force there).
+	 * own, its initial knowledge's or a reveal's).
 	 */
 	private void addDropped(Map<UUID, TypeReference> types, DevilFruitClassification classification) {
 		TypeReference type = types.get(classification.typeContentId());

@@ -1,6 +1,8 @@
 package dev.onepieceapi.contentservice.web.controller;
 
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
+import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitBelief;
+import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitField;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitReveal;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitTranslation;
 import dev.onepieceapi.contentservice.domain.devilfruit.TypeReference;
@@ -331,29 +333,34 @@ class DevilFruitControllerTest {
 	}
 
 	@Test
-	void creatingAFruitPassesOnItsRevealsInOrder() throws Exception {
+	void creatingAFruitPassesOnItsInitialKnowledgeAndItsRevealsInOrder() throws Exception {
 		var draft = new VersionAccess<>(version(VersionStatus.DRAFT, TYPE_ID), EnumSet.of(VersionAction.EDIT));
 		when(this.service.create(any(), any(), any(), any())).thenReturn(new Content<>(CONTENT_ID, List.of(draft)));
 
 		var request = post("/devil-fruits").with(callerWith(Permission.CONTENT_WRITE))
 			.contentType("application/json")
-			.content("{\"romaji\":\"Hito Hito\",\"reveals\":[{\"revealedAt\":{\"chapter\":\"" + CHAPTER_ID
-					+ "\"},\"romaji\":\"Gomu Gomu\",\"type\":\"" + TYPE_ID
+			.content("{\"romaji\":\"Hito Hito\",\"initialKnowledge\":{\"romaji\":\"Gomu Gomu\"},"
+					+ "\"reveals\":[{\"revealedAt\":{\"chapter\":\"" + CHAPTER_ID
+					+ "\"},\"fields\":[\"name\",\"type\"],\"type\":\"" + TYPE_ID
 					+ "\",\"translations\":{\"en\":{\"name\":\"Gum-Gum Fruit\"}},\"titles\":{\"en\":\"The fruit is Nika\"}}]}");
 		this.mockMvc.perform(request).andExpect(status().isCreated());
 
 		var written = ArgumentCaptor.forClass(DevilFruit.class);
 		verify(this.service).create(any(), any(), written.capture(), eq(ImageChange.KEEP));
+		var learned = new DevilFruitBelief(null, TYPE_ID, null,
+				Map.of("en", new DevilFruitTranslation("Gum-Gum Fruit", null, null, null)));
 		assertThat(written.getValue().reveals()).containsExactly(new DevilFruitReveal(new StoryPoint(CHAPTER_ID),
-				"Gomu Gomu", TYPE_ID, null, Map.of("en", new DevilFruitTranslation("Gum-Gum Fruit", null, null, null)),
-				Map.of("en", "The fruit is Nika")));
+				Set.of(DevilFruitField.NAME, DevilFruitField.TYPE), learned, Map.of("en", "The fruit is Nika")));
+		assertThat(written.getValue().initialKnowledge())
+			.isEqualTo(new DevilFruitBelief("Gomu Gomu", null, null, Map.of()));
 	}
 
 	@Test
-	void aVersionSaysItsRevealsWithTheirChapterAndTypeAsTheyAreToday() throws Exception {
-		var reveal = new DevilFruitReveal(new StoryPoint(CHAPTER_ID), "Gomu Gomu", TYPE_ID, null, Map.of(),
-				Map.of("it", "Il frutto è Nika"));
-		var body = new DevilFruit("Hito Hito", null, null, Map.of(), null, StoryPoint.NONE, List.of(reveal));
+	void aVersionSaysItsInitialKnowledgeAndItsRevealsWithTheirChapterAndTypeAsTheyAreToday() throws Exception {
+		var reveal = new DevilFruitReveal(new StoryPoint(CHAPTER_ID),
+				Set.of(DevilFruitField.ROMAJI, DevilFruitField.TYPE), null, Map.of("it", "Il frutto è Nika"));
+		var initial = new DevilFruitBelief("Gomu Gomu", TYPE_ID, null, Map.of());
+		var body = new DevilFruit("Hito Hito", null, null, Map.of(), null, StoryPoint.NONE, initial, List.of(reveal));
 		var access = new VersionAccess<>(Version.<DevilFruit>builder()
 			.number(1)
 			.status(VersionStatus.DRAFT)
@@ -371,10 +378,22 @@ class DevilFruitControllerTest {
 			.perform(get("/devil-fruits/" + CONTENT_ID + "/versions/1").with(callerWith(Permission.CONTENT_READ)))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.body.reveals[0].revealedAt.chapter.number").value(100))
-			.andExpect(jsonPath("$.body.reveals[0].romaji").value("Gomu Gomu"))
+			.andExpect(jsonPath("$.body.reveals[0].fields[0]").value("romaji"))
+			.andExpect(jsonPath("$.body.reveals[0].fields[1]").value("type"))
+			.andExpect(jsonPath("$.body.reveals[0].romaji").doesNotExist())
 			.andExpect(jsonPath("$.body.reveals[0].titles.it").value("Il frutto è Nika"))
-			.andExpect(jsonPath("$.body.reveals[0].type.id").value(TYPE_ID.toString()))
-			.andExpect(jsonPath("$.body.reveals[0].subcategory").doesNotExist());
+			.andExpect(jsonPath("$.body.initialKnowledge.romaji").value("Gomu Gomu"))
+			.andExpect(jsonPath("$.body.initialKnowledge.type.id").value(TYPE_ID.toString()))
+			.andExpect(jsonPath("$.body.initialKnowledge.subcategory").doesNotExist());
+	}
+
+	@Test
+	void anUnknownRevealedFieldIsABadRequest() throws Exception {
+		var request = post("/devil-fruits").with(callerWith(Permission.CONTENT_WRITE))
+			.contentType("application/json")
+			.content("{\"reveals\":[{\"fields\":[\"image\"]}]}");
+
+		this.mockMvc.perform(request).andExpect(status().isBadRequest());
 	}
 
 	@Test

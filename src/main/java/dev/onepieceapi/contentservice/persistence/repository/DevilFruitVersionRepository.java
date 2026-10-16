@@ -99,7 +99,7 @@ public interface DevilFruitVersionRepository extends VersionBodyRepository<Devil
 			order by d.romaji""")
 	List<DevilFruitVersionEntity> findOnlineWithRevealIn(UUID chapterContentId, Pageable pageable);
 
-	/** How many fruits are online with a reveal believing this type. */
+	/** How many fruits are online with a reveal making this type known. */
 	@Query("""
 			select count(distinct d) from DevilFruitVersionEntity d join d.version v join d.reveals p
 			where p.typeContentId = :typeContentId
@@ -107,8 +107,8 @@ public interface DevilFruitVersionRepository extends VersionBodyRepository<Devil
 	long countOnlineWithRevealType(UUID typeContentId);
 
 	/**
-	 * The fruits online with a reveal believing this type, by romaji: as many as the page
-	 * asks for.
+	 * The fruits online with a reveal making this type known, by romaji: as many as the
+	 * page asks for.
 	 */
 	@Query("""
 			select distinct d from DevilFruitVersionEntity d join fetch d.version v join d.reveals p
@@ -117,16 +117,34 @@ public interface DevilFruitVersionRepository extends VersionBodyRepository<Devil
 			order by d.romaji""")
 	List<DevilFruitVersionEntity> findOnlineWithRevealType(UUID typeContentId, Pageable pageable);
 
+	/** How many fruits are online whose initial knowledge holds this type (T13). */
+	@Query("""
+			select count(d) from DevilFruitVersionEntity d join d.version v
+			where d.initialTypeContentId = :typeContentId
+				and v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED""")
+	long countOnlineWithInitialType(UUID typeContentId);
+
 	/**
-	 * The fruits online with a reveal naming a subcategory, by romaji - few: the type
-	 * each believes it of is read from the domain (ADR-0010).
+	 * The fruits online whose initial knowledge holds this type, by romaji: as many as
+	 * the page asks for.
 	 */
 	@Query("""
-			select distinct d from DevilFruitVersionEntity d join fetch d.version v join d.reveals p
-			where p.subcategoryId is not null
+			select d from DevilFruitVersionEntity d join fetch d.version v
+			where d.initialTypeContentId = :typeContentId
 				and v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED
 			order by d.romaji""")
-	List<DevilFruitVersionEntity> findOnlineWithRevealSubcategory();
+	List<DevilFruitVersionEntity> findOnlineWithInitialType(UUID typeContentId, Pageable pageable);
+
+	/**
+	 * The fruits online whose initial knowledge or a reveal names a subcategory, by
+	 * romaji - few: the type each names it under is read from the domain (ADR-0010, T13).
+	 */
+	@Query("""
+			select distinct d from DevilFruitVersionEntity d join fetch d.version v left join d.reveals p
+			where (p.subcategoryId is not null or d.initialSubcategoryId is not null)
+				and v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED
+			order by d.romaji""")
+	List<DevilFruitVersionEntity> findOnlineWithBeliefSubcategory();
 
 	/**
 	 * The fruits online with this type naming a subcategory outside the given ones, by

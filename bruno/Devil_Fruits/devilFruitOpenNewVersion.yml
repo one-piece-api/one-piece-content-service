@@ -81,8 +81,30 @@ examples:
                 "id": "",
                 "url": ""
               },
+              "initialKnowledge": {
+                "romaji": "",
+                "subcategory": {
+                  "id": "",
+                  "names": {}
+                },
+                "translations": {},
+                "type": {
+                  "id": "",
+                  "names": {},
+                  "romaji": "",
+                  "subcategories": [
+                    {
+                      "id": "",
+                      "names": {}
+                    }
+                  ]
+                }
+              },
               "reveals": [
                 {
+                  "fields": [
+                    "name"
+                  ],
                   "revealedAt": {
                     "chapter": {
                       "id": "",

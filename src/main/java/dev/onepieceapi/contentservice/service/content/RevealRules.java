@@ -34,7 +34,7 @@ public class RevealRules {
 
 	private static final String CHAPTER_FIELD = "revealedAt.chapter";
 
-	private static final String EMPTY = "must define at least one field";
+	private static final String EMPTY = "must name at least one field";
 
 	private static final String REQUIRED = "is required";
 

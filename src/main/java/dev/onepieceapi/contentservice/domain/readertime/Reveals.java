@@ -3,55 +3,53 @@ package dev.onepieceapi.contentservice.domain.readertime;
 import lombok.experimental.UtilityClass;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
 /**
  * How the value of one field is read at a point of the story (implementation plan of the
- * timeline, T9): from the first reveal still believed there that defines it; otherwise
- * the truth. A field changing twice works, since each reveal holds the belief before its
- * own reveal. Written once for any {@link Reveal}; which fields go together is the
- * entity's to say.
+ * timeline, T13): a field no reveal names is the truth throughout; otherwise it is what
+ * the last reveal reached names, else what was known at the first appearance - unknown
+ * when nothing was. Written once for any {@link Reveal}; what a reveal holds for a field
+ * is the entity's to say.
  */
 @UtilityClass
 public class Reveals {
 
 	/**
-	 * The reveals still believed by a reader at this chapter: those revealed at a later
-	 * one. A reveal whose chapter has no known number is never believed.
+	 * The reveals a reader at this chapter has reached: those revealed at it or before. A
+	 * reveal whose chapter has no known number counts as reached, so the truth is never
+	 * held back for want of a number.
 	 * @param chapterNumbers the number of a chapter by its content; null when unknown
 	 */
-	public Predicate<Reveal> believedAt(int chapterNumber, Function<UUID, Integer> chapterNumbers) {
+	public Predicate<Reveal> reachedAt(int chapterNumber, Function<UUID, Integer> chapterNumbers) {
 		return reveal -> {
 			UUID chapter = reveal.revealedAtChapterId();
 			Integer revealedAt = chapter == null ? null : chapterNumbers.apply(chapter);
-			return revealedAt != null && revealedAt > chapterNumber;
+			return revealedAt == null || revealedAt <= chapterNumber;
 		};
 	}
 
-	/**
-	 * The value of a field, as believed: a null value is a field the reveal does not
-	 * define.
-	 */
-	public <P extends Reveal, V> V resolve(List<P> reveals, Predicate<? super P> believed, Function<? super P, V> field,
-			V truth) {
-		return resolve(reveals, believed, reveal -> field.apply(reveal) != null, field, truth);
+	/** Whether some reveal names the field: if none does, it is the truth throughout. */
+	public <P extends Reveal> boolean named(List<P> reveals, Predicate<? super P> names) {
+		return reveals.stream().anyMatch(names);
 	}
 
 	/**
-	 * The same, for a field a reveal may define as null - e.g. no subcategory, believed
-	 * together with a type.
-	 * @param defines whether the reveal defines the field
+	 * The last reveal reached that names the field; empty while none is, when the field
+	 * reads as known at the first appearance.
 	 */
-	public <P extends Reveal, V> V resolve(List<P> reveals, Predicate<? super P> believed, Predicate<? super P> defines,
-			Function<? super P, V> field, V truth) {
+	public <P extends Reveal> Optional<P> lastReached(List<P> reveals, Predicate<? super P> reached,
+			Predicate<? super P> names) {
+		P last = null;
 		for (P reveal : reveals) {
-			if (believed.test(reveal) && defines.test(reveal)) {
-				return field.apply(reveal);
+			if (names.test(reveal) && reached.test(reveal)) {
+				last = reveal;
 			}
 		}
-		return truth;
+		return Optional.ofNullable(last);
 	}
 
 }

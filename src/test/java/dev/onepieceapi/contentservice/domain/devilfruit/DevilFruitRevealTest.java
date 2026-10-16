@@ -6,127 +6,120 @@ import org.junit.jupiter.api.Test;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
+import java.util.Set;
 
 import static dev.onepieceapi.contentservice.domain.devilfruit.GomuGomuReveals.CHAPTER_1;
 import static dev.onepieceapi.contentservice.domain.devilfruit.GomuGomuReveals.CHAPTER_1044;
+import static dev.onepieceapi.contentservice.domain.devilfruit.GomuGomuReveals.INITIAL_KNOWLEDGE;
+import static dev.onepieceapi.contentservice.domain.devilfruit.GomuGomuReveals.NIKA;
 import static dev.onepieceapi.contentservice.domain.devilfruit.GomuGomuReveals.PARAMECIA;
+import static dev.onepieceapi.contentservice.domain.devilfruit.GomuGomuReveals.RUBBER_BODY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
 /**
- * The reveals as part of a Devil Fruit's version (ADR-0010): how what an editor typed in
- * them is stored and compared, which languages they bring, and what the last one owes at
- * submission.
+ * The initial knowledge and the reveals as part of a Devil Fruit's version (T13;
+ * ADR-0010): how what an editor typed in them is stored and compared, which languages
+ * they bring, and what they owe at submission.
  */
 class DevilFruitRevealTest {
 
-	private static DevilFruit withReveals(DevilFruitReveal... reveals) {
+	private static DevilFruit with(DevilFruitBelief initialKnowledge, DevilFruitReveal... reveals) {
 		return new DevilFruit("Hito Hito no Mi", GomuGomuReveals.ZOAN, null,
 				Map.of("it", GomuGomuReveals.TRUTH_IT, "en", GomuGomuReveals.TRUTH_EN), null, new StoryPoint(CHAPTER_1),
-				List.of(reveals));
+				initialKnowledge, List.of(reveals));
 	}
 
 	@Test
-	void aRevealIsNormalizedLikeTheFruitAndKeepsItsChapterAndType() {
+	void theInitialKnowledgeAndTheRevealsAreNormalizedLikeTheFruit() {
 		Map<String, DevilFruitTranslation> typed = new HashMap<>();
 		typed.put("it", new DevilFruitTranslation(" Gom Gom ", "  ", null, null));
 		typed.put("en", new DevilFruitTranslation("", null, null, " "));
-		var reveal = new DevilFruitReveal(new StoryPoint(CHAPTER_1044), "  Gomu Gomu ", PARAMECIA, null, typed,
+		var reveal = new DevilFruitReveal(new StoryPoint(CHAPTER_1044), Set.of(DevilFruitField.NAME),
+				new DevilFruitBelief("  Gomu Gomu ", PARAMECIA, null, typed),
 				new HashMap<>(Map.of("it", " Il frutto è Nika ", "en", "  ")));
 
-		var normalized = withReveals(reveal).normalized().reveals().getFirst();
+		var normalized = with(new DevilFruitBelief(" ", null, null, typed), reveal).normalized();
 
-		assertThat(normalized.romaji()).isEqualTo("Gomu Gomu");
-		assertThat(normalized.revealedAt()).isEqualTo(new StoryPoint(CHAPTER_1044));
-		assertThat(normalized.typeContentId()).isEqualTo(PARAMECIA);
-		assertThat(normalized.translations())
+		DevilFruitReveal first = normalized.reveals().getFirst();
+		assertThat(first.values().romaji()).isEqualTo("Gomu Gomu");
+		assertThat(first.values().typeContentId()).isEqualTo(PARAMECIA);
+		assertThat(first.values().translations())
 			.containsExactly(entry("it", new DevilFruitTranslation("Gom Gom", null, null, null)));
-		assertThat(normalized.titles()).containsExactly(entry("it", "Il frutto è Nika"));
+		assertThat(first.titles()).containsExactly(entry("it", "Il frutto è Nika"));
+		assertThat(first.fields()).containsExactly(DevilFruitField.NAME);
+		assertThat(normalized.initialKnowledge().romaji()).isNull();
+		assertThat(normalized.initialKnowledge().translations()).containsOnlyKeys("it");
 	}
 
 	@Test
-	void aRevealOfBlanksOnlyDefinesNothing() {
-		var blank = new DevilFruitReveal(new StoryPoint(CHAPTER_1044), " ", null, null,
-				Map.of("it", new DevilFruitTranslation(" ", null, null, null)));
-
-		assertThat(withReveals(blank).normalized().reveals().getFirst().definesNothing()).isTrue();
-		var titled = new DevilFruitReveal(new StoryPoint(CHAPTER_1044), null, null, null, Map.of(),
+	void aRevealNamingNoFieldDefinesNothingWhateverItsTitleOrValues() {
+		var titled = new DevilFruitReveal(new StoryPoint(CHAPTER_1044), Set.of(), RUBBER_BODY.values(),
 				Map.of("it", "Il frutto è Nika"));
 
 		assertThat(titled.definesNothing()).isTrue();
-		assertThat(new DevilFruitReveal(null, null, null, UUID.randomUUID(), null).definesNothing()).isFalse();
-		assertThat(GomuGomuReveals.FIRST_BELIEF.definesNothing()).isFalse();
+		assertThat(NIKA.definesNothing()).isFalse();
 	}
 
 	@Test
-	void nothingChosenIsNoneAndNoListIsNoReveal() {
-		var reveal = new DevilFruitReveal(null, "Gomu", null, null, null);
-		var fruit = new DevilFruit("Gomu", null, null, Map.of(), null, null, null);
+	void nothingChosenIsNone() {
+		var reveal = new DevilFruitReveal(null, null, null, null);
+		var fruit = new DevilFruit("Gomu", null, null, Map.of(), null, null, null, null);
 
 		assertThat(reveal.revealedAt()).isEqualTo(StoryPoint.NONE);
-		assertThat(reveal.translations()).isEmpty();
+		assertThat(reveal.fields()).isEmpty();
+		assertThat(reveal.values()).isEqualTo(DevilFruitBelief.NONE);
 		assertThat(fruit.reveals()).isEmpty();
+		assertThat(fruit.initialKnowledge()).isEqualTo(DevilFruitBelief.NONE);
 	}
 
 	@Test
-	void theLanguagesAreThoseOfTheFruitAndOfItsReveals() {
-		var reveal = new DevilFruitReveal(new StoryPoint(CHAPTER_1044), null, null, null,
+	void theLanguagesAreThoseOfTheFruitItsInitialKnowledgeAndItsReveals() {
+		var french = new DevilFruitBelief(null, null, null,
 				Map.of("fr", new DevilFruitTranslation("Fruit du Caoutchouc", null, null, null)));
-
-		assertThat(withReveals(reveal).languages()).containsExactly("en", "fr", "it");
-		var titled = new DevilFruitReveal(new StoryPoint(CHAPTER_1044), null, null, null, Map.of(),
+		var titled = new DevilFruitReveal(new StoryPoint(CHAPTER_1044), Set.of(DevilFruitField.NAME), null,
 				Map.of("de", "Titel"));
-		assertThat(withReveals(titled).languages()).containsExactly("de", "en", "it");
-		assertThat(withReveals(reveal).names()).containsOnlyKeys("it", "en");
+
+		assertThat(with(french).languages()).containsExactly("en", "fr", "it");
+		assertThat(with(DevilFruitBelief.NONE, titled).languages()).containsExactly("de", "en", "it");
+		assertThat(with(french).names()).containsOnlyKeys("it", "en");
 	}
 
 	@Test
-	void theLastRevealMustDescribeTheFruitInEveryLanguageForReview() {
-		var withoutDescription = new DevilFruitReveal(new StoryPoint(CHAPTER_1044), "Gomu Gomu no Mi", null, null,
-				Map.of("it", new DevilFruitTranslation(null, "Gomma", null, null)),
-				Map.of("it", "Titolo", "en", "Title"));
+	void everyValueBelievedMustBeWrittenInEveryLanguageForReview() {
+		var italianOnly = new DevilFruitBelief("Gomu Gomu no Mi", PARAMECIA, null,
+				Map.of("it", new DevilFruitTranslation("Frutto Gom Gom", "Gomma", null, null)));
 
-		assertThat(withReveals(GomuGomuReveals.GOMU_GOMU, withoutDescription).missingFields(List.of("en", "it")))
-			.containsExactly("reveals[1].translations[en].description");
-		assertThat(withReveals(withoutDescription, GomuGomuReveals.GOMU_GOMU).missingFields(List.of("en", "it")))
-			.isEmpty();
-	}
-
-	@Test
-	void twoVersionsDifferingOnlyByTheirRevealsAreDifferent() {
-		var renamed = new DevilFruitReveal(new StoryPoint(CHAPTER_1044), "Gomu Gomu", PARAMECIA, null,
-				GomuGomuReveals.GOMU_GOMU.translations());
-
-		assertThat(withReveals(GomuGomuReveals.GOMU_GOMU)).isNotEqualTo(withReveals(renamed))
-			.isNotEqualTo(withReveals())
-			.isEqualTo(withReveals(GomuGomuReveals.GOMU_GOMU));
+		assertThat(with(italianOnly, RUBBER_BODY, NIKA).missingFields(List.of("en", "it")))
+			.containsExactly("initialKnowledge.translations[en].name", "initialKnowledge.translations[en].description");
+		assertThat(with(INITIAL_KNOWLEDGE, RUBBER_BODY, NIKA).missingFields(List.of("en", "it"))).isEmpty();
 	}
 
 	@Test
 	void everyRevealMustTitleItsRevealInEveryLanguageForReviewButNotOnSave() {
-		var untitled = new DevilFruitReveal(new StoryPoint(CHAPTER_1044), null, null, null,
-				GomuGomuReveals.GOMU_GOMU.translations(), Map.of("it", "Il frutto è Nika"));
+		var untitled = new DevilFruitReveal(NIKA.revealedAt(), NIKA.fields(), null, Map.of("it", "Il frutto è Nika"));
 
-		assertThat(withReveals(GomuGomuReveals.FIRST_BELIEF, untitled).missingFields(List.of("en", "it")))
+		assertThat(with(INITIAL_KNOWLEDGE, RUBBER_BODY, untitled).missingFields(List.of("en", "it")))
 			.containsExactly("reveals[1].titles[en]");
-		assertThat(
-				withReveals(GomuGomuReveals.FIRST_BELIEF, GomuGomuReveals.GOMU_GOMU).missingFields(List.of("en", "it")))
-			.isEmpty();
 	}
 
 	@Test
-	void aTitleChangedMakesTwoVersionsDifferent() {
-		var retitled = new DevilFruitReveal(new StoryPoint(CHAPTER_1044), GomuGomuReveals.GOMU_GOMU.romaji(), PARAMECIA,
-				null, GomuGomuReveals.GOMU_GOMU.translations(), Map.of("it", "Altro", "en", "Other"));
+	void twoVersionsDifferingOnlyByTheirInitialKnowledgeOrRevealsAreDifferent() {
+		var otherFields = new DevilFruitReveal(NIKA.revealedAt(), Set.of(DevilFruitField.NAME), null, NIKA.titles());
+		var retitled = new DevilFruitReveal(NIKA.revealedAt(), NIKA.fields(), null, Map.of("it", "Altro"));
 
-		assertThat(withReveals(GomuGomuReveals.GOMU_GOMU)).isNotEqualTo(withReveals(retitled));
+		assertThat(with(INITIAL_KNOWLEDGE, NIKA)).isNotEqualTo(with(INITIAL_KNOWLEDGE, otherFields))
+			.isNotEqualTo(with(INITIAL_KNOWLEDGE, retitled))
+			.isNotEqualTo(with(DevilFruitBelief.NONE, NIKA))
+			.isEqualTo(with(INITIAL_KNOWLEDGE, NIKA));
 	}
 
 	@Test
-	void anotherImageKeepsTheReveals() {
-		assertThat(withReveals(GomuGomuReveals.GOMU_GOMU).withImage("image").reveals())
-			.containsExactly(GomuGomuReveals.GOMU_GOMU);
+	void anotherImageKeepsTheInitialKnowledgeAndTheReveals() {
+		var fruit = with(INITIAL_KNOWLEDGE, NIKA).withImage("image");
+
+		assertThat(fruit.reveals()).containsExactly(NIKA);
+		assertThat(fruit.initialKnowledge()).isEqualTo(INITIAL_KNOWLEDGE);
 	}
 
 }

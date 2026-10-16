@@ -1,6 +1,7 @@
 package dev.onepieceapi.contentservice.persistence.mapper;
 
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
+import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitBelief;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitReveal;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitTranslation;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
@@ -26,7 +27,7 @@ public class DevilFruitVersionMapper {
 	public Version<DevilFruit> toDomain(DevilFruitVersionEntity entity) {
 		var body = new DevilFruit(entity.getRomaji(), entity.getTypeContentId(), entity.getSubcategoryId(),
 				toDomain(entity.getTranslations()), entity.getImageId(),
-				new StoryPoint(entity.getFirstAppearanceChapterId()),
+				new StoryPoint(entity.getFirstAppearanceChapterId()), initialKnowledgeOf(entity),
 				entity.getReveals().stream().map(DevilFruitVersionMapper::toDomain).toList());
 		return ContentVersionMapper.toDomain(entity.getVersion(), body);
 	}
@@ -35,29 +36,39 @@ public class DevilFruitVersionMapper {
 	public void rewrite(DevilFruitVersionEntity entity, DevilFruit body, Instant now) {
 		entity.rewrite(body.romaji(), body.typeContentId(), body.subcategoryId(), toEmbeddables(body.translations()),
 				body.imageId(), body.firstAppearanceChapterId(), now);
+		DevilFruitBelief initial = body.initialKnowledge();
+		entity.rewriteInitialKnowledge(initial.romaji(), initial.typeContentId(), initial.subcategoryId(),
+				toEmbeddables(initial.translations()));
 		entity.rewriteReveals(body.reveals().stream().map(DevilFruitVersionMapper::toWritten).toList());
 	}
 
+	private static DevilFruitBelief initialKnowledgeOf(DevilFruitVersionEntity entity) {
+		return new DevilFruitBelief(entity.getInitialRomaji(), entity.getInitialTypeContentId(),
+				entity.getInitialSubcategoryId(), toDomain(entity.getInitialTranslations()));
+	}
+
 	private static DevilFruitReveal toDomain(DevilFruitRevealEntity reveal) {
-		return new DevilFruitReveal(new StoryPoint(reveal.getRevealedAtChapterId()), reveal.getRomaji(),
-				reveal.getTypeContentId(), reveal.getSubcategoryId(), believed(reveal.getTranslations()),
+		var values = new DevilFruitBelief(reveal.getRomaji(), reveal.getTypeContentId(), reveal.getSubcategoryId(),
+				learned(reveal.getTranslations()));
+		return new DevilFruitReveal(new StoryPoint(reveal.getRevealedAtChapterId()), reveal.getFields(), values,
 				titles(reveal.getTranslations()));
 	}
 
 	private static DevilFruitRevealEntity.Written toWritten(DevilFruitReveal reveal) {
-		return new DevilFruitRevealEntity.Written(reveal.revealedAtChapterId(), reveal.romaji(), reveal.typeContentId(),
-				reveal.subcategoryId(), toRevealEmbeddables(reveal));
+		DevilFruitBelief values = reveal.values();
+		return new DevilFruitRevealEntity.Written(reveal.revealedAtChapterId(), reveal.fields(), values.romaji(),
+				values.typeContentId(), values.subcategoryId(), toRevealEmbeddables(reveal));
 	}
 
-	/** The believed fields of a reveal, without the languages that hold a title only. */
-	private static Map<String, DevilFruitTranslation> believed(
+	/** The values learned at a reveal, without the languages that hold a title only. */
+	private static Map<String, DevilFruitTranslation> learned(
 			Map<String, DevilFruitRevealTranslationEmbeddable> translations) {
 		Map<String, DevilFruitTranslation> byLanguage = new TreeMap<>();
 		translations.forEach((language, translation) -> {
-			var believed = new DevilFruitTranslation(translation.getName(), translation.getDescription(),
+			var learned = new DevilFruitTranslation(translation.getName(), translation.getDescription(),
 					translation.getAdvantages(), translation.getDisadvantages());
-			if (!believed.isEmpty()) {
-				byLanguage.put(language, believed);
+			if (!learned.isEmpty()) {
+				byLanguage.put(language, learned);
 			}
 		});
 		return byLanguage;
@@ -73,13 +84,13 @@ public class DevilFruitVersionMapper {
 		return byLanguage;
 	}
 
-	/** A row per language with a believed field or a title. */
+	/** A row per language with a value or a title. */
 	private static Map<String, DevilFruitRevealTranslationEmbeddable> toRevealEmbeddables(DevilFruitReveal reveal) {
 		Map<String, DevilFruitRevealTranslationEmbeddable> byLanguage = new HashMap<>();
 		reveal.languages().forEach(language -> {
-			DevilFruitTranslation believed = reveal.translationIn(language);
-			byLanguage.put(language, new DevilFruitRevealTranslationEmbeddable(believed.name(), believed.description(),
-					believed.advantages(), believed.disadvantages(), reveal.titleIn(language)));
+			DevilFruitTranslation learned = reveal.values().translationIn(language);
+			byLanguage.put(language, new DevilFruitRevealTranslationEmbeddable(learned.name(), learned.description(),
+					learned.advantages(), learned.disadvantages(), reveal.titleIn(language)));
 		});
 		return byLanguage;
 	}

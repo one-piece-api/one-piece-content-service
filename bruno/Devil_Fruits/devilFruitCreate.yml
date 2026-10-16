@@ -15,9 +15,18 @@ http:
         "firstAppearance": {
           "chapter": ""
         },
+        "initialKnowledge": {
+          "romaji": "",
+          "subcategory": "",
+          "translations": {},
+          "type": ""
+        },
         "removeImage": false,
         "reveals": [
           {
+            "fields": [
+              "name"
+            ],
             "revealedAt": {
               "chapter": ""
             },
@@ -55,9 +64,18 @@ examples:
             "firstAppearance": {
               "chapter": ""
             },
+            "initialKnowledge": {
+              "romaji": "",
+              "subcategory": "",
+              "translations": {},
+              "type": ""
+            },
             "removeImage": false,
             "reveals": [
               {
+                "fields": [
+                  "name"
+                ],
                 "revealedAt": {
                   "chapter": ""
                 },
@@ -124,9 +142,18 @@ examples:
             "firstAppearance": {
               "chapter": ""
             },
+            "initialKnowledge": {
+              "romaji": "",
+              "subcategory": "",
+              "translations": {},
+              "type": ""
+            },
             "removeImage": false,
             "reveals": [
               {
+                "fields": [
+                  "name"
+                ],
                 "revealedAt": {
                   "chapter": ""
                 },
@@ -177,9 +204,18 @@ examples:
             "firstAppearance": {
               "chapter": ""
             },
+            "initialKnowledge": {
+              "romaji": "",
+              "subcategory": "",
+              "translations": {},
+              "type": ""
+            },
             "removeImage": false,
             "reveals": [
               {
+                "fields": [
+                  "name"
+                ],
                 "revealedAt": {
                   "chapter": ""
                 },

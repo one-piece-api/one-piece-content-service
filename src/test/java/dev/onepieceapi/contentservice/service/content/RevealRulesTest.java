@@ -1,6 +1,8 @@
 package dev.onepieceapi.contentservice.service.content;
 
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
+import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitBelief;
+import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitField;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitReveal;
 import dev.onepieceapi.contentservice.domain.devilfruit.GomuGomuReveals;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
@@ -14,6 +16,7 @@ import org.junit.jupiter.params.provider.EnumSource;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import static dev.onepieceapi.contentservice.domain.devilfruit.GomuGomuReveals.CHAPTER_1;
@@ -23,21 +26,21 @@ import static dev.onepieceapi.contentservice.domain.devilfruit.GomuGomuReveals.N
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * The rules every reveal follows (implementation plan of the timeline, T9; ADR-0010): a
- * field at least, a chapter, and the order of the story - after the first appearance and
- * after the reveal before - on save and again going online.
+ * The rules every reveal follows (implementation plan of the timeline, T9, T13;
+ * ADR-0010): a field named at least, a chapter, and the order of the story - after the
+ * first appearance and after the reveal before - on save and again going online.
  */
 class RevealRulesTest {
 
 	private static final String CHAPTER_FIELD = "reveals[%d].revealedAt.chapter";
 
 	private static DevilFruitReveal reveal(UUID chapter) {
-		return new DevilFruitReveal(new StoryPoint(chapter), "Gomu Gomu", null, null, Map.of());
+		return new DevilFruitReveal(new StoryPoint(chapter), Set.of(DevilFruitField.ROMAJI), null, null);
 	}
 
 	private static DevilFruit fruit(UUID firstAppearance, DevilFruitReveal... reveals) {
 		return new DevilFruit("Hito Hito", null, null, Map.of(), null, new StoryPoint(firstAppearance),
-				List.of(reveals));
+				DevilFruitBelief.NONE, List.of(reveals));
 	}
 
 	@Test
@@ -81,11 +84,11 @@ class RevealRulesTest {
 
 	@Test
 	void aRevealWithoutAFieldOrAChapterIsNamed() {
-		var empty = new DevilFruitReveal(new StoryPoint(CHAPTER_100), null, null, null, Map.of());
-		var noChapter = new DevilFruitReveal(StoryPoint.NONE, "Gomu Gomu", null, null, Map.of());
+		var empty = new DevilFruitReveal(new StoryPoint(CHAPTER_100), Set.of(), null, Map.of("it", "Titolo"));
+		var noChapter = new DevilFruitReveal(StoryPoint.NONE, Set.of(DevilFruitField.ROMAJI), null, null);
 
 		assertThat(RevealRules.incomplete(fruit(CHAPTER_1, empty, noChapter))).containsExactly(
-				new FieldViolation("reveals[0]", "must define at least one field"),
+				new FieldViolation("reveals[0]", "must name at least one field"),
 				new FieldViolation(CHAPTER_FIELD.formatted(1), "is required"));
 	}
 

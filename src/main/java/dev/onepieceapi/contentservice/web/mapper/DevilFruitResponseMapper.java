@@ -1,6 +1,7 @@
 package dev.onepieceapi.contentservice.web.mapper;
 
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
+import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitBelief;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitReveal;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitTranslation;
 import dev.onepieceapi.contentservice.domain.devilfruit.SubcategoryReference;
@@ -9,6 +10,8 @@ import dev.onepieceapi.contentservice.domain.story.NumberedReference;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAccess;
 import dev.onepieceapi.contentservice.web.dto.response.ContentSummaryResponse;
+import dev.onepieceapi.contentservice.web.dto.request.RevealedField;
+import dev.onepieceapi.contentservice.web.dto.response.DevilFruitBeliefResponse;
 import dev.onepieceapi.contentservice.web.dto.response.DevilFruitNamesResponse;
 import dev.onepieceapi.contentservice.web.dto.response.DevilFruitRevealResponse;
 import dev.onepieceapi.contentservice.web.dto.response.DevilFruitResponse;
@@ -24,7 +27,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
 import java.util.UUID;
-import java.util.stream.IntStream;
 
 /**
  * From Devil Fruits to their response bodies: what a version says is mapped here, the
@@ -50,25 +52,38 @@ public class DevilFruitResponseMapper {
 	/** Everything the version says. */
 	public DevilFruitResponse toResponse(DevilFruit fruit, Map<UUID, TypeReference> types,
 			Map<UUID, NumberedReference> chapters, ImageResponseMapper images) {
-		List<DevilFruitRevealResponse> reveals = IntStream.range(0, fruit.reveals().size())
-			.mapToObj(index -> toRevealResponse(fruit, index, types, chapters))
+		List<DevilFruitRevealResponse> reveals = fruit.reveals()
+			.stream()
+			.map(reveal -> toRevealResponse(reveal, types, chapters))
 			.toList();
 		return new DevilFruitResponse(fruit.romaji(), toTypeResponse(fruit.typeContentId(), types),
 				toSubcategoryResponse(fruit, types), toResponse(fruit.translations()),
 				images.toResponse(fruit.imageId()), FirstAppearanceMapper.toResponse(fruit.firstAppearance(), chapters),
-				reveals);
+				toBeliefResponse(fruit.initialKnowledge(), types), reveals);
 	}
 
-	/** Its subcategory named as the type in force at the reveal has it. */
-	private static DevilFruitRevealResponse toRevealResponse(DevilFruit fruit, int index,
-			Map<UUID, TypeReference> types, Map<UUID, NumberedReference> chapters) {
-		DevilFruitReveal reveal = fruit.reveals().get(index);
+	/** None when it holds nothing; its subcategory named as its own type has it. */
+	private static DevilFruitBeliefResponse toBeliefResponse(DevilFruitBelief belief, Map<UUID, TypeReference> types) {
+		if (belief.isEmpty()) {
+			return null;
+		}
+		return new DevilFruitBeliefResponse(belief.romaji(), toTypeResponse(belief.typeContentId(), types),
+				toSubcategoryResponse(belief.typeContentId(), belief.subcategoryId(), types),
+				toResponse(belief.translations()));
+	}
+
+	/** Its fields in a fixed order; its subcategory named as its own type has it. */
+	private static DevilFruitRevealResponse toRevealResponse(DevilFruitReveal reveal, Map<UUID, TypeReference> types,
+			Map<UUID, NumberedReference> chapters) {
 		UUID chapter = reveal.revealedAtChapterId();
 		var revealedAt = new RevealedAtResponse(
 				chapter == null ? null : StoryResponseMapper.toReferenceResponse(chapter, chapters));
-		return new DevilFruitRevealResponse(revealedAt, reveal.romaji(), toTypeResponse(reveal.typeContentId(), types),
-				toSubcategoryResponse(fruit.typeInForceAt(index), reveal.subcategoryId(), types),
-				toResponse(reveal.translations()), reveal.titles());
+		DevilFruitBelief values = reveal.values();
+		List<RevealedField> fields = reveal.fields().stream().sorted().map(RevealedField::of).toList();
+		return new DevilFruitRevealResponse(revealedAt, reveal.titles(), fields, values.romaji(),
+				toTypeResponse(values.typeContentId(), types),
+				toSubcategoryResponse(values.typeContentId(), values.subcategoryId(), types),
+				toResponse(values.translations()));
 	}
 
 	private static Map<String, DevilFruitTranslationResponse> toResponse(

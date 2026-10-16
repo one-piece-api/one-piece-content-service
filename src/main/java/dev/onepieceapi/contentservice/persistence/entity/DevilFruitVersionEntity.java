@@ -3,12 +3,15 @@ package dev.onepieceapi.contentservice.persistence.entity;
 import dev.onepieceapi.contentservice.domain.workflow.NaturalKey;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.CollectionTable;
+import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.MapKeyColumn;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderColumn;
+import jakarta.persistence.PrimaryKeyJoinColumn;
+import jakarta.persistence.SecondaryTable;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -29,13 +32,20 @@ import java.util.UUID;
  * its subcategories, and, per language, its name, description, advantages and
  * disadvantages. The entity type of the link is a constant the database fills in: it is
  * what keeps a fruit from pointing to a fruit.
+ * <p>
+ * Its initial knowledge (T13) is a row of its own, written only when it holds something:
+ * an optional secondary table, which Hibernate leaves out while every column is null.
  */
 @Entity
 @Table(name = "devil_fruit_version")
+@SecondaryTable(name = DevilFruitVersionEntity.INITIAL_KNOWLEDGE_TABLE,
+		pkJoinColumns = @PrimaryKeyJoinColumn(name = "version_id"))
 @Getter
 @NoArgsConstructor
 @FieldNameConstants
 public class DevilFruitVersionEntity extends VersionBodyEntity {
+
+	static final String INITIAL_KNOWLEDGE_TABLE = "devil_fruit_version_initial_knowledge";
 
 	/**
 	 * The natural key of the entity (see {@link #naturalKey()}); null while not written.
@@ -63,6 +73,23 @@ public class DevilFruitVersionEntity extends VersionBodyEntity {
 	@MapKeyColumn(name = "language_code")
 	private Map<String, TranslationEmbeddable> translations = new HashMap<>();
 
+	/** The values known at the first appearance (T13); null when not part of it. */
+	@Column(table = INITIAL_KNOWLEDGE_TABLE, name = "romaji")
+	private String initialRomaji;
+
+	@Column(table = INITIAL_KNOWLEDGE_TABLE, name = "type_content_id")
+	private UUID initialTypeContentId;
+
+	@Column(table = INITIAL_KNOWLEDGE_TABLE, name = "subcategory_id")
+	private UUID initialSubcategoryId;
+
+	/** The translated values known at the first appearance, per language code. */
+	@ElementCollection
+	@CollectionTable(name = "devil_fruit_version_initial_knowledge_translation",
+			joinColumns = @JoinColumn(name = "version_id"))
+	@MapKeyColumn(name = "language_code")
+	private Map<String, TranslationEmbeddable> initialTranslations = new HashMap<>();
+
 	/** Its reveals (ADR-0010), in the order of the story. */
 	@OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
 	@JoinColumn(name = "version_id", nullable = false)
@@ -78,7 +105,10 @@ public class DevilFruitVersionEntity extends VersionBodyEntity {
 		return Optional.of(new NaturalKey(Fields.romaji, this.romaji));
 	}
 
-	/** Replaces everything the version says but its reveals, and notes when. */
+	/**
+	 * Replaces everything the version says but its initial knowledge and reveals, and
+	 * notes when.
+	 */
 	public void rewrite(String newRomaji, UUID newTypeContentId, UUID newSubcategoryId,
 			Map<String, TranslationEmbeddable> newTranslations, String newImageId, UUID newFirstAppearanceChapterId,
 			Instant now) {
@@ -90,6 +120,16 @@ public class DevilFruitVersionEntity extends VersionBodyEntity {
 		this.translations.clear();
 		this.translations.putAll(newTranslations);
 		touch(now);
+	}
+
+	/** Replaces the initial knowledge (T13). */
+	public void rewriteInitialKnowledge(String newRomaji, UUID newTypeContentId, UUID newSubcategoryId,
+			Map<String, TranslationEmbeddable> newTranslations) {
+		this.initialRomaji = newRomaji;
+		this.initialTypeContentId = newTypeContentId;
+		this.initialSubcategoryId = newSubcategoryId;
+		this.initialTranslations.clear();
+		this.initialTranslations.putAll(newTranslations);
 	}
 
 	/**

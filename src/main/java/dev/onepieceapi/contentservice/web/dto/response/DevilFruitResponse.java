@@ -11,11 +11,14 @@ import java.util.Map;
  * @param translations name, description, advantages and disadvantages per language code
  * @param image its image; null for none
  * @param firstAppearance the chapter the reader first meets it in; null for none
- * @param reveals what the reader believed before each reveal, in the order of the story;
- * empty for none
+ * @param initialKnowledge what the reader knows at the first appearance of the fields a
+ * reveal changes later; null for none
+ * @param reveals what the reader learns at each reveal, in the order of the story; empty
+ * for none
  */
 public record DevilFruitResponse(String romaji, TypeReferenceResponse type, SubcategoryReferenceResponse subcategory,
 		Map<String, DevilFruitTranslationResponse> translations, ImageResponse image,
-		FirstAppearanceResponse firstAppearance, List<DevilFruitRevealResponse> reveals) {
+		FirstAppearanceResponse firstAppearance, DevilFruitBeliefResponse initialKnowledge,
+		List<DevilFruitRevealResponse> reveals) {
 
 }

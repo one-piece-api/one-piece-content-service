@@ -58,17 +58,20 @@ import java.util.stream.IntStream;
  * fruit. Both hold the fruit's content exclusively first, so they wait for any event
  * going online with it, which holds it shared.
  * <p>
- * Its reveals (T9; ADR-0010) go online under the same rules: the chapter and the type of
- * each online ({@link DevilFruitRelations#REVEAL_CHAPTER},
- * {@link DevilFruitRelations#REVEAL_TYPE}), a subcategory in the online version of the
- * type in force at the reveal, and the reveals in the order of the story as the chapters
- * online number it ({@link RevealRules}).
+ * Its initial knowledge and reveals (T9, T13; ADR-0010) go online under the same rules:
+ * the type of the initial knowledge online ({@link DevilFruitRelations#INITIAL_TYPE}),
+ * the chapter and the type of each reveal online
+ * ({@link DevilFruitRelations#REVEAL_CHAPTER}, {@link DevilFruitRelations#REVEAL_TYPE}),
+ * a subcategory in the online version of the type it goes with, and the reveals in the
+ * order of the story as the chapters online number it ({@link RevealRules}).
  */
 @Component
 @RequiredArgsConstructor(onConstructor_ = { @Autowired })
 public class DevilFruitRules implements ContentRules<DevilFruit> {
 
 	private static final String REVEAL = "reveal";
+
+	private static final String INITIAL_KNOWLEDGE = "initialKnowledge";
 
 	private final ContentRepository contentRepository;
 
@@ -89,6 +92,7 @@ public class DevilFruitRules implements ContentRules<DevilFruit> {
 		DevilFruit fruit = version.body();
 		RelationRules.lockTargetBefore(action, DevilFruitRelations.TYPE, fruit, this.contentRepository);
 		RelationRules.lockTargetBefore(action, DevilFruitRelations.FIRST_APPEARANCE, fruit, this.contentRepository);
+		RelationRules.lockTargetBefore(action, DevilFruitRelations.INITIAL_TYPE, fruit, this.contentRepository);
 		fruit.reveals().forEach(reveal -> {
 			RelationRules.lockTargetBefore(action, DevilFruitRelations.REVEAL_CHAPTER, reveal, this.contentRepository);
 			RelationRules.lockTargetBefore(action, DevilFruitRelations.REVEAL_TYPE, reveal, this.contentRepository);
@@ -107,6 +111,8 @@ public class DevilFruitRules implements ContentRules<DevilFruit> {
 			.or(() -> subcategoryNotOnline(action, fruit))
 			.or(() -> RelationRules.targetNotOnline(action, DevilFruitRelations.FIRST_APPEARANCE, fruit,
 					this.chapterRepository))
+			.or(() -> RelationRules.targetNotOnline(action, DevilFruitRelations.INITIAL_TYPE, fruit,
+					this.typeRepository))
 			.or(() -> revealTargetNotOnline(action, fruit))
 			.or(() -> revealsOutOfOrder(action, fruit))
 			.or(() -> eventsRevealedBefore(action, contentId, fruit))
@@ -150,7 +156,7 @@ public class DevilFruitRules implements ContentRules<DevilFruit> {
 
 	/**
 	 * Checked once the type is known to be online: the subcategory of the fruit, then
-	 * that of each reveal, with the type in force there.
+	 * that of its initial knowledge and of each reveal, with the type it goes with.
 	 */
 	private Optional<ActionBlock> subcategoryNotOnline(VersionAction action, DevilFruit fruit) {
 		if (!RelationRules.GOING_ONLINE.contains(action)) {
@@ -168,12 +174,15 @@ public class DevilFruitRules implements ContentRules<DevilFruit> {
 
 	/**
 	 * Named as the most recent approved version of the type that has it says, when one
-	 * does - the version online may well have left it out - and by the reveal saying it.
+	 * does - the version online may well have left it out - and by the belief saying it.
 	 */
 	private ActionBlock subcategoryNotOnline(DevilFruitClassification classification) {
 		Map<String, Object> detail = new LinkedHashMap<>();
 		if (classification.reveal() != null) {
 			detail.put(REVEAL, classification.reveal());
+		}
+		if (classification.initialKnowledge()) {
+			detail.put(INITIAL_KNOWLEDGE, true);
 		}
 		detail.put("typeId", classification.typeContentId());
 		detail.put("subcategoryId", classification.subcategoryId());

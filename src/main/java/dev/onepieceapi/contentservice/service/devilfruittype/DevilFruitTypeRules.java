@@ -42,10 +42,9 @@ import java.util.UUID;
  * what the type itself lacks, then what it points to, then what its fruits need of it.
  * Not even {@code content:admin} lifts it.
  * <p>
- * The reveals of the fruits (implementation plan of the timeline, T9; ADR-0010) count
- * alike: a type cannot be retired while a reveal of an online fruit believes it, and a
- * version cannot leave out a subcategory such a reveal names under it - the type in force
- * at the reveal.
+ * The initial knowledge and the reveals of the fruits (implementation plan of the
+ * timeline, T9, T13; ADR-0010) count alike: a type cannot be retired while one of an
+ * online fruit holds it, and a version cannot leave out a subcategory one names under it.
  * <p>
  * Each of these holds the type's content exclusively first, so it waits for any fruit
  * going online with it ({@code DevilFruitRules}) and what it then reads includes that
@@ -88,6 +87,10 @@ public class DevilFruitTypeRules implements ContentRules<DevilFruitType> {
 				.or(() -> RelationRules.onlineItemsLinked(action, DevilFruitRelations.REVEAL_TYPE, contentId,
 						new LinkedItems(this.fruitRepository::countOnlineWithRevealType,
 								this.fruitRepository::findOnlineWithRevealType),
+						this.properties.blockingPreviewSize()))
+				.or(() -> RelationRules.onlineItemsLinked(action, DevilFruitRelations.INITIAL_TYPE, contentId,
+						new LinkedItems(this.fruitRepository::countOnlineWithInitialType,
+								this.fruitRepository::findOnlineWithInitialType),
 						this.properties.blockingPreviewSize()));
 			case PUBLISH,
 					RESTORE ->
@@ -135,20 +138,19 @@ public class DevilFruitTypeRules implements ContentRules<DevilFruitType> {
 	}
 
 	/**
-	 * The online fruits with a reveal naming, under this type, a subcategory the version
-	 * leaves out - each with the first such reveal and its subcategory.
+	 * The online fruits whose initial knowledge or a reveal names, under this type, a
+	 * subcategory the version leaves out - each with the first such and its subcategory.
 	 */
 	private Optional<ActionBlock> subcategoriesInUseByReveals(UUID contentId, DevilFruitType type) {
 		Set<UUID> kept = type.subcategoryIds();
 		List<Map<String, Object>> fruits = new ArrayList<>();
-		for (DevilFruitVersionEntity entity : this.fruitRepository.findOnlineWithRevealSubcategory()) {
+		for (DevilFruitVersionEntity entity : this.fruitRepository.findOnlineWithBeliefSubcategory()) {
 			DevilFruitVersionMapper.toDomain(entity)
 				.body()
 				.classifications()
 				.stream()
-				.filter(classification -> classification.reveal() != null
-						&& contentId.equals(classification.typeContentId()) && classification.subcategoryId() != null
-						&& !kept.contains(classification.subcategoryId()))
+				.filter(classification -> !classification.isTruth() && contentId.equals(classification.typeContentId())
+						&& classification.subcategoryId() != null && !kept.contains(classification.subcategoryId()))
 				.findFirst()
 				.ifPresent(classification -> fruits.add(withRevealSubcategory(entity, classification)));
 		}
@@ -159,11 +161,16 @@ public class DevilFruitTypeRules implements ContentRules<DevilFruitType> {
 				"fruits", fruits.subList(0, Math.min(fruits.size(), this.properties.blockingPreviewSize())))));
 	}
 
-	/** A fruit by its id and romaji, then the reveal and the subcategory it names. */
+	/** A fruit by its id and romaji, then where it names the subcategory, and which. */
 	private static Map<String, Object> withRevealSubcategory(DevilFruitVersionEntity fruit,
 			DevilFruitClassification classification) {
 		Map<String, Object> named = RelationRules.named(fruit);
-		named.put("reveal", classification.reveal());
+		if (classification.reveal() != null) {
+			named.put("reveal", classification.reveal());
+		}
+		if (classification.initialKnowledge()) {
+			named.put("initialKnowledge", true);
+		}
 		named.put(SUBCATEGORY_ID, classification.subcategoryId());
 		return named;
 	}

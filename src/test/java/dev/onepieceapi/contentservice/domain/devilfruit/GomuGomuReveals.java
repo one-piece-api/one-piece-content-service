@@ -4,20 +4,23 @@ import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
- * The reference case of the reveals (implementation plan of the timeline, T9; ADR-0010),
+ * The reference case of the reveals (implementation plan of the timeline, T13; ADR-0010),
  * shared by the resolution tests here and by the public API's in TL6: the Hito Hito no
  * Mi, Model: Nika, met at chapter 1 as the Gomu Gomu no Mi, a Paramecia.
  * <ul>
- * <li>until chapter 100 the reader believed a first description ("rubber, nothing
- * more");</li>
- * <li>until chapter 1044 the Gomu Gomu no Mi, a Paramecia, described as rubber - the
- * description changing twice;</li>
- * <li>from chapter 1044 on, the truth: a Mythical Zoan.</li>
+ * <li>from chapter 1 the reader knows the Gomu Gomu no Mi, a Paramecia, "rubber, nothing
+ * more", and nothing of its disadvantages;</li>
+ * <li>at chapter 100 the reader learns of a body of rubber - the description changes
+ * twice;</li>
+ * <li>at chapter 1044 the reader learns the truth: a Mythical Zoan, and its
+ * disadvantages.</li>
  * </ul>
- * Chapters are named by fixed ids; {@link #NUMBERS} numbers them.
+ * The advantages are never revealed: the truth throughout. Chapters are named by fixed
+ * ids; {@link #NUMBERS} numbers them.
  */
 public final class GomuGomuReveals {
 
@@ -42,27 +45,34 @@ public final class GomuGomuReveals {
 	public static final DevilFruitTranslation TRUTH_EN = new DevilFruitTranslation("Human-Human Fruit, Model: Nika",
 			"The fruit of the sun god", "Frees its eater", "Tiring");
 
-	/** Until chapter 100: only a first description. */
-	public static final DevilFruitReveal FIRST_BELIEF = new DevilFruitReveal(new StoryPoint(CHAPTER_100), null, null,
-			null,
-			Map.of("it", new DevilFruitTranslation(null, "Gomma, niente di più", null, null), "en",
-					new DevilFruitTranslation(null, "Rubber, nothing more", null, null)),
-			Map.of("it", "Il frutto ha un nome", "en", "The fruit gets a name"));
+	/**
+	 * At the first appearance: the Gomu Gomu no Mi, a Paramecia; no disadvantages known.
+	 */
+	public static final DevilFruitBelief INITIAL_KNOWLEDGE = new DevilFruitBelief("Gomu Gomu no Mi", PARAMECIA, null,
+			Map.of("it", new DevilFruitTranslation("Frutto Gom Gom", "Gomma, niente di più", null, null), "en",
+					new DevilFruitTranslation("Gum-Gum Fruit", "Rubber, nothing more", null, null)));
 
-	/** Until chapter 1044: the Gomu Gomu no Mi, a Paramecia, of no subcategory. */
-	public static final DevilFruitReveal GOMU_GOMU = new DevilFruitReveal(new StoryPoint(CHAPTER_1044),
-			"Gomu Gomu no Mi", PARAMECIA, null,
-			Map.of("it", new DevilFruitTranslation("Frutto Gom Gom", "Un corpo di gomma", null, null), "en",
-					new DevilFruitTranslation("Gum-Gum Fruit", "A body of rubber", null, null)),
-			Map.of("it", "Il frutto è Nika", "en", "The fruit is Nika"));
+	/** At chapter 100: a body of rubber, the description changing again later. */
+	public static final DevilFruitReveal RUBBER_BODY = new DevilFruitReveal(new StoryPoint(CHAPTER_100),
+			Set.of(DevilFruitField.DESCRIPTION),
+			new DevilFruitBelief(null, null, null,
+					Map.of("it", new DevilFruitTranslation(null, "Un corpo di gomma", null, null), "en",
+							new DevilFruitTranslation(null, "A body of rubber", null, null))),
+			Map.of("it", "Un corpo di gomma", "en", "A body of rubber"));
+
+	/** At chapter 1044: the truth of every field changing, no value repeated. */
+	public static final DevilFruitReveal NIKA = new DevilFruitReveal(new StoryPoint(CHAPTER_1044),
+			Set.of(DevilFruitField.NAME, DevilFruitField.ROMAJI, DevilFruitField.TYPE, DevilFruitField.DESCRIPTION,
+					DevilFruitField.DISADVANTAGES),
+			DevilFruitBelief.NONE, Map.of("it", "Il frutto è Nika", "en", "The fruit is Nika"));
 
 	private GomuGomuReveals() {
 	}
 
-	/** The fruit as it is stored: the truth, and both reveals. */
+	/** The fruit as it is stored: the truth, the initial knowledge and both reveals. */
 	public static DevilFruit fruit() {
 		return new DevilFruit("Hito Hito no Mi, Model: Nika", ZOAN, MYTHICAL, Map.of("it", TRUTH_IT, "en", TRUTH_EN),
-				null, new StoryPoint(CHAPTER_1), List.of(FIRST_BELIEF, GOMU_GOMU));
+				null, new StoryPoint(CHAPTER_1), INITIAL_KNOWLEDGE, List.of(RUBBER_BODY, NIKA));
 	}
 
 }

@@ -1,22 +1,30 @@
 package dev.onepieceapi.contentservice.web.mapper;
 
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
+import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitBelief;
+import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitField;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitReveal;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitTranslation;
 import dev.onepieceapi.contentservice.domain.image.ImageChange;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.domain.workflow.ContentFilter;
+import dev.onepieceapi.contentservice.web.dto.request.DevilFruitBeliefRequest;
 import dev.onepieceapi.contentservice.web.dto.request.DevilFruitListRequest;
 import dev.onepieceapi.contentservice.web.dto.request.DevilFruitRevealRequest;
 import dev.onepieceapi.contentservice.web.dto.request.DevilFruitRequest;
 import dev.onepieceapi.contentservice.web.dto.request.DevilFruitTranslationRequest;
+import dev.onepieceapi.contentservice.web.dto.request.RevealedField;
 import lombok.experimental.UtilityClass;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.TreeMap;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 /** From the requests about Devil Fruits to the domain. */
 @UtilityClass
@@ -33,18 +41,40 @@ public class DevilFruitRequestMapper {
 			.map(DevilFruitRequestMapper::toDomain)
 			.toList();
 		return new DevilFruit(request.romaji(), request.type(), request.subcategory(), toDomain(request.translations()),
-				null, FirstAppearanceMapper.toDomain(request.firstAppearance()), reveals);
+				null, FirstAppearanceMapper.toDomain(request.firstAppearance()), toDomain(request.initialKnowledge()),
+				reveals);
 	}
 
 	/** A reveal sent as null holds nothing, which validation then names. */
 	private static DevilFruitReveal toDomain(DevilFruitRevealRequest reveal) {
 		if (reveal == null) {
-			return new DevilFruitReveal(StoryPoint.NONE, null, null, null, Map.of());
+			return new DevilFruitReveal(StoryPoint.NONE, Set.of(), DevilFruitBelief.NONE, Map.of());
 		}
 		StoryPoint revealedAt = reveal.revealedAt() == null ? StoryPoint.NONE
 				: new StoryPoint(reveal.revealedAt().chapter());
-		return new DevilFruitReveal(revealedAt, reveal.romaji(), reveal.type(), reveal.subcategory(),
-				toDomain(reveal.translations()), reveal.titles());
+		var values = belief(reveal.romaji(), reveal.type(), reveal.subcategory(), reveal.translations());
+		return new DevilFruitReveal(revealedAt, fieldsOf(reveal.fields()), values, reveal.titles());
+	}
+
+	/** Initial knowledge sent as null is none. */
+	private static DevilFruitBelief toDomain(DevilFruitBeliefRequest belief) {
+		return belief == null ? DevilFruitBelief.NONE
+				: belief(belief.romaji(), belief.type(), belief.subcategory(), belief.translations());
+	}
+
+	private static DevilFruitBelief belief(String romaji, UUID type, UUID subcategory,
+			Map<String, DevilFruitTranslationRequest> translations) {
+		return new DevilFruitBelief(romaji, type, subcategory, toDomain(translations));
+	}
+
+	/** A field sent as null is left out. */
+	private static Set<DevilFruitField> fieldsOf(Set<RevealedField> fields) {
+		return Optional.ofNullable(fields)
+			.orElseGet(Set::of)
+			.stream()
+			.filter(Objects::nonNull)
+			.map(RevealedField::toDomain)
+			.collect(Collectors.toSet());
 	}
 
 	private static Map<String, DevilFruitTranslation> toDomain(Map<String, DevilFruitTranslationRequest> requested) {

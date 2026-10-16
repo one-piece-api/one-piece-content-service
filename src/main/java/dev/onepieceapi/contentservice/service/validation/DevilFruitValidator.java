@@ -14,6 +14,7 @@ import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
 import dev.onepieceapi.contentservice.service.content.RevealRules;
 import dev.onepieceapi.contentservice.service.content.RelationRules;
 import dev.onepieceapi.contentservice.service.devilfruit.DevilFruitRelations;
+import dev.onepieceapi.contentservice.service.devilfruit.DevilFruitRevealRules;
 import dev.onepieceapi.contentservice.service.event.ChapterNumbers;
 import dev.onepieceapi.contentservice.service.exception.ValueInvalidException;
 import dev.onepieceapi.exception.web.FieldViolation;
@@ -33,9 +34,10 @@ import java.util.UUID;
  * none can be named without a type. A first appearance, optional, is a chapter it may be
  * linked to (implementation plan of the timeline, T7).
  * <p>
- * Its reveals (T9; ADR-0010) follow the {@link RevealRules}; the chapter and the type of
- * each are relations like the fruit's, and a subcategory one of the type in force at the
- * reveal. Every reveal at fault is reported at once.
+ * Its reveals (T9, T13; ADR-0010) follow the {@link RevealRules} and the
+ * {@link DevilFruitRevealRules}; the chapter of each and the types of the initial
+ * knowledge and of the reveals are relations like the fruit's, and a subcategory one of
+ * the type it goes with. Every reveal at fault is reported at once.
  */
 @Component
 public class DevilFruitValidator extends ContentValidator<DevilFruit, DevilFruitVersionEntity> {
@@ -44,8 +46,8 @@ public class DevilFruitValidator extends ContentValidator<DevilFruit, DevilFruit
 
 	private static final String NOT_OF_TYPE = "must be a subcategory of its Devil Fruit Type, as last approved";
 
-	private static final String NOT_OF_REVEAL_TYPE = "must be a subcategory"
-			+ " of the reveal's Devil Fruit Type, as last approved";
+	private static final String NOT_OF_BELIEF_TYPE = "must be a subcategory"
+			+ " of the Devil Fruit Type it goes with, as last approved";
 
 	private final DevilFruitTypeVersionRepository typeRepository;
 
@@ -65,7 +67,8 @@ public class DevilFruitValidator extends ContentValidator<DevilFruit, DevilFruit
 
 	@Override
 	protected void requireValidFields(DevilFruit body) {
-		List<FieldViolation> violations = RevealRules.incomplete(body);
+		List<FieldViolation> violations = new ArrayList<>(RevealRules.incomplete(body));
+		violations.addAll(DevilFruitRevealRules.violations(body));
 		if (!violations.isEmpty()) {
 			throw new ValueInvalidException(violations);
 		}
@@ -81,9 +84,14 @@ public class DevilFruitValidator extends ContentValidator<DevilFruit, DevilFruit
 		requireValidReveals(body);
 	}
 
-	/** Linkable first: an order is only read between chapters that may be chosen. */
+	/**
+	 * The initial knowledge and the reveals (T13). Linkable first: an order is only read
+	 * between chapters that may be chosen.
+	 */
 	private void requireValidReveals(DevilFruit body) {
 		List<FieldViolation> violations = new ArrayList<>();
+		RelationRules.notLinkable(DevilFruitRelations.INITIAL_TYPE, body, "", this.typeRepository)
+			.ifPresent(violations::add);
 		List<DevilFruitReveal> reveals = body.reveals();
 		for (int index = 0; index < reveals.size(); index++) {
 			String prefix = RevealRules.REVEAL_PREFIX.formatted(index);
@@ -96,10 +104,10 @@ public class DevilFruitValidator extends ContentValidator<DevilFruit, DevilFruit
 		if (violations.isEmpty()) {
 			body.classifications()
 				.stream()
-				.filter(classification -> classification.reveal() != null && classification.subcategoryId() != null)
+				.filter(classification -> !classification.isTruth() && classification.subcategoryId() != null)
 				.filter(classification -> !subcategoryOfType(classification.typeContentId(),
 						classification.subcategoryId()))
-				.map(DevilFruitValidator::notOfRevealType)
+				.map(DevilFruitValidator::notOfBeliefType)
 				.forEach(violations::add);
 			violations.addAll(RevealRules.outOfOrder(body, this.chapterNumbers.approved(body.chapterIds())));
 		}
@@ -108,9 +116,8 @@ public class DevilFruitValidator extends ContentValidator<DevilFruit, DevilFruit
 		}
 	}
 
-	private static FieldViolation notOfRevealType(DevilFruitClassification classification) {
-		return new FieldViolation(RevealRules.REVEAL_PREFIX.formatted(classification.reveal()) + SUBCATEGORY_FIELD,
-				NOT_OF_REVEAL_TYPE);
+	private static FieldViolation notOfBeliefType(DevilFruitClassification classification) {
+		return new FieldViolation(classification.prefix() + SUBCATEGORY_FIELD, NOT_OF_BELIEF_TYPE);
 	}
 
 	/**

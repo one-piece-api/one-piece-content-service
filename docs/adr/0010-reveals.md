@@ -4,6 +4,10 @@
 > `devil_fruit_version_phase*`). A reveal is an **instant** on the reader axis, like an Event on
 > the world axis: its chapter `revealedAt` and what the reader believed before it. The period of
 > a belief is derived, never stored. Rename only, in code, contract and DB (`V20`).
+>
+> **Superseded in part 2026-10-17 (T13, TL3c).** Reveals are stored **forward**: see the
+> addendum "Reveals stored forward". The backward diffs, `asBelieved` and `typeInForceAt`
+> below are history.
 
 ## Context
 
@@ -103,3 +107,48 @@ timeline reads forward in the UI (plan T10, T11), so a chapter alone says too li
 - The public `revealHistory` carries the titles in TL5.
 - The backend compares versions only for equality: the frontend (TL4) compares reveals field by field and
   includes the title.
+
+## Addendum: Reveals stored forward (TL3c)
+
+### Context
+
+Backward diffs (each reveal holding what was believed *before* it) only renamed the old
+"phases": the editor had to write the past at the reveal of the future. The owner wants a reveal
+to say what the reader **learns** at its chapter (2026-10-17, plan T13).
+
+### Decision
+
+- **Initial knowledge**: a separate `initialKnowledge` (`DevilFruitBelief`: romaji, type,
+  subcategory, translated values) says what the reader knows at the first appearance.
+- **A reveal** = `revealedAt` + `fields` it reveals (`name|romaji|type|description|advantages|disadvantages`;
+  `type` covers the subcategory) + optional values. The **last** reveal of a field holds no value:
+  it reveals the truth (the main fields). An intermediate reveal holds the value learned there.
+- **Resolution at chapter N** (`DevilFruit.knownAt`): a field no reveal names is the truth;
+  otherwise the last reached reveal naming it gives its value, or the truth if it holds none;
+  before any, the initial knowledge, or **unknown** (null) when it holds nothing. The name is never
+  unknown. A reveal whose chapter has no number counts as reached.
+- **Rules on save** (`DevilFruitRevealRules`, `422 VALUE_INVALID`): values only for named fields;
+  last mention without value, intermediate mentions with one (`reveals[i].fields`); initial values
+  only for revealed fields; the initial name when a reveal names `name`; a subcategory with its
+  type, and of that type. **At submission**: every translated value (initial or intermediate) and
+  every title in every active language. The old "last description" rule is gone.
+- **Links**: `INITIAL_TYPE` descriptor (linkable on save, online at publish, blocks retire);
+  `SUBCATEGORY_NOT_ONLINE` / `SUBCATEGORY_IN_USE` details carry `initialKnowledge: true` or `reveal`.
+- **Storage `V22`**: new `devil_fruit_version_reveal_field` (enum with `CHECK`),
+  `devil_fruit_version_initial_knowledge` (`@SecondaryTable`, row only when something is known) and
+  `…_initial_knowledge_translation`. Existing reveal rows are **deleted**: nothing is online and
+  backward values cannot be read forward.
+
+### Alternatives
+
+- **Keep backward diffs**: rejected by the owner (reads backwards in the UI).
+- **Forward snapshots** (each reveal repeats every field): duplicated data, noisy diffs.
+- **Initial knowledge as reveal 0**: a reveal without a chapter breaks the order rules.
+- **Convert old rows**: nothing online, not worth a migration script.
+
+### Consequences
+
+- Contract change on `initialKnowledge` and `reveals[].fields` (OpenAPI, Bruno); the frontend
+  (TL4) edits forward, the public `asOfChapter` (TL5/TL6) uses `knownAt`.
+- `V22` also empties reveals on the remote at the next deploy.
+- public-api must bump the migrations artifact to 22 when it needs the new tables.
