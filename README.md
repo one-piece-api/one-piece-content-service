@@ -19,6 +19,11 @@ l'**Evento** (tempo del mondo, rivelazione, frutti partecipanti). Espone:
   verso un capitolo approvato (`/chapters/linkable`). Frutto e tipo vanno online solo con una
   prima apparizione in un capitolo online (`FIRST_APPEARANCE_MISSING`, `RELATED_NOT_ONLINE`); un
   capitolo in cui compaiono elementi online non si ritira (`ONLINE_ITEMS_LINKED`).
+- **Rivelazioni** (solo Devil Fruit; ADR-0010, addendum TL3c): i campi principali sono la
+  verità; `initialKnowledge` dice cosa sa il lettore alla prima apparizione, ogni voce di
+  `reveals[]` cosa impara al suo capitolo (`revealedAt.chapter`, campi, titolo per lingua).
+  Parte della versione; le viste `published` (V23) le espongono all'API pubblica per
+  `asOfChapter`.
 - **Struttura narrativa** (`/sagas`, `/arcs`, `/volumes`, `/chapters`, `/episodes`): stesse
   operazioni, chiave naturale `number`; filtri `?saga=`/`?arc=`/`?volume=`. Un figlio va online
   solo con il padre online (`RELATED_NOT_ONLINE`); un padre con figli online non si ritira
