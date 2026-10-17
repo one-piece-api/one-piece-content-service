@@ -77,3 +77,25 @@ All in migration `V8__published_interface.sql`.
   join when a query (the list) does not read those columns.
 - `published.{volume,chapter}_release` and `published.episode_broadcast` list every country.
 - `published.image` also shows the covers of the volumes online.
+
+## Addendum - reader time (V23, plan of the timeline TL5)
+
+- **First appearance** on `published.devil_fruit`, `devil_fruit_type` and
+  `devil_fruit_type_subcategory`: `first_appearance_chapter_{id,slug,number,title}`, the chapter
+  online in the same language, read from `published.chapter` (views over views, one definition of
+  "a chapter online").
+- **Reveal history read forward and resolved** (ADR-0010, T13), so a reader needs no editorial rule:
+  - `published.devil_fruit_initial_knowledge`: one row per fruit with reveals and language; `fields`
+    lists the fields some reveal names, only those carry a value, a null among them is unknown.
+  - `published.devil_fruit_reveal`: one row per reveal and language, in `position` order; chapter,
+    title, `fields` and the value learned: the truth at a field's last mention, the reveal's own
+    value before. Type and subcategory are learned together, with their summaries.
+- **Last mention by position, not by a missing value**: an untranslated intermediate value stays
+  null, it never shows the truth early. The helper `devil_fruit_reveal_mention` lives outside
+  `published` (it holds version ids).
+
+### Alternatives
+
+- **Raw reveals** (fields + optional values): the public reader would have to know that "no value"
+  means "the truth".
+- **Resolution in public-api**: a second copy of the rule, in Java, that could drift from the one here.
