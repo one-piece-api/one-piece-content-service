@@ -77,3 +77,16 @@ All in migration `V8__published_interface.sql`.
   join when a query (the list) does not read those columns.
 - `published.{volume,chapter}_release` and `published.episode_broadcast` list every country.
 - `published.image` also shows the covers of the volumes online.
+
+## Addendum - Bounty (V21, Bounty plan B3)
+
+- **`published.bounty`**, same shape as the other entities: one row per bounty online and
+  language; the key text (`natural_key`, poster name and amount) is read as `name`, its
+  `key_slug` is the slug.
+- **First value derived from other items online in an entity view:** `validity` is
+  `INACTIVE` if the flag is set, else `SUPERSEDED` if an **online** bounty names it as
+  `previous_id`, else `ACTIVE`. A draft successor does not supersede: the reader sees what
+  is online, nothing else.
+- The chain (`previous_id` both ways) is walked by the public API on this view; no extra
+  view.
+- `published.image` also shows the posters of the bounties online.
