@@ -9,6 +9,7 @@ import dev.onepieceapi.contentservice.persistence.specification.VersionBodySpeci
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -52,6 +53,15 @@ public interface VersionBodyRepository<E extends VersionBodyEntity>
 	}
 
 	/**
+	 * What an entity's own filters ({@link ContentFilter#attributes()}) ask of a row of
+	 * the list; nothing by default. {@code statuses} are the ones the caller sees, which
+	 * a condition that looks at other contents must respect.
+	 */
+	default Specification<E> attributeConditions(ContentFilter filter, Collection<VersionStatus> statuses) {
+		return Specification.allOf();
+	}
+
+	/**
 	 * One page of the list: one row per content, by its most recent version among
 	 * {@code statuses}, filtered and sorted as asked; a sort by name reads it in
 	 * {@code language}.
@@ -60,6 +70,7 @@ public interface VersionBodyRepository<E extends VersionBodyEntity>
 			String language) {
 		var specification = VersionBodySpecifications
 			.<E>listOf(statuses, filter, clock, naturalKeyAttribute(), hasLocalizedNames())
+			.and(attributeConditions(filter, statuses))
 			.and(VersionBodySorting.orderedBy(pageable.getSort(), language, naturalKeyAttribute(),
 					hasLocalizedNames()));
 		return findAll(specification, PageRequest.of(pageable.getPageNumber(), pageable.getPageSize()));
@@ -69,8 +80,9 @@ public interface VersionBodyRepository<E extends VersionBodyEntity>
 	 * How many contents the list would show in all, with the same statuses and filters.
 	 */
 	default long count(Collection<VersionStatus> statuses, ContentFilter filter, Clock clock) {
-		return count(VersionBodySpecifications.<E>listOf(statuses, filter, clock, naturalKeyAttribute(),
-				hasLocalizedNames()));
+		return count(
+				VersionBodySpecifications.<E>listOf(statuses, filter, clock, naturalKeyAttribute(), hasLocalizedNames())
+					.and(attributeConditions(filter, statuses)));
 	}
 
 	/**

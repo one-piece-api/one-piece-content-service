@@ -43,6 +43,21 @@ public enum BlockReason {
 	 * The item has no first appearance, which it needs to be online (implementation plan
 	 * of the timeline, T7): the spoiler filter could not place it. No detail.
 	 */
-	FIRST_APPEARANCE_MISSING
+	FIRST_APPEARANCE_MISSING,
+
+	/**
+	 * Another bounty online already replaces the same previous one (implementation plan
+	 * of the Bounty, B2): a bounty is replaced by at most one. The detail names the
+	 * previous ({@code previousId}) and the bounty replacing it ({@code replacedBy}, with
+	 * its id and key).
+	 */
+	PREVIOUS_ALREADY_REPLACED,
+
+	/**
+	 * Going online, the bounty would close a cycle of previous bounties through the
+	 * online ones (implementation plan of the Bounty, B2). The detail names the previous
+	 * ({@code previousId}).
+	 */
+	BOUNTY_CHAIN_CYCLE
 
 }

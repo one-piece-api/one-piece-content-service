@@ -26,7 +26,8 @@ public interface ImageRepository extends JpaRepository<ImageEntity, String> {
 			DELETE FROM image
 			WHERE id = :id
 			  AND NOT EXISTS (SELECT 1 FROM devil_fruit_version WHERE image_id = :id)
-			  AND NOT EXISTS (SELECT 1 FROM volume_version WHERE cover_image_id = :id)""")
+			  AND NOT EXISTS (SELECT 1 FROM volume_version WHERE cover_image_id = :id)
+			  AND NOT EXISTS (SELECT 1 FROM bounty_version WHERE image_id = :id)""")
 	int deleteIfUnreferenced(@Param("id") String id);
 
 }

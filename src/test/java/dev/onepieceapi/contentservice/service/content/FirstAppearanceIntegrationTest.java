@@ -15,15 +15,20 @@ import dev.onepieceapi.contentservice.domain.workflow.BlockedAction;
 import dev.onepieceapi.contentservice.domain.workflow.EntityType;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAction;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
+import dev.onepieceapi.contentservice.domain.bounty.Bounty;
+import dev.onepieceapi.contentservice.domain.bounty.BountyCondition;
+import dev.onepieceapi.contentservice.persistence.entity.BountyVersionEntity;
 import dev.onepieceapi.contentservice.persistence.entity.ContentEntity;
 import dev.onepieceapi.contentservice.persistence.entity.ContentVersionEntity;
 import dev.onepieceapi.contentservice.persistence.entity.DevilFruitTypeVersionEntity;
 import dev.onepieceapi.contentservice.persistence.entity.DevilFruitVersionEntity;
 import dev.onepieceapi.contentservice.persistence.mapper.DevilFruitTypeVersionMapper;
 import dev.onepieceapi.contentservice.persistence.mapper.DevilFruitVersionMapper;
+import dev.onepieceapi.contentservice.persistence.mapper.BountyVersionMapper;
 import dev.onepieceapi.contentservice.persistence.mapper.UserMapper;
 import dev.onepieceapi.contentservice.persistence.repository.ArcVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
+import dev.onepieceapi.contentservice.persistence.repository.BountyVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.EpisodeVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
@@ -140,6 +145,9 @@ class FirstAppearanceIntegrationTest {
 	private DevilFruitTypeVersionRepository typeRepository;
 
 	@Autowired
+	private BountyVersionRepository bountyRepository;
+
+	@Autowired
 	private ContentVersionRepository contentVersionRepository;
 
 	@Autowired
@@ -195,13 +203,13 @@ class FirstAppearanceIntegrationTest {
 				new ChapterValidator(this.chapterRepository, this.languageRepository, this.arcRepository,
 						this.volumeRepository),
 				new ChapterRules(this.contentRepository, this.arcRepository, this.volumeRepository,
-						this.fruitRepository, this.typeRepository, properties),
+						this.fruitRepository, this.typeRepository, this.bountyRepository, properties),
 				auditLogService, clock);
 		this.episodes = new EpisodeService(this.episodeRepository, this.contentVersionRepository,
 				this.contentRepository,
 				new EpisodeValidator(this.episodeRepository, this.languageRepository, this.arcRepository),
 				new EpisodeRules(this.contentRepository, this.arcRepository, this.fruitRepository, this.typeRepository,
-						properties),
+						this.bountyRepository, properties),
 				auditLogService, clock);
 		this.paramecia = typeContent(PUBLISHED, type("Paramecia", onlineChapter()));
 	}
@@ -428,6 +436,29 @@ class FirstAppearanceIntegrationTest {
 	}
 
 	@Test
+	void aChapterOrAnEpisodeIsNotRetiredWhileBountiesOnlineFirstAppearInItAndNamesThemByTheirKey() {
+		UUID chapter = chapter(PUBLISHED);
+		UUID episode = episode(PUBLISHED);
+		UUID unused = chapter(PUBLISHED);
+		UUID inChapter = bountyContent(PUBLISHED, bounty("Monkey D. Luffy", StoryPoint.ofChapter(chapter)));
+		UUID inEpisode = bountyContent(PUBLISHED, bounty("Nami", StoryPoint.ofEpisode(episode)));
+		bountyContent(SUPERSEDED, bounty("Zoro", StoryPoint.ofChapter(unused)));
+		stored();
+
+		var byChapter = catchThrowableOfType(VersionActionBlockedException.class,
+				() -> this.chapters.retire(ADMIN, this.vivi, chapter, 1));
+		var byEpisode = catchThrowableOfType(VersionActionBlockedException.class,
+				() -> this.episodes.retire(ADMIN, this.vivi, episode, 1));
+
+		assertThat(byChapter.getDetails()).containsEntry("reason", BlockReason.ONLINE_ITEMS_LINKED);
+		assertThat(byChapter.getDetails().get("detail")).isEqualTo(
+				Map.of("count", 1L, "bounties", List.of(Map.of("id", inChapter, "key", "Monkey D. Luffy 1500000000"))));
+		assertThat(byEpisode.getDetails().get("detail"))
+			.isEqualTo(Map.of("count", 1L, "bounties", List.of(Map.of("id", inEpisode, "key", "Nami 1500000000"))));
+		assertThat(this.chapters.retire(RETIRER, this.vivi, unused, 1).version().status()).isEqualTo(RETIRED);
+	}
+
+	@Test
 	void anEpisodeIsNotRetiredWhileFruitsOrTypesOnlineFirstAppearInIt() {
 		UUID ofFruit = episode(PUBLISHED);
 		UUID ofSubcategory = episode(PUBLISHED);
@@ -534,6 +565,20 @@ class FirstAppearanceIntegrationTest {
 		var version = new DevilFruitVersionEntity(workflow(contentId, 1, status));
 		DevilFruitVersionMapper.rewrite(version, body, EARLIER);
 		this.fruitRepository.save(version);
+		return contentId;
+	}
+
+	/** Complete, but for what a test of the first appearance does not care about. */
+	private static Bounty bounty(String posterName, StoryPoint firstAppearance) {
+		return new Bounty(posterName, 1_500_000_000L, BountyCondition.DEAD_OR_ALIVE, false, null, Map.of(), null,
+				firstAppearance);
+	}
+
+	private UUID bountyContent(VersionStatus status, Bounty body) {
+		UUID contentId = content(EntityType.BOUNTY);
+		var version = new BountyVersionEntity(workflow(contentId, 1, status));
+		BountyVersionMapper.rewrite(version, body, EARLIER);
+		this.bountyRepository.save(version);
 		return contentId;
 	}
 

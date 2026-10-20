@@ -24,17 +24,27 @@ import java.util.function.Predicate;
  * @param updatedWithinDays updated today (0) or in the last N days
  * @param related the contents the version must point to, by relation (e.g. the type of a
  * fruit); empty for an entity pointing to none
+ * @param attributes the values the version must have, by the entity's own name for them
+ * (e.g. the condition of a bounty); what each means is up to the entity's repository (see
+ * {@code VersionBodyRepository#attributeConditions}); empty for an entity with none
  */
 public record ContentFilter(VersionStatus status, String query, String author, Integer updatedWithinDays,
-		Map<String, UUID> related) {
+		Map<String, UUID> related, Map<String, Object> attributes) {
 
 	public ContentFilter {
 		related = related == null ? Map.of() : Map.copyOf(related);
+		attributes = attributes == null ? Map.of() : Map.copyOf(attributes);
 	}
 
-	/** Without any relation to narrow by. */
+	/** Without any attribute to narrow by. */
+	public ContentFilter(VersionStatus status, String query, String author, Integer updatedWithinDays,
+			Map<String, UUID> related) {
+		this(status, query, author, updatedWithinDays, related, Map.of());
+	}
+
+	/** Without any relation or attribute to narrow by. */
 	public ContentFilter(VersionStatus status, String query, String author, Integer updatedWithinDays) {
-		this(status, query, author, updatedWithinDays, Map.of());
+		this(status, query, author, updatedWithinDays, Map.of(), Map.of());
 	}
 
 	/**
@@ -45,7 +55,25 @@ public record ContentFilter(VersionStatus status, String query, String author, I
 	public ContentFilter relatedTo(String relation, UUID contentId) {
 		Map<String, UUID> narrowed = new HashMap<>(this.related);
 		narrowed.put(relation, contentId);
-		return new ContentFilter(this.status, this.query, this.author, this.updatedWithinDays, narrowed);
+		return new ContentFilter(this.status, this.query, this.author, this.updatedWithinDays, narrowed,
+				this.attributes);
+	}
+
+	/**
+	 * The same filter, narrowed to the versions having this value for the named
+	 * attribute.
+	 */
+	public ContentFilter withAttribute(String name, Object value) {
+		Map<String, Object> narrowed = new HashMap<>(this.attributes);
+		narrowed.put(name, value);
+		return new ContentFilter(this.status, this.query, this.author, this.updatedWithinDays, this.related, narrowed);
+	}
+
+	/**
+	 * The value asked for the named attribute; null when the list is not narrowed by it.
+	 */
+	public Object attribute(String name) {
+		return this.attributes.get(name);
 	}
 
 	/** No filter at all: every content the caller sees. */

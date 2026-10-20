@@ -6,10 +6,12 @@ import dev.onepieceapi.contentservice.domain.workflow.ActionBlock;
 import dev.onepieceapi.contentservice.domain.workflow.Version;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAction;
 import dev.onepieceapi.contentservice.persistence.repository.ArcVersionRepository;
+import dev.onepieceapi.contentservice.persistence.repository.BountyVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitTypeVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.VolumeVersionRepository;
+import dev.onepieceapi.contentservice.service.bounty.BountyRelations;
 import dev.onepieceapi.contentservice.service.content.ContentRules;
 import dev.onepieceapi.contentservice.service.content.LinkedItems;
 import dev.onepieceapi.contentservice.service.content.RelationRules;
@@ -46,6 +48,8 @@ public class ChapterRules implements ContentRules<Chapter> {
 
 	private final DevilFruitTypeVersionRepository typeRepository;
 
+	private final BountyVersionRepository bountyRepository;
+
 	private final RulesProperties properties;
 
 	@Override
@@ -61,7 +65,8 @@ public class ChapterRules implements ContentRules<Chapter> {
 			.or(() -> RelationRules.targetNotOnline(action, StoryRelations.CHAPTER_VOLUME, version.body(),
 					this.volumeRepository))
 			.or(() -> fruitsLinked(action, contentId))
-			.or(() -> typesLinked(action, contentId));
+			.or(() -> typesLinked(action, contentId))
+			.or(() -> bountiesLinked(action, contentId));
 	}
 
 	private Optional<ActionBlock> fruitsLinked(VersionAction action, UUID contentId) {
@@ -76,6 +81,13 @@ public class ChapterRules implements ContentRules<Chapter> {
 				this.typeRepository::findOnlineFirstAppearingIn);
 		return RelationRules.onlineItemsLinked(action, DevilFruitTypeRelations.FIRST_APPEARANCE_CHAPTER, contentId,
 				types, this.properties.blockingPreviewSize());
+	}
+
+	private Optional<ActionBlock> bountiesLinked(VersionAction action, UUID contentId) {
+		var bounties = new LinkedItems(this.bountyRepository::countOnlineFirstAppearingIn,
+				this.bountyRepository::findOnlineFirstAppearingIn);
+		return RelationRules.onlineItemsLinked(action, BountyRelations.FIRST_APPEARANCE_CHAPTER, contentId, bounties,
+				this.properties.blockingPreviewSize());
 	}
 
 }

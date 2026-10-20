@@ -1,0 +1,6 @@
+info:
+  name: Bounties
+  type: folder
+
+request:
+  auth: inherit

@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.persistence.specification;
 
+import dev.onepieceapi.contentservice.domain.bounty.BountySortField;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSortField;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.entity.ContentVersionEntity;
@@ -20,9 +21,10 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.util.ArrayList;
-import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Turns the sort a caller asks for, expressed in {@link ContentSortField}s, into the
@@ -43,19 +45,26 @@ public class VersionBodySorting {
 
 	}
 
-	private static final Map<ContentSortField, SortKey> KEYS = new EnumMap<>(ContentSortField.class);
+	/**
+	 * By the field's name in a request: the entities that sort by more have their own
+	 * enum.
+	 */
+	private static final Map<String, SortKey> KEYS = new HashMap<>();
 
 	static {
-		KEYS.put(ContentSortField.UPDATED_AT, (root, cb, language, naturalKey, hasLocalizedNames) -> workflowOf(root)
-			.get(ContentVersionEntity.Fields.updatedAt));
-		KEYS.put(ContentSortField.ROMAJI,
+		KEYS.put(ContentSortField.UPDATED_AT.field(), (root, cb, language, naturalKey,
+				hasLocalizedNames) -> workflowOf(root).get(ContentVersionEntity.Fields.updatedAt));
+		KEYS.put(ContentSortField.ROMAJI.field(),
 				(root, cb, language, naturalKey, hasLocalizedNames) -> naturalKeyOf(root, cb, naturalKey));
-		KEYS.put(ContentSortField.NUMBER,
+		KEYS.put(ContentSortField.NUMBER.field(),
 				(root, cb, language, naturalKey, hasLocalizedNames) -> naturalKeyOf(root, cb, naturalKey));
-		KEYS.put(ContentSortField.NAME, VersionBodySorting::nameOf);
-		KEYS.put(ContentSortField.AUTHOR, (root, cb, language, naturalKey, hasLocalizedNames) -> authorOf(root));
-		KEYS.put(ContentSortField.STATUS,
+		KEYS.put(ContentSortField.NAME.field(), VersionBodySorting::nameOf);
+		KEYS.put(ContentSortField.AUTHOR.field(),
+				(root, cb, language, naturalKey, hasLocalizedNames) -> authorOf(root));
+		KEYS.put(ContentSortField.STATUS.field(),
 				(root, cb, language, naturalKey, hasLocalizedNames) -> statusRankOf(root, cb));
+		KEYS.put(BountySortField.AMOUNT.field(),
+				(root, cb, language, naturalKey, hasLocalizedNames) -> root.get(BountySortField.AMOUNT.field()));
 	}
 
 	/** Last update, newest first - what the list shows when no sort is asked for. */
@@ -96,8 +105,7 @@ public class VersionBodySorting {
 
 	/** The field has been validated on the way in: an unknown one here is a bug. */
 	private static SortKey keyOf(Sort.Order order) {
-		return ContentSortField.of(order.getProperty())
-			.map(KEYS::get)
+		return Optional.ofNullable(KEYS.get(order.getProperty()))
 			.orElseThrow(() -> new IllegalArgumentException("Not a sortable field: " + order.getProperty()));
 	}
 

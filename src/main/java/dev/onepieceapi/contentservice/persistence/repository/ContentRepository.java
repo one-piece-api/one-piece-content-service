@@ -43,4 +43,14 @@ public interface ContentRepository extends Repository<ContentEntity, UUID> {
 	@Query("select c from ContentEntity c where c.id = :id")
 	Optional<ContentEntity> lockExclusive(UUID id);
 
+	/**
+	 * Holds, until the transaction ends, the one lock every change to the online chain of
+	 * bounties takes (implementation plan of the Bounty, B2): two of them never run
+	 * together, so neither reads a chain the other is about to change. Not tied to a
+	 * content, as the chain is not: an advisory lock of the database. The answer is of no
+	 * use, only there to be read.
+	 */
+	@Query(value = "select cast(pg_advisory_xact_lock(hashtext('bounty-chain')) as text)", nativeQuery = true)
+	String lockBountyChain();
+
 }

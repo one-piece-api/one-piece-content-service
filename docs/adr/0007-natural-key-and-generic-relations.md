@@ -91,3 +91,21 @@ would multiply fake romaji columns and copies of the same rules.
   searches only the key text and `sort=name` orders by it, with no translation join.
 - **Trade-off:** a boolean travels beside the key attribute through the list query signatures, rather than a new
   type; revisit if a third per-entity list option appears.
+
+## Addendum - filters and sorts of an entity, answers that depend on the caller (Bounty, B2)
+
+- **Own filters:** `ContentFilter.attributes` (name -> value, built with `withAttribute`) carries what only one
+  entity filters by; `VersionBodyRepository#attributeConditions(filter, statuses)` turns it into a
+  `Specification` (default: none) and `search`/`count` apply it. The bounty repository answers `condition` and
+  `validity`; the latter is an `exists` over the bounties whose most recent version among the caller's statuses
+  names the row, so an editor and a reader may read different lists.
+- **Own sorts:** each list names what it sorts by in an enum implementing `SortField` (`@SortableBy`);
+  `VersionBodySorting` looks the key up by field name, so `BountySortField.AMOUNT` exists only on the bounty list.
+- **Answers that depend on the caller:** `ContentController#versionResponse(contentId, access, caller)` defaults to
+  the entity's plain mapper; `BountyController` overrides it to read the chain and the validity through the
+  statuses the caller sees. Chain walks keep the set of bounties met, since drafts are not checked against each
+  other and may close a cycle.
+- **`ContentValidator#requireValidRelations(contentId, body)`** defaults to the one without the id: a rule that
+  must know which content is saved (a bounty is not its own previous) overrides it.
+- **Trade-off:** the attributes map is untyped; the entity's request mapper and repository share the names as
+  constants (`Bounty.CONDITION_ATTRIBUTE`, `Bounty.VALIDITY_ATTRIBUTE`).

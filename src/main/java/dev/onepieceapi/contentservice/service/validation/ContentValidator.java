@@ -76,7 +76,7 @@ public class ContentValidator<T extends ContentBody<T>, E extends VersionBodyEnt
 		requireKnownLanguages(body);
 		requireValidRevision(previous, body);
 		requireValidFields(body);
-		requireValidRelations(body);
+		requireValidRelations(contentId, body);
 		requireUniqueValues(contentId, body, slugOf(body));
 	}
 
@@ -87,7 +87,7 @@ public class ContentValidator<T extends ContentBody<T>, E extends VersionBodyEnt
 	 */
 	public void validateSubmission(UUID contentId, int versionNumber, T body) {
 		requireComplete(body);
-		requireValidRelations(body);
+		requireValidRelations(contentId, body);
 		requireUniqueValues(contentId, body, slugOf(body));
 		requireDifferentFromOtherVersions(contentId, versionNumber, body);
 	}
@@ -97,6 +97,16 @@ public class ContentValidator<T extends ContentBody<T>, E extends VersionBodyEnt
 	 * and again at submission; nothing by default.
 	 */
 	protected void requireValidRelations(T body) {
+	}
+
+	/**
+	 * The same, for a rule that needs to know which content is being saved - e.g. that a
+	 * bounty is not its own previous. Delegates to {@link #requireValidRelations(T)} by
+	 * default.
+	 * @param contentId the content being saved; a new one has its id already
+	 */
+	protected void requireValidRelations(UUID contentId, T body) {
+		requireValidRelations(body);
 	}
 
 	/**

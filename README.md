@@ -4,7 +4,8 @@ Backend applicativo (Spring Boot) per il workflow editoriale dei contenuti One P
 lineare di versioni per contenuto, revisione con presa in carico, pubblicazione, ritiro e
 ripristino, su un framework generico per entità. Entità: **Devil Fruit Type** e **Devil Fruit**
 (con relazione al tipo e immagine) e la struttura narrativa — **Saga, Arco, Volume** (con
-copertina PNG), **Capitolo** ed **Episodio** (relazioni verso arco/volume, date per paese). Espone:
+copertina PNG), **Capitolo** ed **Episodio** (relazioni verso arco/volume, date per paese) e il
+**Bounty** (un manifesto di taglia, chiave `posterName` + `amount`). Espone:
 
 - **Catalogo lingue** (`/languages`): lettura, aggiunta, rimozione di una lingua non in uso.
 - **Devil Fruit Type** (`/devil-fruit-types`): lista paginata, catena di versioni,
@@ -24,6 +25,12 @@ copertina PNG), **Capitolo** ed **Episodio** (relazioni verso arco/volume, date 
   operazioni, chiave naturale `number`; filtri `?saga=`/`?arc=`/`?volume=`. Un figlio va online
   solo con il padre online (`RELATED_NOT_ONLINE`); un padre con figli online non si ritira
   (`ONLINE_ITEMS_LINKED`).
+- **Bounty** (`/bounties`): un elemento per manifesto, chiave composta `posterName` + `amount` (slug
+  `monkey-d-luffy-3000000000`; un duplicato nomina entrambi i campi), `condition`, flag `inactive`,
+  descrizione per lingua, poster PNG opzionale, prima apparizione. `previous` è il bounty sostituito
+  (`/bounties/linkable`): al massimo un sostituto e nessun ciclo, serializzati da un lock
+  (`PREVIOUS_ALREADY_REPLACED`, `BOUNTY_CHAIN_CYCLE`). La `validity` (`ACTIVE`, `SUPERSEDED`,
+  `INACTIVE`) è derivata, mai salvata; si filtra con `?validity=` e `?condition=` e si ordina per `amount`.
 - **Dashboard** (`/dashboard`): contatori per stato, attività recente del chiamante
   (dall'audit log) e pagine per stato trasversali alle entità.
 

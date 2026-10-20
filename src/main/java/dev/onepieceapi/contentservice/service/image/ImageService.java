@@ -5,6 +5,7 @@ import dev.onepieceapi.contentservice.domain.image.NormalizedImage;
 import dev.onepieceapi.contentservice.domain.security.Permission;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.domain.workflow.VisibilityPolicy;
+import dev.onepieceapi.contentservice.persistence.repository.BountyVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.VolumeVersionRepository;
 import dev.onepieceapi.contentservice.service.exception.ImageNotFoundException;
@@ -31,6 +32,8 @@ public class ImageService {
 
 	private final VolumeVersionRepository volumeRepository;
 
+	private final BountyVersionRepository bountyRepository;
+
 	public NormalizedImage get(Set<Permission> permissions, String id) {
 		Set<VersionStatus> statuses = VisibilityPolicy.visibleStatuses(permissions);
 		if (statuses.isEmpty() || !usedBy(id, statuses)) {
@@ -40,7 +43,8 @@ public class ImageService {
 	}
 
 	private boolean usedBy(String id, Set<VersionStatus> statuses) {
-		return this.devilFruitRepository.usesImage(id, statuses) || this.volumeRepository.usesImage(id, statuses);
+		return this.devilFruitRepository.usesImage(id, statuses) || this.volumeRepository.usesImage(id, statuses)
+				|| this.bountyRepository.usesImage(id, statuses);
 	}
 
 }

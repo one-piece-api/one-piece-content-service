@@ -64,10 +64,12 @@ public final class ApiPaths {
 
 	public static final String CHAPTERS = "/chapters";
 
+	public static final String BOUNTIES = "/bounties";
+
 	public static final String EPISODES = "/episodes";
 
 	public static final List<String> CONTENT_SECTIONS = List.of(DEVIL_FRUIT_TYPES, DEVIL_FRUITS, SAGAS, ARCS, VOLUMES,
-			CHAPTERS, EPISODES);
+			CHAPTERS, EPISODES, BOUNTIES);
 
 	/**
 	 * The types a fruit may be linked to - an endpoint of the Devil Fruit Type section
@@ -91,6 +93,9 @@ public final class ApiPaths {
 
 	/** The episodes a first appearance may name. */
 	public static final String EPISODES_LINKABLE = EPISODES + CONTENT_LINKABLE;
+
+	/** The bounties a bounty may name as the one it replaces. */
+	public static final String BOUNTIES_LINKABLE = BOUNTIES + CONTENT_LINKABLE;
 
 	/** The section itself: its list, and where a new content is posted. */
 	public static final String CONTENT_LIST = "";

@@ -81,6 +81,15 @@ abstract class ContentController<T extends ContentBody<T>, R, S> {
 	}
 
 	/**
+	 * The same, for an entity whose answer depends on who asks or on other contents -
+	 * e.g. the validity of a bounty, which each caller reads from the versions they see.
+	 * The entity overrides it; by default it is {@link #versionResponse(VersionAccess)}.
+	 */
+	protected VersionResponse<R> versionResponse(UUID contentId, VersionAccess<T> access, AuthenticatedCaller caller) {
+		return versionResponse(access);
+	}
+
+	/**
 	 * One page of the list, for the filter a section's own {@code list} built from its
 	 * query parameters. A sort by {@code name} reads the name in the language of the
 	 * standard {@code Accept-Language} header, the one the caller is reading in.
@@ -112,7 +121,7 @@ abstract class ContentController<T extends ContentBody<T>, R, S> {
 	@GetMapping(ApiPaths.CONTENT_VERSION)
 	VersionResponse<R> version(@PathVariable UUID id, @PathVariable int number,
 			@AuthenticationPrincipal AuthenticatedCaller caller) {
-		return this.toVersionResponse.apply(this.service.getVersion(caller.permissions(), caller.user(), id, number));
+		return versionResponse(id, this.service.getVersion(caller.permissions(), caller.user(), id, number), caller);
 	}
 
 	@GetMapping(ApiPaths.CONTENT_VERSION_EVENTS)
@@ -133,7 +142,7 @@ abstract class ContentController<T extends ContentBody<T>, R, S> {
 	VersionResponse<R> openNewVersion(@PathVariable UUID id, @RequestBody @Valid NewVersionRequest request,
 			@AuthenticationPrincipal AuthenticatedCaller caller) {
 		var version = this.service.openNewVersion(caller.permissions(), caller.user(), id, request.basedOn());
-		return this.toVersionResponse.apply(version);
+		return versionResponse(id, version, caller);
 	}
 
 	/** Discards a draft (UF-CNT-11) - and its content with it, when it was the first. */
@@ -147,7 +156,7 @@ abstract class ContentController<T extends ContentBody<T>, R, S> {
 	@PostMapping(ApiPaths.CONTENT_VERSION_SUBMIT)
 	VersionResponse<R> submit(@PathVariable UUID id, @PathVariable int number,
 			@AuthenticationPrincipal AuthenticatedCaller caller) {
-		return this.toVersionResponse.apply(this.service.submit(caller.permissions(), caller.user(), id, number));
+		return versionResponse(id, this.service.submit(caller.permissions(), caller.user(), id, number), caller);
 	}
 
 	/**
@@ -157,7 +166,7 @@ abstract class ContentController<T extends ContentBody<T>, R, S> {
 	@PostMapping(ApiPaths.CONTENT_VERSION_PULL_BACK)
 	VersionResponse<R> pullBack(@PathVariable UUID id, @PathVariable int number,
 			@AuthenticationPrincipal AuthenticatedCaller caller) {
-		return this.toVersionResponse.apply(this.service.pullBack(caller.permissions(), caller.user(), id, number));
+		return versionResponse(id, this.service.pullBack(caller.permissions(), caller.user(), id, number), caller);
 	}
 
 	/**
@@ -167,7 +176,7 @@ abstract class ContentController<T extends ContentBody<T>, R, S> {
 	@PostMapping(ApiPaths.CONTENT_VERSION_CLAIM)
 	VersionResponse<R> claim(@PathVariable UUID id, @PathVariable int number,
 			@AuthenticationPrincipal AuthenticatedCaller caller) {
-		return this.toVersionResponse.apply(this.service.claim(caller.permissions(), caller.user(), id, number));
+		return versionResponse(id, this.service.claim(caller.permissions(), caller.user(), id, number), caller);
 	}
 
 	/**
@@ -176,14 +185,14 @@ abstract class ContentController<T extends ContentBody<T>, R, S> {
 	@PostMapping(ApiPaths.CONTENT_VERSION_RELEASE)
 	VersionResponse<R> release(@PathVariable UUID id, @PathVariable int number,
 			@AuthenticationPrincipal AuthenticatedCaller caller) {
-		return this.toVersionResponse.apply(this.service.release(caller.permissions(), caller.user(), id, number));
+		return versionResponse(id, this.service.release(caller.permissions(), caller.user(), id, number), caller);
 	}
 
 	/** Passes the review of a version the caller holds (UF-CNT-05). */
 	@PostMapping(ApiPaths.CONTENT_VERSION_APPROVE)
 	VersionResponse<R> approve(@PathVariable UUID id, @PathVariable int number,
 			@AuthenticationPrincipal AuthenticatedCaller caller) {
-		return this.toVersionResponse.apply(this.service.approve(caller.permissions(), caller.user(), id, number));
+		return versionResponse(id, this.service.approve(caller.permissions(), caller.user(), id, number), caller);
 	}
 
 	/** Fails the review of a version the caller holds, saying why (UF-CNT-06). */
@@ -191,15 +200,14 @@ abstract class ContentController<T extends ContentBody<T>, R, S> {
 	VersionResponse<R> reject(@PathVariable UUID id, @PathVariable int number,
 			@RequestBody @Valid RejectVersionRequest request, @AuthenticationPrincipal AuthenticatedCaller caller) {
 		var version = this.service.reject(caller.permissions(), caller.user(), id, number, request.reason());
-		return this.toVersionResponse.apply(version);
+		return versionResponse(id, version, caller);
 	}
 
 	/** Takes a rejected version of the caller back to draft (UF-CNT-15). */
 	@PostMapping(ApiPaths.CONTENT_VERSION_RETURN_TO_DRAFT)
 	VersionResponse<R> returnToDraft(@PathVariable UUID id, @PathVariable int number,
 			@AuthenticationPrincipal AuthenticatedCaller caller) {
-		return this.toVersionResponse
-			.apply(this.service.returnToDraft(caller.permissions(), caller.user(), id, number));
+		return versionResponse(id, this.service.returnToDraft(caller.permissions(), caller.user(), id, number), caller);
 	}
 
 	/**
@@ -209,7 +217,7 @@ abstract class ContentController<T extends ContentBody<T>, R, S> {
 	@PostMapping(ApiPaths.CONTENT_VERSION_PUBLISH)
 	VersionResponse<R> publish(@PathVariable UUID id, @PathVariable int number,
 			@AuthenticationPrincipal AuthenticatedCaller caller) {
-		return this.toVersionResponse.apply(this.service.publish(caller.permissions(), caller.user(), id, number));
+		return versionResponse(id, this.service.publish(caller.permissions(), caller.user(), id, number), caller);
 	}
 
 	/**
@@ -219,7 +227,7 @@ abstract class ContentController<T extends ContentBody<T>, R, S> {
 	@PostMapping(ApiPaths.CONTENT_VERSION_ARCHIVE)
 	VersionResponse<R> archive(@PathVariable UUID id, @PathVariable int number,
 			@AuthenticationPrincipal AuthenticatedCaller caller) {
-		return this.toVersionResponse.apply(this.service.archive(caller.permissions(), caller.user(), id, number));
+		return versionResponse(id, this.service.archive(caller.permissions(), caller.user(), id, number), caller);
 	}
 
 	/**
@@ -229,7 +237,7 @@ abstract class ContentController<T extends ContentBody<T>, R, S> {
 	@PostMapping(ApiPaths.CONTENT_VERSION_RECOVER)
 	VersionResponse<R> recover(@PathVariable UUID id, @PathVariable int number,
 			@AuthenticationPrincipal AuthenticatedCaller caller) {
-		return this.toVersionResponse.apply(this.service.recover(caller.permissions(), caller.user(), id, number));
+		return versionResponse(id, this.service.recover(caller.permissions(), caller.user(), id, number), caller);
 	}
 
 	/**
@@ -238,7 +246,7 @@ abstract class ContentController<T extends ContentBody<T>, R, S> {
 	@PostMapping(ApiPaths.CONTENT_VERSION_RETIRE)
 	VersionResponse<R> retire(@PathVariable UUID id, @PathVariable int number,
 			@AuthenticationPrincipal AuthenticatedCaller caller) {
-		return this.toVersionResponse.apply(this.service.retire(caller.permissions(), caller.user(), id, number));
+		return versionResponse(id, this.service.retire(caller.permissions(), caller.user(), id, number), caller);
 	}
 
 	/**
@@ -248,7 +256,7 @@ abstract class ContentController<T extends ContentBody<T>, R, S> {
 	@PostMapping(ApiPaths.CONTENT_VERSION_RESTORE)
 	VersionResponse<R> restore(@PathVariable UUID id, @PathVariable int number,
 			@AuthenticationPrincipal AuthenticatedCaller caller) {
-		return this.toVersionResponse.apply(this.service.restore(caller.permissions(), caller.user(), id, number));
+		return versionResponse(id, this.service.restore(caller.permissions(), caller.user(), id, number), caller);
 	}
 
 }

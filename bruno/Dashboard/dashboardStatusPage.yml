@@ -68,6 +68,10 @@ http:
       value: EPISODE
       type: query
       disabled: true
+    - name: entity
+      value: BOUNTY
+      type: query
+      disabled: true
     - name: author
       value: ""
       type: query
@@ -162,6 +166,10 @@ examples:
           disabled: true
         - name: entity
           value: EPISODE
+          type: query
+          disabled: true
+        - name: entity
+          value: BOUNTY
           type: query
           disabled: true
         - name: author
@@ -299,6 +307,10 @@ examples:
           value: EPISODE
           type: query
           disabled: true
+        - name: entity
+          value: BOUNTY
+          type: query
+          disabled: true
         - name: author
           value: ""
           type: query
@@ -406,6 +418,10 @@ examples:
           disabled: true
         - name: entity
           value: EPISODE
+          type: query
+          disabled: true
+        - name: entity
+          value: BOUNTY
           type: query
           disabled: true
         - name: author

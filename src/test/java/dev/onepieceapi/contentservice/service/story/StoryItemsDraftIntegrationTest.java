@@ -13,6 +13,7 @@ import dev.onepieceapi.contentservice.domain.story.VolumeTranslation;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.repository.ArcVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
+import dev.onepieceapi.contentservice.persistence.repository.BountyVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentVersionRepository;
@@ -103,6 +104,9 @@ class StoryItemsDraftIntegrationTest {
 	private DevilFruitTypeVersionRepository typeRepository;
 
 	@Autowired
+	private BountyVersionRepository bountyRepository;
+
+	@Autowired
 	private DevilFruitVersionRepository fruitRepository;
 
 	@Autowired
@@ -178,13 +182,13 @@ class StoryItemsDraftIntegrationTest {
 				new ChapterValidator(this.chapterRepository, this.languageRepository, this.arcRepository,
 						this.volumeRepository),
 				new ChapterRules(this.contentRepository, this.arcRepository, this.volumeRepository,
-						this.fruitRepository, this.typeRepository, new RulesProperties(5)),
+						this.fruitRepository, this.typeRepository, this.bountyRepository, new RulesProperties(5)),
 				auditLogService, clock);
 		this.episodes = new EpisodeService(this.episodeRepository, this.contentVersionRepository,
 				this.contentRepository,
 				new EpisodeValidator(this.episodeRepository, this.languageRepository, this.arcRepository),
 				new EpisodeRules(this.contentRepository, this.arcRepository, this.fruitRepository, this.typeRepository,
-						new RulesProperties(5)),
+						this.bountyRepository, new RulesProperties(5)),
 				auditLogService, clock);
 
 		this.fixtures = new StoryFixtures(this.entityManager, this.sagaRepository, this.arcRepository,

@@ -733,6 +733,762 @@ paths:
       tags:
       - Arcs
       x-required-permission: content:write
+  /bounties:
+    get:
+      operationId: bountyList
+      parameters:
+      - in: query
+        name: status
+        required: false
+        schema:
+          type: string
+          enum:
+          - DRAFT
+          - IN_REVIEW
+          - REJECTED
+          - READY_TO_PUBLISH
+          - PUBLISHED
+          - ARCHIVED
+          - RETIRED
+          - SUPERSEDED
+      - in: query
+        name: q
+        required: false
+        schema:
+          type: string
+      - in: query
+        name: author
+        required: false
+        schema:
+          type: string
+      - in: query
+        name: updatedWithinDays
+        required: false
+        schema:
+          type: integer
+          format: int32
+          minimum: 0
+      - in: query
+        name: validity
+        required: false
+        schema:
+          type: string
+          enum:
+          - ACTIVE
+          - SUPERSEDED
+          - INACTIVE
+      - in: query
+        name: condition
+        required: false
+        schema:
+          type: string
+          enum:
+          - DEAD_OR_ALIVE
+          - ONLY_ALIVE
+      - description: Zero-based page index (0..N)
+        in: query
+        name: page
+        required: false
+        schema:
+          type: integer
+          default: 0
+          minimum: 0
+      - description: The size of the page to be returned
+        in: query
+        name: size
+        required: false
+        schema:
+          type: integer
+          default: 20
+          minimum: 1
+      - description: "Sorting criteria in the format: property,(asc|desc). Default\
+          \ sort order is ascending. Multiple sort criteria are supported."
+        in: query
+        name: sort
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PageResponseContentSummaryResponseBountyNamesResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Bounties
+      x-required-permission: content:read
+    post:
+      operationId: bountyCreate
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BountyRequest"
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+                version:
+                  $ref: "#/components/schemas/BountyRequest"
+              required:
+              - version
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContentResponse"
+          description: Created
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Bounties
+      x-required-permission: content:write
+  /bounties/authors:
+    get:
+      operationId: bountyAuthors
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Bounties
+      x-required-permission: content:read
+  /bounties/linkable:
+    get:
+      operationId: bountyLinkable
+      parameters:
+      - description: "0-based page, 0 when missing"
+        in: query
+        name: page
+        required: false
+        schema:
+          type: integer
+          format: int32
+          minimum: 0
+      - description: "Page size: 20 when missing, at most 50"
+        in: query
+        name: size
+        required: false
+        schema:
+          type: integer
+          format: int32
+          maximum: 50
+          minimum: 1
+      - description: "Text the key contains, case-insensitive; 100 characters at most"
+        in: query
+        name: q
+        required: false
+        schema:
+          type: string
+          maxLength: 100
+          minLength: 0
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PageResponseBountyReferenceResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Bounties
+      x-required-permission: content:write
+  /bounties/summary:
+    get:
+      operationId: bountySummary
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContentListSummaryResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Bounties
+      x-required-permission: content:read
+  /bounties/{id}:
+    get:
+      operationId: bountyGet
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContentResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Bounties
+      x-required-permission: content:read
+  /bounties/{id}/versions:
+    post:
+      operationId: bountyOpenNewVersion
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewVersionRequest"
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseBountyResponse"
+          description: Created
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Bounties
+      x-required-permission: content:write
+  /bounties/{id}/versions/{number}:
+    delete:
+      operationId: bountyDelete
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "204":
+          description: No Content
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Bounties
+      x-required-permission: content:write
+    get:
+      operationId: bountyVersion
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseBountyResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Bounties
+      x-required-permission: content:read
+    put:
+      operationId: bountyEdit
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BountyRequest"
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+                version:
+                  $ref: "#/components/schemas/BountyRequest"
+              required:
+              - version
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseBountyResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Bounties
+      x-required-permission: content:write
+  /bounties/{id}/versions/{number}/approve:
+    post:
+      operationId: bountyApprove
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseBountyResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Bounties
+      x-required-permission: content:review
+  /bounties/{id}/versions/{number}/archive:
+    post:
+      operationId: bountyArchive
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseBountyResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Bounties
+      x-required-permission: content:publish
+  /bounties/{id}/versions/{number}/claim:
+    post:
+      operationId: bountyClaim
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseBountyResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Bounties
+      x-required-permission: content:review
+  /bounties/{id}/versions/{number}/events:
+    get:
+      operationId: bountyEvents
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VersionEventResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Bounties
+      x-required-permission: content:read
+  /bounties/{id}/versions/{number}/publish:
+    post:
+      operationId: bountyPublish
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseBountyResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Bounties
+      x-required-permission: content:publish
+  /bounties/{id}/versions/{number}/pull-back:
+    post:
+      operationId: bountyPullBack
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseBountyResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Bounties
+      x-required-permission: content:write
+  /bounties/{id}/versions/{number}/recover:
+    post:
+      operationId: bountyRecover
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseBountyResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Bounties
+      x-required-permission: content:publish
+  /bounties/{id}/versions/{number}/reject:
+    post:
+      operationId: bountyReject
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RejectVersionRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseBountyResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Bounties
+      x-required-permission: content:review
+  /bounties/{id}/versions/{number}/release:
+    post:
+      operationId: bountyRelease
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseBountyResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Bounties
+      x-required-permission: content:review
+  /bounties/{id}/versions/{number}/restore:
+    post:
+      operationId: bountyRestore
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseBountyResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Bounties
+      x-required-permission: content:publish
+  /bounties/{id}/versions/{number}/retire:
+    post:
+      operationId: bountyRetire
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseBountyResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Bounties
+      x-required-permission: content:retire
+  /bounties/{id}/versions/{number}/return-to-draft:
+    post:
+      operationId: bountyReturnToDraft
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseBountyResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Bounties
+      x-required-permission: content:write
+  /bounties/{id}/versions/{number}/submit:
+    post:
+      operationId: bountySubmit
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseBountyResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Bounties
+      x-required-permission: content:write
   /chapters:
     get:
       operationId: chapterList
@@ -1534,6 +2290,7 @@ paths:
           - VOLUME
           - CHAPTER
           - EPISODE
+          - BOUNTY
       - in: query
         name: author
         required: false
@@ -5341,6 +6098,7 @@ components:
           - VOLUME
           - CHAPTER
           - EPISODE
+          - BOUNTY
         label:
           type: string
         occurredAt:
@@ -5424,6 +6182,122 @@ components:
           - RELATED_NOT_ONLINE
           - ONLINE_ITEMS_LINKED
           - FIRST_APPEARANCE_MISSING
+          - PREVIOUS_ALREADY_REPLACED
+          - BOUNTY_CHAIN_CYCLE
+    BountyNamesResponse:
+      type: object
+      properties:
+        amount:
+          type: integer
+          format: int64
+        condition:
+          type: string
+          enum:
+          - DEAD_OR_ALIVE
+          - ONLY_ALIVE
+        key:
+          type: string
+        posterName:
+          type: string
+        validity:
+          type: string
+          enum:
+          - ACTIVE
+          - SUPERSEDED
+          - INACTIVE
+    BountyReferenceResponse:
+      type: object
+      properties:
+        amount:
+          type: integer
+          format: int64
+        id:
+          type: string
+          format: uuid
+        key:
+          type: string
+        posterName:
+          type: string
+    BountyRequest:
+      type: object
+      properties:
+        amount:
+          type: integer
+          format: int64
+          description: "Berry, as plain digits"
+          minimum: 0
+        condition:
+          type: string
+          enum:
+          - DEAD_OR_ALIVE
+          - ONLY_ALIVE
+        firstAppearance:
+          $ref: "#/components/schemas/FirstAppearanceRequest"
+        inactive:
+          type: boolean
+        posterName:
+          type: string
+          maxLength: 100
+          minLength: 0
+        previous:
+          type: string
+          format: uuid
+          description: The content id of the bounty it replaces
+        removeImage:
+          type: boolean
+        translations:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/BountyTranslationRequest"
+    BountyResponse:
+      type: object
+      properties:
+        amount:
+          type: integer
+          format: int64
+        chain:
+          type: array
+          items:
+            $ref: "#/components/schemas/BountyReferenceResponse"
+        condition:
+          type: string
+          enum:
+          - DEAD_OR_ALIVE
+          - ONLY_ALIVE
+        firstAppearance:
+          $ref: "#/components/schemas/FirstAppearanceResponse"
+        image:
+          $ref: "#/components/schemas/ImageResponse"
+        inactive:
+          type: boolean
+        next:
+          $ref: "#/components/schemas/BountyReferenceResponse"
+        posterName:
+          type: string
+        previous:
+          $ref: "#/components/schemas/BountyReferenceResponse"
+        translations:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/BountyTranslationResponse"
+        validity:
+          type: string
+          enum:
+          - ACTIVE
+          - SUPERSEDED
+          - INACTIVE
+    BountyTranslationRequest:
+      type: object
+      properties:
+        description:
+          type: string
+          maxLength: 2000
+          minLength: 0
+    BountyTranslationResponse:
+      type: object
+      properties:
+        description:
+          type: string
     ChapterNamesResponse:
       type: object
       properties:
@@ -5554,6 +6428,76 @@ components:
           $ref: "#/components/schemas/UserResponse"
         body:
           $ref: "#/components/schemas/ArcNamesResponse"
+        id:
+          type: string
+          format: uuid
+        onlineVersionNumber:
+          type: integer
+          format: int32
+        overrideActions:
+          type: array
+          items:
+            type: string
+            enum:
+            - EDIT
+            - DELETE
+            - SUBMIT
+            - PULL_BACK
+            - CLAIM
+            - RELEASE
+            - APPROVE
+            - REJECT
+            - RETURN_TO_DRAFT
+            - PUBLISH
+            - ARCHIVE
+            - RECOVER
+            - RETIRE
+            - RESTORE
+            - OPEN_NEW_VERSION
+        status:
+          type: string
+          enum:
+          - DRAFT
+          - IN_REVIEW
+          - REJECTED
+          - READY_TO_PUBLISH
+          - PUBLISHED
+          - ARCHIVED
+          - RETIRED
+          - SUPERSEDED
+        updatedAt:
+          type: string
+          format: date-time
+        versionNumber:
+          type: integer
+          format: int32
+    ContentSummaryResponseBountyNamesResponse:
+      type: object
+      properties:
+        allowedActions:
+          type: array
+          items:
+            type: string
+            enum:
+            - EDIT
+            - DELETE
+            - SUBMIT
+            - PULL_BACK
+            - CLAIM
+            - RELEASE
+            - APPROVE
+            - REJECT
+            - RETURN_TO_DRAFT
+            - PUBLISH
+            - ARCHIVE
+            - RECOVER
+            - RETIRE
+            - RESTORE
+            - OPEN_NEW_VERSION
+        author:
+          $ref: "#/components/schemas/UserResponse"
+        body:
+          $ref: "#/components/schemas/BountyNamesResponse"
         id:
           type: string
           format: uuid
@@ -6359,6 +7303,25 @@ components:
         number:
           type: integer
           format: int32
+    PageResponseBountyReferenceResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/BountyReferenceResponse"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
     PageResponseContentSummaryResponseArcNamesResponse:
       type: object
       properties:
@@ -6366,6 +7329,25 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ContentSummaryResponseArcNamesResponse"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+    PageResponseContentSummaryResponseBountyNamesResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/ContentSummaryResponseBountyNamesResponse"
         page:
           type: integer
           format: int32
@@ -6717,6 +7699,7 @@ components:
           - VOLUME
           - CHAPTER
           - EPISODE
+          - BOUNTY
         onlineVersionNumber:
           type: integer
           format: int32
@@ -6861,6 +7844,86 @@ components:
             $ref: "#/components/schemas/BlockedActionResponse"
         body:
           $ref: "#/components/schemas/ArcResponse"
+        claimant:
+          $ref: "#/components/schemas/UserResponse"
+        createdAt:
+          type: string
+          format: date-time
+        everPublished:
+          type: boolean
+        number:
+          type: integer
+          format: int32
+        overrideActions:
+          type: array
+          items:
+            type: string
+            enum:
+            - EDIT
+            - DELETE
+            - SUBMIT
+            - PULL_BACK
+            - CLAIM
+            - RELEASE
+            - APPROVE
+            - REJECT
+            - RETURN_TO_DRAFT
+            - PUBLISH
+            - ARCHIVE
+            - RECOVER
+            - RETIRE
+            - RESTORE
+            - OPEN_NEW_VERSION
+        rejectionReason:
+          type: string
+        status:
+          type: string
+          enum:
+          - DRAFT
+          - IN_REVIEW
+          - REJECTED
+          - READY_TO_PUBLISH
+          - PUBLISHED
+          - ARCHIVED
+          - RETIRED
+          - SUPERSEDED
+        updatedAt:
+          type: string
+          format: date-time
+    VersionResponseBountyResponse:
+      type: object
+      properties:
+        allowedActions:
+          type: array
+          items:
+            type: string
+            enum:
+            - EDIT
+            - DELETE
+            - SUBMIT
+            - PULL_BACK
+            - CLAIM
+            - RELEASE
+            - APPROVE
+            - REJECT
+            - RETURN_TO_DRAFT
+            - PUBLISH
+            - ARCHIVE
+            - RECOVER
+            - RETIRE
+            - RESTORE
+            - OPEN_NEW_VERSION
+        author:
+          $ref: "#/components/schemas/UserResponse"
+        basedOn:
+          type: integer
+          format: int32
+        blockedActions:
+          type: array
+          items:
+            $ref: "#/components/schemas/BlockedActionResponse"
+        body:
+          $ref: "#/components/schemas/BountyResponse"
         claimant:
           $ref: "#/components/schemas/UserResponse"
         createdAt:

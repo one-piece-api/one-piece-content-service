@@ -6,7 +6,9 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.EnumSet;
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 import static dev.onepieceapi.contentservice.domain.workflow.VersionStatus.DRAFT;
 import static dev.onepieceapi.contentservice.domain.workflow.VersionStatus.IN_REVIEW;
@@ -64,6 +66,27 @@ class ContentFilterTest {
 		var romeClock = Clock.fixed(Instant.parse("2026-10-01T23:30:00Z"), ZoneId.of("Europe/Rome"));
 
 		assertThat(filter(null, null, 0).updatedSince(romeClock)).contains(Instant.parse("2026-10-01T00:00:00Z"));
+	}
+
+	@Test
+	void anAttributeNarrowsTheListWithoutTouchingTheOthersOrTheRelationsAndIsNotThereUntilAsked() {
+		var related = UUID.randomUUID();
+		var base = filter(PUBLISHED, "luffy", 3).relatedTo("type", related);
+
+		var narrowed = base.withAttribute("condition", "ONLY_ALIVE").withAttribute("validity", "ACTIVE");
+
+		assertThat(narrowed.attribute("condition")).isEqualTo("ONLY_ALIVE");
+		assertThat(narrowed.attribute("validity")).isEqualTo("ACTIVE");
+		assertThat(narrowed.attribute("amount")).isNull();
+		assertThat(base.attribute("condition")).isNull();
+		assertThat(narrowed.related()).containsExactly(Map.entry("type", related));
+		assertThat(narrowed.query()).isEqualTo("luffy");
+		assertThat(narrowed.relatedTo("arc", related).attributes()).containsOnlyKeys("condition", "validity");
+	}
+
+	@Test
+	void aFilterWithoutAttributesEqualsTheOneBuiltWithoutThem() {
+		assertThat(new ContentFilter(null, null, null, null, Map.of(), null)).isEqualTo(ContentFilter.none());
 	}
 
 	private static ContentFilter filter(VersionStatus status, String query, Integer updatedWithinDays) {
