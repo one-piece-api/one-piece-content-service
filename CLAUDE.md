@@ -20,10 +20,10 @@ Layered packages, one sub-package per feature inside each layer:
 | Package | Holds |
 |---|---|
 | `domain/workflow` | The framework's domain: `Version`, `VersionStatus`, transitions (`TransitionPolicy`, `TransitionRule`), `BlockReason`, `ContentBody`, `EntityType` |
-| `domain/<feature>` | Body records per entity (`devilfruit`, `devilfruittype`, `story`, `event`, ...) |
+| `domain/<feature>` | Body records per entity (`devilfruit`, `devilfruittype`, `story`, `readertime`, ...) |
 | `persistence/entity` | `VersionBodyEntity` (`@MappedSuperclass`) + one `<X>VersionEntity` per entity, embeddables |
 | `persistence/{repository,mapper,specification,projection}` | `VersionBodyRepository`, entity mappers, `VersionBodySpecifications`/`Sorting` |
-| `service/content` | Generic: `ContentService` (whole workflow), `ContentDefinition`, `ContentRules`, `RelationDescriptor`/`RelationRules`, capabilities (`FirstAppearanceRules`, `RevealRules`) |
+| `service/content` | Generic: `ContentService` (whole workflow), `ContentDefinition`, `ContentRules`, `RelationDescriptor`/`RelationRules`, capabilities (`FirstAppearanceRules`) |
 | `service/<feature>` | Per entity: `<X>Definition`, `<X>Rules`, `<X>Links`, thin `<X>Service` |
 | `service/{validation,exception}` | `ContentValidator` + per-entity validators; `ContentErrorCode`, not-found exceptions |
 | `web/controller` | `ContentController` (generic read + workflow) + concrete `<X>Controller` (path, create, edit) |
@@ -36,7 +36,7 @@ Layered packages, one sub-package per feature inside each layer:
 - 0004 generic framework = Strategy: the generic service runs with each entity's `ContentDefinition`; per-entity classes only bind types.
 - 0005 entity rules are descriptor hooks (`ContentRules`), blocked actions carry a `BlockReason`.
 - 0006 images stored in PostgreSQL; 0007 natural key per entity + generic relations.
-- 0008 first appearance (reader time); 0009 Event and world time; 0010 reveals.
+- 0008 first appearance (chapter, episode or both).
 
 Adding an entity type: skill `new-content-type`. Copy the closest existing entity rather than inventing a new shape.
 
