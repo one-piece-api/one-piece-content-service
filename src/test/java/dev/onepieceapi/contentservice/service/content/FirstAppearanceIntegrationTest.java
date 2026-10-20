@@ -15,8 +15,10 @@ import dev.onepieceapi.contentservice.domain.workflow.BlockedAction;
 import dev.onepieceapi.contentservice.domain.workflow.EntityType;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAction;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
+import dev.onepieceapi.contentservice.domain.affiliation.Affiliation;
 import dev.onepieceapi.contentservice.domain.bounty.Bounty;
 import dev.onepieceapi.contentservice.domain.bounty.BountyCondition;
+import dev.onepieceapi.contentservice.persistence.entity.AffiliationVersionEntity;
 import dev.onepieceapi.contentservice.persistence.entity.BountyVersionEntity;
 import dev.onepieceapi.contentservice.persistence.entity.ContentEntity;
 import dev.onepieceapi.contentservice.persistence.entity.ContentVersionEntity;
@@ -24,10 +26,12 @@ import dev.onepieceapi.contentservice.persistence.entity.DevilFruitTypeVersionEn
 import dev.onepieceapi.contentservice.persistence.entity.DevilFruitVersionEntity;
 import dev.onepieceapi.contentservice.persistence.mapper.DevilFruitTypeVersionMapper;
 import dev.onepieceapi.contentservice.persistence.mapper.DevilFruitVersionMapper;
+import dev.onepieceapi.contentservice.persistence.mapper.AffiliationVersionMapper;
 import dev.onepieceapi.contentservice.persistence.mapper.BountyVersionMapper;
 import dev.onepieceapi.contentservice.persistence.mapper.UserMapper;
 import dev.onepieceapi.contentservice.persistence.repository.ArcVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
+import dev.onepieceapi.contentservice.persistence.repository.AffiliationVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.BountyVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.EpisodeVersionRepository;
@@ -148,6 +152,9 @@ class FirstAppearanceIntegrationTest {
 	private BountyVersionRepository bountyRepository;
 
 	@Autowired
+	private AffiliationVersionRepository affiliationRepository;
+
+	@Autowired
 	private ContentVersionRepository contentVersionRepository;
 
 	@Autowired
@@ -203,13 +210,14 @@ class FirstAppearanceIntegrationTest {
 				new ChapterValidator(this.chapterRepository, this.languageRepository, this.arcRepository,
 						this.volumeRepository),
 				new ChapterRules(this.contentRepository, this.arcRepository, this.volumeRepository,
-						this.fruitRepository, this.typeRepository, this.bountyRepository, properties),
+						this.fruitRepository, this.typeRepository, this.bountyRepository, this.affiliationRepository,
+						properties),
 				auditLogService, clock);
 		this.episodes = new EpisodeService(this.episodeRepository, this.contentVersionRepository,
 				this.contentRepository,
 				new EpisodeValidator(this.episodeRepository, this.languageRepository, this.arcRepository),
 				new EpisodeRules(this.contentRepository, this.arcRepository, this.fruitRepository, this.typeRepository,
-						this.bountyRepository, properties),
+						this.bountyRepository, this.affiliationRepository, properties),
 				auditLogService, clock);
 		this.paramecia = typeContent(PUBLISHED, type("Paramecia", onlineChapter()));
 	}
@@ -459,6 +467,30 @@ class FirstAppearanceIntegrationTest {
 	}
 
 	@Test
+	void aChapterOrAnEpisodeIsNotRetiredWhileAffiliationsOnlineFirstAppearInItAndNamesThemByTheirRomaji() {
+		UUID chapter = chapter(PUBLISHED);
+		UUID episode = episode(PUBLISHED);
+		UUID unused = chapter(PUBLISHED);
+		UUID inChapter = affiliationContent(PUBLISHED,
+				affiliation("Mugiwara no Ichimi", StoryPoint.ofChapter(chapter)));
+		UUID inEpisode = affiliationContent(PUBLISHED, affiliation("Kaigun", StoryPoint.ofEpisode(episode)));
+		affiliationContent(SUPERSEDED, affiliation("Baroque Works", StoryPoint.ofChapter(unused)));
+		stored();
+
+		var byChapter = catchThrowableOfType(VersionActionBlockedException.class,
+				() -> this.chapters.retire(ADMIN, this.vivi, chapter, 1));
+		var byEpisode = catchThrowableOfType(VersionActionBlockedException.class,
+				() -> this.episodes.retire(ADMIN, this.vivi, episode, 1));
+
+		assertThat(byChapter.getDetails()).containsEntry("reason", BlockReason.ONLINE_ITEMS_LINKED);
+		assertThat(byChapter.getDetails().get("detail")).isEqualTo(
+				Map.of("count", 1L, "affiliations", List.of(Map.of("id", inChapter, "romaji", "Mugiwara no Ichimi"))));
+		assertThat(byEpisode.getDetails().get("detail"))
+			.isEqualTo(Map.of("count", 1L, "affiliations", List.of(Map.of("id", inEpisode, "romaji", "Kaigun"))));
+		assertThat(this.chapters.retire(RETIRER, this.vivi, unused, 1).version().status()).isEqualTo(RETIRED);
+	}
+
+	@Test
 	void anEpisodeIsNotRetiredWhileFruitsOrTypesOnlineFirstAppearInIt() {
 		UUID ofFruit = episode(PUBLISHED);
 		UUID ofSubcategory = episode(PUBLISHED);
@@ -572,6 +604,19 @@ class FirstAppearanceIntegrationTest {
 	private static Bounty bounty(String posterName, StoryPoint firstAppearance) {
 		return new Bounty(posterName, 1_500_000_000L, BountyCondition.DEAD_OR_ALIVE, false, null, Map.of(), null,
 				firstAppearance);
+	}
+
+	/** Complete, but for what a test of the first appearance does not care about. */
+	private static Affiliation affiliation(String romaji, StoryPoint firstAppearance) {
+		return new Affiliation(romaji, Map.of(), null, firstAppearance);
+	}
+
+	private UUID affiliationContent(VersionStatus status, Affiliation body) {
+		UUID contentId = content(EntityType.AFFILIATION);
+		var version = new AffiliationVersionEntity(workflow(contentId, 1, status));
+		AffiliationVersionMapper.rewrite(version, body, EARLIER);
+		this.affiliationRepository.save(version);
+		return contentId;
 	}
 
 	private UUID bountyContent(VersionStatus status, Bounty body) {

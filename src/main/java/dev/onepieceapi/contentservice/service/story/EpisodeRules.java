@@ -6,10 +6,12 @@ import dev.onepieceapi.contentservice.domain.workflow.ActionBlock;
 import dev.onepieceapi.contentservice.domain.workflow.Version;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAction;
 import dev.onepieceapi.contentservice.persistence.repository.ArcVersionRepository;
+import dev.onepieceapi.contentservice.persistence.repository.AffiliationVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.BountyVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitTypeVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitVersionRepository;
+import dev.onepieceapi.contentservice.service.affiliation.AffiliationRelations;
 import dev.onepieceapi.contentservice.service.bounty.BountyRelations;
 import dev.onepieceapi.contentservice.service.content.ContentRules;
 import dev.onepieceapi.contentservice.service.content.LinkedItems;
@@ -46,6 +48,8 @@ public class EpisodeRules implements ContentRules<Episode> {
 
 	private final BountyVersionRepository bountyRepository;
 
+	private final AffiliationVersionRepository affiliationRepository;
+
 	private final RulesProperties properties;
 
 	@Override
@@ -59,7 +63,8 @@ public class EpisodeRules implements ContentRules<Episode> {
 		return RelationRules.targetNotOnline(action, StoryRelations.EPISODE_ARC, version.body(), this.arcRepository)
 			.or(() -> fruitsLinked(action, contentId))
 			.or(() -> typesLinked(action, contentId))
-			.or(() -> bountiesLinked(action, contentId));
+			.or(() -> bountiesLinked(action, contentId))
+			.or(() -> affiliationsLinked(action, contentId));
 	}
 
 	private Optional<ActionBlock> fruitsLinked(VersionAction action, UUID contentId) {
@@ -81,6 +86,13 @@ public class EpisodeRules implements ContentRules<Episode> {
 				this.bountyRepository::findOnlineFirstAppearingIn);
 		return RelationRules.onlineItemsLinked(action, BountyRelations.FIRST_APPEARANCE_EPISODE, contentId, bounties,
 				this.properties.blockingPreviewSize());
+	}
+
+	private Optional<ActionBlock> affiliationsLinked(VersionAction action, UUID contentId) {
+		var affiliations = new LinkedItems(this.affiliationRepository::countOnlineFirstAppearingIn,
+				this.affiliationRepository::findOnlineFirstAppearingIn);
+		return RelationRules.onlineItemsLinked(action, AffiliationRelations.FIRST_APPEARANCE_EPISODE, contentId,
+				affiliations, this.properties.blockingPreviewSize());
 	}
 
 }

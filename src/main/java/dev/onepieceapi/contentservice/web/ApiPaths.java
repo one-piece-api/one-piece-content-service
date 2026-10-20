@@ -68,8 +68,10 @@ public final class ApiPaths {
 
 	public static final String EPISODES = "/episodes";
 
+	public static final String AFFILIATIONS = "/affiliations";
+
 	public static final List<String> CONTENT_SECTIONS = List.of(DEVIL_FRUIT_TYPES, DEVIL_FRUITS, SAGAS, ARCS, VOLUMES,
-			CHAPTERS, EPISODES, BOUNTIES);
+			CHAPTERS, EPISODES, BOUNTIES, AFFILIATIONS);
 
 	/**
 	 * The types a fruit may be linked to - an endpoint of the Devil Fruit Type section

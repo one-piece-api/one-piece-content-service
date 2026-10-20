@@ -1,0 +1,6 @@
+info:
+  name: Affiliations
+  type: folder
+
+request:
+  auth: inherit

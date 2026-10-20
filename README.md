@@ -5,7 +5,8 @@ lineare di versioni per contenuto, revisione con presa in carico, pubblicazione,
 ripristino, su un framework generico per entità. Entità: **Devil Fruit Type** e **Devil Fruit**
 (con relazione al tipo e immagine) e la struttura narrativa — **Saga, Arco, Volume** (con
 copertina PNG), **Capitolo** ed **Episodio** (relazioni verso arco/volume, date per paese) e il
-**Bounty** (un manifesto di taglia, chiave `posterName` + `amount`). Espone:
+**Bounty** (un manifesto di taglia, chiave `posterName` + `amount`) e l'**Affiliazione**
+(ciurma, organizzazione, chiave `romaji`). Espone:
 
 - **Catalogo lingue** (`/languages`): lettura, aggiunta, rimozione di una lingua non in uso.
 - **Devil Fruit Type** (`/devil-fruit-types`): lista paginata, catena di versioni,
@@ -31,6 +32,9 @@ copertina PNG), **Capitolo** ed **Episodio** (relazioni verso arco/volume, date 
   (`/bounties/linkable`): al massimo un sostituto e nessun ciclo, serializzati da un lock
   (`PREVIOUS_ALREADY_REPLACED`, `BOUNTY_CHAIN_CYCLE`). La `validity` (`ACTIVE`, `SUPERSEDED`,
   `INACTIVE`) è derivata, mai salvata; si filtra con `?validity=` e `?condition=` e si ordina per `amount`.
+- **Affiliazione** (`/affiliations`): chiave `romaji` (slug `mugiwara-no-ichimi`), nome unico per
+  lingua e descrizione, emblema PNG opzionale (quadrato, sfondo trasparente), prima apparizione.
+  Nessun endpoint `linkable`: per ora nulla punta a un'affiliazione.
 - **Dashboard** (`/dashboard`): contatori per stato, attività recente del chiamante
   (dall'audit log) e pagine per stato trasversali alle entità.
 

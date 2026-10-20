@@ -13,6 +13,7 @@ import dev.onepieceapi.contentservice.persistence.repository.DevilFruitVersionRe
 import dev.onepieceapi.contentservice.persistence.repository.ImageRepository;
 import dev.onepieceapi.contentservice.persistence.repository.JpaImageStore;
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
+import dev.onepieceapi.contentservice.persistence.repository.AffiliationVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.BountyVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.VolumeVersionRepository;
 import dev.onepieceapi.contentservice.service.audit.AuditLogService;
@@ -92,6 +93,9 @@ class VolumeCoverIntegrationTest {
 	private BountyVersionRepository bountyRepository;
 
 	@Autowired
+	private AffiliationVersionRepository affiliationRepository;
+
+	@Autowired
 	private ChapterVersionRepository chapterRepository;
 
 	@Autowired
@@ -134,7 +138,7 @@ class VolumeCoverIntegrationTest {
 						new VolumeValidator(this.volumeRepository, this.languageRepository),
 						new VolumeRules(this.contentRepository, this.chapterRepository, new RulesProperties(5))));
 		this.imageService = new ImageService(store, this.devilFruitRepository, this.volumeRepository,
-				this.bountyRepository);
+				this.bountyRepository, this.affiliationRepository);
 	}
 
 	@Test

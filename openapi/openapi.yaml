@@ -7,6 +7,702 @@ servers:
 security:
 - keycloak: []
 paths:
+  /affiliations:
+    get:
+      operationId: affiliationList
+      parameters:
+      - in: query
+        name: status
+        required: false
+        schema:
+          type: string
+          enum:
+          - DRAFT
+          - IN_REVIEW
+          - REJECTED
+          - READY_TO_PUBLISH
+          - PUBLISHED
+          - ARCHIVED
+          - RETIRED
+          - SUPERSEDED
+      - in: query
+        name: q
+        required: false
+        schema:
+          type: string
+      - in: query
+        name: author
+        required: false
+        schema:
+          type: string
+      - in: query
+        name: updatedWithinDays
+        required: false
+        schema:
+          type: integer
+          format: int32
+          minimum: 0
+      - description: Zero-based page index (0..N)
+        in: query
+        name: page
+        required: false
+        schema:
+          type: integer
+          default: 0
+          minimum: 0
+      - description: The size of the page to be returned
+        in: query
+        name: size
+        required: false
+        schema:
+          type: integer
+          default: 20
+          minimum: 1
+      - description: "Sorting criteria in the format: property,(asc|desc). Default\
+          \ sort order is ascending. Multiple sort criteria are supported."
+        in: query
+        name: sort
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PageResponseContentSummaryResponseAffiliationNamesResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Affiliations
+      x-required-permission: content:read
+    post:
+      operationId: affiliationCreate
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AffiliationRequest"
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+                version:
+                  $ref: "#/components/schemas/AffiliationRequest"
+              required:
+              - version
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContentResponse"
+          description: Created
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Affiliations
+      x-required-permission: content:write
+  /affiliations/authors:
+    get:
+      operationId: affiliationAuthors
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Affiliations
+      x-required-permission: content:read
+  /affiliations/summary:
+    get:
+      operationId: affiliationSummary
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContentListSummaryResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Affiliations
+      x-required-permission: content:read
+  /affiliations/{id}:
+    get:
+      operationId: affiliationGet
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContentResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Affiliations
+      x-required-permission: content:read
+  /affiliations/{id}/versions:
+    post:
+      operationId: affiliationOpenNewVersion
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewVersionRequest"
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseAffiliationResponse"
+          description: Created
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Affiliations
+      x-required-permission: content:write
+  /affiliations/{id}/versions/{number}:
+    delete:
+      operationId: affiliationDelete
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "204":
+          description: No Content
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Affiliations
+      x-required-permission: content:write
+    get:
+      operationId: affiliationVersion
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseAffiliationResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Affiliations
+      x-required-permission: content:read
+    put:
+      operationId: affiliationEdit
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AffiliationRequest"
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+                version:
+                  $ref: "#/components/schemas/AffiliationRequest"
+              required:
+              - version
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseAffiliationResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Affiliations
+      x-required-permission: content:write
+  /affiliations/{id}/versions/{number}/approve:
+    post:
+      operationId: affiliationApprove
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseAffiliationResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Affiliations
+      x-required-permission: content:review
+  /affiliations/{id}/versions/{number}/archive:
+    post:
+      operationId: affiliationArchive
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseAffiliationResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Affiliations
+      x-required-permission: content:publish
+  /affiliations/{id}/versions/{number}/claim:
+    post:
+      operationId: affiliationClaim
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseAffiliationResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Affiliations
+      x-required-permission: content:review
+  /affiliations/{id}/versions/{number}/events:
+    get:
+      operationId: affiliationEvents
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VersionEventResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Affiliations
+      x-required-permission: content:read
+  /affiliations/{id}/versions/{number}/publish:
+    post:
+      operationId: affiliationPublish
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseAffiliationResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Affiliations
+      x-required-permission: content:publish
+  /affiliations/{id}/versions/{number}/pull-back:
+    post:
+      operationId: affiliationPullBack
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseAffiliationResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Affiliations
+      x-required-permission: content:write
+  /affiliations/{id}/versions/{number}/recover:
+    post:
+      operationId: affiliationRecover
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseAffiliationResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Affiliations
+      x-required-permission: content:publish
+  /affiliations/{id}/versions/{number}/reject:
+    post:
+      operationId: affiliationReject
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RejectVersionRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseAffiliationResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Affiliations
+      x-required-permission: content:review
+  /affiliations/{id}/versions/{number}/release:
+    post:
+      operationId: affiliationRelease
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseAffiliationResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Affiliations
+      x-required-permission: content:review
+  /affiliations/{id}/versions/{number}/restore:
+    post:
+      operationId: affiliationRestore
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseAffiliationResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Affiliations
+      x-required-permission: content:publish
+  /affiliations/{id}/versions/{number}/retire:
+    post:
+      operationId: affiliationRetire
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseAffiliationResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Affiliations
+      x-required-permission: content:retire
+  /affiliations/{id}/versions/{number}/return-to-draft:
+    post:
+      operationId: affiliationReturnToDraft
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseAffiliationResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Affiliations
+      x-required-permission: content:write
+  /affiliations/{id}/versions/{number}/submit:
+    post:
+      operationId: affiliationSubmit
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponseAffiliationResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Affiliations
+      x-required-permission: content:write
   /arcs:
     get:
       operationId: arcList
@@ -2291,6 +2987,7 @@ paths:
           - CHAPTER
           - EPISODE
           - BOUNTY
+          - AFFILIATION
       - in: query
         name: author
         required: false
@@ -6099,6 +6796,7 @@ components:
           - CHAPTER
           - EPISODE
           - BOUNTY
+          - AFFILIATION
         label:
           type: string
         occurredAt:
@@ -6109,6 +6807,61 @@ components:
         versionNumber:
           type: integer
           format: int32
+    AffiliationNamesResponse:
+      type: object
+      properties:
+        names:
+          type: object
+          additionalProperties:
+            type: string
+        romaji:
+          type: string
+    AffiliationRequest:
+      type: object
+      properties:
+        firstAppearance:
+          $ref: "#/components/schemas/FirstAppearanceRequest"
+        removeImage:
+          type: boolean
+        romaji:
+          type: string
+          maxLength: 100
+          minLength: 0
+        translations:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/AffiliationTranslationRequest"
+    AffiliationResponse:
+      type: object
+      properties:
+        firstAppearance:
+          $ref: "#/components/schemas/FirstAppearanceResponse"
+        image:
+          $ref: "#/components/schemas/ImageResponse"
+        romaji:
+          type: string
+        translations:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/AffiliationTranslationResponse"
+    AffiliationTranslationRequest:
+      type: object
+      properties:
+        description:
+          type: string
+          maxLength: 2000
+          minLength: 0
+        name:
+          type: string
+          maxLength: 100
+          minLength: 0
+    AffiliationTranslationResponse:
+      type: object
+      properties:
+        description:
+          type: string
+        name:
+          type: string
     ArcNamesResponse:
       type: object
       properties:
@@ -6401,6 +7154,76 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/VersionSummaryResponse"
+    ContentSummaryResponseAffiliationNamesResponse:
+      type: object
+      properties:
+        allowedActions:
+          type: array
+          items:
+            type: string
+            enum:
+            - EDIT
+            - DELETE
+            - SUBMIT
+            - PULL_BACK
+            - CLAIM
+            - RELEASE
+            - APPROVE
+            - REJECT
+            - RETURN_TO_DRAFT
+            - PUBLISH
+            - ARCHIVE
+            - RECOVER
+            - RETIRE
+            - RESTORE
+            - OPEN_NEW_VERSION
+        author:
+          $ref: "#/components/schemas/UserResponse"
+        body:
+          $ref: "#/components/schemas/AffiliationNamesResponse"
+        id:
+          type: string
+          format: uuid
+        onlineVersionNumber:
+          type: integer
+          format: int32
+        overrideActions:
+          type: array
+          items:
+            type: string
+            enum:
+            - EDIT
+            - DELETE
+            - SUBMIT
+            - PULL_BACK
+            - CLAIM
+            - RELEASE
+            - APPROVE
+            - REJECT
+            - RETURN_TO_DRAFT
+            - PUBLISH
+            - ARCHIVE
+            - RECOVER
+            - RETIRE
+            - RESTORE
+            - OPEN_NEW_VERSION
+        status:
+          type: string
+          enum:
+          - DRAFT
+          - IN_REVIEW
+          - REJECTED
+          - READY_TO_PUBLISH
+          - PUBLISHED
+          - ARCHIVED
+          - RETIRED
+          - SUPERSEDED
+        updatedAt:
+          type: string
+          format: date-time
+        versionNumber:
+          type: integer
+          format: int32
     ContentSummaryResponseArcNamesResponse:
       type: object
       properties:
@@ -7322,6 +8145,25 @@ components:
         totalPages:
           type: integer
           format: int32
+    PageResponseContentSummaryResponseAffiliationNamesResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/ContentSummaryResponseAffiliationNamesResponse"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
     PageResponseContentSummaryResponseArcNamesResponse:
       type: object
       properties:
@@ -7700,6 +8542,7 @@ components:
           - CHAPTER
           - EPISODE
           - BOUNTY
+          - AFFILIATION
         onlineVersionNumber:
           type: integer
           format: int32
@@ -7810,6 +8653,86 @@ components:
           format: date-time
         override:
           type: boolean
+    VersionResponseAffiliationResponse:
+      type: object
+      properties:
+        allowedActions:
+          type: array
+          items:
+            type: string
+            enum:
+            - EDIT
+            - DELETE
+            - SUBMIT
+            - PULL_BACK
+            - CLAIM
+            - RELEASE
+            - APPROVE
+            - REJECT
+            - RETURN_TO_DRAFT
+            - PUBLISH
+            - ARCHIVE
+            - RECOVER
+            - RETIRE
+            - RESTORE
+            - OPEN_NEW_VERSION
+        author:
+          $ref: "#/components/schemas/UserResponse"
+        basedOn:
+          type: integer
+          format: int32
+        blockedActions:
+          type: array
+          items:
+            $ref: "#/components/schemas/BlockedActionResponse"
+        body:
+          $ref: "#/components/schemas/AffiliationResponse"
+        claimant:
+          $ref: "#/components/schemas/UserResponse"
+        createdAt:
+          type: string
+          format: date-time
+        everPublished:
+          type: boolean
+        number:
+          type: integer
+          format: int32
+        overrideActions:
+          type: array
+          items:
+            type: string
+            enum:
+            - EDIT
+            - DELETE
+            - SUBMIT
+            - PULL_BACK
+            - CLAIM
+            - RELEASE
+            - APPROVE
+            - REJECT
+            - RETURN_TO_DRAFT
+            - PUBLISH
+            - ARCHIVE
+            - RECOVER
+            - RETIRE
+            - RESTORE
+            - OPEN_NEW_VERSION
+        rejectionReason:
+          type: string
+        status:
+          type: string
+          enum:
+          - DRAFT
+          - IN_REVIEW
+          - REJECTED
+          - READY_TO_PUBLISH
+          - PUBLISHED
+          - ARCHIVED
+          - RETIRED
+          - SUPERSEDED
+        updatedAt:
+          type: string
+          format: date-time
     VersionResponseArcResponse:
       type: object
       properties:
