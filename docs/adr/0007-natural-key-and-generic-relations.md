@@ -78,3 +78,16 @@ would multiply fake romaji columns and copies of the same rules.
   content: no lifecycle, one entry per ISO 3166-1 country, validated by `ReleaseRules`.
 - **Cover:** `/volumes` also takes multipart (part `cover`, JSON `removeImage`); the profile
   accepts static PNG only, as the image framework does (JPEG/WebP deferred, plan S6 not met).
+
+## Addendum - composite natural keys and entities without a localized name (Bounty, B1)
+
+- **Why:** a bounty is told apart by poster name and amount together, and has no localized name.
+- **Composite key:** `NaturalKey(field, value, fields)`. `value` is the key text (`Monkey D. Luffy 3000000000`) held by
+  one generated `natural_key` column, so search, sort, uniqueness and slug stay as for any key.
+  `fields` (default: `field`) lists the request fields the key is made of: `ContentValidator` reports every
+  violation (`NO_SLUG`, `ALREADY_USED`, `SLUG_TAKEN`) once per field. `field` keeps naming the key in block
+  details (`previousKey`).
+- **No localized name:** `VersionBodyRepository#hasLocalizedNames()` (default `true`). When `false`, the list
+  searches only the key text and `sort=name` orders by it, with no translation join.
+- **Trade-off:** a boolean travels beside the key attribute through the list query signatures, rather than a new
+  type; revisit if a third per-entity list option appears.

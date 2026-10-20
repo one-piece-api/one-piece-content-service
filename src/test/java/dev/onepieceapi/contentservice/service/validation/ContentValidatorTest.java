@@ -7,7 +7,9 @@ import dev.onepieceapi.contentservice.persistence.entity.VersionBodyEntity;
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
 import dev.onepieceapi.contentservice.persistence.repository.VersionBodyRepository;
 import dev.onepieceapi.contentservice.service.exception.TranslationLanguageUnknownException;
+import dev.onepieceapi.contentservice.service.exception.SlugAlreadyUsedException;
 import dev.onepieceapi.contentservice.service.exception.ValueAlreadyUsedException;
+import dev.onepieceapi.contentservice.service.exception.ValueInvalidException;
 import dev.onepieceapi.contentservice.service.exception.VersionIncompleteException;
 import dev.onepieceapi.exception.ApplicationException;
 import dev.onepieceapi.exception.web.FieldViolation;
@@ -35,6 +37,9 @@ import static org.mockito.Mockito.when;
 class ContentValidatorTest {
 
 	private static final UUID CONTENT_ID = UUID.randomUUID();
+
+	private static final NaturalKey COMPOSITE_KEY = new NaturalKey("key", "Luffy 3000000000",
+			List.of("posterName", "amount"));
 
 	@SuppressWarnings("unchecked")
 	private final VersionBodyRepository<VersionBodyEntity> repository = mock(VersionBodyRepository.class);
@@ -85,6 +90,41 @@ class ContentValidatorTest {
 		assertThat(violationsOf(refused)).extracting(FieldViolation::field).containsExactly("translations[it].name");
 	}
 
+	@Test
+	void aKeyOfSeveralFieldsIsRefusedOnEachOfThemWhenAnotherContentHasIt() {
+		var bounty = new Note(COMPOSITE_KEY);
+		when(this.repository.naturalKeyIsTakenByAnother(COMPOSITE_KEY.value(), CONTENT_ID)).thenReturn(true);
+
+		var refused = catchThrowableOfType(ValueAlreadyUsedException.class,
+				() -> this.validator.validateDraft(CONTENT_ID, bounty));
+
+		assertThat(violationsOf(refused)).extracting(FieldViolation::field).containsExactly("posterName", "amount");
+		assertThat(violationsOf(refused)).extracting(FieldViolation::message)
+			.containsOnly("is already used by another content");
+	}
+
+	@Test
+	void aKeyOfSeveralFieldsWhoseSlugIsAnotherContentsIsRefusedOnEachOfThem() {
+		var bounty = new Note(COMPOSITE_KEY);
+		when(this.repository.slugIsTakenByAnother(COMPOSITE_KEY.text(), CONTENT_ID)).thenReturn(true);
+
+		var refused = catchThrowableOfType(SlugAlreadyUsedException.class,
+				() -> this.validator.validateDraft(CONTENT_ID, bounty));
+
+		assertThat(violationsOf(refused)).extracting(FieldViolation::field).containsExactly("posterName", "amount");
+	}
+
+	@Test
+	void aKeyOfSeveralFieldsGivingNoSlugIsRefusedOnEachOfThem() {
+		var bounty = new Note(COMPOSITE_KEY);
+		when(this.repository.slugOf(COMPOSITE_KEY.text())).thenReturn(Optional.empty());
+
+		var refused = catchThrowableOfType(ValueInvalidException.class,
+				() -> this.validator.validateDraft(CONTENT_ID, bounty));
+
+		assertThat(violationsOf(refused)).extracting(FieldViolation::field).containsExactly("posterName", "amount");
+	}
+
 	@SuppressWarnings("unchecked")
 	private static List<FieldViolation> violationsOf(ApplicationException refused) {
 		return (List<FieldViolation>) refused.getDetails().get("errors");
@@ -93,7 +133,7 @@ class ContentValidatorTest {
 	/** A body telling exactly what the test wants, and remembering what it was asked. */
 	static final class Note implements ContentBody<Note> {
 
-		private final String romaji;
+		private final NaturalKey key;
 
 		private final Set<String> languages;
 
@@ -103,8 +143,16 @@ class ContentValidatorTest {
 
 		private Collection<String> askedFor = List.of();
 
+		Note(NaturalKey key) {
+			this(Set.of(), Map.of(), List.of(), key);
+		}
+
 		Note(String romaji, Set<String> languages, Map<String, String> names, List<String> missing) {
-			this.romaji = romaji;
+			this(languages, names, missing, new NaturalKey("romaji", romaji));
+		}
+
+		private Note(Set<String> languages, Map<String, String> names, List<String> missing, NaturalKey key) {
+			this.key = key;
 			this.languages = languages;
 			this.names = names;
 			this.missing = missing;
@@ -112,7 +160,7 @@ class ContentValidatorTest {
 
 		@Override
 		public NaturalKey naturalKey() {
-			return new NaturalKey("romaji", this.romaji);
+			return this.key;
 		}
 
 		@Override

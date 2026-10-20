@@ -44,14 +44,24 @@ public interface VersionBodyRepository<E extends VersionBodyEntity>
 	String naturalKeyAttribute();
 
 	/**
+	 * Whether the entity has a localized name, which the list searches and sorts by too;
+	 * false when its natural key is all that names an item.
+	 */
+	default boolean hasLocalizedNames() {
+		return true;
+	}
+
+	/**
 	 * One page of the list: one row per content, by its most recent version among
 	 * {@code statuses}, filtered and sorted as asked; a sort by name reads it in
 	 * {@code language}.
 	 */
 	default Page<E> search(Collection<VersionStatus> statuses, ContentFilter filter, Clock clock, Pageable pageable,
 			String language) {
-		var specification = VersionBodySpecifications.<E>listOf(statuses, filter, clock, naturalKeyAttribute())
-			.and(VersionBodySorting.orderedBy(pageable.getSort(), language, naturalKeyAttribute()));
+		var specification = VersionBodySpecifications
+			.<E>listOf(statuses, filter, clock, naturalKeyAttribute(), hasLocalizedNames())
+			.and(VersionBodySorting.orderedBy(pageable.getSort(), language, naturalKeyAttribute(),
+					hasLocalizedNames()));
 		return findAll(specification, PageRequest.of(pageable.getPageNumber(), pageable.getPageSize()));
 	}
 
@@ -59,7 +69,8 @@ public interface VersionBodyRepository<E extends VersionBodyEntity>
 	 * How many contents the list would show in all, with the same statuses and filters.
 	 */
 	default long count(Collection<VersionStatus> statuses, ContentFilter filter, Clock clock) {
-		return count(VersionBodySpecifications.<E>listOf(statuses, filter, clock, naturalKeyAttribute()));
+		return count(VersionBodySpecifications.<E>listOf(statuses, filter, clock, naturalKeyAttribute(),
+				hasLocalizedNames()));
 	}
 
 	/**

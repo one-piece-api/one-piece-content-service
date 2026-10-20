@@ -44,10 +44,10 @@ public class VersionBodySpecifications {
 	 * that was actually given.
 	 */
 	public <E extends VersionBodyEntity> Specification<E> listOf(Collection<VersionStatus> statuses,
-			ContentFilter filter, Clock clock, String naturalKey) {
+			ContentFilter filter, Clock clock, String naturalKey, boolean hasLocalizedNames) {
 		List<Specification<E>> conditions = new ArrayList<>();
 		conditions.add(mostRecentIn(statuses));
-		filter.text().ifPresent(text -> conditions.add(matching(text, naturalKey)));
+		filter.text().ifPresent(text -> conditions.add(matching(text, naturalKey, hasLocalizedNames)));
 		if (filter.author() != null) {
 			conditions.add(authoredBy(filter.author()));
 		}
@@ -108,12 +108,17 @@ public class VersionBodySpecifications {
 
 	/**
 	 * Case-insensitive "contains", on the natural key (the attribute named so) or on the
-	 * name in any language.
+	 * name in any language - on the natural key alone when the entity has no localized
+	 * name.
 	 */
-	public <E extends VersionBodyEntity> Specification<E> matching(String text, String naturalKey) {
+	public <E extends VersionBodyEntity> Specification<E> matching(String text, String naturalKey,
+			boolean hasLocalizedNames) {
 		return (root, query, cb) -> {
 			String pattern = "%" + escapeLike(text.toLowerCase(Locale.ROOT)) + "%";
 			Predicate inNaturalKey = contains(cb, naturalKeyText(root, cb, naturalKey), pattern);
+			if (!hasLocalizedNames) {
+				return inNaturalKey;
+			}
 			return cb.or(inNaturalKey, cb.exists(anyNameContaining(pattern, root, query.subquery(Integer.class), cb)));
 		};
 	}

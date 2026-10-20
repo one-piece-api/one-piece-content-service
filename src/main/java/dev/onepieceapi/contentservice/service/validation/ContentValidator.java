@@ -154,7 +154,7 @@ public class ContentValidator<T extends ContentBody<T>, E extends VersionBodyEnt
 			return Optional.empty();
 		}
 		return Optional.of(this.versionRepository.slugOf(key.text())
-			.orElseThrow(() -> new ValueInvalidException(List.of(new FieldViolation(key.field(), NO_SLUG)))));
+			.orElseThrow(() -> new ValueInvalidException(violationsOn(key, NO_SLUG))));
 	}
 
 	/**
@@ -166,7 +166,7 @@ public class ContentValidator<T extends ContentBody<T>, E extends VersionBodyEnt
 	private void requireUniqueValues(UUID contentId, T body, Optional<String> slug) {
 		requireUnusedValues(contentId, body);
 		slug.filter(value -> this.versionRepository.slugIsTakenByAnother(value, contentId)).ifPresent(value -> {
-			throw new SlugAlreadyUsedException(value, List.of(new FieldViolation(body.naturalKeyField(), SLUG_TAKEN)));
+			throw new SlugAlreadyUsedException(value, violationsOn(body.naturalKey(), SLUG_TAKEN));
 		});
 	}
 
@@ -174,7 +174,7 @@ public class ContentValidator<T extends ContentBody<T>, E extends VersionBodyEnt
 		List<FieldViolation> taken = new ArrayList<>();
 		NaturalKey key = body.naturalKey();
 		if (!key.isMissing() && this.versionRepository.naturalKeyIsTakenByAnother(key.value(), contentId)) {
-			taken.add(new FieldViolation(key.field(), ALREADY_USED));
+			taken.addAll(violationsOn(key, ALREADY_USED));
 		}
 		if (body.uniqueNames()) {
 			body.names().forEach((language, name) -> {
@@ -186,6 +186,11 @@ public class ContentValidator<T extends ContentBody<T>, E extends VersionBodyEnt
 		if (!taken.isEmpty()) {
 			throw new ValueAlreadyUsedException(taken);
 		}
+	}
+
+	/** One violation per field the key is made of, so that a composite key names each. */
+	private static List<FieldViolation> violationsOn(NaturalKey key, String message) {
+		return key.fields().stream().map(field -> new FieldViolation(field, message)).toList();
 	}
 
 	/** The language codes of the catalog, in order. */
