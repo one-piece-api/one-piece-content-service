@@ -11,6 +11,7 @@ import dev.onepieceapi.contentservice.persistence.mapper.DevilFruitTypeVersionMa
 import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitTypeVersionRepository;
+import dev.onepieceapi.contentservice.persistence.repository.EpisodeVersionRepository;
 import dev.onepieceapi.contentservice.service.content.ContentRules;
 import dev.onepieceapi.contentservice.service.content.FirstAppearanceRules;
 import dev.onepieceapi.contentservice.service.content.RelationRules;
@@ -32,8 +33,9 @@ import java.util.UUID;
  * while the type is - and, on top, when it names a subcategory, only while the type's
  * online version has it (implementation plan of the subcategories, S6). The other actions
  * ask nothing of the type: a fruit can be reviewed or set aside whatever became of it.
- * Going online also needs a first appearance, in a chapter online - the same relation
- * rules for {@link DevilFruitRelations#FIRST_APPEARANCE} (implementation plan of the
+ * Going online also needs a first appearance, in a chapter or an episode online - the
+ * same relation rules for {@link DevilFruitRelations#FIRST_APPEARANCE_CHAPTER} and
+ * {@link DevilFruitRelations#FIRST_APPEARANCE_EPISODE} (implementation plan of the
  * timeline, T7): first what the fruit itself lacks, then what it points to.
  * <p>
  * Going online holds the type's content shared first ({@link RelationRules}), and putting
@@ -51,10 +53,14 @@ public class DevilFruitRules implements ContentRules<DevilFruit> {
 
 	private final ChapterVersionRepository chapterRepository;
 
+	private final EpisodeVersionRepository episodeRepository;
+
 	@Override
 	public void lockBefore(VersionAction action, UUID contentId, Version<DevilFruit> version) {
 		RelationRules.lockTargetBefore(action, DevilFruitRelations.TYPE, version.body(), this.contentRepository);
-		RelationRules.lockTargetBefore(action, DevilFruitRelations.FIRST_APPEARANCE, version.body(),
+		RelationRules.lockTargetBefore(action, DevilFruitRelations.FIRST_APPEARANCE_CHAPTER, version.body(),
+				this.contentRepository);
+		RelationRules.lockTargetBefore(action, DevilFruitRelations.FIRST_APPEARANCE_EPISODE, version.body(),
 				this.contentRepository);
 	}
 
@@ -64,8 +70,10 @@ public class DevilFruitRules implements ContentRules<DevilFruit> {
 		return FirstAppearanceRules.missing(action, fruit)
 			.or(() -> RelationRules.targetNotOnline(action, DevilFruitRelations.TYPE, fruit, this.typeRepository))
 			.or(() -> subcategoryNotOnline(action, fruit))
-			.or(() -> RelationRules.targetNotOnline(action, DevilFruitRelations.FIRST_APPEARANCE, fruit,
-					this.chapterRepository));
+			.or(() -> RelationRules.targetNotOnline(action, DevilFruitRelations.FIRST_APPEARANCE_CHAPTER, fruit,
+					this.chapterRepository))
+			.or(() -> RelationRules.targetNotOnline(action, DevilFruitRelations.FIRST_APPEARANCE_EPISODE, fruit,
+					this.episodeRepository));
 	}
 
 	/** Checked once the type is known to be online. */

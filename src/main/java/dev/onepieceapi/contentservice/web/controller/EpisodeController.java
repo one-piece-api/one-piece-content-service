@@ -4,14 +4,17 @@ import dev.onepieceapi.contentservice.domain.story.Episode;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSortField;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
 import dev.onepieceapi.contentservice.service.story.ArcLinks;
+import dev.onepieceapi.contentservice.service.story.EpisodeLinks;
 import dev.onepieceapi.contentservice.service.story.EpisodeService;
 import dev.onepieceapi.contentservice.web.ApiPaths;
 import dev.onepieceapi.contentservice.web.dto.request.EpisodeListRequest;
 import dev.onepieceapi.contentservice.web.dto.request.EpisodeRequest;
+import dev.onepieceapi.contentservice.web.dto.request.LinkableNumberedRequest;
 import dev.onepieceapi.contentservice.web.dto.response.ContentResponse;
 import dev.onepieceapi.contentservice.web.dto.response.ContentSummaryResponse;
 import dev.onepieceapi.contentservice.web.dto.response.EpisodeNamesResponse;
 import dev.onepieceapi.contentservice.web.dto.response.EpisodeResponse;
+import dev.onepieceapi.contentservice.web.dto.response.NumberedReferenceResponse;
 import dev.onepieceapi.contentservice.web.dto.response.PageResponse;
 import dev.onepieceapi.contentservice.web.dto.response.VersionResponse;
 import dev.onepieceapi.contentservice.web.mapper.ContentResponseMapper;
@@ -42,8 +45,9 @@ import java.util.UUID;
 /**
  * The episode section: every endpoint of {@link ContentController}, plus creating a
  * content and editing its draft (UF-CNT-01, UF-CNT-02), which take {@code content:write},
- * and the list narrowed to the episodes of an arc. The arc an episode points to, if any,
- * is answered as it is today, looked up once for the whole page.
+ * the list narrowed to the episodes of an arc, and the episodes a first appearance may
+ * name. The arc an episode points to, if any, is answered as it is today, looked up once
+ * for the whole page.
  */
 @RestController
 @RequestMapping(ApiPaths.EPISODES)
@@ -54,12 +58,15 @@ class EpisodeController extends ContentController<Episode, EpisodeResponse, Epis
 
 	private final ArcLinks arcs;
 
+	private final EpisodeLinks links;
+
 	@Autowired
-	EpisodeController(EpisodeService service, ArcLinks arcs) {
+	EpisodeController(EpisodeService service, ArcLinks arcs, EpisodeLinks links) {
 		super(service, access -> StoryResponseMapper.toEpisodeVersionResponse(access,
 				arcs.referencesFor(List.of(access.body()), Episode::arcContentId)));
 		this.service = service;
 		this.arcs = arcs;
+		this.links = links;
 	}
 
 	/**
@@ -80,6 +87,16 @@ class EpisodeController extends ContentController<Episode, EpisodeResponse, Epis
 		var references = this.arcs.referencesFor(rows.stream().map(row -> row.version().body()).toList(),
 				Episode::arcContentId);
 		return rows.stream().map(row -> StoryResponseMapper.toEpisodeSummaryResponse(row, references)).toList();
+	}
+
+	/**
+	 * The episodes a first appearance may name (ADR-0008): those with a version that
+	 * passed review, by number, narrowed by what their number or a title contains.
+	 */
+	@GetMapping(ApiPaths.CONTENT_LINKABLE)
+	PageResponse<NumberedReferenceResponse> linkable(@ParameterObject @Valid LinkableNumberedRequest request) {
+		var page = this.links.linkable(request.q(), request.pageOrDefault(), request.sizeOrDefault());
+		return PageResponse.from(page.map(StoryResponseMapper::toResponse));
 	}
 
 	/**

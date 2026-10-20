@@ -59,17 +59,17 @@ class DevilFruitTest {
 	void theTypeAndTheFirstAppearanceAreRequiredForReviewLikeTheRomajiAndBeforeTheTexts() {
 		var empty = new DevilFruit(null, null, Map.of());
 
-		assertThat(empty.missingFields(List.of("en", "it"))).containsExactly("romaji", "type",
-				"firstAppearance.chapter", "translations[en].name", "translations[en].description",
-				"translations[en].advantages", "translations[en].disadvantages", "translations[it].name",
-				"translations[it].description", "translations[it].advantages", "translations[it].disadvantages");
+		assertThat(empty.missingFields(List.of("en", "it"))).containsExactly("romaji", "type", "firstAppearance",
+				"translations[en].name", "translations[en].description", "translations[en].advantages",
+				"translations[en].disadvantages", "translations[it].name", "translations[it].description",
+				"translations[it].advantages", "translations[it].disadvantages");
 	}
 
 	@Test
 	void aCompleteFruitMissesNothing() {
 		var complete = new DevilFruit("Gomu Gomu", PARAMECIA, null,
 				Map.of("it", new DevilFruitTranslation("Gom", "Elastico", "Pro", "Contro")), null,
-				new StoryPoint(UUID.randomUUID()));
+				StoryPoint.ofChapter(UUID.randomUUID()));
 
 		assertThat(complete.missingFields(List.of("it"))).isEmpty();
 	}
@@ -86,7 +86,7 @@ class DevilFruitTest {
 	@Test
 	void theFirstAppearanceIsKeptByNormalizingAndByAnotherImageAndTellsFruitsApart() {
 		var translations = Map.of("it", new DevilFruitTranslation("Gom", "Elastico", "Pro", "Contro"));
-		var chapter = new StoryPoint(UUID.randomUUID());
+		var chapter = StoryPoint.ofChapter(UUID.randomUUID());
 		var fruit = new DevilFruit(" Gomu ", PARAMECIA, null, translations, null, chapter);
 
 		assertThat(fruit.normalized().firstAppearance()).isEqualTo(chapter);
@@ -102,7 +102,19 @@ class DevilFruitTest {
 
 		assertThat(fruit.firstAppearance()).isEqualTo(StoryPoint.NONE);
 		assertThat(fruit.lacksFirstAppearance()).isTrue();
-		assertThat(fruit.missingFields(List.of("it"))).containsExactly("firstAppearance.chapter");
+		assertThat(fruit.missingFields(List.of("it"))).containsExactly("firstAppearance");
+	}
+
+	@Test
+	void aFirstAppearanceInAnEpisodeOnlyIsEnoughForReview() {
+		var episode = StoryPoint.ofEpisode(UUID.randomUUID());
+		var fruit = new DevilFruit("Gomu", PARAMECIA, null,
+				Map.of("it", new DevilFruitTranslation("Gom", "Elastico", "Pro", "Contro")), null, episode);
+
+		assertThat(fruit.lacksFirstAppearance()).isFalse();
+		assertThat(fruit.firstAppearanceEpisodeId()).isEqualTo(episode.episodeContentId());
+		assertThat(fruit.firstAppearanceChapterId()).isNull();
+		assertThat(fruit.missingFields(List.of("it"))).isEmpty();
 	}
 
 }

@@ -25,6 +25,7 @@ import dev.onepieceapi.contentservice.persistence.mapper.UserMapper;
 import dev.onepieceapi.contentservice.persistence.repository.ArcVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
+import dev.onepieceapi.contentservice.persistence.repository.EpisodeVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitTypeVersionRepository;
@@ -42,7 +43,10 @@ import dev.onepieceapi.contentservice.service.exception.VersionActionBlockedExce
 import dev.onepieceapi.contentservice.service.image.ContentImages;
 import dev.onepieceapi.contentservice.service.story.ChapterRules;
 import dev.onepieceapi.contentservice.service.story.ChapterService;
+import dev.onepieceapi.contentservice.service.story.EpisodeRules;
+import dev.onepieceapi.contentservice.service.story.EpisodeService;
 import dev.onepieceapi.contentservice.service.validation.ChapterValidator;
+import dev.onepieceapi.contentservice.service.validation.EpisodeValidator;
 import dev.onepieceapi.contentservice.service.validation.DevilFruitTypeValidator;
 import dev.onepieceapi.contentservice.service.validation.DevilFruitValidator;
 import dev.onepieceapi.exception.DomainException;
@@ -121,6 +125,9 @@ class FirstAppearanceIntegrationTest {
 	private ChapterVersionRepository chapterRepository;
 
 	@Autowired
+	private EpisodeVersionRepository episodeRepository;
+
+	@Autowired
 	private ArcVersionRepository arcRepository;
 
 	@Autowired
@@ -153,6 +160,8 @@ class FirstAppearanceIntegrationTest {
 
 	private ChapterService chapters;
 
+	private EpisodeService episodes;
+
 	/**
 	 * A type online every fruit seeded is of, first appearing in a chapter of its own.
 	 */
@@ -169,15 +178,17 @@ class FirstAppearanceIntegrationTest {
 		this.fruits = new DevilFruitService(
 				new DevilFruitDefinition(this.fruitRepository,
 						new DevilFruitValidator(this.fruitRepository, this.languageRepository, this.typeRepository,
-								this.chapterRepository),
-						new DevilFruitRules(this.contentRepository, this.typeRepository, this.chapterRepository)),
+								this.chapterRepository, this.episodeRepository),
+						new DevilFruitRules(this.contentRepository, this.typeRepository, this.chapterRepository,
+								this.episodeRepository)),
 				this.contentVersionRepository, this.contentRepository, auditLogService, clock,
 				mock(ContentImages.class));
 		this.types = new DevilFruitTypeService(this.typeRepository, this.contentVersionRepository,
 				this.contentRepository,
-				new DevilFruitTypeValidator(this.typeRepository, this.languageRepository, this.chapterRepository),
+				new DevilFruitTypeValidator(this.typeRepository, this.languageRepository, this.chapterRepository,
+						this.episodeRepository),
 				new DevilFruitTypeRules(this.contentRepository, this.fruitRepository, this.chapterRepository,
-						properties),
+						this.episodeRepository, properties),
 				auditLogService, clock);
 		this.chapters = new ChapterService(this.chapterRepository, this.contentVersionRepository,
 				this.contentRepository,
@@ -186,13 +197,19 @@ class FirstAppearanceIntegrationTest {
 				new ChapterRules(this.contentRepository, this.arcRepository, this.volumeRepository,
 						this.fruitRepository, this.typeRepository, properties),
 				auditLogService, clock);
+		this.episodes = new EpisodeService(this.episodeRepository, this.contentVersionRepository,
+				this.contentRepository,
+				new EpisodeValidator(this.episodeRepository, this.languageRepository, this.arcRepository),
+				new EpisodeRules(this.contentRepository, this.arcRepository, this.fruitRepository, this.typeRepository,
+						properties),
+				auditLogService, clock);
 		this.paramecia = typeContent(PUBLISHED, type("Paramecia", onlineChapter()));
 	}
 
 	@Test
 	void aSaveNamingAChapterNothingApprovedOfIsRefusedForTheTypeAndEachSubcategory() {
-		var draft = new StoryPoint(chapter(DRAFT));
-		var unknown = new StoryPoint(UUID.randomUUID());
+		var draft = StoryPoint.ofChapter(chapter(DRAFT));
+		var unknown = StoryPoint.ofChapter(UUID.randomUUID());
 		var body = new DevilFruitType("Dobutsu", translations("Zoan"),
 				List.of(subcategory(null, StoryPoint.NONE), subcategory(null, unknown)), draft);
 
@@ -206,15 +223,15 @@ class FirstAppearanceIntegrationTest {
 
 	@Test
 	void aSaveNamingAChapterNothingApprovedOfIsRefusedForTheFruit() {
-		var refused = catchThrowableOfType(ValueInvalidException.class,
-				() -> this.fruits.create(EDITOR, this.chopper, fruit("Gomu Gomu", new StoryPoint(chapter(DRAFT)))));
+		var refused = catchThrowableOfType(ValueInvalidException.class, () -> this.fruits.create(EDITOR, this.chopper,
+				fruit("Gomu Gomu", StoryPoint.ofChapter(chapter(DRAFT)))));
 
 		assertThat(fieldsOf(refused)).containsExactly("firstAppearance.chapter");
 	}
 
 	@Test
 	void aChapterOnceApprovedIsChosenEvenWhenItIsNoLongerOnline() {
-		var retired = new StoryPoint(chapter(RETIRED));
+		var retired = StoryPoint.ofChapter(chapter(RETIRED));
 
 		var created = this.fruits.create(EDITOR, this.chopper, fruit("Gomu Gomu", retired));
 
@@ -249,7 +266,7 @@ class FirstAppearanceIntegrationTest {
 	@Test
 	void aFruitGoesOnlineOnlyWhileItsChapterIsAndIsToldItsNumber() {
 		UUID retired = chapter(RETIRED);
-		UUID early = fruitContent(READY_TO_PUBLISH, fruit("Gomu Gomu", new StoryPoint(retired)));
+		UUID early = fruitContent(READY_TO_PUBLISH, fruit("Gomu Gomu", StoryPoint.ofChapter(retired)));
 		UUID fine = fruitContent(READY_TO_PUBLISH, fruit("Bara Bara", onlineChapter()));
 		stored();
 
@@ -282,11 +299,11 @@ class FirstAppearanceIntegrationTest {
 	void aTypeGoesOnlineOnlyWhileItsChapterAndThoseOfItsSubcategoriesAre() {
 		UUID retired = chapter(RETIRED);
 		UUID subcategory = UUID.randomUUID();
-		UUID ownChapterOffline = typeContent(READY_TO_PUBLISH, type("Logia", new StoryPoint(retired)));
+		UUID ownChapterOffline = typeContent(READY_TO_PUBLISH, type("Logia", StoryPoint.ofChapter(retired)));
 		UUID subcategoryChapterOffline = typeContent(READY_TO_PUBLISH,
 				new DevilFruitType("Dobutsu", translations("Zoan"),
 						List.of(subcategory(UUID.randomUUID(), StoryPoint.NONE),
-								subcategory(subcategory, new StoryPoint(retired))),
+								subcategory(subcategory, StoryPoint.ofChapter(retired))),
 						onlineChapter()));
 		stored();
 
@@ -305,9 +322,9 @@ class FirstAppearanceIntegrationTest {
 	@Test
 	void aChapterIsNotRetiredWhileFruitsOnlineFirstAppearInItAndNamesThemFirst() {
 		UUID chapter = chapter(PUBLISHED);
-		UUID gomu = fruitContent(PUBLISHED, fruit("Gomu Gomu", new StoryPoint(chapter)));
-		fruitContent(DRAFT, fruit("Mera Mera", new StoryPoint(chapter)));
-		typeContent(PUBLISHED, type("Logia", new StoryPoint(chapter)));
+		UUID gomu = fruitContent(PUBLISHED, fruit("Gomu Gomu", StoryPoint.ofChapter(chapter)));
+		fruitContent(DRAFT, fruit("Mera Mera", StoryPoint.ofChapter(chapter)));
+		typeContent(PUBLISHED, type("Logia", StoryPoint.ofChapter(chapter)));
 		stored();
 
 		var refused = catchThrowableOfType(VersionActionBlockedException.class,
@@ -322,9 +339,9 @@ class FirstAppearanceIntegrationTest {
 	void aChapterIsNotRetiredWhileTypesOrTheirSubcategoriesOnlineFirstAppearInIt() {
 		UUID ofType = chapter(PUBLISHED);
 		UUID ofSubcategory = chapter(PUBLISHED);
-		UUID logia = typeContent(PUBLISHED, type("Logia", new StoryPoint(ofType)));
+		UUID logia = typeContent(PUBLISHED, type("Logia", StoryPoint.ofChapter(ofType)));
 		UUID zoan = typeContent(PUBLISHED, new DevilFruitType("Dobutsu", translations("Zoan"),
-				List.of(subcategory(UUID.randomUUID(), new StoryPoint(ofSubcategory))), onlineChapter()));
+				List.of(subcategory(UUID.randomUUID(), StoryPoint.ofChapter(ofSubcategory))), onlineChapter()));
 		stored();
 
 		var byType = catchThrowableOfType(VersionActionBlockedException.class,
@@ -341,11 +358,104 @@ class FirstAppearanceIntegrationTest {
 	@Test
 	void aChapterOnlyItemsNoLongerOnlineFirstAppearInIsRetired() {
 		UUID chapter = chapter(PUBLISHED);
-		fruitContent(SUPERSEDED, fruit("Gomu Gomu", new StoryPoint(chapter)));
-		typeContent(ARCHIVED, type("Logia", new StoryPoint(chapter)));
+		fruitContent(SUPERSEDED, fruit("Gomu Gomu", StoryPoint.ofChapter(chapter)));
+		typeContent(ARCHIVED, type("Logia", StoryPoint.ofChapter(chapter)));
 		stored();
 
 		assertThat(this.chapters.retire(RETIRER, this.vivi, chapter, 1).version().status()).isEqualTo(RETIRED);
+	}
+
+	@Test
+	void aSaveNamingAnEpisodeNothingApprovedOfIsRefusedForTheFruitTheTypeAndEachSubcategory() {
+		var draft = StoryPoint.ofEpisode(episode(DRAFT));
+		var type = new DevilFruitType("Dobutsu", translations("Zoan"), List.of(subcategory(null, draft)), draft);
+
+		var refusedFruit = catchThrowableOfType(ValueInvalidException.class,
+				() -> this.fruits.create(EDITOR, this.chopper, fruit("Gomu Gomu", draft)));
+		var refusedType = catchThrowableOfType(ValueInvalidException.class,
+				() -> this.types.create(EDITOR, this.chopper, type));
+
+		assertThat(fieldsOf(refusedFruit)).containsExactly("firstAppearance.episode");
+		assertThat(violationsOf(refusedFruit)).extracting(FieldViolation::message)
+			.containsOnly("must be an Episode with an approved version");
+		assertThat(fieldsOf(refusedType)).containsExactly("firstAppearance.episode",
+				"subcategories[0].firstAppearance.episode");
+	}
+
+	@Test
+	void aFruitFirstAppearingInAnEpisodeOnlyGoesOnlineOnlyWhileTheEpisodeIs() {
+		UUID retired = episode(RETIRED);
+		UUID early = fruitContent(READY_TO_PUBLISH, fruit("Gomu Gomu", StoryPoint.ofEpisode(retired)));
+		UUID fine = fruitContent(READY_TO_PUBLISH, fruit("Bara Bara", onlineEpisode()));
+		stored();
+
+		var refused = catchThrowableOfType(VersionActionBlockedException.class,
+				() -> this.fruits.publish(ADMIN, this.vivi, early, 1));
+
+		assertThat(refused.getDetails()).containsEntry("reason", BlockReason.RELATED_NOT_ONLINE);
+		assertThat(refused.getDetails().get("detail"))
+			.isEqualTo(Map.of("firstAppearanceEpisodeId", retired, "firstAppearanceEpisodeNumber", 4));
+		assertThat(this.fruits.publish(PUBLISHER, this.vivi, fine, 1).version().status()).isEqualTo(PUBLISHED);
+	}
+
+	@Test
+	void aFruitInBothMediaNeedsTheChapterAndTheEpisodeOnline() {
+		UUID chapter = chapter(PUBLISHED);
+		UUID retired = episode(RETIRED);
+		UUID fruit = fruitContent(READY_TO_PUBLISH, fruit("Gomu Gomu", new StoryPoint(chapter, retired)));
+		stored();
+
+		var refused = catchThrowableOfType(VersionActionBlockedException.class,
+				() -> this.fruits.publish(ADMIN, this.vivi, fruit, 1));
+
+		assertThat(refused.getDetails().get("detail"))
+			.isEqualTo(Map.of("firstAppearanceEpisodeId", retired, "firstAppearanceEpisodeNumber", 4));
+	}
+
+	@Test
+	void aTypeGoesOnlineOnlyWhileTheEpisodesOfItsSubcategoriesAre() {
+		UUID retired = episode(RETIRED);
+		UUID subcategory = UUID.randomUUID();
+		UUID type = typeContent(READY_TO_PUBLISH, new DevilFruitType("Dobutsu", translations("Zoan"),
+				List.of(subcategory(subcategory, StoryPoint.ofEpisode(retired))), onlineEpisode()));
+		stored();
+
+		var refused = catchThrowableOfType(VersionActionBlockedException.class,
+				() -> this.types.publish(ADMIN, this.vivi, type, 1));
+
+		assertThat(refused.getDetails().get("detail")).isEqualTo(Map.of("subcategoryId", subcategory,
+				"firstAppearanceEpisodeId", retired, "firstAppearanceEpisodeNumber", 4));
+	}
+
+	@Test
+	void anEpisodeIsNotRetiredWhileFruitsOrTypesOnlineFirstAppearInIt() {
+		UUID ofFruit = episode(PUBLISHED);
+		UUID ofSubcategory = episode(PUBLISHED);
+		UUID unused = episode(PUBLISHED);
+		UUID gomu = fruitContent(PUBLISHED, fruit("Gomu Gomu", StoryPoint.ofEpisode(ofFruit)));
+		UUID zoan = typeContent(PUBLISHED, new DevilFruitType("Dobutsu", translations("Zoan"),
+				List.of(subcategory(UUID.randomUUID(), StoryPoint.ofEpisode(ofSubcategory))), onlineChapter()));
+		fruitContent(SUPERSEDED, fruit("Mera Mera", StoryPoint.ofEpisode(unused)));
+		stored();
+
+		var byFruit = catchThrowableOfType(VersionActionBlockedException.class,
+				() -> this.episodes.retire(RETIRER, this.vivi, ofFruit, 1));
+		var bySubcategory = catchThrowableOfType(VersionActionBlockedException.class,
+				() -> this.episodes.retire(RETIRER, this.vivi, ofSubcategory, 1));
+
+		assertThat(byFruit.getDetails().get("detail"))
+			.isEqualTo(Map.of("count", 1L, "fruits", List.of(Map.of("id", gomu, "romaji", "Gomu Gomu"))));
+		assertThat(bySubcategory.getDetails().get("detail"))
+			.isEqualTo(Map.of("count", 1L, "types", List.of(Map.of("id", zoan, "romaji", "Dobutsu"))));
+		assertThat(this.episodes.retire(RETIRER, this.vivi, unused, 1).version().status()).isEqualTo(RETIRED);
+	}
+
+	private StoryPoint onlineEpisode() {
+		return OnlineChapters.onlineEpisode(this.contentRepository, this.episodeRepository);
+	}
+
+	private UUID episode(VersionStatus status) {
+		return OnlineChapters.episode(this.contentRepository, this.episodeRepository, status);
 	}
 
 	private StoryPoint onlineChapter() {

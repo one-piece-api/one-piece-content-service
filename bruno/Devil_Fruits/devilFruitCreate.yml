@@ -13,7 +13,8 @@ http:
     data: |-
       {
         "firstAppearance": {
-          "chapter": ""
+          "chapter": "",
+          "episode": ""
         },
         "removeImage": false,
         "romaji": "",
@@ -41,7 +42,8 @@ examples:
         data: |-
           {
             "firstAppearance": {
-              "chapter": ""
+              "chapter": "",
+              "episode": ""
             },
             "removeImage": false,
             "romaji": "",
@@ -98,7 +100,8 @@ examples:
         data: |-
           {
             "firstAppearance": {
-              "chapter": ""
+              "chapter": "",
+              "episode": ""
             },
             "removeImage": false,
             "romaji": "",
@@ -139,7 +142,8 @@ examples:
         data: |-
           {
             "firstAppearance": {
-              "chapter": ""
+              "chapter": "",
+              "episode": ""
             },
             "removeImage": false,
             "romaji": "",

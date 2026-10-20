@@ -60,6 +60,9 @@ public class DevilFruitTypeVersionEntity extends VersionBodyEntity {
 	/** The content of the chapter it first appears in (ADR-0008); null for none. */
 	private UUID firstAppearanceChapterId;
 
+	/** The content of the episode it first appears in (ADR-0008); null for none. */
+	private UUID firstAppearanceEpisodeId;
+
 	public DevilFruitTypeVersionEntity(ContentVersionEntity version) {
 		super(version);
 	}
@@ -76,10 +79,11 @@ public class DevilFruitTypeVersionEntity extends VersionBodyEntity {
 	 * @param newSubcategories what each subcategory says by its id, in order
 	 */
 	public void rewrite(String newRomaji, Map<String, TranslationEmbeddable> newTranslations,
-			Map<UUID, DevilFruitTypeSubcategoryEntity.Written> newSubcategories, UUID newFirstAppearanceChapterId,
+			Map<UUID, DevilFruitTypeSubcategoryEntity.Written> newSubcategories, FirstAppearanceIds newFirstAppearance,
 			Instant now) {
 		setRomaji(newRomaji);
-		this.firstAppearanceChapterId = newFirstAppearanceChapterId;
+		this.firstAppearanceChapterId = newFirstAppearance.chapterId();
+		this.firstAppearanceEpisodeId = newFirstAppearance.episodeId();
 		this.translations.clear();
 		this.translations.putAll(newTranslations);
 		Map<UUID, DevilFruitTypeSubcategoryEntity> kept = this.subcategories.stream()

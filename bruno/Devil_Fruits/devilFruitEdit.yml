@@ -20,7 +20,8 @@ http:
     data: |-
       {
         "firstAppearance": {
-          "chapter": ""
+          "chapter": "",
+          "episode": ""
         },
         "removeImage": false,
         "romaji": "",
@@ -55,7 +56,8 @@ examples:
         data: |-
           {
             "firstAppearance": {
-              "chapter": ""
+              "chapter": "",
+              "episode": ""
             },
             "removeImage": false,
             "romaji": "",
@@ -92,6 +94,11 @@ examples:
             "body": {
               "firstAppearance": {
                 "chapter": {
+                  "id": "",
+                  "names": {},
+                  "number": 0
+                },
+                "episode": {
                   "id": "",
                   "names": {},
                   "number": 0
@@ -151,7 +158,8 @@ examples:
         data: |-
           {
             "firstAppearance": {
-              "chapter": ""
+              "chapter": "",
+              "episode": ""
             },
             "removeImage": false,
             "romaji": "",
@@ -199,7 +207,8 @@ examples:
         data: |-
           {
             "firstAppearance": {
-              "chapter": ""
+              "chapter": "",
+              "episode": ""
             },
             "removeImage": false,
             "romaji": "",

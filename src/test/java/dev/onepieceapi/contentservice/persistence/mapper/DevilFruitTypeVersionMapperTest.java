@@ -149,8 +149,8 @@ class DevilFruitTypeVersionMapperTest {
 
 	@Test
 	void theFirstAppearancesOfTheTypeAndOfItsSubcategoriesAreWrittenAndReadBack() {
-		var ofType = new StoryPoint(UUID.randomUUID());
-		var ofSubcategory = new StoryPoint(UUID.randomUUID());
+		var ofType = StoryPoint.ofChapter(UUID.randomUUID());
+		var ofSubcategory = StoryPoint.ofChapter(UUID.randomUUID());
 		var ancient = new DevilFruitTypeSubcategory(UUID.randomUUID(),
 				Map.of("it", new DevilFruitTypeSubcategoryTranslation("Antico", null)), ofSubcategory);
 		var plain = new DevilFruitTypeSubcategory(UUID.randomUUID(), Map.of());

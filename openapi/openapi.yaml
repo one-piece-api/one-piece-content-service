@@ -3162,6 +3162,50 @@ paths:
       tags:
       - Episodes
       x-required-permission: content:read
+  /episodes/linkable:
+    get:
+      operationId: episodeLinkable
+      parameters:
+      - description: "0-based page, 0 when missing"
+        in: query
+        name: page
+        required: false
+        schema:
+          type: integer
+          format: int32
+          minimum: 0
+      - description: "Page size: 20 when missing, at most 50"
+        in: query
+        name: size
+        required: false
+        schema:
+          type: integer
+          format: int32
+          maximum: 50
+          minimum: 1
+      - description: "Text the number or a title contains, case-insensitive; 100 characters\
+          \ at most"
+        in: query
+        name: q
+        required: false
+        schema:
+          type: string
+          maxLength: 100
+          minLength: 0
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PageResponseNumberedReferenceResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Episodes
+      x-required-permission: content:write
   /episodes/summary:
     get:
       operationId: episodeSummary
@@ -6268,10 +6312,16 @@ components:
           type: string
           format: uuid
           description: The content id of the chapter; left out for none
+        episode:
+          type: string
+          format: uuid
+          description: The content id of the episode; left out for none
     FirstAppearanceResponse:
       type: object
       properties:
         chapter:
+          $ref: "#/components/schemas/NumberedReferenceResponse"
+        episode:
           $ref: "#/components/schemas/NumberedReferenceResponse"
     ImageResponse:
       type: object

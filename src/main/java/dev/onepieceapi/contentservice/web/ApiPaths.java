@@ -89,6 +89,9 @@ public final class ApiPaths {
 	/** The chapters a first appearance may name. */
 	public static final String CHAPTERS_LINKABLE = CHAPTERS + CONTENT_LINKABLE;
 
+	/** The episodes a first appearance may name. */
+	public static final String EPISODES_LINKABLE = EPISODES + CONTENT_LINKABLE;
+
 	/** The section itself: its list, and where a new content is posted. */
 	public static final String CONTENT_LIST = "";
 

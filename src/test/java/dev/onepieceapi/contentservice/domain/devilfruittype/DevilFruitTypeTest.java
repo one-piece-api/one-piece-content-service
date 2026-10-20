@@ -134,11 +134,12 @@ class DevilFruitTypeTest {
 	void theChaptersOfItsFirstAppearancesAreTheTypesAndThoseOfItsSubcategoriesThatHaveOne() {
 		UUID ofType = UUID.randomUUID();
 		UUID ofSubcategory = UUID.randomUUID();
-		var ancient = new DevilFruitTypeSubcategory(UUID.randomUUID(), Map.of(), new StoryPoint(ofSubcategory));
-		var mythical = new DevilFruitTypeSubcategory(UUID.randomUUID(), Map.of(), new StoryPoint(ofType));
+		var ancient = new DevilFruitTypeSubcategory(UUID.randomUUID(), Map.of(), StoryPoint.ofChapter(ofSubcategory));
+		var mythical = new DevilFruitTypeSubcategory(UUID.randomUUID(), Map.of(), StoryPoint.ofChapter(ofType));
 		var plain = new DevilFruitTypeSubcategory(UUID.randomUUID(), Map.of());
 
-		var type = new DevilFruitType("Zoan", Map.of(), List.of(ancient, mythical, plain), new StoryPoint(ofType));
+		var type = new DevilFruitType("Zoan", Map.of(), List.of(ancient, mythical, plain),
+				StoryPoint.ofChapter(ofType));
 
 		assertThat(type.firstAppearanceChapterIds()).containsExactlyInAnyOrder(ofType, ofSubcategory);
 		assertThat(new DevilFruitType("Zoan", Map.of()).firstAppearanceChapterIds()).isEmpty();
@@ -146,7 +147,7 @@ class DevilFruitTypeTest {
 
 	@Test
 	void normalizingKeepsTheFirstAppearancesOfTheTypeAndOfItsSubcategories() {
-		var chapter = new StoryPoint(UUID.randomUUID());
+		var chapter = StoryPoint.ofChapter(UUID.randomUUID());
 		var subcategory = new DevilFruitTypeSubcategory(UUID.randomUUID(),
 				Map.of("it", new DevilFruitTypeSubcategoryTranslation(" Antico ", "Descrizione")), chapter);
 		var type = new DevilFruitType(" Zoan ", Map.of(), List.of(subcategory), chapter);

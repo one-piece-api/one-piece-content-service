@@ -24,7 +24,7 @@ import dev.onepieceapi.contentservice.service.exception.ContentErrorCode;
 import dev.onepieceapi.contentservice.service.exception.ImageRefusedException;
 import dev.onepieceapi.contentservice.service.exception.ValueInvalidException;
 import dev.onepieceapi.contentservice.service.exception.VersionActionBlockedException;
-import dev.onepieceapi.contentservice.service.story.ChapterLinks;
+import dev.onepieceapi.contentservice.service.story.FirstAppearanceLinks;
 import dev.onepieceapi.contentservice.web.dto.response.ImageResponse;
 import dev.onepieceapi.contentservice.web.mapper.ImageResponseMapper;
 import dev.onepieceapi.contentservice.web.security.SecurityConfig;
@@ -100,7 +100,7 @@ class DevilFruitControllerTest {
 	private DevilFruitTypeLinks links;
 
 	@MockitoBean
-	private ChapterLinks chapters;
+	private FirstAppearanceLinks firstAppearances;
 
 	@MockitoBean
 	private ImageResponseMapper images;
@@ -254,8 +254,9 @@ class DevilFruitControllerTest {
 	}
 
 	@Test
-	void aVersionSaysItsFirstAppearanceAsTheChapterIsToday() throws Exception {
-		var body = new DevilFruit("Gomu Gomu", TYPE_ID, null, Map.of(), null, new StoryPoint(CHAPTER_ID));
+	void aVersionSaysItsFirstAppearanceAsTheChapterAndTheEpisodeAreToday() throws Exception {
+		var episodeId = UUID.randomUUID();
+		var body = new DevilFruit("Gomu Gomu", TYPE_ID, null, Map.of(), null, new StoryPoint(CHAPTER_ID, episodeId));
 		var access = new VersionAccess<>(Version.<DevilFruit>builder()
 			.number(1)
 			.status(VersionStatus.DRAFT)
@@ -265,15 +266,18 @@ class DevilFruitControllerTest {
 			.updatedAt(CREATED)
 			.build(), Set.of());
 		when(this.service.getVersion(any(), any(), eq(CONTENT_ID), eq(1))).thenReturn(access);
-		when(this.chapters.referencesFor(anyCollection(), any()))
-			.thenReturn(Map.of(CHAPTER_ID, new NumberedReference(CHAPTER_ID, 1, Map.of("it", "Romance Dawn"))));
+		when(this.firstAppearances.referencesFor(anyCollection()))
+			.thenReturn(Map.of(CHAPTER_ID, new NumberedReference(CHAPTER_ID, 1, Map.of("it", "Romance Dawn")),
+					episodeId, new NumberedReference(episodeId, 4, Map.of("it", "Il passato di Luffy"))));
 
 		this.mockMvc
 			.perform(get("/devil-fruits/" + CONTENT_ID + "/versions/1").with(callerWith(Permission.CONTENT_READ)))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.body.firstAppearance.chapter.id").value(CHAPTER_ID.toString()))
 			.andExpect(jsonPath("$.body.firstAppearance.chapter.number").value(1))
-			.andExpect(jsonPath("$.body.firstAppearance.chapter.names.it").value("Romance Dawn"));
+			.andExpect(jsonPath("$.body.firstAppearance.chapter.names.it").value("Romance Dawn"))
+			.andExpect(jsonPath("$.body.firstAppearance.episode.id").value(episodeId.toString()))
+			.andExpect(jsonPath("$.body.firstAppearance.episode.number").value(4));
 	}
 
 	@Test
@@ -299,7 +303,7 @@ class DevilFruitControllerTest {
 
 		var written = ArgumentCaptor.forClass(DevilFruit.class);
 		verify(this.service).create(any(), any(), written.capture(), eq(ImageChange.KEEP));
-		assertThat(written.getValue().firstAppearance()).isEqualTo(new StoryPoint(CHAPTER_ID));
+		assertThat(written.getValue().firstAppearance()).isEqualTo(StoryPoint.ofChapter(CHAPTER_ID));
 	}
 
 	@Test

@@ -22,21 +22,22 @@ class FirstAppearanceMapperTest {
 	@Test
 	void aFirstAppearanceLeftOutOrWithoutAChapterIsNone() {
 		assertThat(FirstAppearanceMapper.toDomain(null)).isEqualTo(StoryPoint.NONE);
-		assertThat(FirstAppearanceMapper.toDomain(new FirstAppearanceRequest(null))).isEqualTo(StoryPoint.NONE);
-		assertThat(FirstAppearanceMapper.toDomain(new FirstAppearanceRequest(ROMANCE_DAWN)))
-			.isEqualTo(new StoryPoint(ROMANCE_DAWN));
+		assertThat(FirstAppearanceMapper.toDomain(new FirstAppearanceRequest(null, null))).isEqualTo(StoryPoint.NONE);
+		assertThat(FirstAppearanceMapper.toDomain(new FirstAppearanceRequest(ROMANCE_DAWN, null)))
+			.isEqualTo(StoryPoint.ofChapter(ROMANCE_DAWN));
 	}
 
 	@Test
 	void aTypeRequestCarriesTheFirstAppearancesOfTheTypeAndOfEachSubcategory() {
 		var request = new DevilFruitTypeRequest("Zoan", null,
-				List.of(new DevilFruitTypeSubcategoryRequest(null, null, new FirstAppearanceRequest(ROMANCE_DAWN))),
-				new FirstAppearanceRequest(ROMANCE_DAWN));
+				List.of(new DevilFruitTypeSubcategoryRequest(null, null,
+						new FirstAppearanceRequest(ROMANCE_DAWN, null))),
+				new FirstAppearanceRequest(ROMANCE_DAWN, null));
 
 		var type = DevilFruitTypeRequestMapper.toDomain(request);
 
-		assertThat(type.firstAppearance()).isEqualTo(new StoryPoint(ROMANCE_DAWN));
-		assertThat(type.subcategories().getFirst().firstAppearance()).isEqualTo(new StoryPoint(ROMANCE_DAWN));
+		assertThat(type.firstAppearance()).isEqualTo(StoryPoint.ofChapter(ROMANCE_DAWN));
+		assertThat(type.subcategories().getFirst().firstAppearance()).isEqualTo(StoryPoint.ofChapter(ROMANCE_DAWN));
 	}
 
 	@Test
@@ -44,9 +45,9 @@ class FirstAppearanceMapperTest {
 		var today = Map.of(ROMANCE_DAWN, new NumberedReference(ROMANCE_DAWN, 1, Map.of("it", "Romance Dawn")));
 
 		assertThat(FirstAppearanceMapper.toResponse(StoryPoint.NONE, today)).isNull();
-		assertThat(FirstAppearanceMapper.toResponse(new StoryPoint(ROMANCE_DAWN), today).chapter())
+		assertThat(FirstAppearanceMapper.toResponse(StoryPoint.ofChapter(ROMANCE_DAWN), today).chapter())
 			.isEqualTo(new NumberedReferenceResponse(ROMANCE_DAWN, 1, Map.of("it", "Romance Dawn")));
-		assertThat(FirstAppearanceMapper.toResponse(new StoryPoint(ROMANCE_DAWN), Map.of()).chapter().id())
+		assertThat(FirstAppearanceMapper.toResponse(StoryPoint.ofChapter(ROMANCE_DAWN), Map.of()).chapter().id())
 			.isEqualTo(ROMANCE_DAWN);
 	}
 

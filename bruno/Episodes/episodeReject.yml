@@ -1,7 +1,7 @@
 info:
   name: episodeReject
   type: http
-  seq: 17
+  seq: 18
   tags:
     - Episodes
 

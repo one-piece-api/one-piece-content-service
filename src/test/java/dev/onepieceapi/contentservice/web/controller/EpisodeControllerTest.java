@@ -20,6 +20,7 @@ import dev.onepieceapi.contentservice.service.exception.ValueAlreadyUsedExceptio
 import dev.onepieceapi.contentservice.service.exception.ValueInvalidException;
 import dev.onepieceapi.contentservice.service.exception.VersionActionBlockedException;
 import dev.onepieceapi.contentservice.service.story.ArcLinks;
+import dev.onepieceapi.contentservice.service.story.EpisodeLinks;
 import dev.onepieceapi.contentservice.service.story.EpisodeService;
 import dev.onepieceapi.contentservice.web.security.SecurityConfig;
 import dev.onepieceapi.exception.web.ApplicationExceptionHandler;
@@ -50,6 +51,7 @@ import java.util.UUID;
 import static dev.onepieceapi.contentservice.web.controller.TestCallers.callerWith;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -91,6 +93,40 @@ class EpisodeControllerTest {
 
 	@MockitoBean
 	private ArcLinks arcs;
+
+	@MockitoBean
+	private EpisodeLinks links;
+
+	@Test
+	void theEpisodesAFirstAppearanceMayNameAreListedForWhoeverWrites() throws Exception {
+		var luffysPast = new NumberedReference(CONTENT_ID, 1, Map.of("it", "Il passato di Luffy"));
+		when(this.links.linkable(any(), anyInt(), anyInt()))
+			.thenReturn(new PageImpl<>(List.of(luffysPast), PageRequest.of(1, 5), 6));
+
+		this.mockMvc
+			.perform(get("/episodes/linkable").param("q", "luffy")
+				.param("page", "1")
+				.param("size", "5")
+				.with(callerWith(Permission.CONTENT_WRITE)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.totalElements").value(6))
+			.andExpect(jsonPath("$.content[0].id").value(CONTENT_ID.toString()))
+			.andExpect(jsonPath("$.content[0].number").value(1))
+			.andExpect(jsonPath("$.content[0].names.it").value("Il passato di Luffy"));
+		verify(this.links).linkable("luffy", 1, 5);
+	}
+
+	@Test
+	void theLinkableEpisodesAreFirstPageTwentyByDefaultAndNotForWhoOnlyReads() throws Exception {
+		when(this.links.linkable(any(), anyInt(), anyInt())).thenReturn(new PageImpl<>(List.of()));
+
+		this.mockMvc.perform(get("/episodes/linkable").with(callerWith(Permission.CONTENT_WRITE)))
+			.andExpect(status().isOk());
+		verify(this.links).linkable(null, 0, 20);
+		this.mockMvc.perform(get("/episodes/linkable").with(callerWith(Permission.CONTENT_READ)))
+			.andExpect(status().isForbidden());
+		this.mockMvc.perform(get("/episodes/linkable")).andExpect(status().isUnauthorized());
+	}
 
 	@Test
 	void aVersionSaysItsArcAsItIsTodayAndItsBroadcasts() throws Exception {

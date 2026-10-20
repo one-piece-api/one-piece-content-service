@@ -1,7 +1,7 @@
 info:
   name: episodeVersion
   type: http
-  seq: 8
+  seq: 9
   tags:
     - Episodes
 

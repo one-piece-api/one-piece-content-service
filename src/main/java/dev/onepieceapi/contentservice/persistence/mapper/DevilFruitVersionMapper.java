@@ -23,14 +23,14 @@ public class DevilFruitVersionMapper {
 	public Version<DevilFruit> toDomain(DevilFruitVersionEntity entity) {
 		var body = new DevilFruit(entity.getRomaji(), entity.getTypeContentId(), entity.getSubcategoryId(),
 				toDomain(entity.getTranslations()), entity.getImageId(),
-				new StoryPoint(entity.getFirstAppearanceChapterId()));
+				new StoryPoint(entity.getFirstAppearanceChapterId(), entity.getFirstAppearanceEpisodeId()));
 		return ContentVersionMapper.toDomain(entity.getVersion(), body);
 	}
 
 	/** Makes the version say what was given, in place of what it said. */
 	public void rewrite(DevilFruitVersionEntity entity, DevilFruit body, Instant now) {
 		entity.rewrite(body.romaji(), body.typeContentId(), body.subcategoryId(), toEmbeddables(body.translations()),
-				body.imageId(), body.firstAppearanceChapterId(), now);
+				body.imageId(), FirstAppearanceMapper.toIds(body.firstAppearance()), now);
 	}
 
 	/** Sorted by language code, so the same version always reads the same way. */

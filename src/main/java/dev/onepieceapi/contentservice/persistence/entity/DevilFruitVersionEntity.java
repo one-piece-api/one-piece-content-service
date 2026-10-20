@@ -49,6 +49,9 @@ public class DevilFruitVersionEntity extends VersionBodyEntity {
 	/** The content of the chapter it first appears in (ADR-0008); null for none. */
 	private UUID firstAppearanceChapterId;
 
+	/** The content of the episode it first appears in (ADR-0008); null for none. */
+	private UUID firstAppearanceEpisodeId;
+
 	/**
 	 * The localized fields per language code; a language nothing was saved for is absent.
 	 */
@@ -68,13 +71,14 @@ public class DevilFruitVersionEntity extends VersionBodyEntity {
 
 	/** Replaces everything the version says, and notes when. */
 	public void rewrite(String newRomaji, UUID newTypeContentId, UUID newSubcategoryId,
-			Map<String, TranslationEmbeddable> newTranslations, String newImageId, UUID newFirstAppearanceChapterId,
-			Instant now) {
+			Map<String, TranslationEmbeddable> newTranslations, String newImageId,
+			FirstAppearanceIds newFirstAppearance, Instant now) {
 		setRomaji(newRomaji);
 		this.typeContentId = newTypeContentId;
 		this.subcategoryId = newSubcategoryId;
 		this.imageId = newImageId;
-		this.firstAppearanceChapterId = newFirstAppearanceChapterId;
+		this.firstAppearanceChapterId = newFirstAppearance.chapterId();
+		this.firstAppearanceEpisodeId = newFirstAppearance.episodeId();
 		this.translations.clear();
 		this.translations.putAll(newTranslations);
 		touch(now);

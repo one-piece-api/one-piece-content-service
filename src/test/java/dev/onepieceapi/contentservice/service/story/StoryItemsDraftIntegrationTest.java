@@ -183,7 +183,9 @@ class StoryItemsDraftIntegrationTest {
 		this.episodes = new EpisodeService(this.episodeRepository, this.contentVersionRepository,
 				this.contentRepository,
 				new EpisodeValidator(this.episodeRepository, this.languageRepository, this.arcRepository),
-				new EpisodeRules(this.contentRepository, this.arcRepository), auditLogService, clock);
+				new EpisodeRules(this.contentRepository, this.arcRepository, this.fruitRepository, this.typeRepository,
+						new RulesProperties(5)),
+				auditLogService, clock);
 
 		this.fixtures = new StoryFixtures(this.entityManager, this.sagaRepository, this.arcRepository,
 				this.volumeRepository, this.chapterRepository, this.episodeRepository, this.chopper);

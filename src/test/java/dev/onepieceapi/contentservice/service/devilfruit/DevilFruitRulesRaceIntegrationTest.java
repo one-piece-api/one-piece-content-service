@@ -26,6 +26,7 @@ import dev.onepieceapi.contentservice.persistence.mapper.DevilFruitVersionMapper
 import dev.onepieceapi.contentservice.persistence.mapper.UserMapper;
 import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
+import dev.onepieceapi.contentservice.persistence.repository.EpisodeVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitTypeVersionRepository;
@@ -113,6 +114,9 @@ class DevilFruitRulesRaceIntegrationTest {
 
 	@Autowired
 	private ChapterVersionRepository chapterRepository;
+
+	@Autowired
+	private EpisodeVersionRepository episodeRepository;
 
 	@Autowired
 	private DevilFruitVersionRepository fruitRepository;
@@ -297,18 +301,19 @@ class DevilFruitRulesRaceIntegrationTest {
 			DevilFruitTypeVersionRepository types) {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
 		return new DevilFruitTypeService(types, this.contentVersionRepository, this.contentRepository,
-				new DevilFruitTypeValidator(this.typeRepository, this.languageRepository, this.chapterRepository),
-				new DevilFruitTypeRules(this.contentRepository, fruits, this.chapterRepository, new RulesProperties(5)),
+				new DevilFruitTypeValidator(this.typeRepository, this.languageRepository, this.chapterRepository,
+						this.episodeRepository),
+				new DevilFruitTypeRules(this.contentRepository, fruits, this.chapterRepository, this.episodeRepository,
+						new RulesProperties(5)),
 				new AuditLogService(this.auditLogRepository, clock), clock);
 	}
 
 	private DevilFruitService fruitService(DevilFruitTypeVersionRepository types) {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
-		return new DevilFruitService(
-				new DevilFruitDefinition(this.fruitRepository,
-						new DevilFruitValidator(this.fruitRepository, this.languageRepository, types,
-								this.chapterRepository),
-						new DevilFruitRules(this.contentRepository, types, this.chapterRepository)),
+		return new DevilFruitService(new DevilFruitDefinition(this.fruitRepository,
+				new DevilFruitValidator(this.fruitRepository, this.languageRepository, types, this.chapterRepository,
+						this.episodeRepository),
+				new DevilFruitRules(this.contentRepository, types, this.chapterRepository, this.episodeRepository)),
 				this.contentVersionRepository, this.contentRepository,
 				new AuditLogService(this.auditLogRepository, clock), clock, mock(ContentImages.class));
 	}

@@ -23,6 +23,7 @@ import dev.onepieceapi.contentservice.persistence.mapper.DevilFruitVersionMapper
 import dev.onepieceapi.contentservice.persistence.mapper.UserMapper;
 import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
+import dev.onepieceapi.contentservice.persistence.repository.EpisodeVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitTypeVersionRepository;
@@ -97,6 +98,9 @@ class DevilFruitTypeLinksIntegrationTest {
 	private ChapterVersionRepository chapterRepository;
 
 	@Autowired
+	private EpisodeVersionRepository episodeRepository;
+
+	@Autowired
 	private DevilFruitVersionRepository fruitRepository;
 
 	@Autowired
@@ -133,8 +137,9 @@ class DevilFruitTypeLinksIntegrationTest {
 		this.fruits = new DevilFruitService(
 				new DevilFruitDefinition(this.fruitRepository,
 						new DevilFruitValidator(this.fruitRepository, this.languageRepository, this.typeRepository,
-								this.chapterRepository),
-						new DevilFruitRules(this.contentRepository, this.typeRepository, this.chapterRepository)),
+								this.chapterRepository, this.episodeRepository),
+						new DevilFruitRules(this.contentRepository, this.typeRepository, this.chapterRepository,
+								this.episodeRepository)),
 				this.contentVersionRepository, this.contentRepository,
 				new AuditLogService(this.auditLogRepository, clock), clock, mock(ContentImages.class));
 		this.links = new DevilFruitTypeLinks(this.typeRepository, this.fruitRepository, clock);

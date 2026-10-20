@@ -14,13 +14,23 @@ class StoryPointTest {
 	@Test
 	void aPointWithoutAChapterIsMissingAndIsNone() {
 		assertThat(StoryPoint.NONE.isMissing()).isTrue();
-		assertThat(new StoryPoint(null)).isEqualTo(StoryPoint.NONE);
-		assertThat(new StoryPoint(ROMANCE_DAWN).isMissing()).isFalse();
+		assertThat(StoryPoint.ofChapter(null)).isEqualTo(StoryPoint.NONE);
+		assertThat(StoryPoint.ofChapter(ROMANCE_DAWN).isMissing()).isFalse();
+	}
+
+	@Test
+	void aPointInAnEpisodeOnlyOrInBothMediaIsNotMissing() {
+		var episode = UUID.randomUUID();
+
+		assertThat(StoryPoint.ofEpisode(episode).isMissing()).isFalse();
+		assertThat(StoryPoint.ofEpisode(episode)).isEqualTo(new StoryPoint(null, episode));
+		assertThat(new StoryPoint(ROMANCE_DAWN, episode).isMissing()).isFalse();
+		assertThat(StoryPoint.ofEpisode(null)).isEqualTo(StoryPoint.NONE);
 	}
 
 	@Test
 	void nothingGivenIsNoneAndAPointGivenIsKept() {
-		var point = new StoryPoint(ROMANCE_DAWN);
+		var point = StoryPoint.ofChapter(ROMANCE_DAWN);
 
 		assertThat(StoryPoint.orNone(null)).isSameAs(StoryPoint.NONE);
 		assertThat(StoryPoint.orNone(point)).isSameAs(point);
@@ -28,9 +38,9 @@ class StoryPointTest {
 
 	@Test
 	void twoPointsInTheSameChapterAreTheSame() {
-		assertThat(new StoryPoint(ROMANCE_DAWN)).isEqualTo(new StoryPoint(ROMANCE_DAWN))
-			.hasSameHashCodeAs(new StoryPoint(ROMANCE_DAWN))
-			.isNotEqualTo(new StoryPoint(UUID.randomUUID()));
+		assertThat(StoryPoint.ofChapter(ROMANCE_DAWN)).isEqualTo(StoryPoint.ofChapter(ROMANCE_DAWN))
+			.hasSameHashCodeAs(StoryPoint.ofChapter(ROMANCE_DAWN))
+			.isNotEqualTo(StoryPoint.ofChapter(UUID.randomUUID()));
 	}
 
 }

@@ -179,6 +179,14 @@ public record DevilFruitType(String romaji, Map<String, DevilFruitTypeTranslatio
 			.collect(Collectors.toSet());
 	}
 
+	/** The episodes it and its subcategories first appear in; none chosen is left out. */
+	public Set<UUID> firstAppearanceEpisodeIds() {
+		return Stream.concat(Stream.of(this), this.subcategories.stream())
+			.map(FirstAppearing::firstAppearanceEpisodeId)
+			.filter(Objects::nonNull)
+			.collect(Collectors.toSet());
+	}
+
 	/** The subcategory with this id, when the type has it. */
 	public Optional<DevilFruitTypeSubcategory> subcategory(UUID id) {
 		return this.subcategories.stream().filter(subcategory -> id.equals(subcategory.id())).findFirst();

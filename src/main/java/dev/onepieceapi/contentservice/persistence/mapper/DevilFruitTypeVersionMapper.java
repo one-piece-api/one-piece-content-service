@@ -32,7 +32,7 @@ public class DevilFruitTypeVersionMapper {
 	public Version<DevilFruitType> toDomain(DevilFruitTypeVersionEntity entity) {
 		var body = new DevilFruitType(entity.getRomaji(), toDomain(entity.getTranslations()),
 				entity.getSubcategories().stream().map(DevilFruitTypeVersionMapper::toDomain).toList(),
-				new StoryPoint(entity.getFirstAppearanceChapterId()));
+				new StoryPoint(entity.getFirstAppearanceChapterId(), entity.getFirstAppearanceEpisodeId()));
 		return ContentVersionMapper.toDomain(entity.getVersion(), body);
 	}
 
@@ -64,7 +64,7 @@ public class DevilFruitTypeVersionMapper {
 	/** Makes the version say what was given, in place of what it said. */
 	public void rewrite(DevilFruitTypeVersionEntity entity, DevilFruitType body, Instant now) {
 		entity.rewrite(body.romaji(), toEmbeddables(body.translations()), toSubcategoryRows(body.subcategories()),
-				body.firstAppearanceChapterId(), now);
+				FirstAppearanceMapper.toIds(body.firstAppearance()), now);
 	}
 
 	private static DevilFruitTypeSubcategory toDomain(DevilFruitTypeSubcategoryEntity subcategory) {
@@ -73,7 +73,7 @@ public class DevilFruitTypeVersionMapper {
 			.forEach((language, translation) -> byLanguage.put(language,
 					new DevilFruitTypeSubcategoryTranslation(translation.getName(), translation.getDescription())));
 		return new DevilFruitTypeSubcategory(subcategory.getSubcategoryId(), byLanguage,
-				new StoryPoint(subcategory.getFirstAppearanceChapterId()));
+				new StoryPoint(subcategory.getFirstAppearanceChapterId(), subcategory.getFirstAppearanceEpisodeId()));
 	}
 
 	/**
@@ -89,7 +89,8 @@ public class DevilFruitTypeVersionMapper {
 				.forEach((language, translation) -> byLanguage.put(language,
 						new SubcategoryTranslationEmbeddable(translation.name(), translation.description())));
 			rows.put(Objects.requireNonNull(subcategory.id(), "a subcategory is saved with its id"),
-					new DevilFruitTypeSubcategoryEntity.Written(byLanguage, subcategory.firstAppearanceChapterId()));
+					new DevilFruitTypeSubcategoryEntity.Written(byLanguage,
+							FirstAppearanceMapper.toIds(subcategory.firstAppearance())));
 		});
 		return rows;
 	}

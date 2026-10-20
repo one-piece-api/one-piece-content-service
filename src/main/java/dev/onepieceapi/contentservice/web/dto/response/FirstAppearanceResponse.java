@@ -1,11 +1,11 @@
 package dev.onepieceapi.contentservice.web.dto.response;
 
 /**
- * Where the reader first meets an item (implementation plan of the timeline, T7), one
- * part per medium; only the manga part exists today (ADR-0008).
+ * Where the reader first meets an item (ADR-0008), one part per medium.
  *
- * @param chapter the chapter, as it is today
+ * @param chapter the manga chapter, as it is today; null for none
+ * @param episode the anime episode, as it is today; null for none
  */
-public record FirstAppearanceResponse(NumberedReferenceResponse chapter) {
+public record FirstAppearanceResponse(NumberedReferenceResponse chapter, NumberedReferenceResponse episode) {
 
 }

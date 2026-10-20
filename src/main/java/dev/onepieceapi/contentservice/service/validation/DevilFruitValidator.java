@@ -8,6 +8,7 @@ import dev.onepieceapi.contentservice.persistence.mapper.DevilFruitVersionMapper
 import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitTypeVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitVersionRepository;
+import dev.onepieceapi.contentservice.persistence.repository.EpisodeVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
 import dev.onepieceapi.contentservice.service.content.RelationRules;
 import dev.onepieceapi.contentservice.service.devilfruit.DevilFruitRelations;
@@ -16,6 +17,7 @@ import dev.onepieceapi.exception.web.FieldViolation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -25,8 +27,8 @@ import java.util.UUID;
  * a type it may be linked to, as every relation ({@link RelationRules}): one of its
  * versions passed review, the same on every save and again at submission. A subcategory,
  * optional, must be one of that type's (implementation plan of the subcategories, S5);
- * none can be named without a type. A first appearance, optional, is a chapter it may be
- * linked to (implementation plan of the timeline, T7).
+ * none can be named without a type. A first appearance, optional, is a chapter and an
+ * episode it may be linked to (implementation plan of the timeline, T7).
  */
 @Component
 public class DevilFruitValidator extends ContentValidator<DevilFruit, DevilFruitVersionEntity> {
@@ -39,12 +41,16 @@ public class DevilFruitValidator extends ContentValidator<DevilFruit, DevilFruit
 
 	private final ChapterVersionRepository chapterRepository;
 
+	private final EpisodeVersionRepository episodeRepository;
+
 	@Autowired
 	public DevilFruitValidator(DevilFruitVersionRepository versionRepository, LanguageRepository languageRepository,
-			DevilFruitTypeVersionRepository typeRepository, ChapterVersionRepository chapterRepository) {
+			DevilFruitTypeVersionRepository typeRepository, ChapterVersionRepository chapterRepository,
+			EpisodeVersionRepository episodeRepository) {
 		super(versionRepository, languageRepository, DevilFruitVersionMapper::toDomain);
 		this.typeRepository = typeRepository;
 		this.chapterRepository = chapterRepository;
+		this.episodeRepository = episodeRepository;
 	}
 
 	@Override
@@ -53,7 +59,14 @@ public class DevilFruitValidator extends ContentValidator<DevilFruit, DevilFruit
 		if (body.subcategoryId() != null && !subcategoryOfType(body.typeContentId(), body.subcategoryId())) {
 			throw new ValueInvalidException(List.of(new FieldViolation(SUBCATEGORY_FIELD, NOT_OF_TYPE)));
 		}
-		RelationRules.requireLinkable(DevilFruitRelations.FIRST_APPEARANCE, body, this.chapterRepository);
+		List<FieldViolation> violations = new ArrayList<>();
+		RelationRules.notLinkable(DevilFruitRelations.FIRST_APPEARANCE_CHAPTER, body, "", this.chapterRepository)
+			.ifPresent(violations::add);
+		RelationRules.notLinkable(DevilFruitRelations.FIRST_APPEARANCE_EPISODE, body, "", this.episodeRepository)
+			.ifPresent(violations::add);
+		if (!violations.isEmpty()) {
+			throw new ValueInvalidException(violations);
+		}
 	}
 
 	/**

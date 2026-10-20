@@ -1,7 +1,7 @@
 info:
   name: episodeRelease
   type: http
-  seq: 18
+  seq: 19
   tags:
     - Episodes
 

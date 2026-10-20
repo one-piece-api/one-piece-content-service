@@ -81,6 +81,11 @@ examples:
                   "id": "",
                   "names": {},
                   "number": 0
+                },
+                "episode": {
+                  "id": "",
+                  "names": {},
+                  "number": 0
                 }
               },
               "romaji": "",
@@ -88,6 +93,11 @@ examples:
                 {
                   "firstAppearance": {
                     "chapter": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    },
+                    "episode": {
                       "id": "",
                       "names": {},
                       "number": 0

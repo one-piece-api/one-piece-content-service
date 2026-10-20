@@ -22,8 +22,13 @@ public final class DevilFruitRelations {
 		.itemsName("fruits")
 		.build();
 
-	/** The chapter a fruit first appears in (implementation plan of the timeline, T7). */
-	public static final RelationDescriptor<DevilFruit> FIRST_APPEARANCE = FirstAppearanceRules.relation("fruits");
+	/** The chapter a fruit first appears in (ADR-0008). */
+	public static final RelationDescriptor<DevilFruit> FIRST_APPEARANCE_CHAPTER = FirstAppearanceRules
+		.chapterRelation("fruits");
+
+	/** The episode a fruit first appears in (ADR-0008). */
+	public static final RelationDescriptor<DevilFruit> FIRST_APPEARANCE_EPISODE = FirstAppearanceRules
+		.episodeRelation("fruits");
 
 	private DevilFruitRelations() {
 	}

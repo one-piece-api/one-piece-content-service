@@ -33,7 +33,7 @@ import dev.onepieceapi.contentservice.service.exception.VersionActionForbiddenEx
 import dev.onepieceapi.contentservice.service.exception.VersionIdenticalException;
 import dev.onepieceapi.contentservice.service.exception.VersionIncompleteException;
 import dev.onepieceapi.contentservice.service.exception.VersionNotFoundException;
-import dev.onepieceapi.contentservice.service.story.ChapterLinks;
+import dev.onepieceapi.contentservice.service.story.FirstAppearanceLinks;
 import dev.onepieceapi.contentservice.web.security.SecurityConfig;
 import dev.onepieceapi.exception.web.ApplicationExceptionHandler;
 import dev.onepieceapi.exception.web.ConcurrentModificationExceptionHandler;
@@ -109,7 +109,7 @@ class DevilFruitTypeControllerTest {
 	private DevilFruitTypeService service;
 
 	@MockitoBean
-	private ChapterLinks chapters;
+	private FirstAppearanceLinks firstAppearances;
 
 	@MockitoBean
 	private DevilFruitTypeLinks links;
@@ -297,8 +297,8 @@ class DevilFruitTypeControllerTest {
 	void aVersionSaysTheFirstAppearancesOfTheTypeAndOfItsSubcategoriesLookedUpAtOnce() throws Exception {
 		var ofType = UUID.fromString("7d3b2a1c-0e9f-4a8b-8c7d-6e5f4a3b2c1d");
 		var ofSubcategory = UUID.fromString("8e4c3b2d-1f0a-4b9c-9d8e-7f6a5b4c3d2e");
-		var ancient = new DevilFruitTypeSubcategory(UUID.randomUUID(), Map.of(), new StoryPoint(ofSubcategory));
-		var body = new DevilFruitType("Zoan", Map.of(), List.of(ancient), new StoryPoint(ofType));
+		var ancient = new DevilFruitTypeSubcategory(UUID.randomUUID(), Map.of(), StoryPoint.ofChapter(ofSubcategory));
+		var body = new DevilFruitType("Zoan", Map.of(), List.of(ancient), StoryPoint.ofChapter(ofType));
 		var version = Version.<DevilFruitType>builder()
 			.number(1)
 			.status(VersionStatus.DRAFT)
@@ -308,7 +308,7 @@ class DevilFruitTypeControllerTest {
 			.updatedAt(CREATED)
 			.build();
 		when(this.service.getVersion(any(), any(), eq(CONTENT_ID), eq(1))).thenReturn(readOnly(version));
-		when(this.chapters.referencesOf(Set.of(ofType, ofSubcategory)))
+		when(this.firstAppearances.referencesOf(Set.of(ofType, ofSubcategory), Set.of()))
 			.thenReturn(Map.of(ofType, new NumberedReference(ofType, 1, Map.of("it", "Romance Dawn")), ofSubcategory,
 					new NumberedReference(ofSubcategory, 2, Map.of())));
 

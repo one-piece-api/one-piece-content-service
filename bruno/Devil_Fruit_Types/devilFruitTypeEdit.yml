@@ -20,13 +20,15 @@ http:
     data: |-
       {
         "firstAppearance": {
-          "chapter": ""
+          "chapter": "",
+          "episode": ""
         },
         "romaji": "",
         "subcategories": [
           {
             "firstAppearance": {
-              "chapter": ""
+              "chapter": "",
+              "episode": ""
             },
             "id": "",
             "translations": {}
@@ -61,13 +63,15 @@ examples:
         data: |-
           {
             "firstAppearance": {
-              "chapter": ""
+              "chapter": "",
+              "episode": ""
             },
             "romaji": "",
             "subcategories": [
               {
                 "firstAppearance": {
-                  "chapter": ""
+                  "chapter": "",
+                  "episode": ""
                 },
                 "id": "",
                 "translations": {}
@@ -107,6 +111,11 @@ examples:
                   "id": "",
                   "names": {},
                   "number": 0
+                },
+                "episode": {
+                  "id": "",
+                  "names": {},
+                  "number": 0
                 }
               },
               "romaji": "",
@@ -114,6 +123,11 @@ examples:
                 {
                   "firstAppearance": {
                     "chapter": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    },
+                    "episode": {
                       "id": "",
                       "names": {},
                       "number": 0
@@ -157,13 +171,15 @@ examples:
         data: |-
           {
             "firstAppearance": {
-              "chapter": ""
+              "chapter": "",
+              "episode": ""
             },
             "romaji": "",
             "subcategories": [
               {
                 "firstAppearance": {
-                  "chapter": ""
+                  "chapter": "",
+                  "episode": ""
                 },
                 "id": "",
                 "translations": {}
@@ -211,13 +227,15 @@ examples:
         data: |-
           {
             "firstAppearance": {
-              "chapter": ""
+              "chapter": "",
+              "episode": ""
             },
             "romaji": "",
             "subcategories": [
               {
                 "firstAppearance": {
-                  "chapter": ""
+                  "chapter": "",
+                  "episode": ""
                 },
                 "id": "",
                 "translations": {}

@@ -6,6 +6,7 @@ import dev.onepieceapi.contentservice.persistence.entity.DevilFruitTypeVersionEn
 import dev.onepieceapi.contentservice.persistence.mapper.DevilFruitTypeVersionMapper;
 import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitTypeVersionRepository;
+import dev.onepieceapi.contentservice.persistence.repository.EpisodeVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
 import dev.onepieceapi.contentservice.service.content.RelationRules;
 import dev.onepieceapi.contentservice.service.devilfruittype.DevilFruitTypeRelations;
@@ -29,8 +30,8 @@ import java.util.UUID;
  * the id is the server's to give (implementation plan of the subcategories, SC1), so a
  * client can neither invent one nor bring back one removed. Within the type, a
  * subcategory's name is unique per language. Its first appearance, and each
- * subcategory's, optional, is a chapter it may be linked to (implementation plan of the
- * timeline, T7).
+ * subcategory's, optional, is a chapter and an episode it may be linked to
+ * (implementation plan of the timeline, T7).
  */
 @Component
 public class DevilFruitTypeValidator extends ContentValidator<DevilFruitType, DevilFruitTypeVersionEntity> {
@@ -49,24 +50,35 @@ public class DevilFruitTypeValidator extends ContentValidator<DevilFruitType, De
 
 	private final ChapterVersionRepository chapterRepository;
 
+	private final EpisodeVersionRepository episodeRepository;
+
 	@Autowired
 	public DevilFruitTypeValidator(DevilFruitTypeVersionRepository versionRepository,
-			LanguageRepository languageRepository, ChapterVersionRepository chapterRepository) {
+			LanguageRepository languageRepository, ChapterVersionRepository chapterRepository,
+			EpisodeVersionRepository episodeRepository) {
 		super(versionRepository, languageRepository, DevilFruitTypeVersionMapper::toDomain);
 		this.chapterRepository = chapterRepository;
+		this.episodeRepository = episodeRepository;
 	}
 
 	/** Every first appearance at fault is reported, the type's and its subcategories'. */
 	@Override
 	protected void requireValidRelations(DevilFruitType body) {
 		List<FieldViolation> violations = new ArrayList<>();
-		RelationRules.notLinkable(DevilFruitTypeRelations.FIRST_APPEARANCE, body, "", this.chapterRepository)
+		RelationRules.notLinkable(DevilFruitTypeRelations.FIRST_APPEARANCE_CHAPTER, body, "", this.chapterRepository)
+			.ifPresent(violations::add);
+		RelationRules.notLinkable(DevilFruitTypeRelations.FIRST_APPEARANCE_EPISODE, body, "", this.episodeRepository)
 			.ifPresent(violations::add);
 		List<DevilFruitTypeSubcategory> subcategories = body.subcategories();
 		for (int index = 0; index < subcategories.size(); index++) {
+			String prefix = SUBCATEGORY_PREFIX.formatted(index);
 			RelationRules
-				.notLinkable(DevilFruitTypeRelations.SUBCATEGORY_FIRST_APPEARANCE, subcategories.get(index),
-						SUBCATEGORY_PREFIX.formatted(index), this.chapterRepository)
+				.notLinkable(DevilFruitTypeRelations.SUBCATEGORY_CHAPTER, subcategories.get(index), prefix,
+						this.chapterRepository)
+				.ifPresent(violations::add);
+			RelationRules
+				.notLinkable(DevilFruitTypeRelations.SUBCATEGORY_EPISODE, subcategories.get(index), prefix,
+						this.episodeRepository)
 				.ifPresent(violations::add);
 		}
 		if (!violations.isEmpty()) {

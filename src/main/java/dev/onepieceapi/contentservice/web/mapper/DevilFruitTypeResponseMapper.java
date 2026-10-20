@@ -21,8 +21,9 @@ import java.util.UUID;
 
 /**
  * From Devil Fruit Types to their response bodies: what a version says is mapped here,
- * the workflow around it by {@link ContentResponseMapper}. The chapters its first
- * appearances point to are given already looked up, so the mapper reads no database.
+ * the workflow around it by {@link ContentResponseMapper}. The chapters and episodes its
+ * first appearances point to are given already looked up, so the mapper reads no
+ * database.
  */
 @UtilityClass
 public class DevilFruitTypeResponseMapper {
@@ -31,8 +32,9 @@ public class DevilFruitTypeResponseMapper {
 	 * A version of a Devil Fruit Type as its caller meets it, with everything it says.
 	 */
 	public VersionResponse<DevilFruitTypeResponse> toVersionResponse(VersionAccess<DevilFruitType> access,
-			Map<UUID, NumberedReference> chapters) {
-		return ContentResponseMapper.toVersionResponse(access, devilFruitType -> toResponse(devilFruitType, chapters));
+			Map<UUID, NumberedReference> storyItems) {
+		return ContentResponseMapper.toVersionResponse(access,
+				devilFruitType -> toResponse(devilFruitType, storyItems));
 	}
 
 	/** A row of the list of Devil Fruit Types. */
@@ -43,16 +45,16 @@ public class DevilFruitTypeResponseMapper {
 	}
 
 	/** Everything the version says. */
-	public DevilFruitTypeResponse toResponse(DevilFruitType devilFruitType, Map<UUID, NumberedReference> chapters) {
+	public DevilFruitTypeResponse toResponse(DevilFruitType devilFruitType, Map<UUID, NumberedReference> storyItems) {
 		Map<String, DevilFruitTypeTranslationResponse> translations = new TreeMap<>();
 		devilFruitType.translations()
 			.forEach((language, translation) -> translations.put(language, toTranslationResponse(translation)));
 		return new DevilFruitTypeResponse(devilFruitType.romaji(), translations,
 				devilFruitType.subcategories()
 					.stream()
-					.map(subcategory -> toSubcategoryResponse(subcategory, chapters))
+					.map(subcategory -> toSubcategoryResponse(subcategory, storyItems))
 					.toList(),
-				FirstAppearanceMapper.toResponse(devilFruitType.firstAppearance(), chapters));
+				FirstAppearanceMapper.toResponse(devilFruitType.firstAppearance(), storyItems));
 	}
 
 	/**
@@ -68,13 +70,13 @@ public class DevilFruitTypeResponseMapper {
 	}
 
 	private static DevilFruitTypeSubcategoryResponse toSubcategoryResponse(DevilFruitTypeSubcategory subcategory,
-			Map<UUID, NumberedReference> chapters) {
+			Map<UUID, NumberedReference> storyItems) {
 		Map<String, DevilFruitTypeSubcategoryTranslationResponse> translations = new TreeMap<>();
 		subcategory.translations()
 			.forEach((language, translation) -> translations.put(language,
 					new DevilFruitTypeSubcategoryTranslationResponse(translation.name(), translation.description())));
 		return new DevilFruitTypeSubcategoryResponse(subcategory.id(), translations,
-				FirstAppearanceMapper.toResponse(subcategory.firstAppearance(), chapters));
+				FirstAppearanceMapper.toResponse(subcategory.firstAppearance(), storyItems));
 	}
 
 }

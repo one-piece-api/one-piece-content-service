@@ -65,7 +65,7 @@ class DevilFruitVersionMapperTest {
 	@Test
 	void theFirstAppearanceIsWrittenAndReadBackAndRewritingWithoutOneClearsIt() {
 		var entity = draft();
-		var chapter = new StoryPoint(UUID.randomUUID());
+		var chapter = StoryPoint.ofChapter(UUID.randomUUID());
 		DevilFruitVersionMapper.rewrite(entity, new DevilFruit("Gomu", TYPE_ID, null, Map.of(), null, chapter),
 				CREATED);
 

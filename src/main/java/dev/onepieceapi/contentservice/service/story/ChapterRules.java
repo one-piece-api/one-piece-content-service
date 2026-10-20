@@ -27,10 +27,10 @@ import java.util.UUID;
  * the rules of every relation ({@link RelationRules}) for
  * {@link StoryRelations#CHAPTER_ARC} and {@link StoryRelations#CHAPTER_VOLUME} as the
  * pointing side - a chapter goes online only while its arc is, and its volume when it has
- * one, holding both shared first - and for the first appearances as the target
- * (implementation plan of the timeline, T7) - a chapter cannot be retired while fruits,
- * or types (by themselves or through a subcategory), are online first appearing in it,
- * holding it exclusively first. Nothing of its own on top.
+ * one, holding both shared first - and for the first appearances as the target (ADR-0008)
+ * - a chapter cannot be retired while fruits, or types (by themselves or through a
+ * subcategory), are online first appearing in it, holding it exclusively first. Nothing
+ * of its own on top.
  */
 @Component
 @RequiredArgsConstructor(onConstructor_ = { @Autowired })
@@ -67,15 +67,15 @@ public class ChapterRules implements ContentRules<Chapter> {
 	private Optional<ActionBlock> fruitsLinked(VersionAction action, UUID contentId) {
 		var fruits = new LinkedItems(this.fruitRepository::countOnlineFirstAppearingIn,
 				this.fruitRepository::findOnlineFirstAppearingIn);
-		return RelationRules.onlineItemsLinked(action, DevilFruitRelations.FIRST_APPEARANCE, contentId, fruits,
+		return RelationRules.onlineItemsLinked(action, DevilFruitRelations.FIRST_APPEARANCE_CHAPTER, contentId, fruits,
 				this.properties.blockingPreviewSize());
 	}
 
 	private Optional<ActionBlock> typesLinked(VersionAction action, UUID contentId) {
 		var types = new LinkedItems(this.typeRepository::countOnlineFirstAppearingIn,
 				this.typeRepository::findOnlineFirstAppearingIn);
-		return RelationRules.onlineItemsLinked(action, DevilFruitTypeRelations.FIRST_APPEARANCE, contentId, types,
-				this.properties.blockingPreviewSize());
+		return RelationRules.onlineItemsLinked(action, DevilFruitTypeRelations.FIRST_APPEARANCE_CHAPTER, contentId,
+				types, this.properties.blockingPreviewSize());
 	}
 
 }

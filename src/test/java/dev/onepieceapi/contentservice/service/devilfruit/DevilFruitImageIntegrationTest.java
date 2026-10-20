@@ -20,6 +20,7 @@ import dev.onepieceapi.contentservice.persistence.entity.TranslationEmbeddable;
 import dev.onepieceapi.contentservice.persistence.mapper.UserMapper;
 import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
+import dev.onepieceapi.contentservice.persistence.repository.EpisodeVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitTypeVersionRepository;
@@ -114,6 +115,9 @@ class DevilFruitImageIntegrationTest {
 	private ChapterVersionRepository chapterRepository;
 
 	@Autowired
+	private EpisodeVersionRepository episodeRepository;
+
+	@Autowired
 	private DevilFruitVersionRepository versionRepository;
 
 	@Autowired
@@ -156,13 +160,14 @@ class DevilFruitImageIntegrationTest {
 	void setUp() {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
 		var validator = new DevilFruitValidator(this.versionRepository, this.languageRepository, this.typeRepository,
-				this.chapterRepository);
+				this.chapterRepository, this.episodeRepository);
 		var store = new JpaImageStore(this.imageRepository, clock);
 		var images = new ContentImages(new ImageValidator(), new ImageNormalizer(new PngImageEncoder()), store,
 				PROPERTIES);
 		this.service = new DevilFruitService(
 				new DevilFruitDefinition(this.versionRepository, validator,
-						new DevilFruitRules(this.contentRepository, this.typeRepository, this.chapterRepository)),
+						new DevilFruitRules(this.contentRepository, this.typeRepository, this.chapterRepository,
+								this.episodeRepository)),
 				this.contentVersionRepository, this.contentRepository,
 				new AuditLogService(this.auditLogRepository, clock), clock, images);
 		this.imageService = new ImageService(store, this.versionRepository, this.volumeRepository);

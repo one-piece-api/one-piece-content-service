@@ -19,6 +19,7 @@ import dev.onepieceapi.contentservice.persistence.entity.DevilFruitTypeVersionEn
 import dev.onepieceapi.contentservice.persistence.mapper.UserMapper;
 import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
+import dev.onepieceapi.contentservice.persistence.repository.EpisodeVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitTypeVersionRepository;
@@ -111,6 +112,9 @@ class DevilFruitTypeSubmissionIntegrationTest {
 	private ChapterVersionRepository chapterRepository;
 
 	@Autowired
+	private EpisodeVersionRepository episodeRepository;
+
+	@Autowired
 	private DevilFruitTypeVersionRepository versionRepository;
 
 	@Autowired
@@ -145,10 +149,10 @@ class DevilFruitTypeSubmissionIntegrationTest {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
 		var auditLogService = new AuditLogService(this.auditLogRepository, clock);
 		var validator = new DevilFruitTypeValidator(this.versionRepository, this.languageRepository,
-				this.chapterRepository);
+				this.chapterRepository, this.episodeRepository);
 		this.service = new DevilFruitTypeService(this.versionRepository, this.contentVersionRepository,
 				this.contentRepository, validator, new DevilFruitTypeRules(this.contentRepository, this.fruitRepository,
-						this.chapterRepository, new RulesProperties(5)),
+						this.chapterRepository, this.episodeRepository, new RulesProperties(5)),
 				auditLogService, clock);
 
 		this.firstAppearance = OnlineChapters.onlineChapter(this.contentRepository, this.chapterRepository);
@@ -193,7 +197,7 @@ class DevilFruitTypeSubmissionIntegrationTest {
 		var refused = catchThrowableOfType(VersionIncompleteException.class,
 				() -> this.service.submit(EDITOR, this.nami, empty, 1));
 
-		assertThat(fieldsOf(refused)).containsExactly("romaji", "firstAppearance.chapter", "translations[en].name",
+		assertThat(fieldsOf(refused)).containsExactly("romaji", "firstAppearance", "translations[en].name",
 				"translations[en].description", "translations[en].advantages", "translations[en].disadvantages",
 				"translations[it].name", "translations[it].description", "translations[it].advantages",
 				"translations[it].disadvantages");

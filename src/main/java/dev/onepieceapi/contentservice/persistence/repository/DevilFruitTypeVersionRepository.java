@@ -69,25 +69,31 @@ public interface DevilFruitTypeVersionRepository extends VersionBodyRepository<D
 	}
 
 	/**
-	 * How many types are online first appearing in this chapter, or having a subcategory
-	 * that does (ADR-0008).
+	 * How many types are online first appearing in this chapter or episode, or having a
+	 * subcategory that does (ADR-0008).
 	 */
 	@Query("""
 			select count(d) from DevilFruitTypeVersionEntity d join d.version v
 			where v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED
-				and (d.firstAppearanceChapterId = :chapterContentId
+				and (d.firstAppearanceChapterId = :storyContentId
+					or d.firstAppearanceEpisodeId = :storyContentId
 					or exists (select 1 from DevilFruitTypeSubcategoryEntity s
-						where s member of d.subcategories and s.firstAppearanceChapterId = :chapterContentId))""")
-	long countOnlineFirstAppearingIn(UUID chapterContentId);
+						where s member of d.subcategories
+							and (s.firstAppearanceChapterId = :storyContentId
+								or s.firstAppearanceEpisodeId = :storyContentId)))""")
+	long countOnlineFirstAppearingIn(UUID storyContentId);
 
 	/** The same types, by romaji: as many as the page asks for. */
 	@Query("""
 			select d from DevilFruitTypeVersionEntity d join fetch d.version v
 			where v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED
-				and (d.firstAppearanceChapterId = :chapterContentId
+				and (d.firstAppearanceChapterId = :storyContentId
+					or d.firstAppearanceEpisodeId = :storyContentId
 					or exists (select 1 from DevilFruitTypeSubcategoryEntity s
-						where s member of d.subcategories and s.firstAppearanceChapterId = :chapterContentId))
+						where s member of d.subcategories
+							and (s.firstAppearanceChapterId = :storyContentId
+								or s.firstAppearanceEpisodeId = :storyContentId)))
 			order by d.romaji""")
-	List<DevilFruitTypeVersionEntity> findOnlineFirstAppearingIn(UUID chapterContentId, Pageable pageable);
+	List<DevilFruitTypeVersionEntity> findOnlineFirstAppearingIn(UUID storyContentId, Pageable pageable);
 
 }

@@ -35,6 +35,9 @@ public class DevilFruitTypeSubcategoryEntity {
 	/** The content of the chapter it first appears in (ADR-0008); null for none. */
 	private UUID firstAppearanceChapterId;
 
+	/** The content of the episode it first appears in (ADR-0008); null for none. */
+	private UUID firstAppearanceEpisodeId;
+
 	/**
 	 * The localized fields per language code; a language nothing was saved for is absent.
 	 */
@@ -54,16 +57,18 @@ public class DevilFruitTypeSubcategoryEntity {
 	public void rewrite(Written written) {
 		this.translations.clear();
 		this.translations.putAll(written.translations());
-		this.firstAppearanceChapterId = written.firstAppearanceChapterId();
+		this.firstAppearanceChapterId = written.firstAppearance().chapterId();
+		this.firstAppearanceEpisodeId = written.firstAppearance().episodeId();
 	}
 
 	/**
 	 * What a subcategory says, as a version is written.
 	 *
 	 * @param translations the localized fields per language code
-	 * @param firstAppearanceChapterId the content of its chapter; null for none
+	 * @param firstAppearance the content of its chapter and of its episode
 	 */
-	public record Written(Map<String, SubcategoryTranslationEmbeddable> translations, UUID firstAppearanceChapterId) {
+	public record Written(Map<String, SubcategoryTranslationEmbeddable> translations,
+			FirstAppearanceIds firstAppearance) {
 	}
 
 }

@@ -10,6 +10,7 @@ import dev.onepieceapi.contentservice.persistence.entity.DevilFruitVersionEntity
 import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitVersionRepository;
+import dev.onepieceapi.contentservice.persistence.repository.EpisodeVersionRepository;
 import dev.onepieceapi.contentservice.service.content.ContentRules;
 import dev.onepieceapi.contentservice.service.content.FirstAppearanceRules;
 import dev.onepieceapi.contentservice.service.content.LinkedItems;
@@ -33,10 +34,10 @@ import java.util.UUID;
  * always has its subcategory online, so a version of the type cannot go online -
  * published or restored - leaving out a subcategory online fruits name (implementation
  * plan of the subcategories, S7). A type archived with no fruit online is not affected.
- * Going online also needs a first appearance in a chapter online, and a chapter online
- * for every subcategory that names one (implementation plan of the timeline, T7): first
- * what the type itself lacks, then what it points to, then what its fruits need of it.
- * Not even {@code content:admin} lifts it.
+ * Going online also needs a first appearance in a chapter or an episode online, and the
+ * chapter and the episode online for every subcategory that names them (implementation
+ * plan of the timeline, T7): first what the type itself lacks, then what it points to,
+ * then what its fruits need of it. Not even {@code content:admin} lifts it.
  * <p>
  * Each of these holds the type's content exclusively first, so it waits for any fruit
  * going online with it ({@code DevilFruitRules}) and what it then reads includes that
@@ -54,6 +55,8 @@ public class DevilFruitTypeRules implements ContentRules<DevilFruitType> {
 
 	private final ChapterVersionRepository chapterRepository;
 
+	private final EpisodeVersionRepository episodeRepository;
+
 	private final RulesProperties properties;
 
 	@Override
@@ -63,10 +66,16 @@ public class DevilFruitTypeRules implements ContentRules<DevilFruitType> {
 			this.contentRepository.lockExclusive(contentId);
 		}
 		DevilFruitType type = version.body();
-		RelationRules.lockTargetBefore(action, DevilFruitTypeRelations.FIRST_APPEARANCE, type, this.contentRepository);
-		type.subcategories()
-			.forEach(subcategory -> RelationRules.lockTargetBefore(action,
-					DevilFruitTypeRelations.SUBCATEGORY_FIRST_APPEARANCE, subcategory, this.contentRepository));
+		RelationRules.lockTargetBefore(action, DevilFruitTypeRelations.FIRST_APPEARANCE_CHAPTER, type,
+				this.contentRepository);
+		RelationRules.lockTargetBefore(action, DevilFruitTypeRelations.FIRST_APPEARANCE_EPISODE, type,
+				this.contentRepository);
+		type.subcategories().forEach(subcategory -> {
+			RelationRules.lockTargetBefore(action, DevilFruitTypeRelations.SUBCATEGORY_CHAPTER, subcategory,
+					this.contentRepository);
+			RelationRules.lockTargetBefore(action, DevilFruitTypeRelations.SUBCATEGORY_EPISODE, subcategory,
+					this.contentRepository);
+		});
 	}
 
 	@Override
@@ -78,23 +87,28 @@ public class DevilFruitTypeRules implements ContentRules<DevilFruitType> {
 			case PUBLISH,
 					RESTORE ->
 				FirstAppearanceRules.missing(action, type)
-					.or(() -> RelationRules.targetNotOnline(action, DevilFruitTypeRelations.FIRST_APPEARANCE, type,
-							this.chapterRepository))
-					.or(() -> subcategoryChapterNotOnline(action, type))
+					.or(() -> RelationRules.targetNotOnline(action, DevilFruitTypeRelations.FIRST_APPEARANCE_CHAPTER,
+							type, this.chapterRepository))
+					.or(() -> RelationRules.targetNotOnline(action, DevilFruitTypeRelations.FIRST_APPEARANCE_EPISODE,
+							type, this.episodeRepository))
+					.or(() -> subcategoryStoryNotOnline(action, type))
 					.or(() -> subcategoriesInUse(contentId, type));
 			default -> Optional.empty();
 		};
 	}
 
 	/**
-	 * The first subcategory whose first appearance is in a chapter not online, if any.
+	 * The first subcategory whose first appearance is in a chapter or an episode not
+	 * online, if any: its chapter before its episode.
 	 */
-	private Optional<ActionBlock> subcategoryChapterNotOnline(VersionAction action, DevilFruitType type) {
+	private Optional<ActionBlock> subcategoryStoryNotOnline(VersionAction action, DevilFruitType type) {
 		return type.subcategories()
 			.stream()
-			.map(subcategory -> RelationRules.targetNotOnline(action,
-					DevilFruitTypeRelations.SUBCATEGORY_FIRST_APPEARANCE, subcategory,
-					Map.of(SUBCATEGORY_ID, subcategory.id()), this.chapterRepository))
+			.map(subcategory -> RelationRules
+				.targetNotOnline(action, DevilFruitTypeRelations.SUBCATEGORY_CHAPTER, subcategory,
+						Map.of(SUBCATEGORY_ID, subcategory.id()), this.chapterRepository)
+				.or(() -> RelationRules.targetNotOnline(action, DevilFruitTypeRelations.SUBCATEGORY_EPISODE,
+						subcategory, Map.of(SUBCATEGORY_ID, subcategory.id()), this.episodeRepository)))
 			.flatMap(Optional::stream)
 			.findFirst();
 	}

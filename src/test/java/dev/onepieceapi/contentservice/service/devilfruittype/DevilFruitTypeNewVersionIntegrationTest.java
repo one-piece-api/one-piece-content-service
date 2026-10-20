@@ -18,6 +18,7 @@ import dev.onepieceapi.contentservice.persistence.entity.TranslationEmbeddable;
 import dev.onepieceapi.contentservice.persistence.mapper.UserMapper;
 import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
+import dev.onepieceapi.contentservice.persistence.repository.EpisodeVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitTypeVersionRepository;
@@ -105,6 +106,9 @@ class DevilFruitTypeNewVersionIntegrationTest {
 	private ChapterVersionRepository chapterRepository;
 
 	@Autowired
+	private EpisodeVersionRepository episodeRepository;
+
+	@Autowired
 	private DevilFruitTypeVersionRepository versionRepository;
 
 	@Autowired
@@ -140,10 +144,10 @@ class DevilFruitTypeNewVersionIntegrationTest {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
 		var auditLogService = new AuditLogService(this.auditLogRepository, clock);
 		var validator = new DevilFruitTypeValidator(this.versionRepository, this.languageRepository,
-				this.chapterRepository);
+				this.chapterRepository, this.episodeRepository);
 		this.service = new DevilFruitTypeService(this.versionRepository, this.contentVersionRepository,
 				this.contentRepository, validator, new DevilFruitTypeRules(this.contentRepository, this.fruitRepository,
-						this.chapterRepository, new RulesProperties(5)),
+						this.chapterRepository, this.episodeRepository, new RulesProperties(5)),
 				auditLogService, clock);
 
 		this.logia = content();
