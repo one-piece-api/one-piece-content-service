@@ -116,6 +116,21 @@ class PublishedBountyViewIntegrationTest {
 	}
 
 	@Test
+	void theHolderIsTheContentIdOfTheCharacterAndNullForABountyWithoutOne() {
+		UUID nami = content("CHARACTER");
+		UUID held = content();
+		UUID free = content();
+		set(bounty(held, 1, PUBLISHED, "Nami", 16_000_000L, "it"), "holder_content_id", nami);
+		bounty(free, 1, PUBLISHED, "Roronoa Zoro", 60_000_000L, "it");
+
+		var rows = this.jdbc.sql("select id, holder_id from published.bounty")
+			.query((rs, n) -> tuple(rs.getObject("id"), rs.getObject("holder_id")))
+			.list();
+
+		assertThat(rows).containsExactlyInAnyOrder(tuple(held, nami), tuple(free, null));
+	}
+
+	@Test
 	void thePosterOfABountyOnlineIsAPublishedImageAndADraftsIsNot() {
 		String online = image('b');
 		String draft = image('c');
