@@ -210,6 +210,11 @@ examples:
                 "body": {
                   "amount": 0,
                   "condition": "DEAD_OR_ALIVE",
+                  "holder": {
+                    "id": "",
+                    "names": {},
+                    "romaji": ""
+                  },
                   "key": "",
                   "posterName": "",
                   "validity": "ACTIVE"
