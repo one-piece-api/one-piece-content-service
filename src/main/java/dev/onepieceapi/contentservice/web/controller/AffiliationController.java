@@ -8,8 +8,8 @@ import dev.onepieceapi.contentservice.domain.workflow.VersionAccess;
 import dev.onepieceapi.contentservice.service.affiliation.AffiliationService;
 import dev.onepieceapi.contentservice.service.story.FirstAppearanceLinks;
 import dev.onepieceapi.contentservice.web.ApiPaths;
+import dev.onepieceapi.contentservice.web.dto.request.AffiliationListRequest;
 import dev.onepieceapi.contentservice.web.dto.request.AffiliationRequest;
-import dev.onepieceapi.contentservice.web.dto.request.ContentListRequest;
 import dev.onepieceapi.contentservice.web.dto.response.AffiliationNamesResponse;
 import dev.onepieceapi.contentservice.web.dto.response.AffiliationResponse;
 import dev.onepieceapi.contentservice.web.dto.response.ContentResponse;
@@ -18,7 +18,6 @@ import dev.onepieceapi.contentservice.web.dto.response.PageResponse;
 import dev.onepieceapi.contentservice.web.dto.response.VersionResponse;
 import dev.onepieceapi.contentservice.web.mapper.AffiliationRequestMapper;
 import dev.onepieceapi.contentservice.web.mapper.AffiliationResponseMapper;
-import dev.onepieceapi.contentservice.web.mapper.ContentRequestMapper;
 import dev.onepieceapi.contentservice.web.mapper.ContentResponseMapper;
 import dev.onepieceapi.contentservice.web.mapper.ImageResponseMapper;
 import dev.onepieceapi.contentservice.web.security.AuthenticatedCaller;
@@ -77,10 +76,10 @@ class AffiliationController extends ContentController<Affiliation, AffiliationRe
 	 */
 	@GetMapping(ApiPaths.CONTENT_LIST)
 	PageResponse<ContentSummaryResponse<AffiliationNamesResponse>> list(
-			@ParameterObject @Valid ContentListRequest request,
+			@ParameterObject @Valid AffiliationListRequest request,
 			@ParameterObject @SortableBy(ContentSortField.class) Pageable pageable,
 			@AuthenticationPrincipal AuthenticatedCaller caller, Locale locale) {
-		return listPage(ContentRequestMapper.toFilter(request), pageable, caller, locale);
+		return listPage(AffiliationRequestMapper.toFilter(request), pageable, caller, locale);
 	}
 
 	@Override

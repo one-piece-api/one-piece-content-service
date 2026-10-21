@@ -1,5 +1,7 @@
 package dev.onepieceapi.contentservice.web.dto.response;
 
+import dev.onepieceapi.contentservice.domain.affiliation.AffiliationKind;
+
 import java.util.Map;
 
 /**
@@ -9,8 +11,9 @@ import java.util.Map;
  * @param image its emblem; null for none
  * @param firstAppearance the chapter and/or the episode it first appears in; null for
  * none
+ * @param kind what sort of group it is; null while not chosen
  */
 public record AffiliationResponse(String romaji, Map<String, AffiliationTranslationResponse> translations,
-		ImageResponse image, FirstAppearanceResponse firstAppearance) {
+		ImageResponse image, FirstAppearanceResponse firstAppearance, AffiliationKind kind) {
 
 }

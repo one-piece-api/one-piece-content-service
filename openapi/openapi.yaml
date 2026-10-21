@@ -42,6 +42,17 @@ paths:
           type: integer
           format: int32
           minimum: 0
+      - in: query
+        name: kind
+        required: false
+        schema:
+          type: string
+          enum:
+          - PIRATE_CREW
+          - NAVY
+          - WORLD_GOVERNMENT
+          - REVOLUTIONARY_ARMY
+          - OTHER
       - description: Zero-based page index (0..N)
         in: query
         name: page
@@ -8278,6 +8289,14 @@ components:
       properties:
         firstAppearance:
           $ref: "#/components/schemas/FirstAppearanceRequest"
+        kind:
+          type: string
+          enum:
+          - PIRATE_CREW
+          - NAVY
+          - WORLD_GOVERNMENT
+          - REVOLUTIONARY_ARMY
+          - OTHER
         removeImage:
           type: boolean
         romaji:
@@ -8295,6 +8314,14 @@ components:
           $ref: "#/components/schemas/FirstAppearanceResponse"
         image:
           $ref: "#/components/schemas/ImageResponse"
+        kind:
+          type: string
+          enum:
+          - PIRATE_CREW
+          - NAVY
+          - WORLD_GOVERNMENT
+          - REVOLUTIONARY_ARMY
+          - OTHER
         romaji:
           type: string
         translations:

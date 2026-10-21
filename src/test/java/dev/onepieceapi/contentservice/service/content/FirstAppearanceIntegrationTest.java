@@ -640,7 +640,7 @@ class FirstAppearanceIntegrationTest {
 
 	/** Complete, but for what a test of the first appearance does not care about. */
 	private static Affiliation affiliation(String romaji, StoryPoint firstAppearance) {
-		return new Affiliation(romaji, Map.of(), null, firstAppearance);
+		return new Affiliation(romaji, Map.of(), null, firstAppearance, null);
 	}
 
 	private UUID affiliationContent(VersionStatus status, Affiliation body) {

@@ -3,6 +3,8 @@ package dev.onepieceapi.contentservice.web.mapper;
 import dev.onepieceapi.contentservice.domain.affiliation.Affiliation;
 import dev.onepieceapi.contentservice.domain.affiliation.AffiliationTranslation;
 import dev.onepieceapi.contentservice.domain.image.ImageChange;
+import dev.onepieceapi.contentservice.domain.workflow.ContentFilter;
+import dev.onepieceapi.contentservice.web.dto.request.AffiliationListRequest;
 import dev.onepieceapi.contentservice.web.dto.request.AffiliationRequest;
 import dev.onepieceapi.contentservice.web.dto.request.AffiliationTranslationRequest;
 import lombok.experimental.UtilityClass;
@@ -23,7 +25,7 @@ public class AffiliationRequestMapper {
 			.orElseGet(Map::of)
 			.forEach((language, translation) -> translations.put(language, toDomain(translation)));
 		return new Affiliation(request.romaji(), translations, null,
-				FirstAppearanceMapper.toDomain(request.firstAppearance()));
+				FirstAppearanceMapper.toDomain(request.firstAppearance()), request.kind());
 	}
 
 	/**
@@ -34,6 +36,12 @@ public class AffiliationRequestMapper {
 	 */
 	public ImageChange toImageChange(AffiliationRequest request, MultipartFile upload) {
 		return ImageRequestMapper.toImageChange(request.removesImage(), upload);
+	}
+
+	/** The common filters, then the kind when the list is narrowed. */
+	public ContentFilter toFilter(AffiliationListRequest request) {
+		var filter = new ContentFilter(request.status(), request.q(), request.author(), request.updatedWithinDays());
+		return request.kind() == null ? filter : filter.withAttribute(Affiliation.KIND_ATTRIBUTE, request.kind());
 	}
 
 	/** A language sent with nothing in it is a language with nothing written. */

@@ -22,14 +22,15 @@ public class AffiliationVersionMapper {
 
 	public Version<Affiliation> toDomain(AffiliationVersionEntity entity) {
 		var body = new Affiliation(entity.getRomaji(), toDomain(entity.getTranslations()), entity.getImageId(),
-				new StoryPoint(entity.getFirstAppearanceChapterId(), entity.getFirstAppearanceEpisodeId()));
+				new StoryPoint(entity.getFirstAppearanceChapterId(), entity.getFirstAppearanceEpisodeId()),
+				entity.getKind());
 		return ContentVersionMapper.toDomain(entity.getVersion(), body);
 	}
 
 	/** Makes the version say what was given, in place of what it said. */
 	public void rewrite(AffiliationVersionEntity entity, Affiliation body, Instant now) {
 		entity.rewrite(body.romaji(), toEmbeddables(body.translations()), body.imageId(),
-				FirstAppearanceMapper.toIds(body.firstAppearance()), now);
+				FirstAppearanceMapper.toIds(body.firstAppearance()), body.kind(), now);
 	}
 
 	/** Sorted by language code, so the same version always reads the same way. */

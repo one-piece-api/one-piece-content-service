@@ -92,6 +92,7 @@ examples:
                 "id": "",
                 "url": ""
               },
+              "kind": "PIRATE_CREW",
               "romaji": "",
               "translations": {}
             },

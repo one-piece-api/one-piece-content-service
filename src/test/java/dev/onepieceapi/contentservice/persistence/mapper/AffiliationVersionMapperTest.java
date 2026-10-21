@@ -1,6 +1,7 @@
 package dev.onepieceapi.contentservice.persistence.mapper;
 
 import dev.onepieceapi.contentservice.domain.affiliation.Affiliation;
+import dev.onepieceapi.contentservice.domain.affiliation.AffiliationKind;
 import dev.onepieceapi.contentservice.domain.affiliation.AffiliationTranslation;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.domain.security.User;
@@ -34,7 +35,7 @@ class AffiliationVersionMapperTest {
 		var body = new Affiliation("Mugiwara no Ichimi",
 				Map.of("it", new AffiliationTranslation("Pirati di Cappello di Paglia", "Ciurma"), "en",
 						new AffiliationTranslation("Straw Hat Pirates", "Crew")),
-				"abc", new StoryPoint(CHAPTER_ID, EPISODE_ID));
+				"abc", new StoryPoint(CHAPTER_ID, EPISODE_ID), AffiliationKind.PIRATE_CREW);
 
 		AffiliationVersionMapper.rewrite(entity, body, UPDATED);
 		var version = AffiliationVersionMapper.toDomain(entity);
@@ -50,15 +51,18 @@ class AffiliationVersionMapperTest {
 	@Test
 	void rewritingReplacesWhatTheVersionSaid() {
 		var entity = draft();
-		AffiliationVersionMapper.rewrite(entity, new Affiliation("Kaigun",
-				Map.of("it", new AffiliationTranslation("Marina", "Forze")), "abc", StoryPoint.ofChapter(CHAPTER_ID)),
+		AffiliationVersionMapper.rewrite(entity,
+				new Affiliation("Kaigun", Map.of("it", new AffiliationTranslation("Marina", "Forze")), "abc",
+						StoryPoint.ofChapter(CHAPTER_ID), AffiliationKind.NAVY),
 				CREATED);
 
 		AffiliationVersionMapper.rewrite(entity,
-				new Affiliation(null, Map.of("en", new AffiliationTranslation("Navy", null)), null, null), UPDATED);
+				new Affiliation(null, Map.of("en", new AffiliationTranslation("Navy", null)), null, null, null),
+				UPDATED);
 
 		assertThat(entity.getRomaji()).isNull();
 		assertThat(entity.getImageId()).isNull();
+		assertThat(entity.getKind()).isNull();
 		assertThat(entity.getFirstAppearanceChapterId()).isNull();
 		assertThat(entity.getTranslations()).containsOnlyKeys("en");
 	}

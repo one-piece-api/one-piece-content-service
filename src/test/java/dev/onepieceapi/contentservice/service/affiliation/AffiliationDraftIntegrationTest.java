@@ -1,6 +1,9 @@
 package dev.onepieceapi.contentservice.service.affiliation;
 
 import dev.onepieceapi.contentservice.domain.affiliation.Affiliation;
+import dev.onepieceapi.contentservice.domain.affiliation.AffiliationKind;
+import dev.onepieceapi.contentservice.domain.workflow.ContentFilter;
+import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
 import dev.onepieceapi.contentservice.domain.affiliation.AffiliationTranslation;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
@@ -23,6 +26,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -107,7 +111,7 @@ class AffiliationDraftIntegrationTest {
 	@Test
 	void aNewAffiliationIsBornWithADraftSayingWhatWasWrittenTheSpaceAroundItIgnored() {
 		var written = new Affiliation("  Kaigun ", Map.of("it", new AffiliationTranslation(" Marina ", null)), null,
-				StoryPoint.NONE);
+				StoryPoint.NONE, null);
 
 		var content = this.service.create(EDITOR, CHOPPER, written);
 		stored();
@@ -129,7 +133,7 @@ class AffiliationDraftIntegrationTest {
 	@Test
 	void aRomajiOrANameAnotherAffiliationHasIsRefusedNamingEachFieldWhateverTheCase() {
 		var written = new Affiliation(" mugiwara NO ichimi ",
-				Map.of("it", new AffiliationTranslation("MUGIWARA NO ICHIMI (IT)", null)), null, StoryPoint.NONE);
+				Map.of("it", new AffiliationTranslation("MUGIWARA NO ICHIMI (IT)", null)), null, StoryPoint.NONE, null);
 
 		var refused = catchThrowableOfType(ValueAlreadyUsedException.class,
 				() -> this.service.create(EDITOR, CHOPPER, written));
@@ -141,7 +145,7 @@ class AffiliationDraftIntegrationTest {
 	void theSameNameInAnotherLanguageIsNoClash() {
 		// "Mugiwara no Ichimi (it)" is taken in Italian, not in English.
 		var written = new Affiliation("Kaigun",
-				Map.of("en", new AffiliationTranslation("Mugiwara no Ichimi (it)", null)), null, StoryPoint.NONE);
+				Map.of("en", new AffiliationTranslation("Mugiwara no Ichimi (it)", null)), null, StoryPoint.NONE, null);
 
 		assertThat(this.service.create(EDITOR, CHOPPER, written).versions()).hasSize(1);
 	}
@@ -169,14 +173,56 @@ class AffiliationDraftIntegrationTest {
 	@Test
 	void aDraftMayBeSavedIncompleteButNotSentToReview() {
 		var content = this.service.create(EDITOR, CHOPPER, new Affiliation("Kaigun",
-				Map.of("it", new AffiliationTranslation("Marina", null)), null, StoryPoint.NONE));
+				Map.of("it", new AffiliationTranslation("Marina", null)), null, StoryPoint.NONE, null));
 		stored();
 
 		var refused = catchThrowableOfType(VersionIncompleteException.class,
 				() -> this.service.submit(EDITOR, CHOPPER, content.id(), 1));
 
-		assertThat(fieldsOf(refused)).containsExactly("firstAppearance", "translations[en].name",
+		assertThat(fieldsOf(refused)).containsExactly("kind", "firstAppearance", "translations[en].name",
 				"translations[en].description", "translations[it].description");
+	}
+
+	@Test
+	void aDraftWithoutAKindIsNotSentToReview() {
+		var content = this.service.create(EDITOR, CHOPPER, this.fixtures.complete("Kaigun", (AffiliationKind) null));
+		stored();
+
+		var refused = catchThrowableOfType(VersionIncompleteException.class,
+				() -> this.service.submit(EDITOR, CHOPPER, content.id(), 1));
+
+		assertThat(fieldsOf(refused)).containsExactly("kind");
+	}
+
+	@Test
+	void aVersionWrittenBeforeKindsExistedIsStillReadWithoutOne() {
+		UUID old = this.fixtures.affiliation(PUBLISHED, this.fixtures.complete("Kaigun", (AffiliationKind) null));
+		stored();
+
+		assertThat(this.service.getVersion(EDITOR, CHOPPER, old, 1).version().body().kind()).isNull();
+	}
+
+	@Test
+	void theKindIsKeptWithTheDraft() {
+		var content = this.service.create(EDITOR, CHOPPER, this.fixtures.complete("Kaigun", AffiliationKind.NAVY));
+		stored();
+
+		assertThat(this.service.getVersion(EDITOR, CHOPPER, content.id(), 1).version().body().kind())
+			.isEqualTo(AffiliationKind.NAVY);
+	}
+
+	@Test
+	void theListIsNarrowedByKind() {
+		UUID navy = this.fixtures.affiliation(PUBLISHED, this.fixtures.complete("Kaigun", AffiliationKind.NAVY));
+		this.fixtures.affiliation(PUBLISHED, this.fixtures.complete("Seifu", (AffiliationKind) null));
+		stored();
+
+		var onlyNavy = new ContentFilter(null, null, null, null).withAttribute(Affiliation.KIND_ATTRIBUTE,
+				AffiliationKind.NAVY);
+
+		assertThat(this.service.list(EDITOR, CHOPPER, onlyNavy, PageRequest.of(0, 20), "it").getContent())
+			.extracting(ContentSummary::contentId)
+			.containsExactly(navy);
 	}
 
 	@Test

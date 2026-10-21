@@ -25,13 +25,23 @@ import java.util.TreeMap;
  * @param firstAppearance the chapter and/or the episode the group is first shown or named
  * in (D4); {@link StoryPoint#NONE} for none, which a draft may keep - it is required to
  * submit and to go online
+ * @param kind what sort of group it is (implementation plan of the Character, D10); null
+ * while not chosen, which a draft may keep and a version written before kinds existed
+ * keeps - it is required to submit
  */
 public record Affiliation(String romaji, Map<String, AffiliationTranslation> translations, String imageId,
-		StoryPoint firstAppearance) implements ContentBody<Affiliation>, FirstAppearing {
+		StoryPoint firstAppearance, AffiliationKind kind) implements ContentBody<Affiliation>, FirstAppearing {
 
 	public static final int ROMAJI_MAX_LENGTH = 100;
 
+	/**
+	 * What the list is narrowed by (D16), as {@code ContentFilter#attributes} names it.
+	 */
+	public static final String KIND_ATTRIBUTE = "kind";
+
 	private static final String ROMAJI_FIELD = "romaji";
+
+	private static final String KIND_FIELD = "kind";
 
 	/** Named as request validation names them, so a client reads both the same way. */
 	private static final String NAME_FIELD = "translations[%s].name";
@@ -45,7 +55,7 @@ public record Affiliation(String romaji, Map<String, AffiliationTranslation> tra
 
 	/** The same affiliation with another image, or none. */
 	public Affiliation withImage(String newImageId) {
-		return new Affiliation(this.romaji, this.translations, newImageId, this.firstAppearance);
+		return new Affiliation(this.romaji, this.translations, newImageId, this.firstAppearance, this.kind);
 	}
 
 	@Override
@@ -57,7 +67,7 @@ public record Affiliation(String romaji, Map<String, AffiliationTranslation> tra
 				written.put(language, normalized);
 			}
 		});
-		return new Affiliation(Text.stripToNull(this.romaji), written, this.imageId, this.firstAppearance);
+		return new Affiliation(Text.stripToNull(this.romaji), written, this.imageId, this.firstAppearance, this.kind);
 	}
 
 	@Override
@@ -82,14 +92,17 @@ public record Affiliation(String romaji, Map<String, AffiliationTranslation> tra
 	}
 
 	/**
-	 * The romaji and the first appearance, then a name and a description per language -
-	 * every one missing. The image is never missing.
+	 * The romaji, the kind and the first appearance, then a name and a description per
+	 * language - every one missing. The image is never missing.
 	 */
 	@Override
 	public List<String> missingFields(Collection<String> languages) {
 		List<String> missing = new ArrayList<>();
 		if (this.romaji == null) {
 			missing.add(ROMAJI_FIELD);
+		}
+		if (this.kind == null) {
+			missing.add(KIND_FIELD);
 		}
 		if (lacksFirstAppearance()) {
 			missing.add(FIELD);

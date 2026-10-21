@@ -1,6 +1,7 @@
 package dev.onepieceapi.contentservice.service.affiliation;
 
 import dev.onepieceapi.contentservice.domain.affiliation.Affiliation;
+import dev.onepieceapi.contentservice.domain.affiliation.AffiliationKind;
 import dev.onepieceapi.contentservice.domain.affiliation.AffiliationTranslation;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.domain.security.Permission;
@@ -110,13 +111,19 @@ final class AffiliationFixtures {
 		return new Affiliation(romaji,
 				Map.of("it", new AffiliationTranslation(romaji + " (it)", "Descrizione di " + romaji), "en",
 						new AffiliationTranslation(romaji + " (en)", "Description of " + romaji)),
-				null, this.firstAppearance);
+				null, this.firstAppearance, AffiliationKind.PIRATE_CREW);
+	}
+
+	/** The same, of this kind - none for a version written before kinds existed. */
+	Affiliation complete(String romaji, AffiliationKind kind) {
+		var body = complete(romaji);
+		return new Affiliation(body.romaji(), body.translations(), null, body.firstAppearance(), kind);
 	}
 
 	/** The same, first appearing elsewhere. */
 	Affiliation complete(String romaji, StoryPoint firstAppearanceElsewhere) {
 		var body = complete(romaji);
-		return new Affiliation(body.romaji(), body.translations(), null, firstAppearanceElsewhere);
+		return new Affiliation(body.romaji(), body.translations(), null, firstAppearanceElsewhere, body.kind());
 	}
 
 	/** A new content with its first version in this status. */

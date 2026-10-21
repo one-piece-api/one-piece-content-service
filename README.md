@@ -34,6 +34,8 @@ copertina PNG), **Capitolo** ed **Episodio** (relazioni verso arco/volume, date 
   `INACTIVE`) è derivata, mai salvata; si filtra con `?validity=` e `?condition=` e si ordina per `amount`.
 - **Affiliazione** (`/affiliations`): chiave `romaji` (slug `mugiwara-no-ichimi`), nome unico per
   lingua e descrizione, emblema PNG opzionale (quadrato, sfondo trasparente), prima apparizione.
+  `kind` (`PIRATE_CREW`, `NAVY`, `WORLD_GOVERNMENT`, `REVOLUTIONARY_ARMY`, `OTHER`): obbligatorio dalla
+  prossima sottomissione (le versioni esistenti restano a `null`), filtro `?kind=`.
   Nessun endpoint `linkable`: per ora nulla punta a un'affiliazione. Un capitolo o un episodio con
   affiliazioni online come prima apparizione non si ritira (`ONLINE_ITEMS_LINKED`, voce `affiliations`).
 - **Specie** (`/species`): la razza di un personaggio. Chiave `romaji` (slug `gyojin`), nome unico per

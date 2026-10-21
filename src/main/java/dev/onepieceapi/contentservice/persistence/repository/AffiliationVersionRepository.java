@@ -1,8 +1,13 @@
 package dev.onepieceapi.contentservice.persistence.repository;
 
+import dev.onepieceapi.contentservice.domain.affiliation.Affiliation;
+import dev.onepieceapi.contentservice.domain.affiliation.AffiliationKind;
+import dev.onepieceapi.contentservice.domain.workflow.ContentFilter;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.entity.AffiliationVersionEntity;
+import dev.onepieceapi.contentservice.persistence.specification.AffiliationSpecifications;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
@@ -17,6 +22,15 @@ import java.util.UUID;
  * entity's own tables by name, the image's and the first appearance's.
  */
 public interface AffiliationVersionRepository extends VersionBodyRepository<AffiliationVersionEntity> {
+
+	@Override
+	default Specification<AffiliationVersionEntity> attributeConditions(ContentFilter filter,
+			Collection<VersionStatus> statuses) {
+		if (filter.attribute(Affiliation.KIND_ATTRIBUTE) instanceof AffiliationKind kind) {
+			return AffiliationSpecifications.withKind(kind);
+		}
+		return Specification.allOf();
+	}
 
 	@Override
 	default String naturalKeyAttribute() {

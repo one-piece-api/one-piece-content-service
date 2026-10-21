@@ -53,6 +53,26 @@ http:
       value: "0"
       type: query
       disabled: true
+    - name: kind
+      value: PIRATE_CREW
+      type: query
+      disabled: true
+    - name: kind
+      value: NAVY
+      type: query
+      disabled: true
+    - name: kind
+      value: WORLD_GOVERNMENT
+      type: query
+      disabled: true
+    - name: kind
+      value: REVOLUTIONARY_ARMY
+      type: query
+      disabled: true
+    - name: kind
+      value: OTHER
+      type: query
+      disabled: true
     - name: page
       value: "0"
       type: query
@@ -124,6 +144,26 @@ examples:
           disabled: true
         - name: updatedWithinDays
           value: "0"
+          type: query
+          disabled: true
+        - name: kind
+          value: PIRATE_CREW
+          type: query
+          disabled: true
+        - name: kind
+          value: NAVY
+          type: query
+          disabled: true
+        - name: kind
+          value: WORLD_GOVERNMENT
+          type: query
+          disabled: true
+        - name: kind
+          value: REVOLUTIONARY_ARMY
+          type: query
+          disabled: true
+        - name: kind
+          value: OTHER
           type: query
           disabled: true
         - name: page
@@ -228,6 +268,26 @@ examples:
           value: "0"
           type: query
           disabled: true
+        - name: kind
+          value: PIRATE_CREW
+          type: query
+          disabled: true
+        - name: kind
+          value: NAVY
+          type: query
+          disabled: true
+        - name: kind
+          value: WORLD_GOVERNMENT
+          type: query
+          disabled: true
+        - name: kind
+          value: REVOLUTIONARY_ARMY
+          type: query
+          disabled: true
+        - name: kind
+          value: OTHER
+          type: query
+          disabled: true
         - name: page
           value: "0"
           type: query
@@ -312,6 +372,26 @@ examples:
           disabled: true
         - name: updatedWithinDays
           value: "0"
+          type: query
+          disabled: true
+        - name: kind
+          value: PIRATE_CREW
+          type: query
+          disabled: true
+        - name: kind
+          value: NAVY
+          type: query
+          disabled: true
+        - name: kind
+          value: WORLD_GOVERNMENT
+          type: query
+          disabled: true
+        - name: kind
+          value: REVOLUTIONARY_ARMY
+          type: query
+          disabled: true
+        - name: kind
+          value: OTHER
           type: query
           disabled: true
         - name: page

@@ -1,6 +1,7 @@
 package dev.onepieceapi.contentservice.web.controller;
 
 import dev.onepieceapi.contentservice.domain.affiliation.Affiliation;
+import dev.onepieceapi.contentservice.domain.affiliation.AffiliationKind;
 import dev.onepieceapi.contentservice.domain.affiliation.AffiliationTranslation;
 import dev.onepieceapi.contentservice.domain.image.ImageChange;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
@@ -10,6 +11,7 @@ import dev.onepieceapi.contentservice.domain.story.NumberedReference;
 import dev.onepieceapi.contentservice.domain.workflow.ActionBlock;
 import dev.onepieceapi.contentservice.domain.workflow.BlockReason;
 import dev.onepieceapi.contentservice.domain.workflow.Content;
+import dev.onepieceapi.contentservice.domain.workflow.ContentFilter;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
 import dev.onepieceapi.contentservice.domain.workflow.Version;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAccess;
@@ -106,6 +108,7 @@ class AffiliationControllerTest {
 			.andExpect(jsonPath("$.body.romaji").value("Mugiwara no Ichimi"))
 			.andExpect(jsonPath("$.body.translations.it.name").value("Pirati di Cappello di Paglia"))
 			.andExpect(jsonPath("$.body.translations.it.description").value("La ciurma di Rufy"))
+			.andExpect(jsonPath("$.body.kind").value("PIRATE_CREW"))
 			.andExpect(jsonPath("$.body.image.url").value("/api/content/images/abc"))
 			.andExpect(jsonPath("$.body.firstAppearance.chapter.number").value(1))
 			.andExpect(jsonPath("$.body.firstAppearance.chapter.names.it").value("Romance Dawn"));
@@ -121,6 +124,18 @@ class AffiliationControllerTest {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.content[0].body.romaji").value("Mugiwara no Ichimi"))
 			.andExpect(jsonPath("$.content[0].body.names.it").value("Pirati di Cappello di Paglia"));
+	}
+
+	@Test
+	void theListIsNarrowedByKind() throws Exception {
+		when(this.service.list(any(), any(), any(), any(), any())).thenReturn(new PageImpl<>(List.of()));
+
+		this.mockMvc.perform(get("/affiliations").param("kind", "NAVY").with(callerWith(Permission.CONTENT_READ)))
+			.andExpect(status().isOk());
+
+		var filter = ArgumentCaptor.forClass(ContentFilter.class);
+		verify(this.service).list(any(), any(), filter.capture(), any(), any());
+		assertThat(filter.getValue().attributes()).isEqualTo(Map.of(Affiliation.KIND_ATTRIBUTE, AffiliationKind.NAVY));
 	}
 
 	@Test
@@ -294,7 +309,8 @@ class AffiliationControllerTest {
 			.number(1)
 			.status(status)
 			.author(NAMI)
-			.body(new Affiliation("Mugiwara no Ichimi", translations, imageId, StoryPoint.ofChapter(CHAPTER_ID)))
+			.body(new Affiliation("Mugiwara no Ichimi", translations, imageId, StoryPoint.ofChapter(CHAPTER_ID),
+					AffiliationKind.PIRATE_CREW))
 			.createdAt(CREATED)
 			.updatedAt(CREATED)
 			.build();

@@ -16,6 +16,7 @@ http:
           "chapter": "",
           "episode": ""
         },
+        "kind": "PIRATE_CREW",
         "removeImage": false,
         "romaji": "",
         "translations": {}
@@ -43,6 +44,7 @@ examples:
               "chapter": "",
               "episode": ""
             },
+            "kind": "PIRATE_CREW",
             "removeImage": false,
             "romaji": "",
             "translations": {}
@@ -99,6 +101,7 @@ examples:
               "chapter": "",
               "episode": ""
             },
+            "kind": "PIRATE_CREW",
             "removeImage": false,
             "romaji": "",
             "translations": {}
@@ -139,6 +142,7 @@ examples:
               "chapter": "",
               "episode": ""
             },
+            "kind": "PIRATE_CREW",
             "removeImage": false,
             "romaji": "",
             "translations": {}

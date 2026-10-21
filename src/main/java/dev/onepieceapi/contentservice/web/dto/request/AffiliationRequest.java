@@ -1,6 +1,7 @@
 package dev.onepieceapi.contentservice.web.dto.request;
 
 import dev.onepieceapi.contentservice.domain.affiliation.Affiliation;
+import dev.onepieceapi.contentservice.domain.affiliation.AffiliationKind;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
 
@@ -21,7 +22,7 @@ import java.util.Map;
  */
 public record AffiliationRequest(@Size(max = Affiliation.ROMAJI_MAX_LENGTH) String romaji,
 		Map<String, @Valid AffiliationTranslationRequest> translations, Boolean removeImage,
-		FirstAppearanceRequest firstAppearance) {
+		FirstAppearanceRequest firstAppearance, AffiliationKind kind) {
 
 	/** Whether the emblem is to be removed; not saying so keeps it. */
 	public boolean removesImage() {
