@@ -5,6 +5,7 @@ import dev.onepieceapi.contentservice.domain.affiliation.Affiliation;
 import dev.onepieceapi.contentservice.domain.image.ImageChange;
 import dev.onepieceapi.contentservice.domain.workflow.EntityType;
 import dev.onepieceapi.contentservice.persistence.repository.AffiliationVersionRepository;
+import dev.onepieceapi.contentservice.persistence.repository.SpeciesVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
 import dev.onepieceapi.contentservice.persistence.repository.BountyVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
@@ -80,6 +81,9 @@ class AffiliationEmblemIntegrationTest {
 	private AffiliationVersionRepository affiliationRepository;
 
 	@Autowired
+	private SpeciesVersionRepository speciesRepository;
+
+	@Autowired
 	private BountyVersionRepository bountyRepository;
 
 	@Autowired
@@ -132,7 +136,7 @@ class AffiliationEmblemIntegrationTest {
 				this.auditLogRepository);
 		this.service = this.fixtures.service(images);
 		this.imageService = new ImageService(store, this.devilFruitRepository, this.volumeRepository,
-				this.bountyRepository, this.affiliationRepository);
+				this.bountyRepository, this.affiliationRepository, this.speciesRepository);
 	}
 
 	@Test

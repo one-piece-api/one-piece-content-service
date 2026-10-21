@@ -36,6 +36,11 @@ copertina PNG), **Capitolo** ed **Episodio** (relazioni verso arco/volume, date 
   lingua e descrizione, emblema PNG opzionale (quadrato, sfondo trasparente), prima apparizione.
   Nessun endpoint `linkable`: per ora nulla punta a un'affiliazione. Un capitolo o un episodio con
   affiliazioni online come prima apparizione non si ritira (`ONLINE_ITEMS_LINKED`, voce `affiliations`).
+- **Specie** (`/species`): la razza di un personaggio. Chiave `romaji` (slug `gyojin`), nome unico per
+  lingua e descrizione, immagine PNG opzionale (ritratto 4:5, senza trasparenza richiesta), prima
+  apparizione. `GET /species/linkable` elenca le specie con una versione approvata (per i personaggi).
+  Un capitolo o un episodio con specie online come prima apparizione non si ritira
+  (`ONLINE_ITEMS_LINKED`, voce `species`).
 - **Dashboard** (`/dashboard`): contatori per stato, attività recente del chiamante
   (dall'audit log) e pagine per stato trasversali alle entità.
 

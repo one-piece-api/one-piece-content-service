@@ -29,6 +29,7 @@ import dev.onepieceapi.contentservice.persistence.repository.ImageRepository;
 import dev.onepieceapi.contentservice.persistence.repository.JpaImageStore;
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
 import dev.onepieceapi.contentservice.persistence.repository.AffiliationVersionRepository;
+import dev.onepieceapi.contentservice.persistence.repository.SpeciesVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.BountyVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.VolumeVersionRepository;
 import dev.onepieceapi.contentservice.service.exception.ContentErrorCode;
@@ -135,6 +136,9 @@ class DevilFruitImageIntegrationTest {
 	private AffiliationVersionRepository affiliationRepository;
 
 	@Autowired
+	private SpeciesVersionRepository speciesRepository;
+
+	@Autowired
 	private ContentVersionRepository contentVersionRepository;
 
 	@Autowired
@@ -179,7 +183,7 @@ class DevilFruitImageIntegrationTest {
 				this.contentVersionRepository, this.contentRepository,
 				new AuditLogService(this.auditLogRepository, clock), clock, images);
 		this.imageService = new ImageService(store, this.versionRepository, this.volumeRepository,
-				this.bountyRepository, this.affiliationRepository);
+				this.bountyRepository, this.affiliationRepository, this.speciesRepository);
 		this.firstAppearance = OnlineChapters.onlineChapter(this.contentRepository, this.chapterRepository);
 
 		this.paramecia = this.entityManager

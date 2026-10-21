@@ -32,6 +32,7 @@ import dev.onepieceapi.contentservice.persistence.mapper.UserMapper;
 import dev.onepieceapi.contentservice.persistence.repository.ArcVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
 import dev.onepieceapi.contentservice.persistence.repository.AffiliationVersionRepository;
+import dev.onepieceapi.contentservice.persistence.repository.SpeciesVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.BountyVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.EpisodeVersionRepository;
@@ -155,6 +156,9 @@ class FirstAppearanceIntegrationTest {
 	private AffiliationVersionRepository affiliationRepository;
 
 	@Autowired
+	private SpeciesVersionRepository speciesRepository;
+
+	@Autowired
 	private ContentVersionRepository contentVersionRepository;
 
 	@Autowired
@@ -211,13 +215,13 @@ class FirstAppearanceIntegrationTest {
 						this.volumeRepository),
 				new ChapterRules(this.contentRepository, this.arcRepository, this.volumeRepository,
 						this.fruitRepository, this.typeRepository, this.bountyRepository, this.affiliationRepository,
-						properties),
+						this.speciesRepository, properties),
 				auditLogService, clock);
 		this.episodes = new EpisodeService(this.episodeRepository, this.contentVersionRepository,
 				this.contentRepository,
 				new EpisodeValidator(this.episodeRepository, this.languageRepository, this.arcRepository),
 				new EpisodeRules(this.contentRepository, this.arcRepository, this.fruitRepository, this.typeRepository,
-						this.bountyRepository, this.affiliationRepository, properties),
+						this.bountyRepository, this.affiliationRepository, this.speciesRepository, properties),
 				auditLogService, clock);
 		this.paramecia = typeContent(PUBLISHED, type("Paramecia", onlineChapter()));
 	}

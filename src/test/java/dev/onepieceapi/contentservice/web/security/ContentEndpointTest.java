@@ -46,4 +46,11 @@ class ContentEndpointTest {
 		assertThat(ContentEndpoint.requiredPermission(HttpMethod.GET, ApiPaths.DEVIL_FRUIT_TYPES_LINKABLE)).isEmpty();
 	}
 
+	@Test
+	void theSpeciesACharacterMayBeLinkedToTakeContentWriteAndAreNotInTheSections() {
+		assertThat(SecuredEndpoint.requiredPermission(HttpMethod.GET, ApiPaths.SPECIES_LINKABLE))
+			.contains(Permission.CONTENT_WRITE);
+		assertThat(ContentEndpoint.requiredPermission(HttpMethod.GET, ApiPaths.SPECIES_LINKABLE)).isEmpty();
+	}
+
 }

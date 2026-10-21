@@ -1,0 +1,6 @@
+info:
+  name: Species
+  type: folder
+
+request:
+  auth: inherit

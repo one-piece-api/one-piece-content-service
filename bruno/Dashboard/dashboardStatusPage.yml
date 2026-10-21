@@ -76,6 +76,10 @@ http:
       value: AFFILIATION
       type: query
       disabled: true
+    - name: entity
+      value: SPECIES
+      type: query
+      disabled: true
     - name: author
       value: ""
       type: query
@@ -178,6 +182,10 @@ examples:
           disabled: true
         - name: entity
           value: AFFILIATION
+          type: query
+          disabled: true
+        - name: entity
+          value: SPECIES
           type: query
           disabled: true
         - name: author
@@ -323,6 +331,10 @@ examples:
           value: AFFILIATION
           type: query
           disabled: true
+        - name: entity
+          value: SPECIES
+          type: query
+          disabled: true
         - name: author
           value: ""
           type: query
@@ -438,6 +450,10 @@ examples:
           disabled: true
         - name: entity
           value: AFFILIATION
+          type: query
+          disabled: true
+        - name: entity
+          value: SPECIES
           type: query
           disabled: true
         - name: author

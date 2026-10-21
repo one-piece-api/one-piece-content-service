@@ -52,6 +52,7 @@ enum SecuredEndpoint {
 	LINKABLE_CHAPTERS(HttpMethod.GET, ApiPaths.CHAPTERS_LINKABLE, Permission.CONTENT_WRITE),
 	LINKABLE_EPISODES(HttpMethod.GET, ApiPaths.EPISODES_LINKABLE, Permission.CONTENT_WRITE),
 	LINKABLE_BOUNTIES(HttpMethod.GET, ApiPaths.BOUNTIES_LINKABLE, Permission.CONTENT_WRITE),
+	LINKABLE_SPECIES(HttpMethod.GET, ApiPaths.SPECIES_LINKABLE, Permission.CONTENT_WRITE),
 
 	// An image, for whoever sees a version using it - decided inside the service, like
 	// the versions themselves.

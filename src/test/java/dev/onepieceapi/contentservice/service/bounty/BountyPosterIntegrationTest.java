@@ -6,6 +6,7 @@ import dev.onepieceapi.contentservice.domain.image.ImageChange;
 import dev.onepieceapi.contentservice.domain.workflow.EntityType;
 import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
 import dev.onepieceapi.contentservice.persistence.repository.AffiliationVersionRepository;
+import dev.onepieceapi.contentservice.persistence.repository.SpeciesVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.BountyVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
@@ -90,6 +91,9 @@ class BountyPosterIntegrationTest {
 	private AffiliationVersionRepository affiliationRepository;
 
 	@Autowired
+	private SpeciesVersionRepository speciesRepository;
+
+	@Autowired
 	private VolumeVersionRepository volumeRepository;
 
 	@Autowired
@@ -139,7 +143,7 @@ class BountyPosterIntegrationTest {
 				this.auditLogRepository);
 		this.service = this.fixtures.service(images);
 		this.imageService = new ImageService(store, this.devilFruitRepository, this.volumeRepository,
-				this.bountyRepository, this.affiliationRepository);
+				this.bountyRepository, this.affiliationRepository, this.speciesRepository);
 	}
 
 	@Test
