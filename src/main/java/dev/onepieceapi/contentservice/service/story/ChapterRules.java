@@ -7,6 +7,7 @@ import dev.onepieceapi.contentservice.domain.workflow.Version;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAction;
 import dev.onepieceapi.contentservice.persistence.repository.ArcVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.AffiliationVersionRepository;
+import dev.onepieceapi.contentservice.persistence.repository.CharacterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.SpeciesVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.BountyVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
@@ -14,6 +15,7 @@ import dev.onepieceapi.contentservice.persistence.repository.DevilFruitTypeVersi
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.VolumeVersionRepository;
 import dev.onepieceapi.contentservice.service.affiliation.AffiliationRelations;
+import dev.onepieceapi.contentservice.service.character.CharacterRelations;
 import dev.onepieceapi.contentservice.service.species.SpeciesRelations;
 import dev.onepieceapi.contentservice.service.bounty.BountyRelations;
 import dev.onepieceapi.contentservice.service.content.ContentRules;
@@ -58,6 +60,8 @@ public class ChapterRules implements ContentRules<Chapter> {
 
 	private final SpeciesVersionRepository speciesRepository;
 
+	private final CharacterVersionRepository characterRepository;
+
 	private final RulesProperties properties;
 
 	@Override
@@ -76,7 +80,8 @@ public class ChapterRules implements ContentRules<Chapter> {
 			.or(() -> typesLinked(action, contentId))
 			.or(() -> bountiesLinked(action, contentId))
 			.or(() -> affiliationsLinked(action, contentId))
-			.or(() -> speciesLinked(action, contentId));
+			.or(() -> speciesLinked(action, contentId))
+			.or(() -> charactersLinked(action, contentId));
 	}
 
 	private Optional<ActionBlock> fruitsLinked(VersionAction action, UUID contentId) {
@@ -112,6 +117,13 @@ public class ChapterRules implements ContentRules<Chapter> {
 				this.speciesRepository::findOnlineFirstAppearingIn);
 		return RelationRules.onlineItemsLinked(action, SpeciesRelations.FIRST_APPEARANCE_CHAPTER, contentId, species,
 				this.properties.blockingPreviewSize());
+	}
+
+	private Optional<ActionBlock> charactersLinked(VersionAction action, UUID contentId) {
+		var characters = new LinkedItems(this.characterRepository::countOnlineFirstAppearingIn,
+				this.characterRepository::findOnlineFirstAppearingIn);
+		return RelationRules.onlineItemsLinked(action, CharacterRelations.FIRST_APPEARANCE_CHAPTER, contentId,
+				characters, this.properties.blockingPreviewSize());
 	}
 
 }

@@ -1,14 +1,18 @@
 package dev.onepieceapi.contentservice.service.species;
 
+import dev.onepieceapi.contentservice.config.RulesProperties;
 import dev.onepieceapi.contentservice.domain.species.Species;
 import dev.onepieceapi.contentservice.domain.workflow.ActionBlock;
 import dev.onepieceapi.contentservice.domain.workflow.Version;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAction;
 import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
+import dev.onepieceapi.contentservice.persistence.repository.CharacterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
 import dev.onepieceapi.contentservice.persistence.repository.EpisodeVersionRepository;
+import dev.onepieceapi.contentservice.service.character.CharacterRelations;
 import dev.onepieceapi.contentservice.service.content.ContentRules;
 import dev.onepieceapi.contentservice.service.content.FirstAppearanceRules;
+import dev.onepieceapi.contentservice.service.content.LinkedItems;
 import dev.onepieceapi.contentservice.service.content.RelationRules;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,11 +24,14 @@ import java.util.UUID;
 /**
  * What a Species needs to go online - published or restored (implementation plan of the
  * Species, D4): a first appearance in a chapter or an episode, and each one it names
- * online. Not even {@code content:admin} lifts it. Nothing blocks its retirement: no
- * entity points to a species yet (the retire block comes with the Character).
+ * online. And what it owes its characters (implementation plan of the Character, D8): it
+ * cannot be retired while online characters name it. Not even {@code content:admin} lifts
+ * them.
  * <p>
- * The chapter and the episode are held first, so the retirement of either waits for an
- * species going online with it ({@code ChapterRules}, {@code EpisodeRules}).
+ * The chapter and the episode are held first, so the retirement of either waits for a
+ * species going online with it ({@code ChapterRules}, {@code EpisodeRules}); the species
+ * is held exclusively before it is retired, so it waits for any character going online
+ * with it ({@code CharacterRules}).
  */
 @Component
 @RequiredArgsConstructor(onConstructor_ = { @Autowired })
@@ -36,8 +43,13 @@ public class SpeciesRules implements ContentRules<Species> {
 
 	private final EpisodeVersionRepository episodeRepository;
 
+	private final CharacterVersionRepository characterRepository;
+
+	private final RulesProperties properties;
+
 	@Override
 	public void lockBefore(VersionAction action, UUID contentId, Version<Species> version) {
+		RelationRules.lockLinkedBefore(action, contentId, this.contentRepository);
 		RelationRules.lockTargetBefore(action, SpeciesRelations.FIRST_APPEARANCE_CHAPTER, version.body(),
 				this.contentRepository);
 		RelationRules.lockTargetBefore(action, SpeciesRelations.FIRST_APPEARANCE_EPISODE, version.body(),
@@ -51,7 +63,15 @@ public class SpeciesRules implements ContentRules<Species> {
 			.or(() -> RelationRules.targetNotOnline(action, SpeciesRelations.FIRST_APPEARANCE_CHAPTER, species,
 					this.chapterRepository))
 			.or(() -> RelationRules.targetNotOnline(action, SpeciesRelations.FIRST_APPEARANCE_EPISODE, species,
-					this.episodeRepository));
+					this.episodeRepository))
+			.or(() -> RelationRules.onlineItemsLinked(action, CharacterRelations.SPECIES, contentId, linkedCharacters(),
+					this.properties.blockingPreviewSize()));
+	}
+
+	/** The queries of the characters for the species they name. */
+	private LinkedItems linkedCharacters() {
+		return new LinkedItems(this.characterRepository::countOnlineWithSpecies,
+				this.characterRepository::findOnlineWithSpecies);
 	}
 
 }

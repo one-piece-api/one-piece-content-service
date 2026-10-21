@@ -40,7 +40,13 @@ copertina PNG), **Capitolo** ed **Episodio** (relazioni verso arco/volume, date 
   lingua e descrizione, immagine PNG opzionale (ritratto 4:5, senza trasparenza richiesta), prima
   apparizione. `GET /species/linkable` elenca le specie con una versione approvata (per i personaggi).
   Un capitolo o un episodio con specie online come prima apparizione non si ritira
-  (`ONLINE_ITEMS_LINKED`, voce `species`).
+  (`ONLINE_ITEMS_LINKED`, voce `species`), né una specie indicata da personaggi online.
+- **Personaggio** (`/characters`): chiave `romaji` (slug `nami`), nome unico per lingua e
+  descrizione, `japaneseName`, `status`, `gender`, `birthday` (`--07-03`, opzionale), liste ordinate
+  di epiteti (per lingua), alias e specie (`/species/linkable`, al massimo 20 epiteti e 20 alias),
+  ritratto PNG opzionale (4:5, senza trasparenza), prima apparizione. Filtri `?characterStatus=`
+  e `?species=`. Va online solo con prima apparizione e ogni specie online (`RELATED_NOT_ONLINE`,
+  `speciesIndex`); un capitolo o un episodio con personaggi online non si ritira (voce `characters`).
 - **Dashboard** (`/dashboard`): contatori per stato, attività recente del chiamante
   (dall'audit log) e pagine per stato trasversali alle entità.
 

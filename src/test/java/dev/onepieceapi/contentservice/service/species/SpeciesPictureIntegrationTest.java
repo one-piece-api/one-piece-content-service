@@ -9,6 +9,7 @@ import dev.onepieceapi.contentservice.persistence.repository.SpeciesVersionRepos
 import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
 import dev.onepieceapi.contentservice.persistence.repository.BountyVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
+import dev.onepieceapi.contentservice.persistence.repository.CharacterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitVersionRepository;
@@ -82,6 +83,9 @@ class SpeciesPictureIntegrationTest {
 	private SpeciesVersionRepository speciesRepository;
 
 	@Autowired
+	private CharacterVersionRepository characterRepository;
+
+	@Autowired
 	private BountyVersionRepository bountyRepository;
 
 	@Autowired
@@ -134,7 +138,7 @@ class SpeciesPictureIntegrationTest {
 				this.auditLogRepository);
 		this.service = this.fixtures.service(images);
 		this.imageService = new ImageService(store, this.devilFruitRepository, this.volumeRepository,
-				this.bountyRepository, this.affiliationRepository, this.speciesRepository);
+				this.bountyRepository, this.affiliationRepository, this.speciesRepository, this.characterRepository);
 	}
 
 	@Test

@@ -7,7 +7,7 @@ import dev.onepieceapi.contentservice.service.content.RelationDescriptor;
 /**
  * The relations of a Species (ADR-0008): the chapter and the episode it first appears in.
  * Both keep a chapter or an episode from being retired as {@code species}. Characters
- * will point to it (Character plan).
+ * point to it through their list ({@code CharacterRelations#SPECIES}).
  */
 public final class SpeciesRelations {
 

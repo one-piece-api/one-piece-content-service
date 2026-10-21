@@ -24,9 +24,9 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * What a Character will need to say of a Species (implementation plan of the Species,
- * D7): the species it may be linked to, and the species it points to as they are today.
- * Each answers in batch, one query for a whole page.
+ * What a Character needs to say of a Species (implementation plan of the Species, D7):
+ * the species it may be linked to, and the species it points to as they are today. Each
+ * answers in batch, one query for a whole page.
  */
 @Service
 @Transactional(readOnly = true)

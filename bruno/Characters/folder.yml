@@ -1,0 +1,6 @@
+info:
+  name: Characters
+  type: folder
+
+request:
+  auth: inherit

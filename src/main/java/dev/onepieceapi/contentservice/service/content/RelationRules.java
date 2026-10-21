@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.IntStream;
 
 /**
  * The rules every relation follows (implementation plan of the Devil Fruit, D2; of the
@@ -44,6 +45,8 @@ public class RelationRules {
 	public static final Set<VersionAction> GOING_ONLINE = EnumSet.of(VersionAction.PUBLISH, VersionAction.RESTORE);
 
 	private static final String ID_SUFFIX = "Id";
+
+	private static final String INDEX_SUFFIX = "Index";
 
 	private static final String ID = "id";
 
@@ -71,6 +74,21 @@ public class RelationRules {
 		return Optional.of(new FieldViolation(fieldPrefix + relation.field(), relation.notLinkable()));
 	}
 
+	/**
+	 * The same, for a relation held by each entry of a list of the body - e.g. the
+	 * species of a character (implementation plan of the Character, D14): one violation
+	 * per entry at fault, naming the entry itself, e.g. {@code species[1]}.
+	 * @param listField the list as a request names it, e.g. {@code species}
+	 */
+	public <P> List<FieldViolation> notLinkable(RelationDescriptor<P> relation, List<P> parts, String listField,
+			VersionBodyRepository<?> targets) {
+		return IntStream.range(0, parts.size())
+			.mapToObj(index -> notLinkable(relation, parts.get(index), "", targets)
+				.map(violation -> new FieldViolation(entryField(listField, index), violation.message())))
+			.flatMap(Optional::stream)
+			.toList();
+	}
+
 	/** Before an item goes online: holds the related content shared. */
 	public <T> void lockTargetBefore(VersionAction action, RelationDescriptor<T> relation, T body,
 			ContentRepository contents) {
@@ -78,6 +96,12 @@ public class RelationRules {
 		if (GOING_ONLINE.contains(action) && target != null) {
 			contents.lockShared(target);
 		}
+	}
+
+	/** The same, for every entry of a list of the body, in its order. */
+	public <P> void lockTargetBefore(VersionAction action, RelationDescriptor<P> relation, List<P> parts,
+			ContentRepository contents) {
+		parts.forEach(part -> lockTargetBefore(action, relation, part, contents));
 	}
 
 	/**
@@ -112,6 +136,21 @@ public class RelationRules {
 		return Optional.of(new ActionBlock(relation.targetNotOnline(), detail));
 	}
 
+	/**
+	 * The same, for a relation held by each entry of a list of the body: the first entry
+	 * whose related content is not online, the detail first naming its index, e.g.
+	 * {@code {speciesIndex: 1, speciesId, speciesRomaji}}.
+	 * @param listField the list as a request names it, e.g. {@code species}
+	 */
+	public <P> Optional<ActionBlock> targetNotOnline(VersionAction action, RelationDescriptor<P> relation,
+			List<P> parts, String listField, VersionBodyRepository<?> targets) {
+		return IntStream.range(0, parts.size())
+			.mapToObj(index -> targetNotOnline(action, relation, parts.get(index),
+					Map.of(listField + INDEX_SUFFIX, index), targets))
+			.flatMap(Optional::stream)
+			.findFirst();
+	}
+
 	/** Before the related content is retired: holds it exclusively. */
 	public void lockLinkedBefore(VersionAction action, UUID contentId, ContentRepository contents) {
 		if (action == VersionAction.RETIRE) {
@@ -139,6 +178,11 @@ public class RelationRules {
 			.toList();
 		return Optional
 			.of(new ActionBlock(relation.onlineItemsLinked(), Map.of(COUNT, count, relation.itemsName(), named)));
+	}
+
+	/** An entry of a list as a request names it, e.g. {@code species[1]}. */
+	private static String entryField(String listField, int index) {
+		return listField + "[" + index + "]";
 	}
 
 	/** An item by its id and natural key, e.g. {@code {id, romaji}}. */

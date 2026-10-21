@@ -80,6 +80,10 @@ http:
       value: SPECIES
       type: query
       disabled: true
+    - name: entity
+      value: CHARACTER
+      type: query
+      disabled: true
     - name: author
       value: ""
       type: query
@@ -186,6 +190,10 @@ examples:
           disabled: true
         - name: entity
           value: SPECIES
+          type: query
+          disabled: true
+        - name: entity
+          value: CHARACTER
           type: query
           disabled: true
         - name: author
@@ -335,6 +343,10 @@ examples:
           value: SPECIES
           type: query
           disabled: true
+        - name: entity
+          value: CHARACTER
+          type: query
+          disabled: true
         - name: author
           value: ""
           type: query
@@ -454,6 +466,10 @@ examples:
           disabled: true
         - name: entity
           value: SPECIES
+          type: query
+          disabled: true
+        - name: entity
+          value: CHARACTER
           type: query
           disabled: true
         - name: author

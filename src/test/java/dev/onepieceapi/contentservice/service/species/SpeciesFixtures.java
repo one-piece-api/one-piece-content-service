@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.service.species;
 
+import dev.onepieceapi.contentservice.config.RulesProperties;
 import dev.onepieceapi.contentservice.domain.species.Species;
 import dev.onepieceapi.contentservice.domain.species.SpeciesTranslation;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
@@ -15,6 +16,7 @@ import dev.onepieceapi.contentservice.persistence.mapper.UserMapper;
 import dev.onepieceapi.contentservice.persistence.repository.SpeciesVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
+import dev.onepieceapi.contentservice.persistence.repository.CharacterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.EpisodeVersionRepository;
@@ -97,7 +99,10 @@ final class SpeciesFixtures {
 	SpeciesService service(ContentImages images) {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
 		var validator = new SpeciesValidator(this.species, this.languages, this.chapters, this.episodes);
-		var rules = new SpeciesRules(this.contents, this.chapters, this.episodes);
+		// No character in these tests: the characters naming a species are covered with
+		// them.
+		var rules = new SpeciesRules(this.contents, this.chapters, this.episodes,
+				mock(CharacterVersionRepository.class), new RulesProperties(5));
 		return new SpeciesService(new SpeciesDefinition(this.species, validator, rules), this.contentVersions,
 				this.contents, new AuditLogService(this.auditLog, clock), clock, images);
 	}

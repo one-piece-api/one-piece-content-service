@@ -1,0 +1,212 @@
+info:
+  name: characterCreate
+  type: http
+  seq: 2
+  tags:
+    - Characters
+
+http:
+  method: POST
+  url: "{{baseUrl}}/characters"
+  body:
+    type: json
+    data: |-
+      {
+        "aliases": [],
+        "birthday": "--05-05",
+        "epithets": [
+          {
+            "text": {}
+          }
+        ],
+        "firstAppearance": {
+          "chapter": "",
+          "episode": ""
+        },
+        "gender": "MALE",
+        "japaneseName": "",
+        "removeImage": false,
+        "romaji": "",
+        "species": [],
+        "status": "ALIVE",
+        "translations": {}
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+examples:
+  - name: 201 Response
+    description: Created
+    request:
+      url: "{{baseUrl}}/characters"
+      method: POST
+      body:
+        type: json
+        data: |-
+          {
+            "aliases": [],
+            "birthday": "--05-05",
+            "epithets": [
+              {
+                "text": {}
+              }
+            ],
+            "firstAppearance": {
+              "chapter": "",
+              "episode": ""
+            },
+            "gender": "MALE",
+            "japaneseName": "",
+            "removeImage": false,
+            "romaji": "",
+            "species": [],
+            "status": "ALIVE",
+            "translations": {}
+          }
+    response:
+      status: 201
+      statusText: Created
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          {
+            "id": "",
+            "onlineVersionNumber": 0,
+            "versions": [
+              {
+                "allowedActions": [
+                  "EDIT"
+                ],
+                "author": {
+                  "email": "",
+                  "id": "",
+                  "username": ""
+                },
+                "basedOn": 0,
+                "claimant": {
+                  "email": "",
+                  "id": "",
+                  "username": ""
+                },
+                "createdAt": "",
+                "everPublished": false,
+                "number": 0,
+                "overrideActions": [
+                  "EDIT"
+                ],
+                "status": "DRAFT",
+                "updatedAt": ""
+              }
+            ]
+          }
+  - name: 4XX Response
+    description: Client error - a problem detail, except a 401/403 rejected by the security filter chain before reaching the application, which has no body
+    request:
+      url: "{{baseUrl}}/characters"
+      method: POST
+      body:
+        type: json
+        data: |-
+          {
+            "aliases": [],
+            "birthday": "--05-05",
+            "epithets": [
+              {
+                "text": {}
+              }
+            ],
+            "firstAppearance": {
+              "chapter": "",
+              "episode": ""
+            },
+            "gender": "MALE",
+            "japaneseName": "",
+            "removeImage": false,
+            "romaji": "",
+            "species": [],
+            "status": "ALIVE",
+            "translations": {}
+          }
+    response:
+      headers:
+        - name: Content-Type
+          value: application/problem+json
+      body:
+        type: json
+        data: |-
+          {
+            "detail": "",
+            "errorCode": "",
+            "errors": [
+              {
+                "field": "",
+                "message": ""
+              }
+            ],
+            "instance": "",
+            "status": 0,
+            "timestamp": "",
+            "title": "",
+            "traceId": "",
+            "type": ""
+          }
+  - name: 5XX Response
+    description: Unexpected server error
+    request:
+      url: "{{baseUrl}}/characters"
+      method: POST
+      body:
+        type: json
+        data: |-
+          {
+            "aliases": [],
+            "birthday": "--05-05",
+            "epithets": [
+              {
+                "text": {}
+              }
+            ],
+            "firstAppearance": {
+              "chapter": "",
+              "episode": ""
+            },
+            "gender": "MALE",
+            "japaneseName": "",
+            "removeImage": false,
+            "romaji": "",
+            "species": [],
+            "status": "ALIVE",
+            "translations": {}
+          }
+    response:
+      headers:
+        - name: Content-Type
+          value: application/problem+json
+      body:
+        type: json
+        data: |-
+          {
+            "detail": "",
+            "errorCode": "",
+            "errors": [
+              {
+                "field": "",
+                "message": ""
+              }
+            ],
+            "instance": "",
+            "status": 0,
+            "timestamp": "",
+            "title": "",
+            "traceId": "",
+            "type": ""
+          }
