@@ -23,10 +23,10 @@ import static org.assertj.core.api.Assertions.tuple;
 import static org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase.Replace;
 
 /**
- * The Affiliation in the interface one-piece-public-api reads ({@code V23}) against a
- * real PostgreSQL (Testcontainers): only the versions online are shown, one row per
- * language, and the emblem is visible only while an affiliation online uses it. Seeded in
- * SQL, as the table owner, and read through the {@code published} views.
+ * The Affiliation in the interface one-piece-public-api reads ({@code V23}, {@code V29})
+ * against a real PostgreSQL (Testcontainers): only the versions online are shown, one row
+ * per language, and the emblem is visible only while an affiliation online uses it.
+ * Seeded in SQL, as the table owner, and read through the {@code published} views.
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = Replace.NONE)
@@ -88,6 +88,18 @@ class PublishedAffiliationViewIntegrationTest {
 
 		assertThat(rows).containsExactlyInAnyOrder(tuple("it", chapter, "1", 1, "Title IT"),
 				tuple("en", chapter, null, null, null));
+	}
+
+	@Test
+	void theKindIsShownAndIsNullForAVersionWrittenBeforeKindsExisted() {
+		set(affiliation(content(), 1, PUBLISHED, "Kaigun", "it"), "kind", "NAVY");
+		affiliation(content(), 1, PUBLISHED, "Seifu", "it");
+
+		var rows = this.jdbc.sql("select romaji, kind from published.affiliation")
+			.query((rs, n) -> tuple(rs.getString("romaji"), rs.getString("kind")))
+			.list();
+
+		assertThat(rows).containsExactlyInAnyOrder(tuple("Kaigun", "NAVY"), tuple("Seifu", null));
 	}
 
 	@Test
