@@ -44,9 +44,9 @@ public class BountyResponseMapper {
 
 	/** A row of the list of bounties. */
 	public ContentSummaryResponse<BountyNamesResponse> toSummaryResponse(ContentSummary<Bounty> summary,
-			Set<UUID> replaced) {
+			Set<UUID> replaced, Map<UUID, CharacterReference> holders) {
 		return ContentResponseMapper.toSummaryResponse(summary,
-				bounty -> toNamesResponse(bounty, replaced.contains(summary.contentId())));
+				bounty -> toNamesResponse(bounty, replaced.contains(summary.contentId()), holders));
 	}
 
 	/** Everything the version says. */
@@ -66,10 +66,14 @@ public class BountyResponseMapper {
 				FirstAppearanceMapper.toResponse(bounty.firstAppearance(), storyItems));
 	}
 
-	/** What a list row shows: the key, the condition and whether the bounty stands. */
-	public BountyNamesResponse toNamesResponse(Bounty bounty, boolean replaced) {
+	/**
+	 * What a list row shows: the key, the condition, whether the bounty stands and its
+	 * holder.
+	 */
+	public BountyNamesResponse toNamesResponse(Bounty bounty, boolean replaced, Map<UUID, CharacterReference> holders) {
 		return new BountyNamesResponse(bounty.naturalKeyText(), bounty.posterName(), bounty.amount(),
-				bounty.condition(), BountyValidity.of(bounty.inactive(), replaced));
+				bounty.condition(), BountyValidity.of(bounty.inactive(), replaced),
+				toHolderResponse(bounty.holderContentId(), holders));
 	}
 
 	/**

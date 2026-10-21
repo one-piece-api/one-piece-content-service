@@ -10,8 +10,9 @@ import dev.onepieceapi.contentservice.domain.bounty.BountyValidity;
  *
  * @param key the key text; null while the poster's name or the amount is missing
  * @param validity derived, never stored: as the caller sees the other bounties
+ * @param holder the character the poster is about, as it is today; null for none
  */
 public record BountyNamesResponse(String key, String posterName, Long amount, BountyCondition condition,
-		BountyValidity validity) {
+		BountyValidity validity, CharacterReferenceResponse holder) {
 
 }

@@ -8482,6 +8482,8 @@ components:
           enum:
           - DEAD_OR_ALIVE
           - ONLY_ALIVE
+        holder:
+          $ref: "#/components/schemas/CharacterReferenceResponse"
         key:
           type: string
         posterName:

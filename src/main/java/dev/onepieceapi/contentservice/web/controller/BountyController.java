@@ -51,8 +51,10 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * The Bounty section: every endpoint of {@link ContentController}, plus creating a
@@ -133,7 +135,11 @@ class BountyController extends ContentController<Bounty, BountyResponse, BountyN
 			AuthenticatedCaller caller) {
 		Set<UUID> replaced = this.links.replacedAmong(rows.stream().map(ContentSummary::contentId).toList(),
 				visibleTo(caller));
-		return rows.stream().map(row -> BountyResponseMapper.toSummaryResponse(row, replaced)).toList();
+		var holders = this.characters.referencesOf(rows.stream()
+			.map(row -> row.version().body().holderContentId())
+			.filter(Objects::nonNull)
+			.collect(Collectors.toSet()));
+		return rows.stream().map(row -> BountyResponseMapper.toSummaryResponse(row, replaced, holders)).toList();
 	}
 
 	/**

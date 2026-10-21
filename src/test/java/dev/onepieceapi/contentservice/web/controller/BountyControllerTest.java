@@ -200,6 +200,26 @@ class BountyControllerTest {
 	}
 
 	@Test
+	void theListSaysTheHolderOfEachRowLookingThemUpOnceForThePage() throws Exception {
+		var rows = List.of(
+				new ContentSummary<>(CONTENT_ID, version(VersionStatus.PUBLISHED, false, null, HOLDER_ID), 1, Set.of()),
+				new ContentSummary<>(NEXT_ID, version(VersionStatus.PUBLISHED, false, null), 1, Set.of()));
+		when(this.service.list(any(), any(), any(), any(), any()))
+			.thenReturn(new PageImpl<>(rows, PageRequest.of(0, 20), 2));
+		when(this.links.replacedAmong(anyCollection(), any())).thenReturn(Set.of());
+		when(this.characters.referencesOf(Set.of(HOLDER_ID)))
+			.thenReturn(Map.of(HOLDER_ID, new CharacterReference(HOLDER_ID, "Nami", Map.of("en", "Nami"))));
+
+		this.mockMvc.perform(get("/bounties").with(callerWith(Permission.CONTENT_READ)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.content[0].body.holder.id").value(HOLDER_ID.toString()))
+			.andExpect(jsonPath("$.content[0].body.holder.romaji").value("Nami"))
+			.andExpect(jsonPath("$.content[0].body.holder.names.en").value("Nami"))
+			.andExpect(jsonPath("$.content[1].body.holder").doesNotExist());
+		verify(this.characters).referencesOf(Set.of(HOLDER_ID));
+	}
+
+	@Test
 	void theListIsNarrowedByValidityAndConditionAndSortableByAmount() throws Exception {
 		when(this.service.list(any(), any(), any(), any(), any()))
 			.thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 20), 0));
