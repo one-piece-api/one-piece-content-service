@@ -5,6 +5,7 @@ import dev.onepieceapi.contentservice.domain.bounty.BountyChain;
 import dev.onepieceapi.contentservice.domain.bounty.BountyReference;
 import dev.onepieceapi.contentservice.domain.bounty.BountyTranslation;
 import dev.onepieceapi.contentservice.domain.bounty.BountyValidity;
+import dev.onepieceapi.contentservice.domain.character.CharacterReference;
 import dev.onepieceapi.contentservice.domain.story.NumberedReference;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAccess;
@@ -12,6 +13,7 @@ import dev.onepieceapi.contentservice.web.dto.response.BountyNamesResponse;
 import dev.onepieceapi.contentservice.web.dto.response.BountyReferenceResponse;
 import dev.onepieceapi.contentservice.web.dto.response.BountyResponse;
 import dev.onepieceapi.contentservice.web.dto.response.BountyTranslationResponse;
+import dev.onepieceapi.contentservice.web.dto.response.CharacterReferenceResponse;
 import dev.onepieceapi.contentservice.web.dto.response.ContentSummaryResponse;
 import dev.onepieceapi.contentservice.web.dto.response.VersionResponse;
 import lombok.experimental.UtilityClass;
@@ -25,18 +27,19 @@ import java.util.UUID;
 /**
  * From bounties to their response bodies: what a version says is mapped here, the
  * workflow around it by {@link ContentResponseMapper}. The bounties it points to and the
- * chapter and the episode it first appears in are given already looked up, as are the
- * bounties a page of the list replaces - as today, for a whole page at once - so the
- * mapper reads no database.
+ * holder and the chapter and the episode it first appears in are given already looked up,
+ * as are the bounties a page of the list replaces - as today, for a whole page at once -
+ * so the mapper reads no database.
  */
 @UtilityClass
 public class BountyResponseMapper {
 
 	/** A version of a bounty as its caller meets it, with everything it says. */
 	public VersionResponse<BountyResponse> toVersionResponse(VersionAccess<Bounty> access, BountyChain chain,
-			Map<UUID, BountyReference> bounties, Map<UUID, NumberedReference> storyItems, ImageResponseMapper images) {
+			Map<UUID, BountyReference> bounties, Map<UUID, CharacterReference> holders,
+			Map<UUID, NumberedReference> storyItems, ImageResponseMapper images) {
 		return ContentResponseMapper.toVersionResponse(access,
-				bounty -> toResponse(bounty, chain, bounties, storyItems, images));
+				bounty -> toResponse(bounty, chain, bounties, holders, storyItems, images));
 	}
 
 	/** A row of the list of bounties. */
@@ -48,7 +51,8 @@ public class BountyResponseMapper {
 
 	/** Everything the version says. */
 	public BountyResponse toResponse(Bounty bounty, BountyChain chain, Map<UUID, BountyReference> bounties,
-			Map<UUID, NumberedReference> storyItems, ImageResponseMapper images) {
+			Map<UUID, CharacterReference> holders, Map<UUID, NumberedReference> storyItems,
+			ImageResponseMapper images) {
 		Map<String, BountyTranslationResponse> translations = new TreeMap<>();
 		bounty.translations().forEach((language, translation) -> translations.put(language, toResponse(translation)));
 		List<BountyReferenceResponse> members = chain.contentIds()
@@ -57,8 +61,8 @@ public class BountyResponseMapper {
 			.toList();
 		return new BountyResponse(bounty.posterName(), bounty.amount(), bounty.condition(), bounty.inactive(),
 				BountyValidity.of(bounty.inactive(), chain.next() != null),
-				toResponse(bounty.previousContentId(), bounties), toResponse(chain.next(), bounties), members,
-				translations, images.toResponse(bounty.imageId()),
+				toResponse(bounty.previousContentId(), bounties), toHolderResponse(bounty.holderContentId(), holders),
+				toResponse(chain.next(), bounties), members, translations, images.toResponse(bounty.imageId()),
 				FirstAppearanceMapper.toResponse(bounty.firstAppearance(), storyItems));
 	}
 
@@ -77,6 +81,21 @@ public class BountyResponseMapper {
 			return null;
 		}
 		return toResponse(bounties.getOrDefault(contentId, BountyReference.unnamed(contentId)));
+	}
+
+	/**
+	 * The holder with its names; with only its id when it has nothing approved to be
+	 * called by, which the link makes impossible but a read must not fail for; null for
+	 * none.
+	 */
+	private static CharacterReferenceResponse toHolderResponse(UUID holderContentId,
+			Map<UUID, CharacterReference> holders) {
+		if (holderContentId == null) {
+			return null;
+		}
+		CharacterReference holder = holders.get(holderContentId);
+		return holder == null ? new CharacterReferenceResponse(holderContentId, null, Map.of())
+				: CharacterResponseMapper.toResponse(holder);
 	}
 
 	public BountyReferenceResponse toResponse(BountyReference bounty) {

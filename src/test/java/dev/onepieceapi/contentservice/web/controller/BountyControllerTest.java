@@ -5,6 +5,7 @@ import dev.onepieceapi.contentservice.domain.bounty.BountyChain;
 import dev.onepieceapi.contentservice.domain.bounty.BountyCondition;
 import dev.onepieceapi.contentservice.domain.bounty.BountyReference;
 import dev.onepieceapi.contentservice.domain.bounty.BountyTranslation;
+import dev.onepieceapi.contentservice.domain.character.CharacterReference;
 import dev.onepieceapi.contentservice.domain.bounty.BountyValidity;
 import dev.onepieceapi.contentservice.domain.image.ImageChange;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
@@ -21,6 +22,7 @@ import dev.onepieceapi.contentservice.domain.workflow.VersionAction;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.service.bounty.BountyLinks;
 import dev.onepieceapi.contentservice.service.bounty.BountyService;
+import dev.onepieceapi.contentservice.service.character.CharacterLinks;
 import dev.onepieceapi.contentservice.service.exception.BountyNotFoundException;
 import dev.onepieceapi.contentservice.service.exception.ValueAlreadyUsedException;
 import dev.onepieceapi.contentservice.service.exception.ValueInvalidException;
@@ -77,6 +79,8 @@ class BountyControllerTest {
 
 	private static final UUID NEXT_ID = UUID.fromString("5a1d9c2e-77b4-4d3a-8e0f-2c6b1a9d4e22");
 
+	private static final UUID HOLDER_ID = UUID.fromString("7b3e6d1c-2f48-4a90-b5c7-9d0e1f2a3b44");
+
 	private static final Instant CREATED = Instant.parse("2026-10-07T08:00:00Z");
 
 	private static final User NAMI = new User(UUID.fromString("11111111-1111-1111-1111-111111111111"), "nami",
@@ -99,6 +103,9 @@ class BountyControllerTest {
 
 	@MockitoBean
 	private BountyLinks links;
+
+	@MockitoBean
+	private CharacterLinks characters;
 
 	@MockitoBean
 	private FirstAppearanceLinks firstAppearances;
@@ -128,6 +135,21 @@ class BountyControllerTest {
 			.andExpect(jsonPath("$.body.chain[1].id").value(CONTENT_ID.toString()))
 			.andExpect(jsonPath("$.body.chain[2].id").value(PREVIOUS_ID.toString()))
 			.andExpect(jsonPath("$.body.translations.it.description").value("Taglia"));
+	}
+
+	@Test
+	void aVersionSaysItsHolderAsItIsToday() throws Exception {
+		var access = new VersionAccess<>(version(VersionStatus.PUBLISHED, false, null, HOLDER_ID), Set.of());
+		when(this.service.getVersion(any(), any(), eq(CONTENT_ID), eq(1))).thenReturn(access);
+		when(this.links.chainOf(eq(CONTENT_ID), any(), any())).thenReturn(new BountyChain(List.of(CONTENT_ID), null));
+		when(this.characters.referencesOf(List.of(HOLDER_ID)))
+			.thenReturn(Map.of(HOLDER_ID, new CharacterReference(HOLDER_ID, "Nami", Map.of("en", "Nami"))));
+
+		this.mockMvc.perform(get("/bounties/" + CONTENT_ID + "/versions/1").with(callerWith(Permission.CONTENT_READ)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.body.holder.id").value(HOLDER_ID.toString()))
+			.andExpect(jsonPath("$.body.holder.romaji").value("Nami"))
+			.andExpect(jsonPath("$.body.holder.names.en").value("Nami"));
 	}
 
 	@Test
@@ -213,7 +235,7 @@ class BountyControllerTest {
 		var request = post("/bounties").with(callerWith(Permission.CONTENT_WRITE))
 			.contentType("application/json")
 			.content("{\"posterName\":\"Monkey D. Luffy\",\"amount\":3000000000,\"condition\":\"DEAD_OR_ALIVE\","
-					+ "\"inactive\":true,\"previous\":\"" + PREVIOUS_ID
+					+ "\"inactive\":true,\"previous\":\"" + PREVIOUS_ID + "\",\"holder\":\"" + HOLDER_ID
 					+ "\",\"translations\":{\"it\":{\"description\":\"Taglia\"}}}");
 		this.mockMvc.perform(request)
 			.andExpect(status().isCreated())
@@ -226,6 +248,7 @@ class BountyControllerTest {
 		assertThat(written.getValue().amount()).isEqualTo(3_000_000_000L);
 		assertThat(written.getValue().inactive()).isTrue();
 		assertThat(written.getValue().previousContentId()).isEqualTo(PREVIOUS_ID);
+		assertThat(written.getValue().holderContentId()).isEqualTo(HOLDER_ID);
 		assertThat(written.getValue().translations().get("it")).isEqualTo(new BountyTranslation("Taglia"));
 	}
 
@@ -335,13 +358,17 @@ class BountyControllerTest {
 	}
 
 	private static Version<Bounty> version(VersionStatus status, boolean inactive, UUID previous) {
+		return version(status, inactive, previous, null);
+	}
+
+	private static Version<Bounty> version(VersionStatus status, boolean inactive, UUID previous, UUID holder) {
 		var translations = Map.of("it", new BountyTranslation("Taglia"));
 		return Version.<Bounty>builder()
 			.number(1)
 			.status(status)
 			.author(NAMI)
 			.body(new Bounty("Monkey D. Luffy", 3_000_000_000L, BountyCondition.DEAD_OR_ALIVE, inactive, previous,
-					translations, null, StoryPoint.NONE))
+					holder, translations, null, StoryPoint.NONE))
 			.createdAt(CREATED)
 			.updatedAt(CREATED)
 			.build();

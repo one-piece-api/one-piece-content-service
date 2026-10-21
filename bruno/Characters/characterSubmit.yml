@@ -1,7 +1,7 @@
 info:
   name: characterSubmit
   type: http
-  seq: 22
+  seq: 23
   tags:
     - Characters
 

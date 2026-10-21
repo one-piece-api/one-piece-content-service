@@ -10,6 +10,7 @@ import dev.onepieceapi.contentservice.domain.workflow.VersionAction;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
 import dev.onepieceapi.contentservice.persistence.repository.BountyVersionRepository;
+import dev.onepieceapi.contentservice.persistence.repository.CharacterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentVersionRepository;
@@ -74,6 +75,9 @@ class BountyRulesIntegrationTest {
 	private BountyVersionRepository bountyRepository;
 
 	@Autowired
+	private CharacterVersionRepository characterRepository;
+
+	@Autowired
 	private ChapterVersionRepository chapterRepository;
 
 	@Autowired
@@ -100,9 +104,16 @@ class BountyRulesIntegrationTest {
 
 	@BeforeEach
 	void setUp() {
-		this.fixtures = new BountyFixtures(this.contentRepository, this.bountyRepository, this.chapterRepository,
-				this.episodeRepository, this.contentVersionRepository, this.languageRepository,
-				this.auditLogRepository);
+		this.fixtures = BountyFixtures.builder()
+			.contents(this.contentRepository)
+			.bounties(this.bountyRepository)
+			.characters(this.characterRepository)
+			.chapters(this.chapterRepository)
+			.episodes(this.episodeRepository)
+			.contentVersions(this.contentVersionRepository)
+			.languages(this.languageRepository)
+			.auditLog(this.auditLogRepository)
+			.build();
 		this.service = this.fixtures.service();
 	}
 
@@ -161,8 +172,8 @@ class BountyRulesIntegrationTest {
 
 	@Test
 	void aBountyWithoutAFirstAppearanceDoesNotGoOnlineEvenForAnAdministrator() {
-		var withoutOne = new Bounty("Nami", 16_000_000L, BountyCondition.DEAD_OR_ALIVE, false, null, Map.of(), null,
-				StoryPoint.NONE);
+		var withoutOne = new Bounty("Nami", 16_000_000L, BountyCondition.DEAD_OR_ALIVE, false, null, null, Map.of(),
+				null, StoryPoint.NONE);
 		UUID bounty = this.fixtures.bounty(READY_TO_PUBLISH, withoutOne);
 		stored();
 
@@ -177,7 +188,7 @@ class BountyRulesIntegrationTest {
 		UUID chapter = OnlineChapters.chapter(this.contentRepository, this.chapterRepository, ARCHIVED);
 		var body = this.fixtures.complete("Nami", 16_000_000L, null);
 		UUID bounty = this.fixtures.bounty(READY_TO_PUBLISH, new Bounty(body.posterName(), body.amount(),
-				body.condition(), false, null, body.translations(), null, StoryPoint.ofChapter(chapter)));
+				body.condition(), false, null, null, body.translations(), null, StoryPoint.ofChapter(chapter)));
 		stored();
 
 		var refused = catchThrowableOfType(VersionActionBlockedException.class,
@@ -283,6 +294,48 @@ class BountyRulesIntegrationTest {
 		this.service.retire(RETIRER, CHOPPER, second, 1);
 		stored();
 		assertThat(this.service.retire(RETIRER, CHOPPER, first, 1).version().status()).isEqualTo(RETIRED);
+	}
+
+	@Test
+	void aBountyGoesOnlineWhileItsHolderIs() {
+		UUID nami = this.fixtures.character(PUBLISHED, "Nami");
+		UUID bounty = this.fixtures.bounty(READY_TO_PUBLISH,
+				BountyFixtures.heldBy(this.fixtures.complete("Nami", 16_000_000L, null), nami));
+		stored();
+
+		assertThat(this.service.publish(PUBLISHER, CHOPPER, bounty, 1).version().status()).isEqualTo(PUBLISHED);
+	}
+
+	@ParameterizedTest
+	@EnumSource(names = { "READY_TO_PUBLISH", "ARCHIVED", "RETIRED" })
+	void aBountyDoesNotGoOnlineWhileItsHolderIsNotAndTheRefusalNamesIt(VersionStatus holderStatus) {
+		UUID nami = this.fixtures.character(holderStatus, "Nami");
+		UUID bounty = this.fixtures.bounty(READY_TO_PUBLISH,
+				BountyFixtures.heldBy(this.fixtures.complete("Nami", 16_000_000L, null), nami));
+		stored();
+
+		var refused = catchThrowableOfType(VersionActionBlockedException.class,
+				() -> this.service.publish(PUBLISHER, CHOPPER, bounty, 1));
+
+		assertThat(refused.getDetails()).containsEntry("reason", BlockReason.RELATED_NOT_ONLINE);
+		assertThat(refused.getDetails().get("detail")).isEqualTo(Map.of("holderId", nami, "holderRomaji", "Nami"));
+	}
+
+	@Test
+	void aBountyTakenOfflineIsRestoredWhileItsHolderIsOnlineAndNotBefore() {
+		UUID offline = this.fixtures.character(RETIRED, "Nami");
+		UUID online = this.fixtures.character(PUBLISHED, "Zoro");
+		UUID early = this.fixtures.bounty(RETIRED,
+				BountyFixtures.heldBy(this.fixtures.complete("Nami", 16_000_000L, null), offline));
+		UUID fine = this.fixtures.bounty(RETIRED,
+				BountyFixtures.heldBy(this.fixtures.complete("Zoro", 120_000_000L, null), online));
+		stored();
+
+		var refused = catchThrowableOfType(VersionActionBlockedException.class,
+				() -> this.service.restore(PUBLISHER, CHOPPER, early, 1));
+
+		assertThat(refused.getDetails()).containsEntry("reason", BlockReason.RELATED_NOT_ONLINE);
+		assertThat(this.service.restore(PUBLISHER, CHOPPER, fine, 1).version().status()).isEqualTo(PUBLISHED);
 	}
 
 	private void approve(UUID contentId, int number) {

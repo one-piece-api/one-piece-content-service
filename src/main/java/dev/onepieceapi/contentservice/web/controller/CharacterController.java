@@ -5,13 +5,17 @@ import dev.onepieceapi.contentservice.domain.image.ImageChange;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSortField;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAccess;
+import dev.onepieceapi.contentservice.service.bounty.BountyLinks;
+import dev.onepieceapi.contentservice.service.character.CharacterLinks;
 import dev.onepieceapi.contentservice.service.character.CharacterService;
 import dev.onepieceapi.contentservice.service.species.SpeciesLinks;
 import dev.onepieceapi.contentservice.service.story.FirstAppearanceLinks;
 import dev.onepieceapi.contentservice.web.ApiPaths;
 import dev.onepieceapi.contentservice.web.dto.request.CharacterListRequest;
 import dev.onepieceapi.contentservice.web.dto.request.CharacterRequest;
+import dev.onepieceapi.contentservice.web.dto.request.LinkableTypesRequest;
 import dev.onepieceapi.contentservice.web.dto.response.CharacterNamesResponse;
+import dev.onepieceapi.contentservice.web.dto.response.CharacterReferenceResponse;
 import dev.onepieceapi.contentservice.web.dto.response.CharacterResponse;
 import dev.onepieceapi.contentservice.web.dto.response.ContentResponse;
 import dev.onepieceapi.contentservice.web.dto.response.ContentSummaryResponse;
@@ -44,13 +48,14 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 
 /**
  * The Character section: every endpoint of {@link ContentController}, plus creating a
  * content and editing its draft (UF-CNT-01, UF-CNT-02), which take {@code content:write},
- * with or without its portrait. Its list is narrowed by status and species too
- * (implementation plan of the Character, D16).
+ * with or without its portrait, and the characters a bounty may be linked to. Its list is
+ * narrowed by status and species too (implementation plan of the Character, D16).
  */
 @RestController
 @RequestMapping(ApiPaths.CHARACTERS)
@@ -64,14 +69,20 @@ class CharacterController extends ContentController<Character, CharacterResponse
 
 	private final CharacterService service;
 
+	private final CharacterLinks links;
+
+	private final BountyLinks bounties;
+
 	@Autowired
-	CharacterController(CharacterService service, SpeciesLinks species, FirstAppearanceLinks firstAppearances,
-			ImageResponseMapper images) {
+	CharacterController(CharacterService service, CharacterLinks links, BountyLinks bounties, SpeciesLinks species,
+			FirstAppearanceLinks firstAppearances, ImageResponseMapper images) {
 		super(service,
 				access -> CharacterResponseMapper.toVersionResponse(access,
 						species.referencesOf(access.body().speciesIds()),
 						firstAppearances.referencesFor(List.of(access.body())), images));
 		this.service = service;
+		this.links = links;
+		this.bounties = bounties;
 	}
 
 	/**
@@ -89,7 +100,21 @@ class CharacterController extends ContentController<Character, CharacterResponse
 	@Override
 	protected List<ContentSummaryResponse<CharacterNamesResponse>> summaryResponses(
 			List<ContentSummary<Character>> rows, AuthenticatedCaller caller) {
-		return rows.stream().map(CharacterResponseMapper::toSummaryResponse).toList();
+		Map<UUID, Long> bountyCounts = this.bounties.bountyCounts(caller.permissions(),
+				rows.stream().map(ContentSummary::contentId).toList());
+		return rows.stream()
+			.map(row -> CharacterResponseMapper.toSummaryResponse(row, bountyCounts.getOrDefault(row.contentId(), 0L)))
+			.toList();
+	}
+
+	/**
+	 * The characters a bounty may be linked to: those with a version that passed review,
+	 * by romaji, narrowed by what their romaji or a name contains.
+	 */
+	@GetMapping(ApiPaths.CONTENT_LINKABLE)
+	PageResponse<CharacterReferenceResponse> linkable(@ParameterObject @Valid LinkableTypesRequest request) {
+		var page = this.links.linkable(request.q(), request.pageOrDefault(), request.sizeOrDefault());
+		return PageResponse.from(page.map(CharacterResponseMapper::toResponse));
 	}
 
 	/**

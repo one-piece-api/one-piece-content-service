@@ -1,6 +1,7 @@
 package dev.onepieceapi.contentservice.web.mapper;
 
 import dev.onepieceapi.contentservice.domain.character.Character;
+import dev.onepieceapi.contentservice.domain.character.CharacterReference;
 import dev.onepieceapi.contentservice.domain.character.CharacterTranslation;
 import dev.onepieceapi.contentservice.domain.character.Epithet;
 import dev.onepieceapi.contentservice.domain.species.SpeciesReference;
@@ -8,6 +9,7 @@ import dev.onepieceapi.contentservice.domain.story.NumberedReference;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAccess;
 import dev.onepieceapi.contentservice.web.dto.response.CharacterNamesResponse;
+import dev.onepieceapi.contentservice.web.dto.response.CharacterReferenceResponse;
 import dev.onepieceapi.contentservice.web.dto.response.CharacterResponse;
 import dev.onepieceapi.contentservice.web.dto.response.CharacterTranslationResponse;
 import dev.onepieceapi.contentservice.web.dto.response.ContentSummaryResponse;
@@ -35,10 +37,14 @@ public class CharacterResponseMapper {
 				character -> toResponse(character, species, storyItems, images));
 	}
 
-	/** A row of the list of Characters: the romaji and the names. */
-	public ContentSummaryResponse<CharacterNamesResponse> toSummaryResponse(ContentSummary<Character> summary) {
+	/**
+	 * A row of the list of Characters: the romaji, the names and how many bounties it
+	 * holds.
+	 */
+	public ContentSummaryResponse<CharacterNamesResponse> toSummaryResponse(ContentSummary<Character> summary,
+			long bountyCount) {
 		return ContentResponseMapper.toSummaryResponse(summary,
-				character -> new CharacterNamesResponse(character.romaji(), character.names()));
+				character -> new CharacterNamesResponse(character.romaji(), character.names(), bountyCount));
 	}
 
 	/** Everything the version says, its lists in their order. */
@@ -71,6 +77,11 @@ public class CharacterResponseMapper {
 		SpeciesReference reference = species.get(speciesContentId);
 		return reference == null ? new SpeciesReferenceResponse(speciesContentId, null, Map.of())
 				: SpeciesResponseMapper.toResponse(reference);
+	}
+
+	/** A character a bounty may point to. */
+	public CharacterReferenceResponse toResponse(CharacterReference reference) {
+		return new CharacterReferenceResponse(reference.id(), reference.romaji(), reference.names());
 	}
 
 	private static CharacterTranslationResponse toResponse(CharacterTranslation translation) {

@@ -21,6 +21,8 @@ import java.util.UUID;
  * @param inactive revoked, suspended or its holder dead; left out for false
  * @param previous the id of the content of the bounty this one replaces; whether it can
  * be chosen is answered by {@code GET /bounties/linkable}; left out for none
+ * @param holder the id of the content of the character the poster is about; whether it
+ * can be chosen is answered by {@code GET /characters/linkable}; left out for none
  * @param translations the description per language code; a language left out, or with
  * nothing written in it, has no translation
  * @param firstAppearance where the poster is revealed; left out for none, which a draft
@@ -31,6 +33,7 @@ import java.util.UUID;
 public record BountyRequest(@Size(max = Bounty.POSTER_NAME_MAX_LENGTH) String posterName,
 		@PositiveOrZero @Schema(description = "Berry, as plain digits") Long amount, BountyCondition condition,
 		Boolean inactive, @Schema(description = "The content id of the bounty it replaces") UUID previous,
+		@Schema(description = "The content id of the character the poster is about") UUID holder,
 		Map<String, @Valid BountyTranslationRequest> translations, Boolean removeImage,
 		FirstAppearanceRequest firstAppearance) {
 

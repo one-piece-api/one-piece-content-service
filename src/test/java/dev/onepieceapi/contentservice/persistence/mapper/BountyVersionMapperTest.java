@@ -21,6 +21,8 @@ class BountyVersionMapperTest {
 
 	private static final UUID PREVIOUS_ID = UUID.randomUUID();
 
+	private static final UUID HOLDER_ID = UUID.fromString("7b3e6d1c-2f48-4a90-b5c7-9d0e1f2a3b44");
+
 	private static final UUID CHAPTER_ID = UUID.randomUUID();
 
 	private static final UUID EPISODE_ID = UUID.randomUUID();
@@ -35,7 +37,7 @@ class BountyVersionMapperTest {
 	void aVersionTakesItsWorkflowFromTheSharedRowAndWhatItSaysFromItsOwn() {
 		var entity = draft();
 		var body = new Bounty("Monkey D. Luffy", 3_000_000_000L, BountyCondition.DEAD_OR_ALIVE, true, PREVIOUS_ID,
-				Map.of("it", new BountyTranslation("Taglia"), "en", new BountyTranslation("Bounty")), "abc",
+				HOLDER_ID, Map.of("it", new BountyTranslation("Taglia"), "en", new BountyTranslation("Bounty")), "abc",
 				new StoryPoint(CHAPTER_ID, EPISODE_ID));
 
 		BountyVersionMapper.rewrite(entity, body, UPDATED);
@@ -53,7 +55,7 @@ class BountyVersionMapperTest {
 		var entity = draft();
 
 		BountyVersionMapper.rewrite(entity,
-				new Bounty("Zoro", 320_000_000L, BountyCondition.ONLY_ALIVE, false, null, Map.of(), null, null),
+				new Bounty("Zoro", 320_000_000L, BountyCondition.ONLY_ALIVE, false, null, null, Map.of(), null, null),
 				UPDATED);
 
 		assertThat(entity.getNaturalKey()).isNull();
@@ -65,11 +67,10 @@ class BountyVersionMapperTest {
 	void rewritingReplacesWhatTheVersionSaid() {
 		var entity = draft();
 		BountyVersionMapper.rewrite(entity, new Bounty("Luffy", 1L, BountyCondition.DEAD_OR_ALIVE, true, PREVIOUS_ID,
-				Map.of("it", new BountyTranslation("Uno")), "abc", StoryPoint.ofChapter(CHAPTER_ID)), CREATED);
+				null, Map.of("it", new BountyTranslation("Uno")), "abc", StoryPoint.ofChapter(CHAPTER_ID)), CREATED);
 
-		BountyVersionMapper.rewrite(entity,
-				new Bounty("Luffy", 2L, null, false, null, Map.of("en", new BountyTranslation("Two")), null, null),
-				UPDATED);
+		BountyVersionMapper.rewrite(entity, new Bounty("Luffy", 2L, null, false, null, null,
+				Map.of("en", new BountyTranslation("Two")), null, null), UPDATED);
 
 		assertThat(entity.getAmount()).isEqualTo(2L);
 		assertThat(entity.getCondition()).isNull();

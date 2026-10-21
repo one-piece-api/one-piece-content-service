@@ -25,6 +25,7 @@ http:
           "chapter": "",
           "episode": ""
         },
+        "holder": "",
         "inactive": false,
         "posterName": "",
         "previous": "",
@@ -63,6 +64,7 @@ examples:
               "chapter": "",
               "episode": ""
             },
+            "holder": "",
             "inactive": false,
             "posterName": "",
             "previous": "",
@@ -117,6 +119,11 @@ examples:
                   "names": {},
                   "number": 0
                 }
+              },
+              "holder": {
+                "id": "",
+                "names": {},
+                "romaji": ""
               },
               "image": {
                 "id": "",
@@ -176,6 +183,7 @@ examples:
               "chapter": "",
               "episode": ""
             },
+            "holder": "",
             "inactive": false,
             "posterName": "",
             "previous": "",
@@ -227,6 +235,7 @@ examples:
               "chapter": "",
               "episode": ""
             },
+            "holder": "",
             "inactive": false,
             "posterName": "",
             "previous": "",

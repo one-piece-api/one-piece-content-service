@@ -23,7 +23,8 @@ public class BountyVersionMapper {
 
 	public Version<Bounty> toDomain(BountyVersionEntity entity) {
 		var body = new Bounty(entity.getPosterName(), entity.getAmount(), entity.getCondition(), entity.isInactive(),
-				entity.getPreviousContentId(), toDomain(entity.getTranslations()), entity.getImageId(),
+				entity.getPreviousContentId(), entity.getHolderContentId(), toDomain(entity.getTranslations()),
+				entity.getImageId(),
 				new StoryPoint(entity.getFirstAppearanceChapterId(), entity.getFirstAppearanceEpisodeId()));
 		return ContentVersionMapper.toDomain(entity.getVersion(), body);
 	}
@@ -36,6 +37,7 @@ public class BountyVersionMapper {
 			.condition(body.condition())
 			.inactive(body.inactive())
 			.previousContentId(body.previousContentId())
+			.holderContentId(body.holderContentId())
 			.translations(toEmbeddables(body.translations()))
 			.imageId(body.imageId())
 			.firstAppearance(FirstAppearanceMapper.toIds(body.firstAppearance()))

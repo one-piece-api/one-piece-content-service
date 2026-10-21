@@ -18,6 +18,7 @@ http:
           "chapter": "",
           "episode": ""
         },
+        "holder": "",
         "inactive": false,
         "posterName": "",
         "previous": "",
@@ -49,6 +50,7 @@ examples:
               "chapter": "",
               "episode": ""
             },
+            "holder": "",
             "inactive": false,
             "posterName": "",
             "previous": "",
@@ -109,6 +111,7 @@ examples:
               "chapter": "",
               "episode": ""
             },
+            "holder": "",
             "inactive": false,
             "posterName": "",
             "previous": "",
@@ -153,6 +156,7 @@ examples:
               "chapter": "",
               "episode": ""
             },
+            "holder": "",
             "inactive": false,
             "posterName": "",
             "previous": "",

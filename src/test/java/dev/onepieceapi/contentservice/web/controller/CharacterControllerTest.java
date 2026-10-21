@@ -9,6 +9,7 @@ import dev.onepieceapi.contentservice.domain.image.ImageChange;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.domain.security.Permission;
 import dev.onepieceapi.contentservice.domain.security.User;
+import dev.onepieceapi.contentservice.domain.character.CharacterReference;
 import dev.onepieceapi.contentservice.domain.species.SpeciesReference;
 import dev.onepieceapi.contentservice.domain.workflow.ActionBlock;
 import dev.onepieceapi.contentservice.domain.workflow.BlockReason;
@@ -23,6 +24,8 @@ import dev.onepieceapi.contentservice.service.character.CharacterService;
 import dev.onepieceapi.contentservice.service.exception.CharacterNotFoundException;
 import dev.onepieceapi.contentservice.service.exception.ValueAlreadyUsedException;
 import dev.onepieceapi.contentservice.service.exception.VersionActionBlockedException;
+import dev.onepieceapi.contentservice.service.bounty.BountyLinks;
+import dev.onepieceapi.contentservice.service.character.CharacterLinks;
 import dev.onepieceapi.contentservice.service.species.SpeciesLinks;
 import dev.onepieceapi.contentservice.service.story.FirstAppearanceLinks;
 import dev.onepieceapi.contentservice.web.dto.response.ImageResponse;
@@ -100,6 +103,12 @@ class CharacterControllerTest {
 	private SpeciesLinks species;
 
 	@MockitoBean
+	private CharacterLinks links;
+
+	@MockitoBean
+	private BountyLinks bounties;
+
+	@MockitoBean
 	private FirstAppearanceLinks firstAppearances;
 
 	@MockitoBean
@@ -137,11 +146,37 @@ class CharacterControllerTest {
 		var rows = List.of(new ContentSummary<>(CONTENT_ID, version(VersionStatus.PUBLISHED, null), 1, Set.of()));
 		when(this.service.list(any(), any(), any(), any(), any()))
 			.thenReturn(new PageImpl<>(rows, PageRequest.of(0, 20), 1));
+		when(this.bounties.bountyCounts(any(), eq(List.of(CONTENT_ID)))).thenReturn(Map.of(CONTENT_ID, 3L));
 
 		this.mockMvc.perform(get("/characters").param("sort", "name").with(callerWith(Permission.CONTENT_READ)))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.content[0].body.romaji").value("Nami"))
-			.andExpect(jsonPath("$.content[0].body.names.it").value("Nami"));
+			.andExpect(jsonPath("$.content[0].body.names.it").value("Nami"))
+			.andExpect(jsonPath("$.content[0].body.bountyCount").value(3));
+	}
+
+	@Test
+	void aCharacterWithNoBountyHasACountOfZero() throws Exception {
+		var rows = List.of(new ContentSummary<>(CONTENT_ID, version(VersionStatus.PUBLISHED, null), 1, Set.of()));
+		when(this.service.list(any(), any(), any(), any(), any()))
+			.thenReturn(new PageImpl<>(rows, PageRequest.of(0, 20), 1));
+
+		this.mockMvc.perform(get("/characters").with(callerWith(Permission.CONTENT_READ)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.content[0].body.bountyCount").value(0));
+	}
+
+	@Test
+	void theCharactersThatCanBeLinkedAreListedByTheirRomaji() throws Exception {
+		when(this.links.linkable(any(), eq(0), eq(20)))
+			.thenReturn(new PageImpl<>(List.of(new CharacterReference(CONTENT_ID, "Nami", Map.of("it", "Nami")))));
+
+		this.mockMvc.perform(get("/characters/linkable").param("q", "nam").with(callerWith(Permission.CONTENT_WRITE)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.content[0].id").value(CONTENT_ID.toString()))
+			.andExpect(jsonPath("$.content[0].romaji").value("Nami"));
+		this.mockMvc.perform(get("/characters/linkable").with(callerWith(Permission.CONTENT_READ)))
+			.andExpect(status().isForbidden());
 	}
 
 	@Test

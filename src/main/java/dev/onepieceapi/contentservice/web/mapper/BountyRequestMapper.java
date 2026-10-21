@@ -25,7 +25,8 @@ public class BountyRequestMapper {
 			.orElseGet(Map::of)
 			.forEach((language, translation) -> translations.put(language, toDomain(translation)));
 		return new Bounty(request.posterName(), request.amount(), request.condition(), request.markedInactive(),
-				request.previous(), translations, null, FirstAppearanceMapper.toDomain(request.firstAppearance()));
+				request.previous(), request.holder(), translations, null,
+				FirstAppearanceMapper.toDomain(request.firstAppearance()));
 	}
 
 	/**
@@ -38,10 +39,14 @@ public class BountyRequestMapper {
 	}
 
 	/**
-	 * The common filters, then the condition and the validity when the list is narrowed.
+	 * The common filters, then the condition, the holder and the validity when the list
+	 * is narrowed.
 	 */
 	public ContentFilter toFilter(BountyListRequest request) {
 		var filter = new ContentFilter(request.status(), request.q(), request.author(), request.updatedWithinDays());
+		if (request.holder() != null) {
+			filter = filter.withAttribute(Bounty.HOLDER_ATTRIBUTE, request.holder());
+		}
 		if (request.condition() != null) {
 			filter = filter.withAttribute(Bounty.CONDITION_ATTRIBUTE, request.condition());
 		}

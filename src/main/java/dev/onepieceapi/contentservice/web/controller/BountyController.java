@@ -11,6 +11,7 @@ import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.domain.workflow.VisibilityPolicy;
 import dev.onepieceapi.contentservice.service.bounty.BountyLinks;
 import dev.onepieceapi.contentservice.service.bounty.BountyService;
+import dev.onepieceapi.contentservice.service.character.CharacterLinks;
 import dev.onepieceapi.contentservice.service.story.FirstAppearanceLinks;
 import dev.onepieceapi.contentservice.web.ApiPaths;
 import dev.onepieceapi.contentservice.web.dto.request.BountyListRequest;
@@ -76,16 +77,19 @@ class BountyController extends ContentController<Bounty, BountyResponse, BountyN
 
 	private final BountyLinks links;
 
+	private final CharacterLinks characters;
+
 	private final FirstAppearanceLinks firstAppearances;
 
 	private final ImageResponseMapper images;
 
 	@Autowired
-	BountyController(BountyService service, BountyLinks links, FirstAppearanceLinks firstAppearances,
-			ImageResponseMapper images) {
+	BountyController(BountyService service, BountyLinks links, CharacterLinks characters,
+			FirstAppearanceLinks firstAppearances, ImageResponseMapper images) {
 		super(service, BountyController::answeredWithTheCaller);
 		this.service = service;
 		this.links = links;
+		this.characters = characters;
 		this.firstAppearances = firstAppearances;
 		this.images = images;
 	}
@@ -107,8 +111,9 @@ class BountyController extends ContentController<Bounty, BountyResponse, BountyN
 		Set<VersionStatus> visible = visibleTo(caller);
 		BountyChain chain = this.links.chainOf(contentId, bounty.previousContentId(), visible);
 		var bounties = this.links.referencesOf(chain.contentIds(), visible);
+		var holders = this.characters.referencesOf(holderIdsOf(bounty));
 		var storyItems = this.firstAppearances.referencesFor(List.of(bounty));
-		return BountyResponseMapper.toVersionResponse(access, chain, bounties, storyItems, this.images);
+		return BountyResponseMapper.toVersionResponse(access, chain, bounties, holders, storyItems, this.images);
 	}
 
 	/**
@@ -201,6 +206,11 @@ class BountyController extends ContentController<Bounty, BountyResponse, BountyN
 		VersionAccess<Bounty> version = this.service.edit(caller.permissions(), caller.user(), id, number, written,
 				change);
 		return versionResponse(id, version, caller);
+	}
+
+	/** The holder to look up, if the bounty has one. */
+	private static List<UUID> holderIdsOf(Bounty bounty) {
+		return bounty.holderContentId() == null ? List.of() : List.of(bounty.holderContentId());
 	}
 
 	private static Set<VersionStatus> visibleTo(AuthenticatedCaller caller) {

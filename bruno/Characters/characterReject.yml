@@ -1,7 +1,7 @@
 info:
   name: characterReject
   type: http
-  seq: 17
+  seq: 18
   tags:
     - Characters
 

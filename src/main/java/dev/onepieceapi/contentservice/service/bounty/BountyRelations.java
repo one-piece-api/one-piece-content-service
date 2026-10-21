@@ -7,7 +7,7 @@ import dev.onepieceapi.contentservice.service.content.RelationDescriptor;
 
 /**
  * The relations of a bounty (implementation plan of the Bounty, B2): the bounty it
- * replaces, and the chapter and the episode it first appears in (ADR-0008).
+ * replaces, its holder, and the chapter and the episode it first appears in (ADR-0008).
  */
 public final class BountyRelations {
 
@@ -16,6 +16,16 @@ public final class BountyRelations {
 		.name("previous")
 		.target(Bounty::previousContentId)
 		.notLinkable("must be a bounty with an approved version")
+		.targetNotOnline(BlockReason.RELATED_NOT_ONLINE)
+		.onlineItemsLinked(BlockReason.ONLINE_ITEMS_LINKED)
+		.itemsName("bounties")
+		.build();
+
+	/** The character a bounty is about. */
+	public static final RelationDescriptor<Bounty> HOLDER = RelationDescriptor.<Bounty>builder()
+		.name("holder")
+		.target(Bounty::holderContentId)
+		.notLinkable("must be a character with an approved version")
 		.targetNotOnline(BlockReason.RELATED_NOT_ONLINE)
 		.onlineItemsLinked(BlockReason.ONLINE_ITEMS_LINKED)
 		.itemsName("bounties")

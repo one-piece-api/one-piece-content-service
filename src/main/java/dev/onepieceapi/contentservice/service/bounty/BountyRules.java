@@ -9,6 +9,7 @@ import dev.onepieceapi.contentservice.domain.workflow.VersionAction;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.repository.BountyVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
+import dev.onepieceapi.contentservice.persistence.repository.CharacterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
 import dev.onepieceapi.contentservice.persistence.repository.EpisodeVersionRepository;
 import dev.onepieceapi.contentservice.service.content.ContentRules;
@@ -28,10 +29,10 @@ import java.util.UUID;
 
 /**
  * What a bounty needs to go online and to be retired (implementation plan of the Bounty,
- * B2): the rules of every relation ({@link RelationRules}) for the bounty it replaces and
- * for its first appearance, and, on top, the two of the chain - at most one online bounty
- * replaces a bounty, and no cycle through the online ones. Not even {@code content:admin}
- * lifts any of them.
+ * B2): the rules of every relation ({@link RelationRules}) for the bounty it replaces,
+ * for its holder and for its first appearance, and, on top, the two of the chain - at
+ * most one online bounty replaces a bounty, and no cycle through the online ones. Not
+ * even {@code content:admin} lifts any of them.
  * <p>
  * Every change to the online chain - publish, restore, retire - first takes one lock
  * ({@link ContentRepository#lockBountyChain()}), so two of them never pass the checks
@@ -52,6 +53,8 @@ public class BountyRules implements ContentRules<Bounty> {
 
 	private final ChapterVersionRepository chapterRepository;
 
+	private final CharacterVersionRepository characterRepository;
+
 	private final EpisodeVersionRepository episodeRepository;
 
 	private final BountyChains chains;
@@ -64,6 +67,7 @@ public class BountyRules implements ContentRules<Bounty> {
 			this.contentRepository.lockBountyChain();
 		}
 		RelationRules.lockTargetBefore(action, BountyRelations.PREVIOUS, version.body(), this.contentRepository);
+		RelationRules.lockTargetBefore(action, BountyRelations.HOLDER, version.body(), this.contentRepository);
 		RelationRules.lockTargetBefore(action, BountyRelations.FIRST_APPEARANCE_CHAPTER, version.body(),
 				this.contentRepository);
 		RelationRules.lockTargetBefore(action, BountyRelations.FIRST_APPEARANCE_EPISODE, version.body(),
@@ -76,6 +80,7 @@ public class BountyRules implements ContentRules<Bounty> {
 		Bounty bounty = version.body();
 		return FirstAppearanceRules.missing(action, bounty)
 			.or(() -> RelationRules.targetNotOnline(action, BountyRelations.PREVIOUS, bounty, this.bountyRepository))
+			.or(() -> RelationRules.targetNotOnline(action, BountyRelations.HOLDER, bounty, this.characterRepository))
 			.or(() -> RelationRules.targetNotOnline(action, BountyRelations.FIRST_APPEARANCE_CHAPTER, bounty,
 					this.chapterRepository))
 			.or(() -> RelationRules.targetNotOnline(action, BountyRelations.FIRST_APPEARANCE_EPISODE, bounty,

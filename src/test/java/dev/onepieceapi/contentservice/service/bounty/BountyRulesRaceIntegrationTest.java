@@ -4,6 +4,7 @@ import dev.onepieceapi.contentservice.domain.security.User;
 import dev.onepieceapi.contentservice.domain.workflow.BlockReason;
 import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
 import dev.onepieceapi.contentservice.persistence.repository.BountyVersionRepository;
+import dev.onepieceapi.contentservice.persistence.repository.CharacterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentVersionRepository;
@@ -78,6 +79,9 @@ class BountyRulesRaceIntegrationTest {
 	private BountyVersionRepository bountyRepository;
 
 	@Autowired
+	private CharacterVersionRepository characterRepository;
+
+	@Autowired
 	private ChapterVersionRepository chapterRepository;
 
 	@Autowired
@@ -102,9 +106,16 @@ class BountyRulesRaceIntegrationTest {
 
 	@BeforeEach
 	void setUp() {
-		this.fixtures = new BountyFixtures(this.contentRepository, this.bountyRepository, this.chapterRepository,
-				this.episodeRepository, this.contentVersionRepository, this.languageRepository,
-				this.auditLogRepository);
+		this.fixtures = BountyFixtures.builder()
+			.contents(this.contentRepository)
+			.bounties(this.bountyRepository)
+			.characters(this.characterRepository)
+			.chapters(this.chapterRepository)
+			.episodes(this.episodeRepository)
+			.contentVersions(this.contentVersionRepository)
+			.languages(this.languageRepository)
+			.auditLog(this.auditLogRepository)
+			.build();
 	}
 
 	@Test

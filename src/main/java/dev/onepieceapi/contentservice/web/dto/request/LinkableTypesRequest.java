@@ -6,8 +6,8 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
 
 /**
- * The query parameters of the list of Devil Fruit Types a fruit, or of Species a
- * character, may be linked to. All optional.
+ * The query parameters of the list of Devil Fruit Types a fruit, of Species a character,
+ * or of Characters a bounty, may be linked to. All optional.
  *
  * @param page 0-based, 0 when missing
  * @param size the page size, {@value #DEFAULT_SIZE} when missing

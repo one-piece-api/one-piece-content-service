@@ -92,6 +92,11 @@ examples:
                   "number": 0
                 }
               },
+              "holder": {
+                "id": "",
+                "names": {},
+                "romaji": ""
+              },
               "image": {
                 "id": "",
                 "url": ""

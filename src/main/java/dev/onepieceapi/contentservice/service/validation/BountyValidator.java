@@ -6,6 +6,7 @@ import dev.onepieceapi.contentservice.persistence.entity.BountyVersionEntity;
 import dev.onepieceapi.contentservice.persistence.mapper.BountyVersionMapper;
 import dev.onepieceapi.contentservice.persistence.repository.BountyVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
+import dev.onepieceapi.contentservice.persistence.repository.CharacterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.EpisodeVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
 import dev.onepieceapi.contentservice.service.bounty.BountyChains;
@@ -24,11 +25,11 @@ import java.util.UUID;
 /**
  * The rules a bounty must meet (implementation plan of the Bounty, B2): those of every
  * content - see {@link ContentValidator}, here among the bounties only - the links to the
- * bounty it replaces and to its first appearance, which must be linkable like every
- * relation ({@link RelationRules}), and, once they are, the three of the chain, each
- * refused on {@code previous}: not the bounty itself, replaced by at most one (in any
- * version, in any status, drafts included), and no cycle through the latest approved
- * versions. Two drafts may still pass this together; going online checks again
+ * bounty it replaces, to its holder and to its first appearance, which must be linkable
+ * like every relation ({@link RelationRules}), and, once they are, the three of the
+ * chain, each refused on {@code previous}: not the bounty itself, replaced by at most one
+ * (in any version, in any status, drafts included), and no cycle through the latest
+ * approved versions. Two drafts may still pass this together; going online checks again
  * ({@code BountyRules}).
  */
 @Component
@@ -46,17 +47,20 @@ public class BountyValidator extends ContentValidator<Bounty, BountyVersionEntit
 
 	private final ChapterVersionRepository chapterRepository;
 
+	private final CharacterVersionRepository characterRepository;
+
 	private final EpisodeVersionRepository episodeRepository;
 
 	private final BountyChains chains;
 
 	@Autowired
 	public BountyValidator(BountyVersionRepository versionRepository, LanguageRepository languageRepository,
-			ChapterVersionRepository chapterRepository, EpisodeVersionRepository episodeRepository,
-			BountyChains chains) {
+			ChapterVersionRepository chapterRepository, CharacterVersionRepository characterRepository,
+			EpisodeVersionRepository episodeRepository, BountyChains chains) {
 		super(versionRepository, languageRepository, BountyVersionMapper::toDomain);
 		this.bountyRepository = versionRepository;
 		this.chapterRepository = chapterRepository;
+		this.characterRepository = characterRepository;
 		this.episodeRepository = episodeRepository;
 		this.chains = chains;
 	}
@@ -83,6 +87,8 @@ public class BountyValidator extends ContentValidator<Bounty, BountyVersionEntit
 	private void requireLinkable(Bounty body) {
 		List<FieldViolation> violations = new ArrayList<>();
 		RelationRules.notLinkable(BountyRelations.PREVIOUS, body, "", this.bountyRepository).ifPresent(violations::add);
+		RelationRules.notLinkable(BountyRelations.HOLDER, body, "", this.characterRepository)
+			.ifPresent(violations::add);
 		RelationRules.notLinkable(BountyRelations.FIRST_APPEARANCE_CHAPTER, body, "", this.chapterRepository)
 			.ifPresent(violations::add);
 		RelationRules.notLinkable(BountyRelations.FIRST_APPEARANCE_EPISODE, body, "", this.episodeRepository)

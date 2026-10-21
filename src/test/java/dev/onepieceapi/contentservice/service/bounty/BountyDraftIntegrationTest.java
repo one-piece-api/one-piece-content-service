@@ -9,6 +9,7 @@ import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.entity.ContentEntity;
 import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
 import dev.onepieceapi.contentservice.persistence.repository.BountyVersionRepository;
+import dev.onepieceapi.contentservice.persistence.repository.CharacterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentVersionRepository;
@@ -74,6 +75,9 @@ class BountyDraftIntegrationTest {
 	private BountyVersionRepository bountyRepository;
 
 	@Autowired
+	private CharacterVersionRepository characterRepository;
+
+	@Autowired
 	private ChapterVersionRepository chapterRepository;
 
 	@Autowired
@@ -107,9 +111,16 @@ class BountyDraftIntegrationTest {
 
 	@BeforeEach
 	void setUp() {
-		this.fixtures = new BountyFixtures(this.contentRepository, this.bountyRepository, this.chapterRepository,
-				this.episodeRepository, this.contentVersionRepository, this.languageRepository,
-				this.auditLogRepository);
+		this.fixtures = BountyFixtures.builder()
+			.contents(this.contentRepository)
+			.bounties(this.bountyRepository)
+			.characters(this.characterRepository)
+			.chapters(this.chapterRepository)
+			.episodes(this.episodeRepository)
+			.contentVersions(this.contentVersionRepository)
+			.languages(this.languageRepository)
+			.auditLog(this.auditLogRepository)
+			.build();
 		this.service = this.fixtures.service();
 		this.luffyFirst = this.fixtures.bounty(PUBLISHED,
 				this.fixtures.complete("Monkey D. Luffy", 1_500_000_000L, null));
@@ -122,7 +133,7 @@ class BountyDraftIntegrationTest {
 	void aNewBountyIsBornWithADraftSayingWhatWasWrittenTheSpaceAroundItIgnored() {
 		UUID earlier = this.fixtures.bounty(PUBLISHED, this.fixtures.complete("Roronoa Zoro", 120_000_000L, null));
 		stored();
-		var written = new Bounty("  Roronoa Zoro ", 320_000_000L, BountyCondition.ONLY_ALIVE, true, earlier,
+		var written = new Bounty("  Roronoa Zoro ", 320_000_000L, BountyCondition.ONLY_ALIVE, true, earlier, null,
 				Map.of("it", new BountyTranslation(" Pirata  ")), null, StoryPoint.NONE);
 
 		var content = this.service.create(EDITOR, CHOPPER, written);
@@ -149,7 +160,7 @@ class BountyDraftIntegrationTest {
 	@Test
 	void aDraftWithoutAnAmountHasNoKeyYet() {
 		var content = this.service.create(EDITOR, CHOPPER,
-				new Bounty("Zoro", null, null, false, null, Map.of(), null, StoryPoint.NONE));
+				new Bounty("Zoro", null, null, false, null, null, Map.of(), null, StoryPoint.NONE));
 		stored();
 
 		assertThat(this.jdbc.queryForObject("select natural_key from bounty_version where poster_name = 'Zoro'",
@@ -312,8 +323,8 @@ class BountyDraftIntegrationTest {
 		UUID draftChapter = OnlineChapters.chapter(this.contentRepository, this.chapterRepository, DRAFT);
 		UUID draftPrevious = this.fixtures.bounty(DRAFT, this.fixtures.complete("Nami", 16_000_000L, null));
 		stored();
-		var written = new Bounty("Nami", 66_000_000L, BountyCondition.DEAD_OR_ALIVE, false, draftPrevious, Map.of(),
-				null, StoryPoint.ofChapter(draftChapter));
+		var written = new Bounty("Nami", 66_000_000L, BountyCondition.DEAD_OR_ALIVE, false, draftPrevious, null,
+				Map.of(), null, StoryPoint.ofChapter(draftChapter));
 
 		var refused = catchThrowableOfType(ValueInvalidException.class,
 				() -> this.service.create(EDITOR, CHOPPER, written));
@@ -324,7 +335,7 @@ class BountyDraftIntegrationTest {
 	@Test
 	void aDraftMayBeSavedIncompleteButNotSentToReview() {
 		var content = this.service.create(EDITOR, CHOPPER,
-				new Bounty("Nami", 66_000_000L, null, false, null, Map.of(), null, StoryPoint.NONE));
+				new Bounty("Nami", 66_000_000L, null, false, null, null, Map.of(), null, StoryPoint.NONE));
 		stored();
 
 		var refused = catchThrowableOfType(VersionIncompleteException.class,
@@ -374,6 +385,74 @@ class BountyDraftIntegrationTest {
 	void theDatabaseRefusesAConditionThatIsNone() {
 		assertThatThrownBy(() -> this.jdbc.update("update bounty_version set condition = 'ALIVE'"))
 			.hasMessageContaining("ck_bounty_version_condition");
+	}
+
+	@ParameterizedTest
+	@EnumSource(names = { "READY_TO_PUBLISH", "PUBLISHED", "ARCHIVED", "RETIRED", "SUPERSEDED" })
+	void aCharacterWithAnApprovedVersionCanBeTheHolderWhateverBecameOfIt(VersionStatus status) {
+		UUID nami = this.fixtures.character(status, "Nami");
+		stored();
+
+		var content = this.service.create(EDITOR, CHOPPER,
+				BountyFixtures.heldBy(this.fixtures.complete("Nami", 16_000_000L, null), nami));
+		stored();
+
+		assertThat(this.service.getVersion(EDITOR, CHOPPER, content.id(), 1).version().body().holderContentId())
+			.isEqualTo(nami);
+	}
+
+	@ParameterizedTest
+	@EnumSource(names = { "DRAFT", "IN_REVIEW", "REJECTED" })
+	void aCharacterWithNothingApprovedCannotBeTheHolder(VersionStatus status) {
+		UUID unapproved = this.fixtures.character(status, "Nami");
+		stored();
+
+		var refused = catchThrowableOfType(ValueInvalidException.class, () -> this.service.create(EDITOR, CHOPPER,
+				BountyFixtures.heldBy(this.fixtures.complete("Nami", 16_000_000L, null), unapproved)));
+
+		assertThat(fieldsOf(refused)).containsExactly("holder");
+	}
+
+	@Test
+	void anIdThatIsNoCharacterIsRefusedLikeACharacterNotToBeLinked() {
+		UUID notACharacter = this.luffyFirst;
+		for (UUID id : new UUID[] { UUID.randomUUID(), notACharacter }) {
+			var refused = catchThrowableOfType(ValueInvalidException.class, () -> this.service.create(EDITOR, CHOPPER,
+					BountyFixtures.heldBy(this.fixtures.complete("Nami", 16_000_000L, null), id)));
+
+			assertThat(fieldsOf(refused)).containsExactly("holder");
+		}
+	}
+
+	@Test
+	void everyLinkAtFaultIsNamedTheHolderAmongThem() {
+		UUID draftPrevious = this.fixtures.bounty(DRAFT, this.fixtures.complete("Nami", 16_000_000L, null));
+		UUID draftHolder = this.fixtures.character(DRAFT, "Nami");
+		stored();
+
+		var refused = catchThrowableOfType(ValueInvalidException.class, () -> this.service.create(EDITOR, CHOPPER,
+				BountyFixtures.heldBy(this.fixtures.complete("Nami", 66_000_000L, draftPrevious), draftHolder)));
+
+		assertThat(fieldsOf(refused)).containsExactly("previous", "holder");
+	}
+
+	@Test
+	void theDatabaseRefusesABountyPointingToAnythingButACharacter() {
+		UUID chapter = OnlineChapters.chapter(this.contentRepository, this.chapterRepository, PUBLISHED);
+		this.fixtures.bounty(DRAFT, BountyFixtures.heldBy(this.fixtures.complete("Nami", 1L, null), chapter));
+
+		assertThatThrownBy(this::stored).isInstanceOf(ConstraintViolationException.class)
+			.hasMessageContaining("fk_bounty_version_holder");
+	}
+
+	@Test
+	void theDatabaseKeepsACharacterHoldingABountyFromBeingDeleted() {
+		UUID nami = this.fixtures.character(PUBLISHED, "Nami");
+		this.fixtures.bounty(DRAFT, BountyFixtures.heldBy(this.fixtures.complete("Nami", 1L, null), nami));
+		stored();
+
+		assertThatThrownBy(() -> this.jdbc.update("delete from content where id = ?", nami))
+			.hasMessageContaining("fk_bounty_version_holder");
 	}
 
 	private void stored() {

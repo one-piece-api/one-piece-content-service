@@ -142,9 +142,16 @@ class BountyPosterIntegrationTest {
 		var store = new JpaImageStore(this.imageRepository, clock);
 		var images = new ContentImages(new ImageValidator(), new ImageNormalizer(new PngImageEncoder()), store,
 				POSTER_IMAGES);
-		this.fixtures = new BountyFixtures(this.contentRepository, this.bountyRepository, this.chapterRepository,
-				this.episodeRepository, this.contentVersionRepository, this.languageRepository,
-				this.auditLogRepository);
+		this.fixtures = BountyFixtures.builder()
+			.contents(this.contentRepository)
+			.bounties(this.bountyRepository)
+			.characters(this.characterRepository)
+			.chapters(this.chapterRepository)
+			.episodes(this.episodeRepository)
+			.contentVersions(this.contentVersionRepository)
+			.languages(this.languageRepository)
+			.auditLog(this.auditLogRepository)
+			.build();
 		this.service = this.fixtures.service(images);
 		this.imageService = new ImageService(store, this.devilFruitRepository, this.volumeRepository,
 				this.bountyRepository, this.affiliationRepository, this.speciesRepository, this.characterRepository);

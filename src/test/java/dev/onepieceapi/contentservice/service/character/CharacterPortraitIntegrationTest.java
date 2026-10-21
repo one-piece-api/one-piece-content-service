@@ -82,13 +82,13 @@ class CharacterPortraitIntegrationTest {
 	private AffiliationVersionRepository affiliationRepository;
 
 	@Autowired
+	private BountyVersionRepository bountyRepository;
+
+	@Autowired
 	private SpeciesVersionRepository speciesRepository;
 
 	@Autowired
 	private CharacterVersionRepository characterRepository;
-
-	@Autowired
-	private BountyVersionRepository bountyRepository;
 
 	@Autowired
 	private VolumeVersionRepository volumeRepository;
@@ -139,6 +139,7 @@ class CharacterPortraitIntegrationTest {
 			.contents(this.contentRepository)
 			.characters(this.characterRepository)
 			.species(this.speciesRepository)
+			.bounties(this.bountyRepository)
 			.chapters(this.chapterRepository)
 			.episodes(this.episodeRepository)
 			.contentVersions(this.contentVersionRepository)

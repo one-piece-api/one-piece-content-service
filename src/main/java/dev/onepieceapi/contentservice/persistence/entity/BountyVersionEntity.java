@@ -26,10 +26,10 @@ import java.util.UUID;
 /**
  * What one version of a bounty says (implementation plan of the Bounty, D1-D5): the
  * poster's name and the amount, which together are its natural key, the condition, the
- * inactive flag, the content of the bounty it replaces, its image, its first appearance
- * (ADR-0008) and, per language, its description. The entity types of the links are
- * constants the database fills in: they keep a bounty from pointing to anything but a
- * bounty, a chapter and an episode.
+ * inactive flag, the content of the bounty it replaces, the content of its holder, its
+ * image, its first appearance (ADR-0008) and, per language, its description. The entity
+ * types of the links are constants the database fills in: they keep a bounty from
+ * pointing to anything but a bounty, a character, a chapter and an episode.
  */
 @Entity
 @Table(name = "bounty_version")
@@ -57,6 +57,12 @@ public class BountyVersionEntity extends VersionBodyEntity {
 
 	/** The content of the bounty it replaces; null for none. */
 	private UUID previousContentId;
+
+	/**
+	 * The content of the character the poster is about; null for none. Its entity type is
+	 * a constant the database fills in.
+	 */
+	private UUID holderContentId;
 
 	/** The id of its image; null for none. */
 	private String imageId;
@@ -92,6 +98,7 @@ public class BountyVersionEntity extends VersionBodyEntity {
 		this.condition = fields.condition();
 		this.inactive = fields.inactive();
 		this.previousContentId = fields.previousContentId();
+		this.holderContentId = fields.holderContentId();
 		this.imageId = fields.imageId();
 		this.firstAppearanceChapterId = fields.firstAppearance().chapterId();
 		this.firstAppearanceEpisodeId = fields.firstAppearance().episodeId();

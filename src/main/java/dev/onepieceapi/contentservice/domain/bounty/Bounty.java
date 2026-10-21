@@ -26,12 +26,13 @@ import java.util.UUID;
  * {@link BountyValidity}, derived
  * @param previousContentId the content of the bounty this one replaces; null for a first
  * bounty
+ * @param holderContentId the content of the character the poster is about; null for none
  * @param imageId the whole poster, optional and not localized; part of the version
  * @param firstAppearance where the poster is revealed; {@link StoryPoint#NONE} for none,
  * which is complete - it is required only to go online
  */
 public record Bounty(String posterName, Long amount, BountyCondition condition, boolean inactive,
-		UUID previousContentId, Map<String, BountyTranslation> translations, String imageId,
+		UUID previousContentId, UUID holderContentId, Map<String, BountyTranslation> translations, String imageId,
 		StoryPoint firstAppearance) implements ContentBody<Bounty>, FirstAppearing {
 
 	public static final int POSTER_NAME_MAX_LENGTH = 100;
@@ -40,6 +41,8 @@ public record Bounty(String posterName, Long amount, BountyCondition condition, 
 	public static final String CONDITION_ATTRIBUTE = "condition";
 
 	public static final String VALIDITY_ATTRIBUTE = "validity";
+
+	public static final String HOLDER_ATTRIBUTE = "holder";
 
 	/** What the key is called in a block detail; a violation names its two fields. */
 	private static final String KEY_FIELD = "key";
@@ -61,7 +64,7 @@ public record Bounty(String posterName, Long amount, BountyCondition condition, 
 	/** The same bounty with another image, or none. */
 	public Bounty withImage(String newImageId) {
 		return new Bounty(this.posterName, this.amount, this.condition, this.inactive, this.previousContentId,
-				this.translations, newImageId, this.firstAppearance);
+				this.holderContentId, this.translations, newImageId, this.firstAppearance);
 	}
 
 	@Override
@@ -74,7 +77,7 @@ public record Bounty(String posterName, Long amount, BountyCondition condition, 
 			}
 		});
 		return new Bounty(Text.stripToNull(this.posterName), this.amount, this.condition, this.inactive,
-				this.previousContentId, written, this.imageId, this.firstAppearance);
+				this.previousContentId, this.holderContentId, written, this.imageId, this.firstAppearance);
 	}
 
 	@Override

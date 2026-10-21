@@ -634,7 +634,7 @@ class FirstAppearanceIntegrationTest {
 
 	/** Complete, but for what a test of the first appearance does not care about. */
 	private static Bounty bounty(String posterName, StoryPoint firstAppearance) {
-		return new Bounty(posterName, 1_500_000_000L, BountyCondition.DEAD_OR_ALIVE, false, null, Map.of(), null,
+		return new Bounty(posterName, 1_500_000_000L, BountyCondition.DEAD_OR_ALIVE, false, null, null, Map.of(), null,
 				firstAppearance);
 	}
 

@@ -1,7 +1,7 @@
 info:
   name: characterOpenNewVersion
   type: http
-  seq: 6
+  seq: 7
   tags:
     - Characters
 

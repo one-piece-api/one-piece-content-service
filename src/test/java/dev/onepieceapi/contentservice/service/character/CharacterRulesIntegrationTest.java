@@ -3,6 +3,7 @@ package dev.onepieceapi.contentservice.service.character;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.domain.workflow.BlockReason;
 import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
+import dev.onepieceapi.contentservice.persistence.repository.BountyVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.CharacterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
@@ -62,6 +63,9 @@ class CharacterRulesIntegrationTest {
 	private CharacterVersionRepository characterRepository;
 
 	@Autowired
+	private BountyVersionRepository bountyRepository;
+
+	@Autowired
 	private SpeciesVersionRepository speciesRepository;
 
 	@Autowired
@@ -95,6 +99,7 @@ class CharacterRulesIntegrationTest {
 			.contents(this.contentRepository)
 			.characters(this.characterRepository)
 			.species(this.speciesRepository)
+			.bounties(this.bountyRepository)
 			.chapters(this.chapterRepository)
 			.episodes(this.episodeRepository)
 			.contentVersions(this.contentVersionRepository)
@@ -186,6 +191,30 @@ class CharacterRulesIntegrationTest {
 
 		assertThat(this.fixtures.speciesService().retire(RETIRER, CHOPPER, gyojin, 1).version().status())
 			.isEqualTo(RETIRED);
+	}
+
+	@Test
+	void aCharacterIsNotRetiredWhileOnlineBountiesNameItAsHolderEvenForAnAdministrator() {
+		UUID nami = this.fixtures.character(PUBLISHED, this.fixtures.complete("Nami"));
+		UUID bounty = this.fixtures.bounty(PUBLISHED, nami);
+		this.fixtures.bounty(READY_TO_PUBLISH, nami);
+		stored();
+
+		var refused = catchThrowableOfType(VersionActionBlockedException.class,
+				() -> this.service.retire(ADMIN, CHOPPER, nami, 1));
+
+		assertThat(refused.getDetails()).containsEntry("reason", BlockReason.ONLINE_ITEMS_LINKED);
+		assertThat(refused.getDetails().get("detail"))
+			.isEqualTo(Map.of("count", 1L, "bounties", List.of(Map.of("id", bounty, "key", "Nami 16000000"))));
+	}
+
+	@Test
+	void aCharacterNoOnlineBountyNamesIsRetired() {
+		UUID robin = this.fixtures.character(PUBLISHED, this.fixtures.complete("Robin"));
+		this.fixtures.bounty(READY_TO_PUBLISH, robin);
+		stored();
+
+		assertThat(this.service.retire(RETIRER, CHOPPER, robin, 1).version().status()).isEqualTo(RETIRED);
 	}
 
 	private void stored() {

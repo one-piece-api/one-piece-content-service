@@ -194,6 +194,7 @@ examples:
                   "username": ""
                 },
                 "body": {
+                  "bountyCount": 0,
                   "names": {},
                   "romaji": ""
                 },

@@ -6,6 +6,7 @@ import dev.onepieceapi.contentservice.domain.bounty.BountyValidity;
 import dev.onepieceapi.contentservice.domain.workflow.ContentFilter;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.entity.BountyVersionEntity;
+import dev.onepieceapi.contentservice.persistence.projection.HolderBountyCount;
 import dev.onepieceapi.contentservice.persistence.specification.BountySpecifications;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -49,13 +50,16 @@ public interface BountyVersionRepository extends VersionBodyRepository<BountyVer
 		return false;
 	}
 
-	/** The condition and the validity a list can be narrowed by. */
+	/** The condition, the validity and the holder a list can be narrowed by. */
 	@Override
 	default Specification<BountyVersionEntity> attributeConditions(ContentFilter filter,
 			Collection<VersionStatus> statuses) {
 		Specification<BountyVersionEntity> conditions = Specification.allOf();
 		if (filter.attribute(Bounty.CONDITION_ATTRIBUTE) instanceof BountyCondition condition) {
 			conditions = conditions.and(BountySpecifications.withCondition(condition));
+		}
+		if (filter.attribute(Bounty.HOLDER_ATTRIBUTE) instanceof UUID holder) {
+			conditions = conditions.and(BountySpecifications.withHolder(holder));
 		}
 		if (filter.attribute(Bounty.VALIDITY_ATTRIBUTE) instanceof BountyValidity validity) {
 			conditions = conditions.and(BountySpecifications.withValidity(validity, statuses));
@@ -103,6 +107,38 @@ public interface BountyVersionRepository extends VersionBodyRepository<BountyVer
 				and v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED
 			order by d.naturalKey""")
 	List<BountyVersionEntity> findOnlineReplacing(UUID previousContentId, Pageable pageable);
+
+	/** How many bounties are online held by this character. */
+	@Query("""
+			select count(d) from BountyVersionEntity d join d.version v
+			where d.holderContentId = :holderContentId
+				and v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED""")
+	long countOnlineWithHolder(UUID holderContentId);
+
+	/**
+	 * The bounties online held by this character, by key: as many as the page asks for.
+	 */
+	@Query("""
+			select d from BountyVersionEntity d join fetch d.version v
+			where d.holderContentId = :holderContentId
+				and v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED
+			order by d.naturalKey""")
+	List<BountyVersionEntity> findOnlineWithHolder(UUID holderContentId, Pageable pageable);
+
+	/**
+	 * How many bounties each of these characters holds for a caller seeing these
+	 * statuses: the bounties whose most recent visible version names it - the version
+	 * their list shows (see {@code VersionBodySpecifications#mostRecentIn}).
+	 */
+	@Query("""
+			select new dev.onepieceapi.contentservice.persistence.projection.HolderBountyCount(
+				d.holderContentId, count(d))
+			from BountyVersionEntity d join d.version v
+			where d.holderContentId in :holderContentIds and v.status in :statuses
+				and v.versionNumber = (select max(o.versionNumber) from ContentVersionEntity o
+					where o.contentId = v.contentId and o.status in :statuses)
+			group by d.holderContentId""")
+	List<HolderBountyCount> countByHolders(Collection<UUID> holderContentIds, Collection<VersionStatus> statuses);
 
 	/**
 	 * The bounties online, other than this content, replacing the same one: at most one,

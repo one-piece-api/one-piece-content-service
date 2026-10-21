@@ -4,6 +4,7 @@ import dev.onepieceapi.contentservice.domain.character.Character;
 import dev.onepieceapi.contentservice.domain.character.CharacterTranslation;
 import dev.onepieceapi.contentservice.domain.character.Epithet;
 import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
+import dev.onepieceapi.contentservice.persistence.repository.BountyVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.CharacterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
@@ -69,6 +70,9 @@ class CharacterDraftIntegrationTest {
 	private CharacterVersionRepository characterRepository;
 
 	@Autowired
+	private BountyVersionRepository bountyRepository;
+
+	@Autowired
 	private SpeciesVersionRepository speciesRepository;
 
 	@Autowired
@@ -109,6 +113,7 @@ class CharacterDraftIntegrationTest {
 			.contents(this.contentRepository)
 			.characters(this.characterRepository)
 			.species(this.speciesRepository)
+			.bounties(this.bountyRepository)
 			.chapters(this.chapterRepository)
 			.episodes(this.episodeRepository)
 			.contentVersions(this.contentVersionRepository)

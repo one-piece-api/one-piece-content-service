@@ -1,6 +1,8 @@
 package dev.onepieceapi.contentservice.service.character;
 
 import dev.onepieceapi.contentservice.config.RulesProperties;
+import dev.onepieceapi.contentservice.domain.bounty.Bounty;
+import dev.onepieceapi.contentservice.domain.bounty.BountyCondition;
 import dev.onepieceapi.contentservice.domain.character.Character;
 import dev.onepieceapi.contentservice.domain.character.CharacterStatus;
 import dev.onepieceapi.contentservice.domain.character.CharacterTranslation;
@@ -11,14 +13,17 @@ import dev.onepieceapi.contentservice.domain.security.User;
 import dev.onepieceapi.contentservice.domain.species.Species;
 import dev.onepieceapi.contentservice.domain.workflow.EntityType;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
+import dev.onepieceapi.contentservice.persistence.entity.BountyVersionEntity;
 import dev.onepieceapi.contentservice.persistence.entity.CharacterVersionEntity;
 import dev.onepieceapi.contentservice.persistence.entity.ContentEntity;
 import dev.onepieceapi.contentservice.persistence.entity.ContentVersionEntity;
 import dev.onepieceapi.contentservice.persistence.entity.SpeciesVersionEntity;
+import dev.onepieceapi.contentservice.persistence.mapper.BountyVersionMapper;
 import dev.onepieceapi.contentservice.persistence.mapper.CharacterVersionMapper;
 import dev.onepieceapi.contentservice.persistence.mapper.SpeciesVersionMapper;
 import dev.onepieceapi.contentservice.persistence.mapper.UserMapper;
 import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
+import dev.onepieceapi.contentservice.persistence.repository.BountyVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.CharacterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
@@ -79,6 +84,8 @@ final class CharacterFixtures {
 
 	private final SpeciesVersionRepository species;
 
+	private final BountyVersionRepository bounties;
+
 	private final ChapterVersionRepository chapters;
 
 	private final EpisodeVersionRepository episodes;
@@ -103,7 +110,8 @@ final class CharacterFixtures {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
 		var validator = new CharacterValidator(this.characters, this.languages, this.chapters, this.episodes,
 				this.species);
-		var rules = new CharacterRules(this.contents, this.chapters, this.episodes, this.species);
+		var rules = new CharacterRules(this.contents, this.chapters, this.episodes, this.species, this.bounties,
+				new RulesProperties(5));
 		return new CharacterService(new CharacterDefinition(this.characters, validator, rules), this.contentVersions,
 				this.contents, new AuditLogService(this.auditLog, clock), clock, images);
 	}
@@ -146,6 +154,14 @@ final class CharacterFixtures {
 		var version = new SpeciesVersionEntity(workflow(content(EntityType.SPECIES), status));
 		SpeciesVersionMapper.rewrite(version, new Species(romaji, Map.of(), null, this.firstAppearance), EARLIER);
 		return this.species.save(version).getContentId();
+	}
+
+	/** A new bounty held by this character, with its first version in this status. */
+	UUID bounty(VersionStatus status, UUID holder) {
+		var version = new BountyVersionEntity(workflow(content(EntityType.BOUNTY), status));
+		BountyVersionMapper.rewrite(version, new Bounty("Nami", 16_000_000L, BountyCondition.DEAD_OR_ALIVE, false, null,
+				holder, Map.of(), null, this.firstAppearance), EARLIER);
+		return this.bounties.save(version).getContentId();
 	}
 
 	/** The fields a refusal names. */

@@ -11,6 +11,7 @@ import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
 import dev.onepieceapi.contentservice.domain.workflow.VisibilityPolicy;
 import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
 import dev.onepieceapi.contentservice.persistence.repository.BountyVersionRepository;
+import dev.onepieceapi.contentservice.persistence.repository.CharacterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentVersionRepository;
@@ -45,6 +46,7 @@ import static dev.onepieceapi.contentservice.service.bounty.BountyFixtures.CHOPP
 import static dev.onepieceapi.contentservice.service.bounty.BountyFixtures.EDITOR;
 import static dev.onepieceapi.contentservice.service.bounty.BountyFixtures.READER;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 import static org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase.Replace;
 
 /**
@@ -72,6 +74,9 @@ class BountyListIntegrationTest {
 
 	@Autowired
 	private BountyVersionRepository bountyRepository;
+
+	@Autowired
+	private CharacterVersionRepository characterRepository;
 
 	@Autowired
 	private ChapterVersionRepository chapterRepository;
@@ -115,9 +120,16 @@ class BountyListIntegrationTest {
 
 	@BeforeEach
 	void setUp() {
-		this.fixtures = new BountyFixtures(this.contentRepository, this.bountyRepository, this.chapterRepository,
-				this.episodeRepository, this.contentVersionRepository, this.languageRepository,
-				this.auditLogRepository);
+		this.fixtures = BountyFixtures.builder()
+			.contents(this.contentRepository)
+			.bounties(this.bountyRepository)
+			.characters(this.characterRepository)
+			.chapters(this.chapterRepository)
+			.episodes(this.episodeRepository)
+			.contentVersions(this.contentVersionRepository)
+			.languages(this.languageRepository)
+			.auditLog(this.auditLogRepository)
+			.build();
 		this.service = this.fixtures.service();
 		this.links = new BountyLinks(this.bountyRepository, Clock.fixed(BountyFixtures.NOW, ZoneOffset.UTC));
 		this.luffyFirst = this.fixtures.bounty(PUBLISHED,
@@ -292,6 +304,34 @@ class BountyListIntegrationTest {
 		assertThat(luffy.getContent()).extracting(BountyReference::id).containsExactly(this.luffyFirst);
 	}
 
+	@Test
+	void theListIsNarrowedByHolder() {
+		UUID holder = this.fixtures.character(PUBLISHED, "Nami");
+		UUID heldByNami = this.fixtures.bounty(DRAFT,
+				BountyFixtures.heldBy(this.fixtures.complete("Nami", 66_000_000L, null), holder));
+		stored();
+		var held = new ContentFilter(null, null, null, null).withAttribute("holder", holder);
+
+		assertThat(search(EDITOR, held)).containsExactly(heldByNami);
+		assertThat(search(READER, held)).isEmpty();
+		assertThat(search(EDITOR, held.withAttribute("holder", UUID.randomUUID()))).isEmpty();
+	}
+
+	@Test
+	void theBountiesOfACharacterAreCountedAsTheCallerSeesThem() {
+		UUID holder = this.fixtures.character(PUBLISHED, "Nami");
+		UUID idle = this.fixtures.character(PUBLISHED, "Zoro");
+		this.fixtures.bounty(PUBLISHED,
+				BountyFixtures.heldBy(this.fixtures.complete("Nami", 16_000_000L, null), holder));
+		this.fixtures.bounty(DRAFT, BountyFixtures.heldBy(this.fixtures.complete("Nami", 66_000_000L, null), holder));
+		stored();
+
+		assertThat(this.links.bountyCounts(EDITOR, List.of(holder, idle))).containsOnly(entry(holder, 2L));
+		assertThat(this.links.bountyCounts(READER, List.of(holder, idle))).containsOnly(entry(holder, 1L));
+		assertThat(this.links.bountyCounts(Set.of(), List.of(holder))).isEmpty();
+		assertThat(this.links.bountyCounts(EDITOR, List.of())).isEmpty();
+	}
+
 	private List<UUID> search(Set<Permission> permissions, ContentFilter filter) {
 		return this.service.list(permissions, CHOPPER, filter, PageRequest.of(0, 20), LANGUAGE)
 			.getContent()
@@ -315,12 +355,12 @@ class BountyListIntegrationTest {
 
 	private static Bounty onlyAlive(Bounty bounty) {
 		return new Bounty(bounty.posterName(), bounty.amount(), BountyCondition.ONLY_ALIVE, bounty.inactive(),
-				bounty.previousContentId(), bounty.translations(), null, bounty.firstAppearance());
+				bounty.previousContentId(), null, bounty.translations(), null, bounty.firstAppearance());
 	}
 
 	private static Bounty inactive(Bounty bounty) {
 		return new Bounty(bounty.posterName(), bounty.amount(), bounty.condition(), true, bounty.previousContentId(),
-				Map.of("it", new BountyTranslation("Revocata")), null, bounty.firstAppearance());
+				null, Map.of("it", new BountyTranslation("Revocata")), null, bounty.firstAppearance());
 	}
 
 	private void stored() {

@@ -106,6 +106,9 @@ public final class ApiPaths {
 	/** The species a character may name. */
 	public static final String SPECIES_LINKABLE = SPECIES + CONTENT_LINKABLE;
 
+	/** The characters a bounty may name as its holder. */
+	public static final String CHARACTERS_LINKABLE = CHARACTERS + CONTENT_LINKABLE;
+
 	/** The section itself: its list, and where a new content is posted. */
 	public static final String CONTENT_LIST = "";
 

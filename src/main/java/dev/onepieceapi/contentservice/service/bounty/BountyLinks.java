@@ -4,10 +4,13 @@ import dev.onepieceapi.contentservice.domain.bounty.Bounty;
 import dev.onepieceapi.contentservice.domain.bounty.BountyChain;
 import dev.onepieceapi.contentservice.domain.bounty.BountyReference;
 import dev.onepieceapi.contentservice.domain.bounty.BountySortField;
+import dev.onepieceapi.contentservice.domain.security.Permission;
 import dev.onepieceapi.contentservice.domain.workflow.ContentFilter;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
+import dev.onepieceapi.contentservice.domain.workflow.VisibilityPolicy;
 import dev.onepieceapi.contentservice.persistence.entity.BountyVersionEntity;
 import dev.onepieceapi.contentservice.persistence.mapper.BountyVersionMapper;
+import dev.onepieceapi.contentservice.persistence.projection.HolderBountyCount;
 import dev.onepieceapi.contentservice.persistence.repository.BountyVersionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -65,6 +68,21 @@ public class BountyLinks {
 			.collect(Collectors.toMap(BountyReference::id, Function.identity()));
 		ids.forEach(id -> references.computeIfAbsent(id, BountyReference::unnamed));
 		return references;
+	}
+
+	/**
+	 * How many bounties each of the given characters holds for this caller: the bounties
+	 * their list shows naming it, which is also what the list of bounties narrowed by
+	 * that holder counts. A character with none is not in the map.
+	 */
+	public Map<UUID, Long> bountyCounts(Set<Permission> permissions, Collection<UUID> holderContentIds) {
+		Set<VersionStatus> visible = VisibilityPolicy.visibleStatuses(permissions);
+		if (visible.isEmpty() || holderContentIds.isEmpty()) {
+			return Map.of();
+		}
+		return this.repository.countByHolders(holderContentIds, visible)
+			.stream()
+			.collect(Collectors.toMap(HolderBountyCount::holderContentId, HolderBountyCount::count));
 	}
 
 	/**

@@ -16,14 +16,19 @@ import lombok.experimental.UtilityClass;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.util.Collection;
+import java.util.UUID;
 
 /**
- * The filters of the list of bounties that are its own: the condition, and the validity
- * (implementation plan of the Bounty, D3, D5), which is derived and so asked as a
- * question about the other bounties, never read from a column.
+ * The filters of the list of bounties that are its own: the condition, the holder, and
+ * the validity (implementation plan of the Bounty, D3, D5), which is derived and so asked
+ * as a question about the other bounties, never read from a column.
  */
 @UtilityClass
 public class BountySpecifications {
+
+	public Specification<BountyVersionEntity> withHolder(UUID holderContentId) {
+		return (root, query, cb) -> cb.equal(root.get(BountyVersionEntity.Fields.holderContentId), holderContentId);
+	}
 
 	public Specification<BountyVersionEntity> withCondition(BountyCondition condition) {
 		return (root, query, cb) -> cb.equal(root.get(BountyVersionEntity.Fields.condition), condition);

@@ -12,7 +12,7 @@ import java.util.UUID;
  */
 @Builder
 public record BountyFields(String posterName, Long amount, BountyCondition condition, boolean inactive,
-		UUID previousContentId, Map<String, BountyTranslationEmbeddable> translations, String imageId,
-		FirstAppearanceIds firstAppearance) {
+		UUID previousContentId, UUID holderContentId, Map<String, BountyTranslationEmbeddable> translations,
+		String imageId, FirstAppearanceIds firstAppearance) {
 
 }

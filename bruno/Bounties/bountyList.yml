@@ -73,6 +73,10 @@ http:
       value: ONLY_ALIVE
       type: query
       disabled: true
+    - name: holder
+      value: ""
+      type: query
+      disabled: true
     - name: page
       value: "0"
       type: query
@@ -164,6 +168,10 @@ examples:
           disabled: true
         - name: condition
           value: ONLY_ALIVE
+          type: query
+          disabled: true
+        - name: holder
+          value: ""
           type: query
           disabled: true
         - name: page
@@ -291,6 +299,10 @@ examples:
           value: ONLY_ALIVE
           type: query
           disabled: true
+        - name: holder
+          value: ""
+          type: query
+          disabled: true
         - name: page
           value: "0"
           type: query
@@ -395,6 +407,10 @@ examples:
           disabled: true
         - name: condition
           value: ONLY_ALIVE
+          type: query
+          disabled: true
+        - name: holder
+          value: ""
           type: query
           disabled: true
         - name: page

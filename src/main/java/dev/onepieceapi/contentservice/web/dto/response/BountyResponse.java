@@ -11,6 +11,7 @@ import java.util.Map;
  *
  * @param validity derived, never stored: as the caller sees the other bounties
  * @param previous the bounty it replaces, as it is today; null for none
+ * @param holder the character the poster is about, as it is today; null for none
  * @param next the bounty replacing it, as the caller sees it; null for none
  * @param chain the whole chain through the versions the caller sees, newest first, this
  * bounty included
@@ -19,8 +20,9 @@ import java.util.Map;
  * @param firstAppearance where the poster is revealed; null for none
  */
 public record BountyResponse(String posterName, Long amount, BountyCondition condition, boolean inactive,
-		BountyValidity validity, BountyReferenceResponse previous, BountyReferenceResponse next,
-		List<BountyReferenceResponse> chain, Map<String, BountyTranslationResponse> translations, ImageResponse image,
+		BountyValidity validity, BountyReferenceResponse previous, CharacterReferenceResponse holder,
+		BountyReferenceResponse next, List<BountyReferenceResponse> chain,
+		Map<String, BountyTranslationResponse> translations, ImageResponse image,
 		FirstAppearanceResponse firstAppearance) {
 
 }
