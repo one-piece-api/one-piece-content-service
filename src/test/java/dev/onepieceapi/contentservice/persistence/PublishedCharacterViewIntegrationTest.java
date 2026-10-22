@@ -23,11 +23,11 @@ import static org.assertj.core.api.Assertions.tuple;
 import static org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase.Replace;
 
 /**
- * The Character in the interface one-piece-public-api reads ({@code V27}) against a real
- * PostgreSQL (Testcontainers): only the versions online are shown, one row per language,
- * with their epithets, aliases and species in the order of the version, and the portrait
- * visible only while a character online uses it. Seeded in SQL, as the table owner, and
- * read through the {@code published} views.
+ * The Character in the interface one-piece-public-api reads ({@code V27}, {@code V33})
+ * against a real PostgreSQL (Testcontainers): only the versions online are shown, one row
+ * per language, with their epithets, aliases, species and memberships in the order of the
+ * version, and the portrait visible only while a character online uses it. Seeded in SQL,
+ * as the table owner, and read through the {@code published} views.
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = Replace.NONE)
@@ -170,6 +170,39 @@ class PublishedCharacterViewIntegrationTest {
 	}
 
 	@Test
+	void theMembershipsOfTheVersionOnlineAreShownInTheirOrderAndOnlyInAffiliationsOnlineWithTheirRoles() {
+		UUID mugiwara = affiliationOnline("Mugiwara no Ichimi");
+		UUID kaigun = affiliationOnline("Kaigun");
+		UUID retired = content("AFFILIATION");
+		this.jdbc.sql("insert into affiliation_version (version_id, romaji) values (?, 'Baroque Works')")
+			.params(version(retired, 1, "RETIRED"))
+			.update();
+		UUID koby = content(CHARACTER);
+		UUID online = character(koby, 1, PUBLISHED, "Koby", "it");
+		membership(online, 2, mugiwara, null, true);
+		membership(online, 0, kaigun, "CAPTAIN", false, "it", "Capitano", "en", "Captain");
+		membership(online, 1, retired, null, false, "it", "Ex");
+		membership(character(koby, 2, "DRAFT", "Koby", "it"), 0, kaigun, "ENSIGN", false);
+
+		var rows = this.jdbc.sql(
+				"select character_id, position, affiliation_id, marine_rank, former from published.character_affiliation"
+						+ " order by position")
+			.query((rs, n) -> tuple(rs.getObject("character_id"), rs.getInt("position"), rs.getObject("affiliation_id"),
+					rs.getString("marine_rank"), rs.getBoolean("former")))
+			.list();
+		var roles = this.jdbc
+			.sql("select character_id, position, language, role from published.character_affiliation_role"
+					+ " order by position, language")
+			.query((rs, n) -> tuple(rs.getObject("character_id"), rs.getInt("position"), rs.getString("language"),
+					rs.getString("role")))
+			.list();
+
+		assertThat(rows).containsExactly(tuple(koby, 0, kaigun, "CAPTAIN", false),
+				tuple(koby, 2, mugiwara, null, true));
+		assertThat(roles).containsExactly(tuple(koby, 0, "en", "Captain"), tuple(koby, 0, "it", "Capitano"));
+	}
+
+	@Test
 	void thePortraitOfACharacterOnlineIsAPublishedImageAndADraftOneIsNot() {
 		String online = image('d');
 		String draft = image('e');
@@ -243,6 +276,34 @@ class PublishedCharacterViewIntegrationTest {
 			.sql("insert into character_version_species (version_id, position, species_content_id) values (?, ?, ?)")
 			.params(versionId, position, speciesId)
 			.update();
+	}
+
+	/** Seeds a membership at a position, with its role as language and text pairs. */
+	private void membership(UUID versionId, int position, UUID affiliationId, String rank, boolean former,
+			String... languageAndRole) {
+		UUID id = UUID.randomUUID();
+		this.jdbc
+			.sql("""
+					insert into character_version_affiliation (id, version_id, position, affiliation_content_id, marine_rank,
+					                                           former)
+					values (?, ?, ?, ?, ?, ?)""")
+			.params(id, versionId, position, affiliationId, rank, former)
+			.update();
+		for (int i = 0; i < languageAndRole.length; i += 2) {
+			this.jdbc
+				.sql("insert into character_version_affiliation_translation (membership_id, language_code, role)"
+						+ " values (?, ?, ?)")
+				.params(id, languageAndRole[i], languageAndRole[i + 1])
+				.update();
+		}
+	}
+
+	private UUID affiliationOnline(String romaji) {
+		UUID id = content("AFFILIATION");
+		this.jdbc.sql("insert into affiliation_version (version_id, romaji) values (?, ?)")
+			.params(version(id, 1, PUBLISHED), romaji)
+			.update();
+		return id;
 	}
 
 	private UUID speciesOnline(String romaji) {
