@@ -203,6 +203,42 @@ class PublishedCharacterViewIntegrationTest {
 	}
 
 	@Test
+	void theDevilFruitsOfTheVersionOnlineAreShownInTheirOrderAndOnlyThoseOnline() {
+		UUID meraMera = fruitOnline("Mera Mera no Mi");
+		UUID smile = fruitOnline("SMILE Zoan");
+		UUID retired = content("DEVIL_FRUIT");
+		this.jdbc.sql("insert into devil_fruit_version (version_id, romaji) values (?, 'Hana Hana no Mi')")
+			.params(version(retired, 1, "RETIRED"))
+			.update();
+		UUID sabo = content(CHARACTER);
+		UUID online = character(sabo, 1, PUBLISHED, "Sabo", "it");
+		devilFruit(online, 2, smile, true);
+		devilFruit(online, 0, meraMera, false);
+		devilFruit(online, 1, retired, false);
+		devilFruit(character(sabo, 2, "DRAFT", "Sabo", "it"), 0, smile, false);
+
+		var rows = this.jdbc
+			.sql("select character_id, position, devil_fruit_id, former from published.character_devil_fruit"
+					+ " order by position")
+			.query((rs, n) -> tuple(rs.getObject("character_id"), rs.getInt("position"), rs.getObject("devil_fruit_id"),
+					rs.getBoolean("former")))
+			.list();
+
+		assertThat(rows).containsExactly(tuple(sabo, 0, meraMera, false), tuple(sabo, 2, smile, true));
+	}
+
+	@Test
+	void theFruitViewSaysWhetherSeveralCharactersMayUseIt() {
+		var columns = this.jdbc
+			.sql("select column_name from information_schema.columns where table_schema = 'published'"
+					+ " and table_name = 'devil_fruit' order by ordinal_position")
+			.query(String.class)
+			.list();
+
+		assertThat(columns).last().isEqualTo("multiple_users");
+	}
+
+	@Test
 	void thePortraitOfACharacterOnlineIsAPublishedImageAndADraftOneIsNot() {
 		String online = image('d');
 		String draft = image('e');
@@ -296,6 +332,22 @@ class PublishedCharacterViewIntegrationTest {
 				.params(id, languageAndRole[i], languageAndRole[i + 1])
 				.update();
 		}
+	}
+
+	private void devilFruit(UUID versionId, int position, UUID devilFruitId, boolean former) {
+		this.jdbc
+			.sql("insert into character_version_devil_fruit (version_id, position, devil_fruit_content_id, former)"
+					+ " values (?, ?, ?, ?)")
+			.params(versionId, position, devilFruitId, former)
+			.update();
+	}
+
+	private UUID fruitOnline(String romaji) {
+		UUID id = content("DEVIL_FRUIT");
+		this.jdbc.sql("insert into devil_fruit_version (version_id, romaji) values (?, ?)")
+			.params(version(id, 1, PUBLISHED), romaji)
+			.update();
+		return id;
 	}
 
 	private UUID affiliationOnline(String romaji) {
