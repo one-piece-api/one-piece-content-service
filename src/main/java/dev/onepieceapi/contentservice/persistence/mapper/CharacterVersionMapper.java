@@ -3,11 +3,13 @@ package dev.onepieceapi.contentservice.persistence.mapper;
 import dev.onepieceapi.contentservice.domain.character.Character;
 import dev.onepieceapi.contentservice.domain.character.CharacterTranslation;
 import dev.onepieceapi.contentservice.domain.character.Epithet;
+import dev.onepieceapi.contentservice.domain.character.FruitUse;
 import dev.onepieceapi.contentservice.domain.character.Membership;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.domain.workflow.Version;
 import dev.onepieceapi.contentservice.persistence.entity.CharacterEpithetEntity;
 import dev.onepieceapi.contentservice.persistence.entity.CharacterFields;
+import dev.onepieceapi.contentservice.persistence.entity.CharacterFruitUseEmbeddable;
 import dev.onepieceapi.contentservice.persistence.entity.CharacterMembershipEntity;
 import dev.onepieceapi.contentservice.persistence.entity.CharacterTranslationEmbeddable;
 import dev.onepieceapi.contentservice.persistence.entity.CharacterVersionEntity;
@@ -38,6 +40,7 @@ public class CharacterVersionMapper {
 			.aliases(entity.getAliases())
 			.speciesIds(entity.getSpeciesIds())
 			.affiliations(entity.getAffiliations().stream().map(CharacterVersionMapper::toDomain).toList())
+			.devilFruits(entity.getDevilFruits().stream().map(CharacterVersionMapper::toDomain).toList())
 			.imageId(entity.getImageId())
 			.firstAppearance(new StoryPoint(entity.getFirstAppearanceChapterId(), entity.getFirstAppearanceEpisodeId()))
 			.build();
@@ -59,6 +62,7 @@ public class CharacterVersionMapper {
 			.aliases(body.aliases())
 			.speciesIds(body.speciesIds())
 			.affiliations(body.affiliations())
+			.devilFruits(body.devilFruits())
 			.imageId(body.imageId())
 			.firstAppearance(FirstAppearanceMapper.toIds(body.firstAppearance()))
 			.build(), now);
@@ -76,6 +80,10 @@ public class CharacterVersionMapper {
 	private static Membership toDomain(CharacterMembershipEntity membership) {
 		return new Membership(membership.getAffiliationContentId(), new TreeMap<>(membership.getRole()),
 				membership.getMarineRank(), membership.isFormer());
+	}
+
+	private static FruitUse toDomain(CharacterFruitUseEmbeddable use) {
+		return new FruitUse(use.getDevilFruitContentId(), use.isFormer());
 	}
 
 	/** Sorted by language code, so the same epithet always reads the same way. */

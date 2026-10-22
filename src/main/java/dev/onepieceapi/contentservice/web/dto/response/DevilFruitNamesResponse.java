@@ -10,8 +10,10 @@ import java.util.Map;
  * @param names the name per language code, for the languages that have one
  * @param type the Devil Fruit Type it belongs to, as it is today; null while not chosen
  * @param subcategory the subcategory of that type it names; null for none
+ * @param userCount how many characters online currently use it, those who lost its power
+ * not counted
  */
 public record DevilFruitNamesResponse(String romaji, Map<String, String> names, TypeReferenceResponse type,
-		SubcategoryReferenceResponse subcategory) {
+		SubcategoryReferenceResponse subcategory, long userCount) {
 
 }

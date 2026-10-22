@@ -206,7 +206,7 @@ class FirstAppearanceIntegrationTest {
 						new DevilFruitValidator(this.fruitRepository, this.languageRepository, this.typeRepository,
 								this.chapterRepository, this.episodeRepository),
 						new DevilFruitRules(this.contentRepository, this.typeRepository, this.chapterRepository,
-								this.episodeRepository)),
+								this.episodeRepository, this.characterRepository, new RulesProperties(5))),
 				this.contentVersionRepository, this.contentRepository, auditLogService, clock,
 				mock(ContentImages.class));
 		this.types = new DevilFruitTypeService(this.typeRepository, this.contentVersionRepository,

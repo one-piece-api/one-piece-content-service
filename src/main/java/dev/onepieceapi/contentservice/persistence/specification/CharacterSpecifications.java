@@ -4,6 +4,7 @@ import dev.onepieceapi.contentservice.domain.affiliation.AffiliationKind;
 import dev.onepieceapi.contentservice.domain.character.CharacterStatus;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.entity.AffiliationVersionEntity;
+import dev.onepieceapi.contentservice.persistence.entity.CharacterFruitUseEmbeddable;
 import dev.onepieceapi.contentservice.persistence.entity.CharacterMembershipEntity;
 import dev.onepieceapi.contentservice.persistence.entity.CharacterVersionEntity;
 import dev.onepieceapi.contentservice.persistence.entity.ContentVersionEntity;
@@ -21,8 +22,8 @@ import java.util.UUID;
 
 /**
  * The filters of the list of characters that are its own (implementation plan of the
- * Character, D16): the status, a species and an affiliation its version names, and the
- * kind of an affiliation it currently belongs to.
+ * Character, D16): the status, a species and an affiliation its version names, the kind
+ * of an affiliation it currently belongs to, and a Devil Fruit it currently has.
  */
 @UtilityClass
 public class CharacterSpecifications {
@@ -71,6 +72,22 @@ public class CharacterSpecifications {
 						cb.equal(affiliation.get(AffiliationVersionEntity.Fields.kind), kind),
 						ContentVersionSpecifications.mostRecentIn(version, VersionStatus.approved(), member, cb));
 			return cb.exists(member);
+		};
+	}
+
+	/**
+	 * The characters whose version lists this Devil Fruit (its content id) as one they
+	 * have: an entry marked {@code former} does not count, as for the affiliation.
+	 */
+	public Specification<CharacterVersionEntity> withDevilFruit(UUID devilFruitContentId) {
+		return (root, query, cb) -> {
+			Subquery<Integer> user = query.subquery(Integer.class);
+			Join<CharacterVersionEntity, CharacterFruitUseEmbeddable> use = user.correlate(root)
+				.join(CharacterVersionEntity.Fields.devilFruits);
+			user.select(cb.literal(1))
+				.where(cb.equal(use.get(CharacterFruitUseEmbeddable.Fields.devilFruitContentId), devilFruitContentId),
+						cb.isFalse(use.get(CharacterFruitUseEmbeddable.Fields.former)));
+			return cb.exists(user);
 		};
 	}
 

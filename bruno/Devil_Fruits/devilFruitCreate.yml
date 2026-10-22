@@ -16,6 +16,7 @@ http:
           "chapter": "",
           "episode": ""
         },
+        "multipleUsers": false,
         "removeImage": false,
         "romaji": "",
         "subcategory": "",
@@ -45,6 +46,7 @@ examples:
               "chapter": "",
               "episode": ""
             },
+            "multipleUsers": false,
             "removeImage": false,
             "romaji": "",
             "subcategory": "",
@@ -103,6 +105,7 @@ examples:
               "chapter": "",
               "episode": ""
             },
+            "multipleUsers": false,
             "removeImage": false,
             "romaji": "",
             "subcategory": "",
@@ -145,6 +148,7 @@ examples:
               "chapter": "",
               "episode": ""
             },
+            "multipleUsers": false,
             "removeImage": false,
             "romaji": "",
             "subcategory": "",

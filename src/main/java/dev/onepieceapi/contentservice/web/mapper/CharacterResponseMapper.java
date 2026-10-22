@@ -5,7 +5,9 @@ import dev.onepieceapi.contentservice.domain.character.Character;
 import dev.onepieceapi.contentservice.domain.character.CharacterReference;
 import dev.onepieceapi.contentservice.domain.character.CharacterTranslation;
 import dev.onepieceapi.contentservice.domain.character.Epithet;
+import dev.onepieceapi.contentservice.domain.character.FruitUse;
 import dev.onepieceapi.contentservice.domain.character.Membership;
+import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitReference;
 import dev.onepieceapi.contentservice.domain.species.SpeciesReference;
 import dev.onepieceapi.contentservice.domain.story.NumberedReference;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
@@ -16,7 +18,9 @@ import dev.onepieceapi.contentservice.web.dto.response.CharacterReferenceRespons
 import dev.onepieceapi.contentservice.web.dto.response.CharacterResponse;
 import dev.onepieceapi.contentservice.web.dto.response.CharacterTranslationResponse;
 import dev.onepieceapi.contentservice.web.dto.response.ContentSummaryResponse;
+import dev.onepieceapi.contentservice.web.dto.response.DevilFruitReferenceResponse;
 import dev.onepieceapi.contentservice.web.dto.response.EpithetResponse;
+import dev.onepieceapi.contentservice.web.dto.response.FruitUseResponse;
 import dev.onepieceapi.contentservice.web.dto.response.MembershipResponse;
 import dev.onepieceapi.contentservice.web.dto.response.SpeciesReferenceResponse;
 import dev.onepieceapi.contentservice.web.dto.response.VersionResponse;
@@ -38,9 +42,10 @@ public class CharacterResponseMapper {
 	/** A version of a Character as its caller meets it, with everything it says. */
 	public VersionResponse<CharacterResponse> toVersionResponse(VersionAccess<Character> access,
 			Map<UUID, SpeciesReference> species, Map<UUID, AffiliationReference> affiliations,
-			Map<UUID, NumberedReference> storyItems, ImageResponseMapper images) {
+			Map<UUID, DevilFruitReference> devilFruits, Map<UUID, NumberedReference> storyItems,
+			ImageResponseMapper images) {
 		return ContentResponseMapper.toVersionResponse(access,
-				character -> toResponse(character, species, affiliations, storyItems, images));
+				character -> toResponse(character, species, affiliations, devilFruits, storyItems, images));
 	}
 
 	/**
@@ -55,8 +60,8 @@ public class CharacterResponseMapper {
 
 	/** Everything the version says, its lists in their order. */
 	public CharacterResponse toResponse(Character character, Map<UUID, SpeciesReference> species,
-			Map<UUID, AffiliationReference> affiliations, Map<UUID, NumberedReference> storyItems,
-			ImageResponseMapper images) {
+			Map<UUID, AffiliationReference> affiliations, Map<UUID, DevilFruitReference> devilFruits,
+			Map<UUID, NumberedReference> storyItems, ImageResponseMapper images) {
 		Map<String, CharacterTranslationResponse> translations = new TreeMap<>();
 		character.translations()
 			.forEach((language, translation) -> translations.put(language, toResponse(translation)));
@@ -71,6 +76,7 @@ public class CharacterResponseMapper {
 			.aliases(character.aliases())
 			.species(character.speciesIds().stream().map(id -> toSpeciesResponse(id, species)).toList())
 			.affiliations(character.affiliations().stream().map(entry -> toResponse(entry, affiliations)).toList())
+			.devilFruits(character.devilFruits().stream().map(entry -> toResponse(entry, devilFruits)).toList())
 			.image(images.toResponse(character.imageId()))
 			.firstAppearance(FirstAppearanceMapper.toResponse(character.firstAppearance(), storyItems))
 			.build();
@@ -103,6 +109,28 @@ public class CharacterResponseMapper {
 		AffiliationReference reference = affiliations.get(affiliationContentId);
 		return reference == null ? new AffiliationReferenceResponse(affiliationContentId, null, Map.of(), null)
 				: AffiliationResponseMapper.toResponse(reference);
+	}
+
+	/** The fruit as of today, with whether the character still has its power. */
+	private static FruitUseResponse toResponse(FruitUse use, Map<UUID, DevilFruitReference> devilFruits) {
+		return new FruitUseResponse(toDevilFruitResponse(use.devilFruitContentId(), devilFruits), use.former());
+	}
+
+	/**
+	 * The fruit with its names; with only its id when it has nothing approved to be
+	 * called by, which the link makes impossible but a read must not fail for.
+	 */
+	private static DevilFruitReferenceResponse toDevilFruitResponse(UUID devilFruitContentId,
+			Map<UUID, DevilFruitReference> devilFruits) {
+		DevilFruitReference reference = devilFruits.get(devilFruitContentId);
+		return reference == null ? new DevilFruitReferenceResponse(devilFruitContentId, null, Map.of(), false)
+				: toResponse(reference);
+	}
+
+	/** A Devil Fruit a character may point to. */
+	public DevilFruitReferenceResponse toResponse(DevilFruitReference reference) {
+		return new DevilFruitReferenceResponse(reference.id(), reference.romaji(), reference.names(),
+				reference.multipleUsers());
 	}
 
 	/** A character a bounty may point to. */

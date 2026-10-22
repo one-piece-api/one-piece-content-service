@@ -5,18 +5,22 @@ import dev.onepieceapi.contentservice.domain.image.ImageChange;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSortField;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAccess;
+import dev.onepieceapi.contentservice.service.devilfruit.DevilFruitLinks;
 import dev.onepieceapi.contentservice.service.devilfruit.DevilFruitService;
 import dev.onepieceapi.contentservice.service.devilfruittype.DevilFruitTypeLinks;
 import dev.onepieceapi.contentservice.service.story.FirstAppearanceLinks;
 import dev.onepieceapi.contentservice.web.ApiPaths;
 import dev.onepieceapi.contentservice.web.dto.request.DevilFruitListRequest;
 import dev.onepieceapi.contentservice.web.dto.request.DevilFruitRequest;
+import dev.onepieceapi.contentservice.web.dto.request.LinkableTypesRequest;
 import dev.onepieceapi.contentservice.web.dto.response.ContentResponse;
 import dev.onepieceapi.contentservice.web.dto.response.ContentSummaryResponse;
 import dev.onepieceapi.contentservice.web.dto.response.DevilFruitNamesResponse;
+import dev.onepieceapi.contentservice.web.dto.response.DevilFruitReferenceResponse;
 import dev.onepieceapi.contentservice.web.dto.response.DevilFruitResponse;
 import dev.onepieceapi.contentservice.web.dto.response.PageResponse;
 import dev.onepieceapi.contentservice.web.dto.response.VersionResponse;
+import dev.onepieceapi.contentservice.web.mapper.CharacterResponseMapper;
 import dev.onepieceapi.contentservice.web.mapper.ContentResponseMapper;
 import dev.onepieceapi.contentservice.web.mapper.DevilFruitRequestMapper;
 import dev.onepieceapi.contentservice.web.mapper.DevilFruitResponseMapper;
@@ -44,14 +48,15 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 
 /**
  * The Devil Fruit section: every endpoint of {@link ContentController}, plus creating a
  * content and editing its draft (UF-CNT-01, UF-CNT-02), which take {@code content:write},
- * and the list narrowed to the fruits of a type. The type a fruit points to is answered
- * as it is today, looked up once for the whole page (implementation plan of the Devil
- * Fruit, D1, D4).
+ * the list narrowed to the fruits of a type, and the fruits a character may name. The
+ * type a fruit points to is answered as it is today, looked up once for the whole page
+ * (implementation plan of the Devil Fruit, D1, D4).
  */
 @RestController
 @RequestMapping(ApiPaths.DEVIL_FRUITS)
@@ -67,15 +72,18 @@ class DevilFruitController extends ContentController<DevilFruit, DevilFruitRespo
 
 	private final DevilFruitTypeLinks links;
 
+	private final DevilFruitLinks fruitLinks;
+
 	@Autowired
-	DevilFruitController(DevilFruitService service, DevilFruitTypeLinks links, FirstAppearanceLinks firstAppearances,
-			ImageResponseMapper images) {
+	DevilFruitController(DevilFruitService service, DevilFruitTypeLinks links, DevilFruitLinks fruitLinks,
+			FirstAppearanceLinks firstAppearances, ImageResponseMapper images) {
 		super(service,
 				access -> DevilFruitResponseMapper.toVersionResponse(access,
 						links.referencesFor(List.of(access.body())),
 						firstAppearances.referencesFor(List.of(access.body())), images));
 		this.service = service;
 		this.links = links;
+		this.fruitLinks = fruitLinks;
 	}
 
 	/**
@@ -95,7 +103,21 @@ class DevilFruitController extends ContentController<DevilFruit, DevilFruitRespo
 	protected List<ContentSummaryResponse<DevilFruitNamesResponse>> summaryResponses(
 			List<ContentSummary<DevilFruit>> rows, AuthenticatedCaller caller) {
 		var types = this.links.referencesFor(rows.stream().map(row -> row.version().body()).toList());
-		return rows.stream().map(row -> DevilFruitResponseMapper.toSummaryResponse(row, types)).toList();
+		Map<UUID, Long> userCounts = this.fruitLinks.userCounts(rows.stream().map(ContentSummary::contentId).toList());
+		return rows.stream()
+			.map(row -> DevilFruitResponseMapper.toSummaryResponse(row, types,
+					userCounts.getOrDefault(row.contentId(), 0L)))
+			.toList();
+	}
+
+	/**
+	 * The fruits a character may be linked to: those with a version that passed review,
+	 * by romaji, narrowed by what their romaji or a name contains.
+	 */
+	@GetMapping(ApiPaths.CONTENT_LINKABLE)
+	PageResponse<DevilFruitReferenceResponse> linkable(@ParameterObject @Valid LinkableTypesRequest request) {
+		var page = this.fruitLinks.linkable(request.q(), request.pageOrDefault(), request.sizeOrDefault());
+		return PageResponse.from(page.map(CharacterResponseMapper::toResponse));
 	}
 
 	/**

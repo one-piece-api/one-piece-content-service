@@ -1,7 +1,7 @@
 info:
   name: devilFruitReject
   type: http
-  seq: 17
+  seq: 18
   tags:
     - Devil_Fruits
 
@@ -92,6 +92,7 @@ examples:
                 "id": "",
                 "url": ""
               },
+              "multipleUsers": false,
               "romaji": "",
               "subcategory": {
                 "id": "",

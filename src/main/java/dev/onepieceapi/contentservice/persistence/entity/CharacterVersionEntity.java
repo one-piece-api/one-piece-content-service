@@ -92,6 +92,12 @@ public class CharacterVersionEntity extends VersionBodyEntity {
 	@OrderColumn(name = "position")
 	private List<CharacterMembershipEntity> affiliations = new ArrayList<>();
 
+	/** The fruits it ate, in the order they are shown. */
+	@ElementCollection
+	@CollectionTable(name = "character_version_devil_fruit", joinColumns = @JoinColumn(name = "version_id"))
+	@OrderColumn(name = "position")
+	private List<CharacterFruitUseEmbeddable> devilFruits = new ArrayList<>();
+
 	/** The id of its image; null for none. */
 	private String imageId;
 
@@ -129,6 +135,10 @@ public class CharacterVersionEntity extends VersionBodyEntity {
 		this.speciesIds.clear();
 		this.speciesIds.addAll(fields.speciesIds());
 		rewriteAffiliations(fields.affiliations());
+		this.devilFruits.clear();
+		fields.devilFruits()
+			.forEach(use -> this.devilFruits
+				.add(new CharacterFruitUseEmbeddable(use.devilFruitContentId(), use.former())));
 		touch(now);
 	}
 

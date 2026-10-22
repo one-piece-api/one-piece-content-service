@@ -95,6 +95,11 @@ http:
       value: OTHER
       type: query
       disabled: true
+    - name: devilFruit
+      value: ""
+      type: query
+      description: The content id of a Devil Fruit
+      disabled: true
     - name: page
       value: "0"
       type: query
@@ -209,6 +214,11 @@ examples:
         - name: affiliationKind
           value: OTHER
           type: query
+          disabled: true
+        - name: devilFruit
+          value: ""
+          type: query
+          description: The content id of a Devil Fruit
           disabled: true
         - name: page
           value: "0"
@@ -355,6 +365,11 @@ examples:
           value: OTHER
           type: query
           disabled: true
+        - name: devilFruit
+          value: ""
+          type: query
+          description: The content id of a Devil Fruit
+          disabled: true
         - name: page
           value: "0"
           type: query
@@ -482,6 +497,11 @@ examples:
         - name: affiliationKind
           value: OTHER
           type: query
+          disabled: true
+        - name: devilFruit
+          value: ""
+          type: query
+          description: The content id of a Devil Fruit
           disabled: true
         - name: page
           value: "0"

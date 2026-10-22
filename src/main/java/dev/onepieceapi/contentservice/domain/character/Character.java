@@ -32,6 +32,7 @@ import java.util.UUID;
  * @param aliases other names, the same in every language (D6); none is never null
  * @param speciesIds the content ids of its species (D8), in order; none is "not stated"
  * @param affiliations its memberships (D10), in order; none is never null
+ * @param devilFruits the fruits it ate (D12), in order; none is never null
  * @param imageId its portrait (D7), optional and not localized
  * @param firstAppearance where it is first shown or named (D9); {@link StoryPoint#NONE}
  * for none, which a draft may keep - it is required to submit and to go online
@@ -39,7 +40,7 @@ import java.util.UUID;
 @Builder(toBuilder = true)
 public record Character(String romaji, String japaneseName, Map<String, CharacterTranslation> translations,
 		CharacterStatus status, Gender gender, MonthDay birthday, List<Epithet> epithets, List<String> aliases,
-		List<UUID> speciesIds, List<Membership> affiliations, String imageId,
+		List<UUID> speciesIds, List<Membership> affiliations, List<FruitUse> devilFruits, String imageId,
 		StoryPoint firstAppearance) implements ContentBody<Character>, FirstAppearing {
 
 	public static final int ROMAJI_MAX_LENGTH = 100;
@@ -71,6 +72,8 @@ public record Character(String romaji, String japaneseName, Map<String, Characte
 
 	public static final String AFFILIATION_KIND_ATTRIBUTE = "affiliationKind";
 
+	public static final String DEVIL_FRUIT_ATTRIBUTE = "devilFruit";
+
 	private static final String ROMAJI_FIELD = "romaji";
 
 	/** Named as request validation names them, so a client reads both the same way. */
@@ -93,6 +96,7 @@ public record Character(String romaji, String japaneseName, Map<String, Characte
 		aliases = aliases == null ? List.of() : List.copyOf(aliases);
 		speciesIds = speciesIds == null ? List.of() : List.copyOf(speciesIds);
 		affiliations = affiliations == null ? List.of() : List.copyOf(affiliations);
+		devilFruits = devilFruits == null ? List.of() : List.copyOf(devilFruits);
 		firstAppearance = StoryPoint.orNone(firstAppearance);
 	}
 

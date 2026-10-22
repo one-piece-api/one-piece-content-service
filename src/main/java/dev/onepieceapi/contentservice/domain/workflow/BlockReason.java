@@ -73,6 +73,16 @@ public enum BlockReason {
 	 * in it (implementation plan of the Character, C8). The detail has their
 	 * {@code count} and the first {@code characters}, with id and romaji.
 	 */
-	MARINE_RANK_IN_USE
+	MARINE_RANK_IN_USE,
+
+	/**
+	 * Another character online already has this Devil Fruit as a current one, and the
+	 * fruit has one user at a time (implementation plan of the Character, C10). Going
+	 * online, a character's detail names the entry ({@code devilFruitIndex}), the fruit
+	 * ({@code devilFruitId}, {@code devilFruitRomaji}) and its {@code characters}; going
+	 * online, a fruit that has one user at a time while several characters online use it,
+	 * has their {@code count} and the first {@code characters}, with id and romaji.
+	 */
+	DEVIL_FRUIT_IN_USE
 
 }

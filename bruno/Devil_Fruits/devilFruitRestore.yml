@@ -1,7 +1,7 @@
 info:
   name: devilFruitRestore
   type: http
-  seq: 19
+  seq: 20
   tags:
     - Devil_Fruits
 
@@ -80,6 +80,7 @@ examples:
                 "id": "",
                 "url": ""
               },
+              "multipleUsers": false,
               "romaji": "",
               "subcategory": {
                 "id": "",

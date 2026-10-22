@@ -4,6 +4,7 @@ import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitTranslation;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.domain.workflow.Version;
+import dev.onepieceapi.contentservice.persistence.entity.DevilFruitFields;
 import dev.onepieceapi.contentservice.persistence.entity.DevilFruitVersionEntity;
 import dev.onepieceapi.contentservice.persistence.entity.TranslationEmbeddable;
 import lombok.experimental.UtilityClass;
@@ -23,14 +24,22 @@ public class DevilFruitVersionMapper {
 	public Version<DevilFruit> toDomain(DevilFruitVersionEntity entity) {
 		var body = new DevilFruit(entity.getRomaji(), entity.getTypeContentId(), entity.getSubcategoryId(),
 				toDomain(entity.getTranslations()), entity.getImageId(),
-				new StoryPoint(entity.getFirstAppearanceChapterId(), entity.getFirstAppearanceEpisodeId()));
+				new StoryPoint(entity.getFirstAppearanceChapterId(), entity.getFirstAppearanceEpisodeId()),
+				entity.isMultipleUsers());
 		return ContentVersionMapper.toDomain(entity.getVersion(), body);
 	}
 
 	/** Makes the version say what was given, in place of what it said. */
 	public void rewrite(DevilFruitVersionEntity entity, DevilFruit body, Instant now) {
-		entity.rewrite(body.romaji(), body.typeContentId(), body.subcategoryId(), toEmbeddables(body.translations()),
-				body.imageId(), FirstAppearanceMapper.toIds(body.firstAppearance()), now);
+		entity.rewrite(DevilFruitFields.builder()
+			.romaji(body.romaji())
+			.typeContentId(body.typeContentId())
+			.subcategoryId(body.subcategoryId())
+			.translations(toEmbeddables(body.translations()))
+			.imageId(body.imageId())
+			.firstAppearance(FirstAppearanceMapper.toIds(body.firstAppearance()))
+			.multipleUsers(body.multipleUsers())
+			.build(), now);
 	}
 
 	/** Sorted by language code, so the same version always reads the same way. */

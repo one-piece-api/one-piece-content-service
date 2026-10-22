@@ -8,7 +8,9 @@ import dev.onepieceapi.contentservice.domain.character.MarineRank;
 import dev.onepieceapi.contentservice.domain.character.Membership;
 import dev.onepieceapi.contentservice.domain.character.CharacterTranslation;
 import dev.onepieceapi.contentservice.domain.character.Epithet;
+import dev.onepieceapi.contentservice.domain.character.FruitUse;
 import dev.onepieceapi.contentservice.domain.character.Gender;
+import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitReference;
 import dev.onepieceapi.contentservice.domain.image.ImageChange;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.domain.security.Permission;
@@ -31,6 +33,8 @@ import dev.onepieceapi.contentservice.service.exception.ValueAlreadyUsedExceptio
 import dev.onepieceapi.contentservice.service.exception.VersionActionBlockedException;
 import dev.onepieceapi.contentservice.service.bounty.BountyLinks;
 import dev.onepieceapi.contentservice.service.character.CharacterLinks;
+import dev.onepieceapi.contentservice.service.character.CharacterReferences;
+import dev.onepieceapi.contentservice.service.devilfruit.DevilFruitLinks;
 import dev.onepieceapi.contentservice.service.species.SpeciesLinks;
 import dev.onepieceapi.contentservice.service.story.FirstAppearanceLinks;
 import dev.onepieceapi.contentservice.web.dto.response.ImageResponse;
@@ -82,7 +86,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * write.
  */
 @WebMvcTest(CharacterController.class)
-@Import({ SecurityConfig.class, ApplicationExceptionHandler.class, ConcurrentModificationExceptionHandler.class })
+@Import({ SecurityConfig.class, ApplicationExceptionHandler.class, ConcurrentModificationExceptionHandler.class,
+		CharacterReferences.class })
 class CharacterControllerTest {
 
 	private static final UUID CONTENT_ID = UUID.fromString("9c1d2e3f-4a5b-4c6d-8e7f-0a1b2c3d4e5f");
@@ -94,6 +99,10 @@ class CharacterControllerTest {
 	private static final UUID KAIGUN = UUID.fromString("a1b2c3d4-0000-4000-8000-00000000a001");
 
 	private static final UUID MUGIWARA = UUID.fromString("a1b2c3d4-0000-4000-8000-00000000a002");
+
+	private static final UUID MERA_MERA = UUID.fromString("b1b2c3d4-0000-4000-8000-00000000b001");
+
+	private static final UUID HANA_HANA = UUID.fromString("b1b2c3d4-0000-4000-8000-00000000b002");
 
 	private static final UUID GYOJIN = UUID.fromString("8b2e4d3c-6f5a-4b7c-9d0e-1f2a3b4c5d6e");
 
@@ -113,6 +122,9 @@ class CharacterControllerTest {
 
 	@MockitoBean
 	private AffiliationLinks affiliations;
+
+	@MockitoBean
+	private DevilFruitLinks devilFruits;
 
 	@MockitoBean
 	private CharacterLinks links;
@@ -265,6 +277,70 @@ class CharacterControllerTest {
 		assertThat(written.getValue().affiliations()).containsExactly(
 				new Membership(KAIGUN, Map.of("en", "Hero"), MarineRank.CAPTAIN, false),
 				new Membership(MUGIWARA, Map.of(), null, true));
+	}
+
+	@Test
+	void aVersionShowsEachDevilFruitInOrderAsItIsTodayWithTheFormerFlag() throws Exception {
+		var body = version(VersionStatus.PUBLISHED, null).body()
+			.toBuilder()
+			.devilFruits(List.of(new FruitUse(MERA_MERA, true), new FruitUse(HANA_HANA, false)))
+			.build();
+		when(this.service.getVersion(any(), any(), eq(CONTENT_ID), eq(1)))
+			.thenReturn(new VersionAccess<>(withBody(body), Set.of()));
+		when(this.devilFruits.referencesOf(List.of(MERA_MERA, HANA_HANA))).thenReturn(
+				Map.of(MERA_MERA, new DevilFruitReference(MERA_MERA, "Mera Mera no Mi", Map.of("it", "Fuoco"), false)));
+		when(this.firstAppearances.referencesFor(anyCollection())).thenReturn(Map.of());
+
+		this.mockMvc.perform(get("/characters/" + CONTENT_ID + "/versions/1").with(callerWith(Permission.CONTENT_READ)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.body.devilFruits[0].devilFruit.id").value(MERA_MERA.toString()))
+			.andExpect(jsonPath("$.body.devilFruits[0].devilFruit.romaji").value("Mera Mera no Mi"))
+			.andExpect(jsonPath("$.body.devilFruits[0].devilFruit.names.it").value("Fuoco"))
+			.andExpect(jsonPath("$.body.devilFruits[0].devilFruit.multipleUsers").value(false))
+			.andExpect(jsonPath("$.body.devilFruits[0].former").value(true))
+			.andExpect(jsonPath("$.body.devilFruits[1].devilFruit.id").value(HANA_HANA.toString()))
+			.andExpect(jsonPath("$.body.devilFruits[1].devilFruit.romaji").doesNotExist())
+			.andExpect(jsonPath("$.body.devilFruits[1].former").value(false));
+	}
+
+	@Test
+	void creatingPassesOnTheDevilFruitsAndAnEntryWithoutAFruitIsABadRequest() throws Exception {
+		var draft = new VersionAccess<>(version(VersionStatus.DRAFT, null), EnumSet.of(VersionAction.EDIT));
+		when(this.service.create(any(), any(), any(), any())).thenReturn(new Content<>(CONTENT_ID, List.of(draft)));
+
+		this.mockMvc
+			.perform(post("/characters").with(callerWith(Permission.CONTENT_WRITE))
+				.contentType("application/json")
+				.content("""
+						{"romaji":"Sabo","devilFruits":[{"devilFruit":"%s","former":true},{"devilFruit":"%s"}]}"""
+					.formatted(MERA_MERA, HANA_HANA)))
+			.andExpect(status().isCreated());
+		for (String body : List.of("{\"devilFruits\":[{}]}", "{\"devilFruits\":[null]}")) {
+			this.mockMvc
+				.perform(post("/characters").with(callerWith(Permission.CONTENT_WRITE))
+					.contentType("application/json")
+					.content(body))
+				.andExpect(status().isBadRequest());
+		}
+
+		var written = ArgumentCaptor.forClass(Character.class);
+		verify(this.service).create(any(), any(), written.capture(), any());
+		assertThat(written.getValue().devilFruits()).containsExactly(new FruitUse(MERA_MERA, true),
+				new FruitUse(HANA_HANA, false));
+	}
+
+	@Test
+	void theListIsNarrowedByTheDevilFruit() throws Exception {
+		when(this.service.list(any(), any(), any(), any(), any())).thenReturn(new PageImpl<>(List.of()));
+
+		this.mockMvc
+			.perform(get("/characters").param("devilFruit", MERA_MERA.toString())
+				.with(callerWith(Permission.CONTENT_READ)))
+			.andExpect(status().isOk());
+
+		var filter = ArgumentCaptor.forClass(ContentFilter.class);
+		verify(this.service).list(any(), any(), filter.capture(), any(), any());
+		assertThat(filter.getValue().attributes()).isEqualTo(Map.of(Character.DEVIL_FRUIT_ATTRIBUTE, MERA_MERA));
 	}
 
 	@Test
@@ -450,6 +526,17 @@ class CharacterControllerTest {
 		return Version.<Character>builder()
 			.number(1)
 			.status(status)
+			.author(CHOPPER)
+			.body(body)
+			.createdAt(CREATED)
+			.updatedAt(CREATED)
+			.build();
+	}
+
+	private static Version<Character> withBody(Character body) {
+		return Version.<Character>builder()
+			.number(1)
+			.status(VersionStatus.PUBLISHED)
 			.author(CHOPPER)
 			.body(body)
 			.createdAt(CREATED)

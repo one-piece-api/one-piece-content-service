@@ -28,7 +28,7 @@ public class DevilFruitRequestMapper {
 			.orElseGet(Map::of)
 			.forEach((language, translation) -> translations.put(language, toDomain(translation)));
 		return new DevilFruit(request.romaji(), request.type(), request.subcategory(), translations, null,
-				FirstAppearanceMapper.toDomain(request.firstAppearance()));
+				FirstAppearanceMapper.toDomain(request.firstAppearance()), request.allowsMultipleUsers());
 	}
 
 	/**

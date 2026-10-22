@@ -32,10 +32,13 @@ import java.util.UUID;
  * @param firstAppearance the chapter the reader first meets it in (implementation plan of
  * the timeline, T7); {@link StoryPoint#NONE} for none, which is complete - it is required
  * only to go online
+ * @param multipleUsers whether several characters may use it at the same time, as the
+ * SMILE fruits (implementation plan of the Character, D12); never missing, false unless
+ * said
  */
 public record DevilFruit(String romaji, UUID typeContentId, UUID subcategoryId,
-		Map<String, DevilFruitTranslation> translations, String imageId,
-		StoryPoint firstAppearance) implements ContentBody<DevilFruit>, FirstAppearing {
+		Map<String, DevilFruitTranslation> translations, String imageId, StoryPoint firstAppearance,
+		boolean multipleUsers) implements ContentBody<DevilFruit>, FirstAppearing {
 
 	public static final int ROMAJI_MAX_LENGTH = 100;
 
@@ -55,6 +58,12 @@ public record DevilFruit(String romaji, UUID typeContentId, UUID subcategoryId,
 	/** Nothing chosen is {@link StoryPoint#NONE}, not null. */
 	public DevilFruit {
 		firstAppearance = StoryPoint.orNone(firstAppearance);
+	}
+
+	/** A fruit with one user at a time. */
+	public DevilFruit(String romaji, UUID typeContentId, UUID subcategoryId,
+			Map<String, DevilFruitTranslation> translations, String imageId, StoryPoint firstAppearance) {
+		this(romaji, typeContentId, subcategoryId, translations, imageId, firstAppearance, false);
 	}
 
 	/** A fruit without a first appearance. */
@@ -77,7 +86,7 @@ public record DevilFruit(String romaji, UUID typeContentId, UUID subcategoryId,
 	/** The same fruit with another image, or none. */
 	public DevilFruit withImage(String newImageId) {
 		return new DevilFruit(this.romaji, this.typeContentId, this.subcategoryId, this.translations, newImageId,
-				this.firstAppearance);
+				this.firstAppearance, this.multipleUsers);
 	}
 
 	@Override
@@ -90,7 +99,7 @@ public record DevilFruit(String romaji, UUID typeContentId, UUID subcategoryId,
 			}
 		});
 		return new DevilFruit(Text.stripToNull(this.romaji), this.typeContentId, this.subcategoryId, written,
-				this.imageId, this.firstAppearance);
+				this.imageId, this.firstAppearance, this.multipleUsers);
 	}
 
 	@Override

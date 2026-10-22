@@ -186,7 +186,8 @@ examples:
                         "names": {}
                       }
                     ]
-                  }
+                  },
+                  "userCount": 0
                 },
                 "id": "",
                 "onlineVersionNumber": 0,

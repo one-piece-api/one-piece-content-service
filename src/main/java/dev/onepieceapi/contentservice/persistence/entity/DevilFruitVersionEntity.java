@@ -43,6 +43,9 @@ public class DevilFruitVersionEntity extends VersionBodyEntity {
 	/** One subcategory of that type; null for none. */
 	private UUID subcategoryId;
 
+	/** Whether several characters may use it at the same time. */
+	private boolean multipleUsers;
+
 	/** The id of its image; null for none. */
 	private String imageId;
 
@@ -70,17 +73,16 @@ public class DevilFruitVersionEntity extends VersionBodyEntity {
 	}
 
 	/** Replaces everything the version says, and notes when. */
-	public void rewrite(String newRomaji, UUID newTypeContentId, UUID newSubcategoryId,
-			Map<String, TranslationEmbeddable> newTranslations, String newImageId,
-			FirstAppearanceIds newFirstAppearance, Instant now) {
-		setRomaji(newRomaji);
-		this.typeContentId = newTypeContentId;
-		this.subcategoryId = newSubcategoryId;
-		this.imageId = newImageId;
-		this.firstAppearanceChapterId = newFirstAppearance.chapterId();
-		this.firstAppearanceEpisodeId = newFirstAppearance.episodeId();
+	public void rewrite(DevilFruitFields fields, Instant now) {
+		setRomaji(fields.romaji());
+		this.typeContentId = fields.typeContentId();
+		this.subcategoryId = fields.subcategoryId();
+		this.imageId = fields.imageId();
+		this.multipleUsers = fields.multipleUsers();
+		this.firstAppearanceChapterId = fields.firstAppearance().chapterId();
+		this.firstAppearanceEpisodeId = fields.firstAppearance().episodeId();
 		this.translations.clear();
-		this.translations.putAll(newTranslations);
+		this.translations.putAll(fields.translations());
 		touch(now);
 	}
 

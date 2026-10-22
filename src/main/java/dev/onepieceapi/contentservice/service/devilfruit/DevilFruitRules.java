@@ -1,6 +1,7 @@
 package dev.onepieceapi.contentservice.service.devilfruit;
 
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
+import dev.onepieceapi.contentservice.config.RulesProperties;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitType;
 import dev.onepieceapi.contentservice.domain.workflow.ActionBlock;
 import dev.onepieceapi.contentservice.domain.workflow.BlockReason;
@@ -9,14 +10,18 @@ import dev.onepieceapi.contentservice.domain.workflow.VersionAction;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.mapper.DevilFruitTypeVersionMapper;
 import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
+import dev.onepieceapi.contentservice.persistence.repository.CharacterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitTypeVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.EpisodeVersionRepository;
 import dev.onepieceapi.contentservice.service.content.ContentRules;
+import dev.onepieceapi.contentservice.service.character.CharacterRelations;
 import dev.onepieceapi.contentservice.service.content.FirstAppearanceRules;
+import dev.onepieceapi.contentservice.service.content.LinkedItems;
 import dev.onepieceapi.contentservice.service.content.RelationRules;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
 import java.util.Collection;
@@ -42,6 +47,12 @@ import java.util.UUID;
  * one of the type's versions online holds it exclusively ({@code DevilFruitTypeRules}):
  * the two never run at the same time, so neither can read a type that the other is about
  * to change.
+ * <p>
+ * What it owes its characters (implementation plan of the Character, D12): it cannot be
+ * retired while online characters name it, nor go online with one user at a time while
+ * several online have it as a current one. Going online holds its own content
+ * exclusively, as a character going online with it as a current one does
+ * ({@code CharacterRules}): the two never check the users together.
  */
 @Component
 @RequiredArgsConstructor(onConstructor_ = { @Autowired })
@@ -55,8 +66,16 @@ public class DevilFruitRules implements ContentRules<DevilFruit> {
 
 	private final EpisodeVersionRepository episodeRepository;
 
+	private final CharacterVersionRepository characterRepository;
+
+	private final RulesProperties properties;
+
 	@Override
 	public void lockBefore(VersionAction action, UUID contentId, Version<DevilFruit> version) {
+		RelationRules.lockLinkedBefore(action, contentId, this.contentRepository);
+		if (RelationRules.GOING_ONLINE.contains(action)) {
+			this.contentRepository.lockExclusive(contentId);
+		}
 		RelationRules.lockTargetBefore(action, DevilFruitRelations.TYPE, version.body(), this.contentRepository);
 		RelationRules.lockTargetBefore(action, DevilFruitRelations.FIRST_APPEARANCE_CHAPTER, version.body(),
 				this.contentRepository);
@@ -73,7 +92,37 @@ public class DevilFruitRules implements ContentRules<DevilFruit> {
 			.or(() -> RelationRules.targetNotOnline(action, DevilFruitRelations.FIRST_APPEARANCE_CHAPTER, fruit,
 					this.chapterRepository))
 			.or(() -> RelationRules.targetNotOnline(action, DevilFruitRelations.FIRST_APPEARANCE_EPISODE, fruit,
-					this.episodeRepository));
+					this.episodeRepository))
+			.or(() -> severalUsers(action, contentId, fruit))
+			.or(() -> RelationRules.onlineItemsLinked(action, CharacterRelations.DEVIL_FRUIT, contentId,
+					linkedCharacters(), this.properties.blockingPreviewSize()));
+	}
+
+	/**
+	 * Going online with one user at a time, while several characters online have it as a
+	 * current one: how many, and the first few by romaji.
+	 */
+	private Optional<ActionBlock> severalUsers(VersionAction action, UUID contentId, DevilFruit fruit) {
+		if (!RelationRules.GOING_ONLINE.contains(action) || fruit.multipleUsers()) {
+			return Optional.empty();
+		}
+		long count = this.characterRepository.countOnlineCurrentUsersOf(contentId);
+		if (count < 2) {
+			return Optional.empty();
+		}
+		List<Map<String, Object>> named = this.characterRepository
+			.findOnlineCurrentUsersOf(contentId, PageRequest.ofSize(this.properties.blockingPreviewSize()))
+			.stream()
+			.map(RelationRules::named)
+			.toList();
+		return Optional.of(new ActionBlock(BlockReason.DEVIL_FRUIT_IN_USE,
+				Map.of("count", count, CharacterRelations.ITEMS_NAME, named)));
+	}
+
+	/** The queries of the characters for the fruit they name. */
+	private LinkedItems linkedCharacters() {
+		return new LinkedItems(this.characterRepository::countOnlineWithDevilFruit,
+				this.characterRepository::findOnlineWithDevilFruit);
 	}
 
 	/** Checked once the type is known to be online. */

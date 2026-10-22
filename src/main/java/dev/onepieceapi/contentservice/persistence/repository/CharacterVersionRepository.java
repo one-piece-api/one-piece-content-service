@@ -7,6 +7,7 @@ import dev.onepieceapi.contentservice.domain.workflow.ContentFilter;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.entity.CharacterVersionEntity;
 import dev.onepieceapi.contentservice.persistence.projection.AffiliationMemberCount;
+import dev.onepieceapi.contentservice.persistence.projection.FruitUserCount;
 import dev.onepieceapi.contentservice.persistence.specification.CharacterSpecifications;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -46,6 +47,9 @@ public interface CharacterVersionRepository extends VersionBodyRepository<Charac
 		}
 		if (filter.attribute(Character.AFFILIATION_KIND_ATTRIBUTE) instanceof AffiliationKind kind) {
 			conditions = conditions.and(CharacterSpecifications.withAffiliationKind(kind));
+		}
+		if (filter.attribute(Character.DEVIL_FRUIT_ATTRIBUTE) instanceof UUID devilFruit) {
+			conditions = conditions.and(CharacterSpecifications.withDevilFruit(devilFruit));
 		}
 		return conditions;
 	}
@@ -166,6 +170,68 @@ public interface CharacterVersionRepository extends VersionBodyRepository<Charac
 				and v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED
 			group by m.affiliationContentId""")
 	List<AffiliationMemberCount> countMembersOf(Collection<UUID> affiliationContentIds);
+
+	/** How many characters are online naming this Devil Fruit, former users too (D12). */
+	@Query("""
+			select count(d) from CharacterVersionEntity d join d.version v join d.devilFruits u
+			where u.devilFruitContentId = :devilFruitContentId
+				and v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED""")
+	long countOnlineWithDevilFruit(UUID devilFruitContentId);
+
+	/**
+	 * The characters online naming this Devil Fruit, by romaji: as many as the page asks
+	 * for.
+	 */
+	@Query("""
+			select d from CharacterVersionEntity d join fetch d.version v join d.devilFruits u
+			where u.devilFruitContentId = :devilFruitContentId
+				and v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED
+			order by d.romaji""")
+	List<CharacterVersionEntity> findOnlineWithDevilFruit(UUID devilFruitContentId, Pageable pageable);
+
+	/** How many characters are online with this Devil Fruit as a current one (D12). */
+	@Query("""
+			select count(d) from CharacterVersionEntity d join d.version v join d.devilFruits u
+			where u.devilFruitContentId = :devilFruitContentId and u.former = false
+				and v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED""")
+	long countOnlineCurrentUsersOf(UUID devilFruitContentId);
+
+	/**
+	 * The characters online with this Devil Fruit as a current one, by romaji: as many as
+	 * the page asks for.
+	 */
+	@Query("""
+			select d from CharacterVersionEntity d join fetch d.version v join d.devilFruits u
+			where u.devilFruitContentId = :devilFruitContentId and u.former = false
+				and v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED
+			order by d.romaji""")
+	List<CharacterVersionEntity> findOnlineCurrentUsersOf(UUID devilFruitContentId, Pageable pageable);
+
+	/**
+	 * The same, the character of this content left out: the one going online, whose
+	 * previous version may be the one online.
+	 */
+	@Query("""
+			select d from CharacterVersionEntity d join fetch d.version v join d.devilFruits u
+			where u.devilFruitContentId = :devilFruitContentId and u.former = false
+				and v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED
+				and v.contentId <> :excludedContentId
+			order by d.romaji""")
+	List<CharacterVersionEntity> findOnlineOtherCurrentUsersOf(UUID devilFruitContentId, UUID excludedContentId,
+			Pageable pageable);
+
+	/**
+	 * How many characters online currently use each of these Devil Fruits: those whose
+	 * entry is not marked former. A fruit with none is not in the result.
+	 */
+	@Query("""
+			select new dev.onepieceapi.contentservice.persistence.projection.FruitUserCount(
+				u.devilFruitContentId, count(d))
+			from CharacterVersionEntity d join d.version v join d.devilFruits u
+			where u.devilFruitContentId in :devilFruitContentIds and u.former = false
+				and v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED
+			group by u.devilFruitContentId""")
+	List<FruitUserCount> countCurrentUsersOf(Collection<UUID> devilFruitContentIds);
 
 	/** The epithets count too: a language they are written in is in use. */
 	@Override

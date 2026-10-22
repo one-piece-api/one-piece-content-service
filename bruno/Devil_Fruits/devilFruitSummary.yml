@@ -1,7 +1,7 @@
 info:
   name: devilFruitSummary
   type: http
-  seq: 4
+  seq: 5
   tags:
     - Devil_Fruits
 

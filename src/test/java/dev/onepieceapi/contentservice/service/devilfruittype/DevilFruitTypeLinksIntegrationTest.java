@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.service.devilfruittype;
 
+import dev.onepieceapi.contentservice.config.RulesProperties;
 import dev.onepieceapi.contentservice.service.audit.AuditLogService;
 import dev.onepieceapi.contentservice.service.devilfruit.DevilFruitDefinition;
 import dev.onepieceapi.contentservice.service.devilfruit.DevilFruitService;
@@ -23,6 +24,7 @@ import dev.onepieceapi.contentservice.persistence.mapper.DevilFruitVersionMapper
 import dev.onepieceapi.contentservice.persistence.mapper.UserMapper;
 import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
+import dev.onepieceapi.contentservice.persistence.repository.CharacterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.EpisodeVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentVersionRepository;
@@ -101,6 +103,9 @@ class DevilFruitTypeLinksIntegrationTest {
 	private EpisodeVersionRepository episodeRepository;
 
 	@Autowired
+	private CharacterVersionRepository characterRepository;
+
+	@Autowired
 	private DevilFruitVersionRepository fruitRepository;
 
 	@Autowired
@@ -139,7 +144,7 @@ class DevilFruitTypeLinksIntegrationTest {
 						new DevilFruitValidator(this.fruitRepository, this.languageRepository, this.typeRepository,
 								this.chapterRepository, this.episodeRepository),
 						new DevilFruitRules(this.contentRepository, this.typeRepository, this.chapterRepository,
-								this.episodeRepository)),
+								this.episodeRepository, this.characterRepository, new RulesProperties(5))),
 				this.contentVersionRepository, this.contentRepository,
 				new AuditLogService(this.auditLogRepository, clock), clock, mock(ContentImages.class));
 		this.links = new DevilFruitTypeLinks(this.typeRepository, this.fruitRepository, clock);

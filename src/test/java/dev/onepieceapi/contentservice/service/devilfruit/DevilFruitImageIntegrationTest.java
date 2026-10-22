@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.service.devilfruit;
 
+import dev.onepieceapi.contentservice.config.RulesProperties;
 import dev.onepieceapi.contentservice.service.content.OnlineChapters;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.service.audit.AuditLogService;
@@ -183,7 +184,7 @@ class DevilFruitImageIntegrationTest {
 		this.service = new DevilFruitService(
 				new DevilFruitDefinition(this.versionRepository, validator,
 						new DevilFruitRules(this.contentRepository, this.typeRepository, this.chapterRepository,
-								this.episodeRepository)),
+								this.episodeRepository, this.characterRepository, new RulesProperties(5))),
 				this.contentVersionRepository, this.contentRepository,
 				new AuditLogService(this.auditLogRepository, clock), clock, images);
 		this.imageService = new ImageService(store, this.versionRepository, this.volumeRepository,

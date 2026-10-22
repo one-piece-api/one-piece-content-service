@@ -37,10 +37,10 @@ public class DevilFruitResponseMapper {
 		return ContentResponseMapper.toVersionResponse(access, fruit -> toResponse(fruit, types, storyItems, images));
 	}
 
-	/** A row of the list of Devil Fruits. */
+	/** A row of the list of Devil Fruits, with how many characters currently use it. */
 	public ContentSummaryResponse<DevilFruitNamesResponse> toSummaryResponse(ContentSummary<DevilFruit> summary,
-			Map<UUID, TypeReference> types) {
-		return ContentResponseMapper.toSummaryResponse(summary, fruit -> toNamesResponse(fruit, types));
+			Map<UUID, TypeReference> types, long userCount) {
+		return ContentResponseMapper.toSummaryResponse(summary, fruit -> toNamesResponse(fruit, types, userCount));
 	}
 
 	/** Everything the version says. */
@@ -49,16 +49,18 @@ public class DevilFruitResponseMapper {
 		Map<String, DevilFruitTranslationResponse> translations = new TreeMap<>();
 		fruit.translations().forEach((language, translation) -> translations.put(language, toResponse(translation)));
 		return new DevilFruitResponse(fruit.romaji(), toTypeResponse(fruit.typeContentId(), types),
-				toSubcategoryResponse(fruit, types), translations, images.toResponse(fruit.imageId()),
+				toSubcategoryResponse(fruit, types), fruit.multipleUsers(), translations,
+				images.toResponse(fruit.imageId()),
 				FirstAppearanceMapper.toResponse(fruit.firstAppearance(), storyItems));
 	}
 
 	/**
-	 * What a list row shows: the names, for the languages that have one, and the type.
+	 * What a list row shows: the names, for the languages that have one, the type and how
+	 * many characters currently use it.
 	 */
-	public DevilFruitNamesResponse toNamesResponse(DevilFruit fruit, Map<UUID, TypeReference> types) {
+	public DevilFruitNamesResponse toNamesResponse(DevilFruit fruit, Map<UUID, TypeReference> types, long userCount) {
 		return new DevilFruitNamesResponse(fruit.romaji(), fruit.names(), toTypeResponse(fruit.typeContentId(), types),
-				toSubcategoryResponse(fruit, types));
+				toSubcategoryResponse(fruit, types), userCount);
 	}
 
 	/**

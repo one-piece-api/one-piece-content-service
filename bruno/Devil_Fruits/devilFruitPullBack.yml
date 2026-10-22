@@ -1,7 +1,7 @@
 info:
   name: devilFruitPullBack
   type: http
-  seq: 15
+  seq: 16
   tags:
     - Devil_Fruits
 
@@ -80,6 +80,7 @@ examples:
                 "id": "",
                 "url": ""
               },
+              "multipleUsers": false,
               "romaji": "",
               "subcategory": {
                 "id": "",

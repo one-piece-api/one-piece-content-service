@@ -18,6 +18,8 @@ import java.util.UUID;
  * be chosen is answered by {@code GET /devil-fruit-types/linkable}
  * @param subcategory one of the subcategories of that type, as {@code linkable} lists
  * them; left out for none
+ * @param multipleUsers true when several characters may use it at the same time, as the
+ * SMILE fruits; left out is false
  * @param translations name, description, advantages and disadvantages per language code;
  * a language left out, or with nothing written in it, has no translation
  * @param firstAppearance the chapter the reader first meets it in; left out for none,
@@ -28,8 +30,13 @@ import java.util.UUID;
 public record DevilFruitRequest(@Size(max = DevilFruit.ROMAJI_MAX_LENGTH) String romaji,
 		@Schema(description = "The content id of its Devil Fruit Type") UUID type,
 		@Schema(description = "The id of a subcategory of its Devil Fruit Type; left out for none") UUID subcategory,
-		Map<String, @Valid DevilFruitTranslationRequest> translations, Boolean removeImage,
+		Boolean multipleUsers, Map<String, @Valid DevilFruitTranslationRequest> translations, Boolean removeImage,
 		FirstAppearanceRequest firstAppearance) {
+
+	/** Whether several characters may use it; not saying so is not. */
+	public boolean allowsMultipleUsers() {
+		return Boolean.TRUE.equals(this.multipleUsers);
+	}
 
 	/** Whether the image is to be removed; not saying so keeps it. */
 	public boolean removesImage() {

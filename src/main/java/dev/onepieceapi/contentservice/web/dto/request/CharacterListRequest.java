@@ -21,10 +21,13 @@ import java.util.UUID;
  * (its content id), one they have left not counted
  * @param affiliationKind only the characters whose version shown belongs to an
  * affiliation of this kind, one they have left not counted
+ * @param devilFruit only the characters whose version shown has this Devil Fruit (its
+ * content id) as a current one, one they lost the power of not counted
  */
 public record CharacterListRequest(VersionStatus status, String q, String author,
 		@PositiveOrZero Integer updatedWithinDays, CharacterStatus characterStatus,
 		@Schema(description = "The content id of a Species") UUID species,
-		@Schema(description = "The content id of an Affiliation") UUID affiliation, AffiliationKind affiliationKind) {
+		@Schema(description = "The content id of an Affiliation") UUID affiliation, AffiliationKind affiliationKind,
+		@Schema(description = "The content id of a Devil Fruit") UUID devilFruit) {
 
 }

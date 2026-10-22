@@ -1,7 +1,7 @@
 info:
   name: devilFruitOpenNewVersion
   type: http
-  seq: 6
+  seq: 7
   tags:
     - Devil_Fruits
 
@@ -86,6 +86,7 @@ examples:
                 "id": "",
                 "url": ""
               },
+              "multipleUsers": false,
               "romaji": "",
               "subcategory": {
                 "id": "",

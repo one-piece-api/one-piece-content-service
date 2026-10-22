@@ -15,7 +15,12 @@ copertina PNG), **Capitolo** ed **Episodio** (relazioni verso arco/volume, date 
   archiviazione, ritiro, ripristino, nuova versione), con le azioni consentite al chiamante.
 - **Devil Fruit** (`/devil-fruits`): le stesse operazioni, più il tipo (relazione verso un
   tipo approvato) e l'immagine PNG (salvataggio multipart, validata e normalizzata). Un frutto
-  va online solo con il suo tipo online; un tipo con frutti online non si ritira.
+  va online solo con il suo tipo online; un tipo con frutti online non si ritira. `multipleUsers`
+  (falso di default, vero per gli SMILE) fa parte della versione. `GET /devil-fruits/linkable` elenca
+  i frutti con una versione approvata (per i personaggi); ogni riga della lista dice quanti
+  personaggi online lo hanno come attuale (`userCount`). Non si ritira con personaggi online che lo
+  indicano (`ONLINE_ITEMS_LINKED`, voce `characters`), né va online con `multipleUsers` falso mentre
+  due o più personaggi online lo hanno come attuale (`DEVIL_FRUIT_IN_USE`).
 - **Prima apparizione** (frutto, tipo, sottocategoria; ADR-0008): `firstAppearance.chapter`
   e/o `firstAppearance.episode`, verso un capitolo o un episodio approvato
   (`/chapters/linkable`, `/episodes/linkable`). Frutto e tipo la richiedono per la revisione e
@@ -52,10 +57,13 @@ copertina PNG), **Capitolo** ed **Episodio** (relazioni verso arco/volume, date 
   di epiteti (per lingua), alias e specie (`/species/linkable`, al massimo 20 epiteti e 20 alias),
   ritratto PNG opzionale (4:5, senza trasparenza), prima apparizione. Appartenenze (`affiliations`,
   lista ordinata: affiliazione, `role` per lingua, `marineRank` solo se l'affiliazione è `NAVY`,
-  `former`). Filtri `?characterStatus=`, `?species=`, `?affiliation=` e `?affiliationKind=` (solo
-  appartenenze attuali). Va online solo con prima apparizione, ogni specie e ogni affiliazione online
-  (`RELATED_NOT_ONLINE`, `speciesIndex`/`affiliationsIndex`) e un grado solo in un'affiliazione online
-  `NAVY` (`MARINE_RANK_NOT_ALLOWED`); un capitolo o un episodio con personaggi online non si ritira (voce `characters`).
+  `former`) e frutti del diavolo (`devilFruits`, lista ordinata: frutto, `former`). Filtri
+  `?characterStatus=`, `?species=`, `?affiliation=`, `?affiliationKind=` e `?devilFruit=` (solo
+  appartenenze e frutti attuali). Va online solo con prima apparizione, ogni specie, affiliazione e
+  frutto online (`RELATED_NOT_ONLINE`, `speciesIndex`/`affiliationsIndex`/`devilFruitsIndex`), un grado
+  solo in un'affiliazione online `NAVY` (`MARINE_RANK_NOT_ALLOWED`) e un frutto attuale che nessun altro
+  personaggio online ha come attuale (`DEVIL_FRUIT_IN_USE`, mai in salvataggio; verificato sotto un lock
+  sul frutto), salvo i frutti con `multipleUsers`; un capitolo o un episodio con personaggi online non si ritira (voce `characters`).
 - **Dashboard** (`/dashboard`): contatori per stato, attività recente del chiamante
   (dall'audit log) e pagine per stato trasversali alle entità.
 

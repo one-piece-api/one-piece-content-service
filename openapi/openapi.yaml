@@ -3051,6 +3051,14 @@ paths:
           - WORLD_GOVERNMENT
           - REVOLUTIONARY_ARMY
           - OTHER
+      - description: The content id of a Devil Fruit
+        in: query
+        name: devilFruit
+        required: false
+        schema:
+          type: string
+          format: uuid
+          description: The content id of a Devil Fruit
       - description: Zero-based page index (0..N)
         in: query
         name: page
@@ -4762,6 +4770,50 @@ paths:
       tags:
       - Devil Fruits
       x-required-permission: content:read
+  /devil-fruits/linkable:
+    get:
+      operationId: devilFruitLinkable
+      parameters:
+      - description: "0-based page, 0 when missing"
+        in: query
+        name: page
+        required: false
+        schema:
+          type: integer
+          format: int32
+          minimum: 0
+      - description: "Page size: 20 when missing, at most 50"
+        in: query
+        name: size
+        required: false
+        schema:
+          type: integer
+          format: int32
+          maximum: 50
+          minimum: 1
+      - description: "Text the romaji or a name contains, case-insensitive; 100 characters\
+          \ at most"
+        in: query
+        name: q
+        required: false
+        schema:
+          type: string
+          maxLength: 100
+          minLength: 0
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PageResponseDevilFruitReferenceResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Devil Fruits
+      x-required-permission: content:write
   /devil-fruits/summary:
     get:
       operationId: devilFruitSummary
@@ -8559,6 +8611,7 @@ components:
           - BOUNTY_CHAIN_CYCLE
           - MARINE_RANK_NOT_ALLOWED
           - MARINE_RANK_IN_USE
+          - DEVIL_FRUIT_IN_USE
     BountyNamesResponse:
       type: object
       properties:
@@ -8791,6 +8844,10 @@ components:
         birthday:
           type: string
           example: --05-05
+        devilFruits:
+          type: array
+          items:
+            $ref: "#/components/schemas/FruitUseRequest"
         epithets:
           type: array
           items:
@@ -8845,6 +8902,10 @@ components:
         birthday:
           type: string
           example: --05-05
+        devilFruits:
+          type: array
+          items:
+            $ref: "#/components/schemas/FruitUseResponse"
         epithets:
           type: array
           items:
@@ -9736,11 +9797,30 @@ components:
           $ref: "#/components/schemas/SubcategoryReferenceResponse"
         type:
           $ref: "#/components/schemas/TypeReferenceResponse"
+        userCount:
+          type: integer
+          format: int64
+    DevilFruitReferenceResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        multipleUsers:
+          type: boolean
+        names:
+          type: object
+          additionalProperties:
+            type: string
+        romaji:
+          type: string
     DevilFruitRequest:
       type: object
       properties:
         firstAppearance:
           $ref: "#/components/schemas/FirstAppearanceRequest"
+        multipleUsers:
+          type: boolean
         removeImage:
           type: boolean
         romaji:
@@ -9767,6 +9847,8 @@ components:
           $ref: "#/components/schemas/FirstAppearanceResponse"
         image:
           $ref: "#/components/schemas/ImageResponse"
+        multipleUsers:
+          type: boolean
         romaji:
           type: string
         subcategory:
@@ -10020,6 +10102,24 @@ components:
           $ref: "#/components/schemas/NumberedReferenceResponse"
         episode:
           $ref: "#/components/schemas/NumberedReferenceResponse"
+    FruitUseRequest:
+      type: object
+      properties:
+        devilFruit:
+          type: string
+          format: uuid
+          description: The content id of a Devil Fruit
+        former:
+          type: boolean
+      required:
+      - devilFruit
+    FruitUseResponse:
+      type: object
+      properties:
+        devilFruit:
+          $ref: "#/components/schemas/DevilFruitReferenceResponse"
+        former:
+          type: boolean
     ImageResponse:
       type: object
       properties:
@@ -10380,6 +10480,25 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ContentSummaryResponseVolumeNamesResponse"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+    PageResponseDevilFruitReferenceResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/DevilFruitReferenceResponse"
         page:
           type: integer
           format: int32

@@ -3,6 +3,7 @@ package dev.onepieceapi.contentservice.web.mapper;
 import dev.onepieceapi.contentservice.domain.character.Character;
 import dev.onepieceapi.contentservice.domain.character.CharacterTranslation;
 import dev.onepieceapi.contentservice.domain.character.Epithet;
+import dev.onepieceapi.contentservice.domain.character.FruitUse;
 import dev.onepieceapi.contentservice.domain.character.Membership;
 import dev.onepieceapi.contentservice.domain.image.ImageChange;
 import dev.onepieceapi.contentservice.domain.workflow.ContentFilter;
@@ -10,6 +11,7 @@ import dev.onepieceapi.contentservice.web.dto.request.CharacterListRequest;
 import dev.onepieceapi.contentservice.web.dto.request.CharacterRequest;
 import dev.onepieceapi.contentservice.web.dto.request.CharacterTranslationRequest;
 import dev.onepieceapi.contentservice.web.dto.request.EpithetRequest;
+import dev.onepieceapi.contentservice.web.dto.request.FruitUseRequest;
 import dev.onepieceapi.contentservice.web.dto.request.MembershipRequest;
 import lombok.experimental.UtilityClass;
 import org.springframework.web.multipart.MultipartFile;
@@ -50,6 +52,11 @@ public class CharacterRequestMapper {
 				.stream()
 				.map(CharacterRequestMapper::toDomain)
 				.toList())
+			.devilFruits(Optional.ofNullable(request.devilFruits())
+				.orElseGet(List::of)
+				.stream()
+				.map(CharacterRequestMapper::toDomain)
+				.toList())
 			.firstAppearance(FirstAppearanceMapper.toDomain(request.firstAppearance()))
 			.build();
 	}
@@ -78,8 +85,15 @@ public class CharacterRequestMapper {
 		if (request.affiliation() != null) {
 			filter = filter.withAttribute(Character.AFFILIATION_ATTRIBUTE, request.affiliation());
 		}
-		return request.affiliationKind() == null ? filter
-				: filter.withAttribute(Character.AFFILIATION_KIND_ATTRIBUTE, request.affiliationKind());
+		if (request.affiliationKind() != null) {
+			filter = filter.withAttribute(Character.AFFILIATION_KIND_ATTRIBUTE, request.affiliationKind());
+		}
+		return request.devilFruit() == null ? filter
+				: filter.withAttribute(Character.DEVIL_FRUIT_ATTRIBUTE, request.devilFruit());
+	}
+
+	private static FruitUse toDomain(FruitUseRequest use) {
+		return new FruitUse(use.devilFruit(), use.isFormer());
 	}
 
 	/** A language sent as null is a language with nothing written. */

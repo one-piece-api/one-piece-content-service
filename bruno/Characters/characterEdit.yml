@@ -29,6 +29,12 @@ http:
         ],
         "aliases": [],
         "birthday": "--05-05",
+        "devilFruits": [
+          {
+            "devilFruit": "",
+            "former": false
+          }
+        ],
         "epithets": [
           {
             "text": {}
@@ -82,6 +88,12 @@ examples:
             ],
             "aliases": [],
             "birthday": "--05-05",
+            "devilFruits": [
+              {
+                "devilFruit": "",
+                "former": false
+              }
+            ],
             "epithets": [
               {
                 "text": {}
@@ -141,6 +153,17 @@ examples:
               ],
               "aliases": [],
               "birthday": "--05-05",
+              "devilFruits": [
+                {
+                  "devilFruit": {
+                    "id": "",
+                    "multipleUsers": false,
+                    "names": {},
+                    "romaji": ""
+                  },
+                  "former": false
+                }
+              ],
               "epithets": [
                 {
                   "text": {}
@@ -216,6 +239,12 @@ examples:
             ],
             "aliases": [],
             "birthday": "--05-05",
+            "devilFruits": [
+              {
+                "devilFruit": "",
+                "former": false
+              }
+            ],
             "epithets": [
               {
                 "text": {}
@@ -282,6 +311,12 @@ examples:
             ],
             "aliases": [],
             "birthday": "--05-05",
+            "devilFruits": [
+              {
+                "devilFruit": "",
+                "former": false
+              }
+            ],
             "epithets": [
               {
                 "text": {}

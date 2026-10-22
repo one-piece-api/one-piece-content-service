@@ -1,6 +1,7 @@
 package dev.onepieceapi.contentservice.service.character;
 
 import dev.onepieceapi.contentservice.domain.character.Character;
+import dev.onepieceapi.contentservice.domain.character.FruitUse;
 import dev.onepieceapi.contentservice.domain.character.Membership;
 import dev.onepieceapi.contentservice.domain.workflow.BlockReason;
 import dev.onepieceapi.contentservice.service.content.FirstAppearanceRules;
@@ -12,8 +13,8 @@ import java.util.function.Function;
 /**
  * The relations of a Character (implementation plan of the Character, D8, D9): the
  * chapter and the episode it first appears in (ADR-0008), each of its species and the
- * affiliation of each of its memberships (D10). All keep their target from being retired
- * as {@code characters}.
+ * affiliation of each of its memberships (D10) and each of its Devil Fruits (D12). All
+ * keep their target from being retired as {@code characters}.
  */
 public final class CharacterRelations {
 
@@ -25,6 +26,9 @@ public final class CharacterRelations {
 
 	/** The list of memberships as a request names it, e.g. {@code affiliations[1]}. */
 	public static final String AFFILIATIONS_FIELD = "affiliations";
+
+	/** The list of Devil Fruits as a request names it, e.g. {@code devilFruits[1]}. */
+	public static final String DEVIL_FRUITS_FIELD = "devilFruits";
 
 	/** The chapter a character first appears in. */
 	public static final RelationDescriptor<Character> FIRST_APPEARANCE_CHAPTER = FirstAppearanceRules
@@ -53,6 +57,20 @@ public final class CharacterRelations {
 		.name("affiliation")
 		.target(Membership::affiliationContentId)
 		.notLinkable("must be an Affiliation with an approved version")
+		.targetNotOnline(BlockReason.RELATED_NOT_ONLINE)
+		.onlineItemsLinked(BlockReason.ONLINE_ITEMS_LINKED)
+		.itemsName(ITEMS_NAME)
+		.build();
+
+	/**
+	 * The fruit of one entry of the Devil Fruits of a character. Named in the singular,
+	 * so the detail of a block reads {@code devilFruitId} and {@code devilFruitRomaji},
+	 * and the index {@code devilFruitsIndex}.
+	 */
+	public static final RelationDescriptor<FruitUse> DEVIL_FRUIT = RelationDescriptor.<FruitUse>builder()
+		.name("devilFruit")
+		.target(FruitUse::devilFruitContentId)
+		.notLinkable("must be a Devil Fruit with an approved version")
 		.targetNotOnline(BlockReason.RELATED_NOT_ONLINE)
 		.onlineItemsLinked(BlockReason.ONLINE_ITEMS_LINKED)
 		.itemsName(ITEMS_NAME)

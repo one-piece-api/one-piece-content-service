@@ -1,6 +1,7 @@
 package dev.onepieceapi.contentservice.web.controller;
 
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
+import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitReference;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitTranslation;
 import dev.onepieceapi.contentservice.domain.devilfruit.TypeReference;
 import dev.onepieceapi.contentservice.domain.image.ImageChange;
@@ -19,6 +20,7 @@ import dev.onepieceapi.contentservice.domain.workflow.VersionAccess;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAction;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.service.devilfruit.DevilFruitService;
+import dev.onepieceapi.contentservice.service.devilfruit.DevilFruitLinks;
 import dev.onepieceapi.contentservice.service.devilfruittype.DevilFruitTypeLinks;
 import dev.onepieceapi.contentservice.service.exception.ContentErrorCode;
 import dev.onepieceapi.contentservice.service.exception.ImageRefusedException;
@@ -57,6 +59,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -98,6 +101,9 @@ class DevilFruitControllerTest {
 
 	@MockitoBean
 	private DevilFruitTypeLinks links;
+
+	@MockitoBean
+	private DevilFruitLinks fruitLinks;
 
 	@MockitoBean
 	private FirstAppearanceLinks firstAppearances;
@@ -181,6 +187,54 @@ class DevilFruitControllerTest {
 		verify(this.service).list(any(), any(), filter.capture(), any(), any());
 		assertThat(filter.getValue().related()).containsExactly(Map.entry("type", TYPE_ID));
 		assertThat(filter.getValue().query()).isEqualTo("gomu");
+	}
+
+	@Test
+	void eachRowOfTheListSaysHowManyCharactersCurrentlyUseTheFruit() throws Exception {
+		var rows = List.of(new ContentSummary<>(CONTENT_ID, version(VersionStatus.PUBLISHED, TYPE_ID), 1, Set.of()),
+				new ContentSummary<>(UUID.randomUUID(), version(VersionStatus.DRAFT, TYPE_ID), null, Set.of()));
+		when(this.service.list(any(), any(), any(), any(), any()))
+			.thenReturn(new PageImpl<>(rows, PageRequest.of(0, 20), 2));
+		when(this.links.referencesFor(anyCollection())).thenReturn(Map.of(TYPE_ID, PARAMECIA));
+		when(this.fruitLinks.userCounts(anyCollection())).thenReturn(Map.of(CONTENT_ID, 2L));
+
+		this.mockMvc.perform(get("/devil-fruits").with(callerWith(Permission.CONTENT_READ)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.content[0].body.userCount").value(2))
+			.andExpect(jsonPath("$.content[1].body.userCount").value(0));
+	}
+
+	@Test
+	void theFruitsThatCanBeLinkedAreListedWithWhetherTheyHaveSeveralUsers() throws Exception {
+		when(this.fruitLinks.linkable(any(), eq(0), eq(20))).thenReturn(new PageImpl<>(
+				List.of(new DevilFruitReference(CONTENT_ID, "SMILE Zoan", Map.of("it", "SMILE"), true))));
+
+		this.mockMvc.perform(get("/devil-fruits/linkable").param("q", "smi").with(callerWith(Permission.CONTENT_WRITE)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.content[0].id").value(CONTENT_ID.toString()))
+			.andExpect(jsonPath("$.content[0].romaji").value("SMILE Zoan"))
+			.andExpect(jsonPath("$.content[0].multipleUsers").value(true));
+		this.mockMvc.perform(get("/devil-fruits/linkable").with(callerWith(Permission.CONTENT_READ)))
+			.andExpect(status().isForbidden());
+	}
+
+	@Test
+	void creatingPassesOnWhetherTheFruitHasSeveralUsersAndNotSayingSoIsNo() throws Exception {
+		var draft = new VersionAccess<>(version(VersionStatus.DRAFT, TYPE_ID), EnumSet.of(VersionAction.EDIT));
+		when(this.service.create(any(), any(), any(), any())).thenReturn(new Content<>(CONTENT_ID, List.of(draft)));
+
+		for (String body : List.of("{\"romaji\":\"SMILE Zoan\",\"multipleUsers\":true}",
+				"{\"romaji\":\"Mera Mera\"}")) {
+			this.mockMvc
+				.perform(post("/devil-fruits").with(callerWith(Permission.CONTENT_WRITE))
+					.contentType("application/json")
+					.content(body))
+				.andExpect(status().isCreated());
+		}
+
+		var written = ArgumentCaptor.forClass(DevilFruit.class);
+		verify(this.service, times(2)).create(any(), any(), written.capture(), any());
+		assertThat(written.getAllValues()).extracting(DevilFruit::multipleUsers).containsExactly(true, false);
 	}
 
 	@Test

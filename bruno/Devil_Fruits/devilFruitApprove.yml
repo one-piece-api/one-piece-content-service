@@ -1,7 +1,7 @@
 info:
   name: devilFruitApprove
   type: http
-  seq: 10
+  seq: 11
   tags:
     - Devil_Fruits
 
@@ -80,6 +80,7 @@ examples:
                 "id": "",
                 "url": ""
               },
+              "multipleUsers": false,
               "romaji": "",
               "subcategory": {
                 "id": "",

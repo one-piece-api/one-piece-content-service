@@ -3,6 +3,7 @@ package dev.onepieceapi.contentservice.service.validation;
 import dev.onepieceapi.contentservice.domain.affiliation.AffiliationKind;
 import dev.onepieceapi.contentservice.domain.character.Character;
 import dev.onepieceapi.contentservice.domain.character.Epithet;
+import dev.onepieceapi.contentservice.domain.character.FruitUse;
 import dev.onepieceapi.contentservice.domain.character.Membership;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.entity.AffiliationVersionEntity;
@@ -12,6 +13,7 @@ import dev.onepieceapi.contentservice.persistence.entity.CharacterVersionEntity;
 import dev.onepieceapi.contentservice.persistence.mapper.CharacterVersionMapper;
 import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.CharacterVersionRepository;
+import dev.onepieceapi.contentservice.persistence.repository.DevilFruitVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.EpisodeVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
 import dev.onepieceapi.contentservice.persistence.repository.SpeciesVersionRepository;
@@ -39,11 +41,12 @@ import java.util.UUID;
  * an epithet unique per language and an alias unique, whatever the case; a species named
  * once, each one it may be linked to; an affiliation named once in its memberships, each
  * one it may be linked to, a rank only in an affiliation that, as last approved, is a
- * Navy one (D10). Its first appearance, when chosen, is in a chapter and an episode it
- * may be linked to (3.4.3). Each entry at fault is reported, the later of two equal ones.
- * Its portrait is checked against the {@code character} image profile when uploaded, as
- * every image. A birthday is always a real date: a {@code MonthDay} cannot be anything
- * else.
+ * Navy one (D10); a Devil Fruit named once, one it may be linked to (D12) - that it has
+ * one current user is for publishing to say, never a save. Its first appearance, when
+ * chosen, is in a chapter and an episode it may be linked to (3.4.3). Each entry at fault
+ * is reported, the later of two equal ones. Its portrait is checked against the
+ * {@code character} image profile when uploaded, as every image. A birthday is always a
+ * real date: a {@code MonthDay} cannot be anything else.
  */
 @Component
 public class CharacterValidator extends ContentValidator<Character, CharacterVersionEntity> {
@@ -70,6 +73,10 @@ public class CharacterValidator extends ContentValidator<Character, CharacterVer
 
 	private static final String RANK_NOT_ALLOWED = "is allowed only in a Navy affiliation";
 
+	private static final String REPEATED_DEVIL_FRUIT = "is another Devil Fruit of this character";
+
+	private static final String DEVIL_FRUIT_PART = "devilFruit";
+
 	private static final String MEMBERSHIP_FIELD = "%s[%d].%s";
 
 	private static final String AFFILIATION_PART = "affiliation";
@@ -84,15 +91,19 @@ public class CharacterValidator extends ContentValidator<Character, CharacterVer
 
 	private final AffiliationVersionRepository affiliationRepository;
 
+	private final DevilFruitVersionRepository devilFruitRepository;
+
 	@Autowired
 	public CharacterValidator(CharacterVersionRepository versionRepository, LanguageRepository languageRepository,
 			ChapterVersionRepository chapterRepository, EpisodeVersionRepository episodeRepository,
-			SpeciesVersionRepository speciesRepository, AffiliationVersionRepository affiliationRepository) {
+			SpeciesVersionRepository speciesRepository, AffiliationVersionRepository affiliationRepository,
+			DevilFruitVersionRepository devilFruitRepository) {
 		super(versionRepository, languageRepository, CharacterVersionMapper::toDomain);
 		this.chapterRepository = chapterRepository;
 		this.episodeRepository = episodeRepository;
 		this.speciesRepository = speciesRepository;
 		this.affiliationRepository = affiliationRepository;
+		this.devilFruitRepository = devilFruitRepository;
 	}
 
 	@Override
@@ -104,6 +115,7 @@ public class CharacterValidator extends ContentValidator<Character, CharacterVer
 		requireValidAliases(body.aliases(), violations);
 		requireDistinctSpecies(body.speciesIds(), violations);
 		requireDistinctAffiliations(body.affiliations(), violations);
+		requireDistinctDevilFruits(body.devilFruits(), violations);
 		if (!violations.isEmpty()) {
 			throw new ValueInvalidException(violations);
 		}
@@ -120,6 +132,7 @@ public class CharacterValidator extends ContentValidator<Character, CharacterVer
 		violations.addAll(RelationRules.notLinkable(CharacterRelations.SPECIES, body.speciesIds(),
 				CharacterRelations.SPECIES_FIELD, this.speciesRepository));
 		violations.addAll(membershipViolations(body.affiliations()));
+		violations.addAll(devilFruitViolations(body.devilFruits()));
 		if (!violations.isEmpty()) {
 			throw new ValueInvalidException(violations);
 		}
@@ -183,6 +196,29 @@ public class CharacterValidator extends ContentValidator<Character, CharacterVer
 						REPEATED_AFFILIATION));
 			}
 		}
+	}
+
+	private static void requireDistinctDevilFruits(List<FruitUse> fruits, List<FieldViolation> violations) {
+		Set<UUID> seen = new HashSet<>();
+		for (int index = 0; index < fruits.size(); index++) {
+			if (!seen.add(fruits.get(index).devilFruitContentId())) {
+				violations.add(new FieldViolation(
+						MEMBERSHIP_FIELD.formatted(CharacterRelations.DEVIL_FRUITS_FIELD, index, DEVIL_FRUIT_PART),
+						REPEATED_DEVIL_FRUIT));
+			}
+		}
+	}
+
+	/** Each Devil Fruit that may not be linked, named as the entry and its fruit. */
+	private List<FieldViolation> devilFruitViolations(List<FruitUse> fruits) {
+		List<FieldViolation> violations = new ArrayList<>();
+		for (int index = 0; index < fruits.size(); index++) {
+			String prefix = "%s[%d].".formatted(CharacterRelations.DEVIL_FRUITS_FIELD, index);
+			RelationRules
+				.notLinkable(CharacterRelations.DEVIL_FRUIT, fruits.get(index), prefix, this.devilFruitRepository)
+				.ifPresent(violations::add);
+		}
+		return violations;
 	}
 
 	/**
