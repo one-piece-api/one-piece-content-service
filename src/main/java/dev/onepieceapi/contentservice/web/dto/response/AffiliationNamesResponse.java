@@ -7,7 +7,9 @@ import java.util.Map;
  * {@link ContentSummaryResponse}: enough to name it, without the texts.
  *
  * @param names the name per language code, for the languages that have one
+ * @param memberCount how many characters online belong to it, those who left it not
+ * counted
  */
-public record AffiliationNamesResponse(String romaji, Map<String, String> names) {
+public record AffiliationNamesResponse(String romaji, Map<String, String> names, long memberCount) {
 
 }

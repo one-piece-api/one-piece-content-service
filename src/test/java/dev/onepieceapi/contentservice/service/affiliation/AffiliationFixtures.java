@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.service.affiliation;
 
+import dev.onepieceapi.contentservice.config.RulesProperties;
 import dev.onepieceapi.contentservice.domain.affiliation.Affiliation;
 import dev.onepieceapi.contentservice.domain.affiliation.AffiliationKind;
 import dev.onepieceapi.contentservice.domain.affiliation.AffiliationTranslation;
@@ -16,16 +17,17 @@ import dev.onepieceapi.contentservice.persistence.mapper.UserMapper;
 import dev.onepieceapi.contentservice.persistence.repository.AffiliationVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
+import dev.onepieceapi.contentservice.persistence.repository.CharacterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.EpisodeVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
 import dev.onepieceapi.contentservice.service.audit.AuditLogService;
-import dev.onepieceapi.contentservice.service.content.OnlineChapters;
 import dev.onepieceapi.contentservice.service.image.ContentImages;
 import dev.onepieceapi.contentservice.service.validation.AffiliationValidator;
 import dev.onepieceapi.exception.DomainException;
 import dev.onepieceapi.exception.web.FieldViolation;
+import lombok.Builder;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -43,6 +45,7 @@ import static org.mockito.Mockito.mock;
  * application builds it over the repositories of the test, and rows seeded straight into
  * the tables.
  */
+@Builder
 final class AffiliationFixtures {
 
 	static final Instant NOW = Instant.parse("2026-10-21T10:00:00Z");
@@ -76,21 +79,12 @@ final class AffiliationFixtures {
 
 	private final AuditLogRepository auditLog;
 
-	/** The chapter online every complete affiliation first appears in. */
-	private final StoryPoint firstAppearance;
+	private final CharacterVersionRepository characters;
 
-	AffiliationFixtures(ContentRepository contents, AffiliationVersionRepository affiliations,
-			ChapterVersionRepository chapters, EpisodeVersionRepository episodes,
-			ContentVersionRepository contentVersions, LanguageRepository languages, AuditLogRepository auditLog) {
-		this.contents = contents;
-		this.affiliations = affiliations;
-		this.chapters = chapters;
-		this.episodes = episodes;
-		this.contentVersions = contentVersions;
-		this.languages = languages;
-		this.auditLog = auditLog;
-		this.firstAppearance = OnlineChapters.onlineChapter(contents, chapters);
-	}
+	/**
+	 * The chapter online every complete affiliation first appears in, seeded by the test.
+	 */
+	private final StoryPoint firstAppearance;
 
 	AffiliationService service() {
 		return service(mock(ContentImages.class));
@@ -99,7 +93,8 @@ final class AffiliationFixtures {
 	AffiliationService service(ContentImages images) {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
 		var validator = new AffiliationValidator(this.affiliations, this.languages, this.chapters, this.episodes);
-		var rules = new AffiliationRules(this.contents, this.chapters, this.episodes);
+		var rules = new AffiliationRules(this.contents, this.chapters, this.episodes, this.characters,
+				new RulesProperties(5));
 		return new AffiliationService(new AffiliationDefinition(this.affiliations, validator, rules),
 				this.contentVersions, this.contents, new AuditLogService(this.auditLog, clock), clock, images);
 	}

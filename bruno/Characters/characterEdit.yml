@@ -19,6 +19,14 @@ http:
     type: json
     data: |-
       {
+        "affiliations": [
+          {
+            "affiliation": "",
+            "former": false,
+            "marineRank": "FLEET_ADMIRAL",
+            "role": {}
+          }
+        ],
         "aliases": [],
         "birthday": "--05-05",
         "epithets": [
@@ -64,6 +72,14 @@ examples:
         type: json
         data: |-
           {
+            "affiliations": [
+              {
+                "affiliation": "",
+                "former": false,
+                "marineRank": "FLEET_ADMIRAL",
+                "role": {}
+              }
+            ],
             "aliases": [],
             "birthday": "--05-05",
             "epithets": [
@@ -110,6 +126,19 @@ examples:
               }
             ],
             "body": {
+              "affiliations": [
+                {
+                  "affiliation": {
+                    "id": "",
+                    "kind": "PIRATE_CREW",
+                    "names": {},
+                    "romaji": ""
+                  },
+                  "former": false,
+                  "marineRank": "FLEET_ADMIRAL",
+                  "role": {}
+                }
+              ],
               "aliases": [],
               "birthday": "--05-05",
               "epithets": [
@@ -177,6 +206,14 @@ examples:
         type: json
         data: |-
           {
+            "affiliations": [
+              {
+                "affiliation": "",
+                "former": false,
+                "marineRank": "FLEET_ADMIRAL",
+                "role": {}
+              }
+            ],
             "aliases": [],
             "birthday": "--05-05",
             "epithets": [
@@ -235,6 +272,14 @@ examples:
         type: json
         data: |-
           {
+            "affiliations": [
+              {
+                "affiliation": "",
+                "former": false,
+                "marineRank": "FLEET_ADMIRAL",
+                "role": {}
+              }
+            ],
             "aliases": [],
             "birthday": "--05-05",
             "epithets": [

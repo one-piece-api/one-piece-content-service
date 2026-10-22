@@ -18,6 +18,7 @@ import dev.onepieceapi.contentservice.persistence.repository.ImageRepository;
 import dev.onepieceapi.contentservice.persistence.repository.JpaImageStore;
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
 import dev.onepieceapi.contentservice.persistence.repository.VolumeVersionRepository;
+import dev.onepieceapi.contentservice.service.content.OnlineChapters;
 import dev.onepieceapi.contentservice.service.exception.ContentErrorCode;
 import dev.onepieceapi.contentservice.service.exception.ImageNotFoundException;
 import dev.onepieceapi.contentservice.service.exception.ImageRefusedException;
@@ -135,9 +136,17 @@ class AffiliationEmblemIntegrationTest {
 		var store = new JpaImageStore(this.imageRepository, clock);
 		var images = new ContentImages(new ImageValidator(), new ImageNormalizer(new PngImageEncoder()), store,
 				EMBLEM_IMAGES);
-		this.fixtures = new AffiliationFixtures(this.contentRepository, this.affiliationRepository,
-				this.chapterRepository, this.episodeRepository, this.contentVersionRepository, this.languageRepository,
-				this.auditLogRepository);
+		this.fixtures = AffiliationFixtures.builder()
+			.contents(this.contentRepository)
+			.affiliations(this.affiliationRepository)
+			.chapters(this.chapterRepository)
+			.episodes(this.episodeRepository)
+			.contentVersions(this.contentVersionRepository)
+			.languages(this.languageRepository)
+			.auditLog(this.auditLogRepository)
+			.characters(this.characterRepository)
+			.firstAppearance(OnlineChapters.onlineChapter(this.contentRepository, this.chapterRepository))
+			.build();
 		this.service = this.fixtures.service(images);
 		this.imageService = new ImageService(store, this.devilFruitRepository, this.volumeRepository,
 				this.bountyRepository, this.affiliationRepository, this.speciesRepository, this.characterRepository);

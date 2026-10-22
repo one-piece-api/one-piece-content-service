@@ -5,11 +5,14 @@ import dev.onepieceapi.contentservice.domain.image.ImageChange;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSortField;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAccess;
+import dev.onepieceapi.contentservice.service.affiliation.AffiliationLinks;
 import dev.onepieceapi.contentservice.service.affiliation.AffiliationService;
 import dev.onepieceapi.contentservice.service.story.FirstAppearanceLinks;
 import dev.onepieceapi.contentservice.web.ApiPaths;
 import dev.onepieceapi.contentservice.web.dto.request.AffiliationListRequest;
 import dev.onepieceapi.contentservice.web.dto.request.AffiliationRequest;
+import dev.onepieceapi.contentservice.web.dto.request.LinkableTypesRequest;
+import dev.onepieceapi.contentservice.web.dto.response.AffiliationReferenceResponse;
 import dev.onepieceapi.contentservice.web.dto.response.AffiliationNamesResponse;
 import dev.onepieceapi.contentservice.web.dto.response.AffiliationResponse;
 import dev.onepieceapi.contentservice.web.dto.response.ContentResponse;
@@ -43,12 +46,14 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 
 /**
  * The Affiliation section: every endpoint of {@link ContentController}, plus creating a
  * content and editing its draft (UF-CNT-01, UF-CNT-02), which take {@code content:write},
- * with or without its emblem. No linkable endpoint: nothing points to an affiliation yet.
+ * with or without its emblem. Plus the linkable affiliations a character can name
+ * (implementation plan of the Character, C8), and how many characters belong to each row.
  */
 @RestController
 @RequestMapping(ApiPaths.AFFILIATIONS)
@@ -62,12 +67,15 @@ class AffiliationController extends ContentController<Affiliation, AffiliationRe
 
 	private final AffiliationService service;
 
+	private final AffiliationLinks links;
+
 	@Autowired
-	AffiliationController(AffiliationService service, FirstAppearanceLinks firstAppearances,
+	AffiliationController(AffiliationService service, AffiliationLinks links, FirstAppearanceLinks firstAppearances,
 			ImageResponseMapper images) {
 		super(service, access -> AffiliationResponseMapper.toVersionResponse(access,
 				firstAppearances.referencesFor(List.of(access.body())), images));
 		this.service = service;
+		this.links = links;
 	}
 
 	/**
@@ -85,7 +93,21 @@ class AffiliationController extends ContentController<Affiliation, AffiliationRe
 	@Override
 	protected List<ContentSummaryResponse<AffiliationNamesResponse>> summaryResponses(
 			List<ContentSummary<Affiliation>> rows, AuthenticatedCaller caller) {
-		return rows.stream().map(AffiliationResponseMapper::toSummaryResponse).toList();
+		Map<UUID, Long> memberCounts = this.links.memberCounts(rows.stream().map(ContentSummary::contentId).toList());
+		return rows.stream()
+			.map(row -> AffiliationResponseMapper.toSummaryResponse(row,
+					memberCounts.getOrDefault(row.contentId(), 0L)))
+			.toList();
+	}
+
+	/**
+	 * The affiliations a character may be linked to: those with a version that passed
+	 * review, by romaji, narrowed by what their romaji or a name contains.
+	 */
+	@GetMapping(ApiPaths.CONTENT_LINKABLE)
+	PageResponse<AffiliationReferenceResponse> linkable(@ParameterObject @Valid LinkableTypesRequest request) {
+		var page = this.links.linkable(request.q(), request.pageOrDefault(), request.sizeOrDefault());
+		return PageResponse.from(page.map(AffiliationResponseMapper::toResponse));
 	}
 
 	/**

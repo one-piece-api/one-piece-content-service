@@ -58,6 +58,21 @@ public enum BlockReason {
 	 * online ones (implementation plan of the Bounty, B2). The detail names the previous
 	 * ({@code previousId}).
 	 */
-	BOUNTY_CHAIN_CYCLE
+	BOUNTY_CHAIN_CYCLE,
+
+	/**
+	 * A membership holds a Marine rank in an affiliation whose online version is not a
+	 * Navy one, so the character cannot be online (implementation plan of the Character,
+	 * C8). The detail names the membership ({@code affiliationsIndex}) and the
+	 * affiliation ({@code affiliationId}, {@code affiliationRomaji}).
+	 */
+	MARINE_RANK_NOT_ALLOWED,
+
+	/**
+	 * The version of an affiliation is not a Navy one while online characters hold a rank
+	 * in it (implementation plan of the Character, C8). The detail has their
+	 * {@code count} and the first {@code characters}, with id and romaji.
+	 */
+	MARINE_RANK_IN_USE
 
 }

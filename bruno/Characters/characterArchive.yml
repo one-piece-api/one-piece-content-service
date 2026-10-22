@@ -64,6 +64,19 @@ examples:
               }
             ],
             "body": {
+              "affiliations": [
+                {
+                  "affiliation": {
+                    "id": "",
+                    "kind": "PIRATE_CREW",
+                    "names": {},
+                    "romaji": ""
+                  },
+                  "former": false,
+                  "marineRank": "FLEET_ADMIRAL",
+                  "role": {}
+                }
+              ],
               "aliases": [],
               "birthday": "--05-05",
               "epithets": [

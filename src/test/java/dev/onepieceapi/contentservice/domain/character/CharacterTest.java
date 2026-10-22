@@ -19,6 +19,10 @@ class CharacterTest {
 
 	private static final UUID CHAPTER = UUID.fromString("0f6c3e5a-4b7d-4c1e-9a58-3d2b1c0e7f11");
 
+	private static final UUID KAIGUN = UUID.fromString("a1b2c3d4-0000-4000-8000-00000000a001");
+
+	private static final UUID KAIGUN2 = UUID.fromString("a1b2c3d4-0000-4000-8000-00000000a002");
+
 	private static final UUID NINGEN = UUID.fromString("7a1d3c2b-5e4f-4a6b-8c9d-0e1f2a3b4c5d");
 
 	@Test
@@ -112,6 +116,57 @@ class CharacterTest {
 			.isNotEqualTo(base.toBuilder().aliases(List.of("B", "A")).build())
 			.isNotEqualTo(base.toBuilder().birthday(MonthDay.of(7, 3)).build())
 			.isNotEqualTo(base.withImage("img"));
+	}
+
+	@Test
+	void aRoleWrittenInSomeLanguageIsRequiredInTheOthersButNoRoleIsNeverMissing() {
+		var withRoles = Character.builder()
+			.romaji("Nami")
+			.translations(Map.of("it", new CharacterTranslation("Nami", "Navigatrice"), "en",
+					new CharacterTranslation("Nami", "Navigator")))
+			.status(CharacterStatus.ALIVE)
+			.gender(Gender.FEMALE)
+			.firstAppearance(StoryPoint.ofChapter(CHAPTER))
+			.affiliations(List.of(new Membership(KAIGUN, Map.of(), null, false),
+					new Membership(KAIGUN2, Map.of("it", "Navigatrice"), null, false)))
+			.build();
+
+		assertThat(withRoles.missingFields(List.of("en", "it"))).containsExactly("affiliations[1].role[en]");
+	}
+
+	@Test
+	void theSpaceAroundARoleDoesNotCountAndTheLanguagesOfRolesAreThoseInUse() {
+		var typed = Character.builder()
+			.affiliations(
+					List.of(new Membership(KAIGUN, Map.of("fr", " Capitaine ", "it", "  "), MarineRank.CAPTAIN, true)))
+			.build();
+
+		var normalized = typed.normalized();
+
+		assertThat(normalized.affiliations())
+			.containsExactly(new Membership(KAIGUN, Map.of("fr", "Capitaine"), MarineRank.CAPTAIN, true));
+		assertThat(typed.languages()).containsExactly("fr", "it");
+		assertThat(Character.builder().build().affiliations()).isEmpty();
+	}
+
+	@Test
+	void theOrderOfTheMembershipsOrAFormerFlagMakesAnotherVersion() {
+		var current = new Membership(KAIGUN, Map.of(), null, false);
+		var other = new Membership(KAIGUN2, Map.of(), null, false);
+		var base = Character.builder().romaji("Nami").affiliations(List.of(current, other)).build();
+
+		assertThat(base).isNotEqualTo(base.toBuilder().affiliations(List.of(other, current)).build())
+			.isNotEqualTo(base.toBuilder()
+				.affiliations(List.of(new Membership(KAIGUN, Map.of(), null, true), other))
+				.build());
+	}
+
+	@Test
+	void theRanksAreInTheOrderOfTheHierarchyHighestFirst() {
+		assertThat(MarineRank.values()).hasSize(19);
+		assertThat(MarineRank.values()[0]).isEqualTo(MarineRank.FLEET_ADMIRAL);
+		assertThat(MarineRank.ADMIRAL.compareTo(MarineRank.COMMODORE)).isNegative();
+		assertThat(MarineRank.values()[18]).isEqualTo(MarineRank.CHORE_BOY);
 	}
 
 }

@@ -1,7 +1,7 @@
 info:
   name: affiliationRelease
   type: http
-  seq: 18
+  seq: 19
   tags:
     - Affiliations
 

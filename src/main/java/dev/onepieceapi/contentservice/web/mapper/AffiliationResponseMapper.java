@@ -1,11 +1,13 @@
 package dev.onepieceapi.contentservice.web.mapper;
 
 import dev.onepieceapi.contentservice.domain.affiliation.Affiliation;
+import dev.onepieceapi.contentservice.domain.affiliation.AffiliationReference;
 import dev.onepieceapi.contentservice.domain.affiliation.AffiliationTranslation;
 import dev.onepieceapi.contentservice.domain.story.NumberedReference;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAccess;
 import dev.onepieceapi.contentservice.web.dto.response.AffiliationNamesResponse;
+import dev.onepieceapi.contentservice.web.dto.response.AffiliationReferenceResponse;
 import dev.onepieceapi.contentservice.web.dto.response.AffiliationResponse;
 import dev.onepieceapi.contentservice.web.dto.response.AffiliationTranslationResponse;
 import dev.onepieceapi.contentservice.web.dto.response.ContentSummaryResponse;
@@ -31,10 +33,19 @@ public class AffiliationResponseMapper {
 				affiliation -> toResponse(affiliation, storyItems, images));
 	}
 
-	/** A row of the list of Affiliations: the romaji and the names. */
-	public ContentSummaryResponse<AffiliationNamesResponse> toSummaryResponse(ContentSummary<Affiliation> summary) {
+	/**
+	 * A row of the list of Affiliations: the romaji, the names and how many belong to it.
+	 */
+	public ContentSummaryResponse<AffiliationNamesResponse> toSummaryResponse(ContentSummary<Affiliation> summary,
+			long memberCount) {
 		return ContentResponseMapper.toSummaryResponse(summary,
-				affiliation -> new AffiliationNamesResponse(affiliation.romaji(), affiliation.names()));
+				affiliation -> new AffiliationNamesResponse(affiliation.romaji(), affiliation.names(), memberCount));
+	}
+
+	/** An affiliation a character may point to. */
+	public AffiliationReferenceResponse toResponse(AffiliationReference reference) {
+		return new AffiliationReferenceResponse(reference.id(), reference.romaji(), reference.names(),
+				reference.kind());
 	}
 
 	/** Everything the version says. */

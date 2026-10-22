@@ -15,6 +15,7 @@ import java.util.Map;
  * @param translations name and description per language code
  * @param birthday day and month, ISO 8601 {@code --MM-DD}; null for none
  * @param species each species as of today, in order
+ * @param affiliations each membership, in order
  * @param image its portrait; null for none
  * @param firstAppearance the chapter and/or the episode it first appears in; null for
  * none
@@ -23,7 +24,7 @@ import java.util.Map;
 public record CharacterResponse(String romaji, String japaneseName,
 		Map<String, CharacterTranslationResponse> translations, CharacterStatus status, Gender gender,
 		@Schema(type = "string", example = "--05-05") MonthDay birthday, List<EpithetResponse> epithets,
-		List<String> aliases, List<SpeciesReferenceResponse> species, ImageResponse image,
-		FirstAppearanceResponse firstAppearance) {
+		List<String> aliases, List<SpeciesReferenceResponse> species, List<MembershipResponse> affiliations,
+		ImageResponse image, FirstAppearanceResponse firstAppearance) {
 
 }

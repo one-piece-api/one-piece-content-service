@@ -10,6 +10,7 @@ import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.repository.AffiliationVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
+import dev.onepieceapi.contentservice.persistence.repository.CharacterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.EpisodeVersionRepository;
@@ -92,6 +93,9 @@ class AffiliationDraftIntegrationTest {
 	private JdbcTemplate jdbc;
 
 	@Autowired
+	private CharacterVersionRepository characterRepository;
+
+	@Autowired
 	private TestEntityManager entityManager;
 
 	private AffiliationFixtures fixtures;
@@ -100,9 +104,17 @@ class AffiliationDraftIntegrationTest {
 
 	@BeforeEach
 	void setUp() {
-		this.fixtures = new AffiliationFixtures(this.contentRepository, this.affiliationRepository,
-				this.chapterRepository, this.episodeRepository, this.contentVersionRepository, this.languageRepository,
-				this.auditLogRepository);
+		this.fixtures = AffiliationFixtures.builder()
+			.contents(this.contentRepository)
+			.affiliations(this.affiliationRepository)
+			.chapters(this.chapterRepository)
+			.episodes(this.episodeRepository)
+			.contentVersions(this.contentVersionRepository)
+			.languages(this.languageRepository)
+			.auditLog(this.auditLogRepository)
+			.characters(this.characterRepository)
+			.firstAppearance(OnlineChapters.onlineChapter(this.contentRepository, this.chapterRepository))
+			.build();
 		this.service = this.fixtures.service();
 		this.fixtures.affiliation(PUBLISHED, this.fixtures.complete("Mugiwara no Ichimi"));
 		stored();

@@ -1,10 +1,12 @@
 package dev.onepieceapi.contentservice.persistence.repository;
 
+import dev.onepieceapi.contentservice.domain.affiliation.AffiliationKind;
 import dev.onepieceapi.contentservice.domain.character.Character;
 import dev.onepieceapi.contentservice.domain.character.CharacterStatus;
 import dev.onepieceapi.contentservice.domain.workflow.ContentFilter;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.entity.CharacterVersionEntity;
+import dev.onepieceapi.contentservice.persistence.projection.AffiliationMemberCount;
 import dev.onepieceapi.contentservice.persistence.specification.CharacterSpecifications;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -19,7 +21,8 @@ import java.util.UUID;
 /**
  * The versions of Characters, content and workflow together. Every query common to all
  * entities comes from {@link VersionBodyRepository}; here, only those that read the
- * entity's own tables by name, the image's, the first appearance's and the species'.
+ * entity's own tables by name, the image's, the first appearance's, the species' and the
+ * memberships'.
  */
 public interface CharacterVersionRepository extends VersionBodyRepository<CharacterVersionEntity> {
 
@@ -37,6 +40,12 @@ public interface CharacterVersionRepository extends VersionBodyRepository<Charac
 		}
 		if (filter.attribute(Character.SPECIES_ATTRIBUTE) instanceof UUID species) {
 			conditions = conditions.and(CharacterSpecifications.withSpecies(species));
+		}
+		if (filter.attribute(Character.AFFILIATION_ATTRIBUTE) instanceof UUID affiliation) {
+			conditions = conditions.and(CharacterSpecifications.withAffiliation(affiliation));
+		}
+		if (filter.attribute(Character.AFFILIATION_KIND_ATTRIBUTE) instanceof AffiliationKind kind) {
+			conditions = conditions.and(CharacterSpecifications.withAffiliationKind(kind));
 		}
 		return conditions;
 	}
@@ -107,11 +116,64 @@ public interface CharacterVersionRepository extends VersionBodyRepository<Charac
 			order by d.romaji""")
 	List<CharacterVersionEntity> findOnlineWithSpecies(UUID speciesContentId, Pageable pageable);
 
+	/**
+	 * How many characters are online naming this affiliation, former members too (D10).
+	 */
+	@Query("""
+			select count(d) from CharacterVersionEntity d join d.version v join d.affiliations m
+			where m.affiliationContentId = :affiliationContentId
+				and v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED""")
+	long countOnlineWithAffiliation(UUID affiliationContentId);
+
+	/**
+	 * The characters online naming this affiliation, by romaji: as many as the page asks
+	 * for.
+	 */
+	@Query("""
+			select d from CharacterVersionEntity d join fetch d.version v join d.affiliations m
+			where m.affiliationContentId = :affiliationContentId
+				and v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED
+			order by d.romaji""")
+	List<CharacterVersionEntity> findOnlineWithAffiliation(UUID affiliationContentId, Pageable pageable);
+
+	/** How many characters are online holding a rank in this affiliation (D10). */
+	@Query("""
+			select count(d) from CharacterVersionEntity d join d.version v join d.affiliations m
+			where m.affiliationContentId = :affiliationContentId and m.marineRank is not null
+				and v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED""")
+	long countOnlineWithRankIn(UUID affiliationContentId);
+
+	/**
+	 * The characters online holding a rank in this affiliation, by romaji: as many as the
+	 * page asks for.
+	 */
+	@Query("""
+			select d from CharacterVersionEntity d join fetch d.version v join d.affiliations m
+			where m.affiliationContentId = :affiliationContentId and m.marineRank is not null
+				and v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED
+			order by d.romaji""")
+	List<CharacterVersionEntity> findOnlineWithRankIn(UUID affiliationContentId, Pageable pageable);
+
+	/**
+	 * How many characters online belong to each of these affiliations: those whose
+	 * membership is not marked former. An affiliation with none is not in the result.
+	 */
+	@Query("""
+			select new dev.onepieceapi.contentservice.persistence.projection.AffiliationMemberCount(
+				m.affiliationContentId, count(d))
+			from CharacterVersionEntity d join d.version v join d.affiliations m
+			where m.affiliationContentId in :affiliationContentIds and m.former = false
+				and v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED
+			group by m.affiliationContentId""")
+	List<AffiliationMemberCount> countMembersOf(Collection<UUID> affiliationContentIds);
+
 	/** The epithets count too: a language they are written in is in use. */
 	@Override
 	@Query(value = """
 			select exists (select 1 from character_version_translation where language_code = :languageCode)
 			    or exists (select 1 from character_version_epithet_translation
+			               where language_code = :languageCode)
+			    or exists (select 1 from character_version_affiliation_translation
 			               where language_code = :languageCode)""", nativeQuery = true)
 	boolean existsByLanguage(String languageCode);
 

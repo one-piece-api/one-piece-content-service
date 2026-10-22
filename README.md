@@ -36,8 +36,12 @@ copertina PNG), **Capitolo** ed **Episodio** (relazioni verso arco/volume, date 
   lingua e descrizione, emblema PNG opzionale (quadrato, sfondo trasparente), prima apparizione.
   `kind` (`PIRATE_CREW`, `NAVY`, `WORLD_GOVERNMENT`, `REVOLUTIONARY_ARMY`, `OTHER`): obbligatorio dalla
   prossima sottomissione (le versioni esistenti restano a `null`), filtro `?kind=`.
-  Nessun endpoint `linkable`: per ora nulla punta a un'affiliazione. Un capitolo o un episodio con
-  affiliazioni online come prima apparizione non si ritira (`ONLINE_ITEMS_LINKED`, voce `affiliations`).
+  `GET /affiliations/linkable` elenca le affiliazioni con una versione approvata, col `kind` (per i
+  personaggi); ogni riga della lista dice quanti personaggi online ne fanno parte (`memberCount`,
+  senza chi l'ha lasciata). Non si ritira con personaggi online che la indicano (`ONLINE_ITEMS_LINKED`,
+  voce `characters`), né va online con un `kind` diverso da `NAVY` mentre personaggi online vi hanno un
+  grado (`MARINE_RANK_IN_USE`). Un capitolo o un episodio con affiliazioni online come prima
+  apparizione non si ritira (`ONLINE_ITEMS_LINKED`, voce `affiliations`).
 - **Specie** (`/species`): la razza di un personaggio. Chiave `romaji` (slug `gyojin`), nome unico per
   lingua e descrizione, immagine PNG opzionale (ritratto 4:5, senza trasparenza richiesta), prima
   apparizione. `GET /species/linkable` elenca le specie con una versione approvata (per i personaggi).
@@ -46,9 +50,12 @@ copertina PNG), **Capitolo** ed **Episodio** (relazioni verso arco/volume, date 
 - **Personaggio** (`/characters`): chiave `romaji` (slug `nami`), nome unico per lingua e
   descrizione, `japaneseName`, `status`, `gender`, `birthday` (`--07-03`, opzionale), liste ordinate
   di epiteti (per lingua), alias e specie (`/species/linkable`, al massimo 20 epiteti e 20 alias),
-  ritratto PNG opzionale (4:5, senza trasparenza), prima apparizione. Filtri `?characterStatus=`
-  e `?species=`. Va online solo con prima apparizione e ogni specie online (`RELATED_NOT_ONLINE`,
-  `speciesIndex`); un capitolo o un episodio con personaggi online non si ritira (voce `characters`).
+  ritratto PNG opzionale (4:5, senza trasparenza), prima apparizione. Appartenenze (`affiliations`,
+  lista ordinata: affiliazione, `role` per lingua, `marineRank` solo se l'affiliazione è `NAVY`,
+  `former`). Filtri `?characterStatus=`, `?species=`, `?affiliation=` e `?affiliationKind=` (solo
+  appartenenze attuali). Va online solo con prima apparizione, ogni specie e ogni affiliazione online
+  (`RELATED_NOT_ONLINE`, `speciesIndex`/`affiliationsIndex`) e un grado solo in un'affiliazione online
+  `NAVY` (`MARINE_RANK_NOT_ALLOWED`); un capitolo o un episodio con personaggi online non si ritira (voce `characters`).
 - **Dashboard** (`/dashboard`): contatori per stato, attività recente del chiamante
   (dall'audit log) e pagine per stato trasversali alle entità.
 

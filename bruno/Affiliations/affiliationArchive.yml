@@ -1,7 +1,7 @@
 info:
   name: affiliationArchive
   type: http
-  seq: 11
+  seq: 12
   tags:
     - Affiliations
 

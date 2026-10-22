@@ -1,19 +1,23 @@
 package dev.onepieceapi.contentservice.web.mapper;
 
+import dev.onepieceapi.contentservice.domain.affiliation.AffiliationReference;
 import dev.onepieceapi.contentservice.domain.character.Character;
 import dev.onepieceapi.contentservice.domain.character.CharacterReference;
 import dev.onepieceapi.contentservice.domain.character.CharacterTranslation;
 import dev.onepieceapi.contentservice.domain.character.Epithet;
+import dev.onepieceapi.contentservice.domain.character.Membership;
 import dev.onepieceapi.contentservice.domain.species.SpeciesReference;
 import dev.onepieceapi.contentservice.domain.story.NumberedReference;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAccess;
+import dev.onepieceapi.contentservice.web.dto.response.AffiliationReferenceResponse;
 import dev.onepieceapi.contentservice.web.dto.response.CharacterNamesResponse;
 import dev.onepieceapi.contentservice.web.dto.response.CharacterReferenceResponse;
 import dev.onepieceapi.contentservice.web.dto.response.CharacterResponse;
 import dev.onepieceapi.contentservice.web.dto.response.CharacterTranslationResponse;
 import dev.onepieceapi.contentservice.web.dto.response.ContentSummaryResponse;
 import dev.onepieceapi.contentservice.web.dto.response.EpithetResponse;
+import dev.onepieceapi.contentservice.web.dto.response.MembershipResponse;
 import dev.onepieceapi.contentservice.web.dto.response.SpeciesReferenceResponse;
 import dev.onepieceapi.contentservice.web.dto.response.VersionResponse;
 import lombok.experimental.UtilityClass;
@@ -24,17 +28,19 @@ import java.util.UUID;
 
 /**
  * From Characters to their response bodies: what a version says is mapped here, the
- * workflow around it by {@link ContentResponseMapper}. The species, the chapter and the
- * episode it points to are given already looked up, so the mapper reads no database.
+ * workflow around it by {@link ContentResponseMapper}. The species, the affiliations, the
+ * chapter and the episode it points to are given already looked up, so the mapper reads
+ * no database.
  */
 @UtilityClass
 public class CharacterResponseMapper {
 
 	/** A version of a Character as its caller meets it, with everything it says. */
 	public VersionResponse<CharacterResponse> toVersionResponse(VersionAccess<Character> access,
-			Map<UUID, SpeciesReference> species, Map<UUID, NumberedReference> storyItems, ImageResponseMapper images) {
+			Map<UUID, SpeciesReference> species, Map<UUID, AffiliationReference> affiliations,
+			Map<UUID, NumberedReference> storyItems, ImageResponseMapper images) {
 		return ContentResponseMapper.toVersionResponse(access,
-				character -> toResponse(character, species, storyItems, images));
+				character -> toResponse(character, species, affiliations, storyItems, images));
 	}
 
 	/**
@@ -49,7 +55,8 @@ public class CharacterResponseMapper {
 
 	/** Everything the version says, its lists in their order. */
 	public CharacterResponse toResponse(Character character, Map<UUID, SpeciesReference> species,
-			Map<UUID, NumberedReference> storyItems, ImageResponseMapper images) {
+			Map<UUID, AffiliationReference> affiliations, Map<UUID, NumberedReference> storyItems,
+			ImageResponseMapper images) {
 		Map<String, CharacterTranslationResponse> translations = new TreeMap<>();
 		character.translations()
 			.forEach((language, translation) -> translations.put(language, toResponse(translation)));
@@ -63,6 +70,7 @@ public class CharacterResponseMapper {
 			.epithets(character.epithets().stream().map(CharacterResponseMapper::toResponse).toList())
 			.aliases(character.aliases())
 			.species(character.speciesIds().stream().map(id -> toSpeciesResponse(id, species)).toList())
+			.affiliations(character.affiliations().stream().map(entry -> toResponse(entry, affiliations)).toList())
 			.image(images.toResponse(character.imageId()))
 			.firstAppearance(FirstAppearanceMapper.toResponse(character.firstAppearance(), storyItems))
 			.build();
@@ -77,6 +85,24 @@ public class CharacterResponseMapper {
 		SpeciesReference reference = species.get(speciesContentId);
 		return reference == null ? new SpeciesReferenceResponse(speciesContentId, null, Map.of())
 				: SpeciesResponseMapper.toResponse(reference);
+	}
+
+	/** The affiliation as of today, with its role and rank as written. */
+	private static MembershipResponse toResponse(Membership membership, Map<UUID, AffiliationReference> affiliations) {
+		return new MembershipResponse(toAffiliationResponse(membership.affiliationContentId(), affiliations),
+				new TreeMap<>(membership.role()), membership.marineRank(), membership.former());
+	}
+
+	/**
+	 * The affiliation with its names and kind; with only its id when it has nothing
+	 * approved to be called by, which the link makes impossible but a read must not fail
+	 * for.
+	 */
+	private static AffiliationReferenceResponse toAffiliationResponse(UUID affiliationContentId,
+			Map<UUID, AffiliationReference> affiliations) {
+		AffiliationReference reference = affiliations.get(affiliationContentId);
+		return reference == null ? new AffiliationReferenceResponse(affiliationContentId, null, Map.of(), null)
+				: AffiliationResponseMapper.toResponse(reference);
 	}
 
 	/** A character a bounty may point to. */

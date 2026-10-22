@@ -1,7 +1,13 @@
 package dev.onepieceapi.contentservice.service.validation;
 
+import dev.onepieceapi.contentservice.domain.affiliation.AffiliationKind;
 import dev.onepieceapi.contentservice.domain.character.Character;
 import dev.onepieceapi.contentservice.domain.character.Epithet;
+import dev.onepieceapi.contentservice.domain.character.Membership;
+import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
+import dev.onepieceapi.contentservice.persistence.entity.AffiliationVersionEntity;
+import dev.onepieceapi.contentservice.persistence.mapper.AffiliationVersionMapper;
+import dev.onepieceapi.contentservice.persistence.repository.AffiliationVersionRepository;
 import dev.onepieceapi.contentservice.persistence.entity.CharacterVersionEntity;
 import dev.onepieceapi.contentservice.persistence.mapper.CharacterVersionMapper;
 import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
@@ -17,9 +23,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -29,11 +37,13 @@ import java.util.UUID;
  * (implementation plan of the Character, D6, D8): at most {@value Character#MAX_EPITHETS}
  * epithets and {@value Character#MAX_ALIASES} aliases, none blank; within the character,
  * an epithet unique per language and an alias unique, whatever the case; a species named
- * once, each one it may be linked to. Its first appearance, when chosen, is in a chapter
- * and an episode it may be linked to (3.4.3). Each entry at fault is reported, the later
- * of two equal ones. Its portrait is checked against the {@code character} image profile
- * when uploaded, as every image. A birthday is always a real date: a {@code MonthDay}
- * cannot be anything else.
+ * once, each one it may be linked to; an affiliation named once in its memberships, each
+ * one it may be linked to, a rank only in an affiliation that, as last approved, is a
+ * Navy one (D10). Its first appearance, when chosen, is in a chapter and an episode it
+ * may be linked to (3.4.3). Each entry at fault is reported, the later of two equal ones.
+ * Its portrait is checked against the {@code character} image profile when uploaded, as
+ * every image. A birthday is always a real date: a {@code MonthDay} cannot be anything
+ * else.
  */
 @Component
 public class CharacterValidator extends ContentValidator<Character, CharacterVersionEntity> {
@@ -56,20 +66,33 @@ public class CharacterValidator extends ContentValidator<Character, CharacterVer
 
 	private static final String REPEATED_SPECIES = "is another species of this character";
 
+	private static final String REPEATED_AFFILIATION = "is another affiliation of this character";
+
+	private static final String RANK_NOT_ALLOWED = "is allowed only in a Navy affiliation";
+
+	private static final String MEMBERSHIP_FIELD = "%s[%d].%s";
+
+	private static final String AFFILIATION_PART = "affiliation";
+
+	private static final String MARINE_RANK_PART = "marineRank";
+
 	private final ChapterVersionRepository chapterRepository;
 
 	private final EpisodeVersionRepository episodeRepository;
 
 	private final SpeciesVersionRepository speciesRepository;
 
+	private final AffiliationVersionRepository affiliationRepository;
+
 	@Autowired
 	public CharacterValidator(CharacterVersionRepository versionRepository, LanguageRepository languageRepository,
 			ChapterVersionRepository chapterRepository, EpisodeVersionRepository episodeRepository,
-			SpeciesVersionRepository speciesRepository) {
+			SpeciesVersionRepository speciesRepository, AffiliationVersionRepository affiliationRepository) {
 		super(versionRepository, languageRepository, CharacterVersionMapper::toDomain);
 		this.chapterRepository = chapterRepository;
 		this.episodeRepository = episodeRepository;
 		this.speciesRepository = speciesRepository;
+		this.affiliationRepository = affiliationRepository;
 	}
 
 	@Override
@@ -80,6 +103,7 @@ public class CharacterValidator extends ContentValidator<Character, CharacterVer
 		requireValidEpithets(body.epithets(), violations);
 		requireValidAliases(body.aliases(), violations);
 		requireDistinctSpecies(body.speciesIds(), violations);
+		requireDistinctAffiliations(body.affiliations(), violations);
 		if (!violations.isEmpty()) {
 			throw new ValueInvalidException(violations);
 		}
@@ -95,6 +119,7 @@ public class CharacterValidator extends ContentValidator<Character, CharacterVer
 			.ifPresent(violations::add);
 		violations.addAll(RelationRules.notLinkable(CharacterRelations.SPECIES, body.speciesIds(),
 				CharacterRelations.SPECIES_FIELD, this.speciesRepository));
+		violations.addAll(membershipViolations(body.affiliations()));
 		if (!violations.isEmpty()) {
 			throw new ValueInvalidException(violations);
 		}
@@ -147,6 +172,58 @@ public class CharacterValidator extends ContentValidator<Character, CharacterVer
 					.add(new FieldViolation(entryField(CharacterRelations.SPECIES_FIELD, index), REPEATED_SPECIES));
 			}
 		}
+	}
+
+	private static void requireDistinctAffiliations(List<Membership> memberships, List<FieldViolation> violations) {
+		Set<UUID> seen = new HashSet<>();
+		for (int index = 0; index < memberships.size(); index++) {
+			if (!seen.add(memberships.get(index).affiliationContentId())) {
+				violations.add(new FieldViolation(
+						MEMBERSHIP_FIELD.formatted(CharacterRelations.AFFILIATIONS_FIELD, index, AFFILIATION_PART),
+						REPEATED_AFFILIATION));
+			}
+		}
+	}
+
+	/**
+	 * Each membership whose affiliation may not be linked, and each rank held in an
+	 * affiliation that is not a Navy one - by its latest approved version, which an
+	 * affiliation may leave by going online as another kind: publishing checks it again.
+	 */
+	private List<FieldViolation> membershipViolations(List<Membership> memberships) {
+		List<FieldViolation> violations = new ArrayList<>();
+		Map<UUID, AffiliationKind> kinds = approvedKindsOf(memberships);
+		for (int index = 0; index < memberships.size(); index++) {
+			Membership membership = memberships.get(index);
+			String prefix = "%s[%d].".formatted(CharacterRelations.AFFILIATIONS_FIELD, index);
+			var notLinkable = RelationRules.notLinkable(CharacterRelations.AFFILIATION, membership, prefix,
+					this.affiliationRepository);
+			notLinkable.ifPresent(violations::add);
+			if (notLinkable.isEmpty() && membership.marineRank() != null
+					&& kinds.get(membership.affiliationContentId()) != AffiliationKind.NAVY) {
+				violations.add(new FieldViolation(prefix + MARINE_RANK_PART, RANK_NOT_ALLOWED));
+			}
+		}
+		return violations;
+	}
+
+	/**
+	 * The kind of the affiliations that hold a rank, as last approved; none read for no
+	 * rank.
+	 */
+	private Map<UUID, AffiliationKind> approvedKindsOf(List<Membership> memberships) {
+		List<UUID> ranked = memberships.stream()
+			.filter(membership -> membership.marineRank() != null)
+			.map(Membership::affiliationContentId)
+			.toList();
+		Map<UUID, AffiliationKind> kinds = new HashMap<>();
+		if (!ranked.isEmpty()) {
+			for (AffiliationVersionEntity version : this.affiliationRepository.findMostRecent(ranked,
+					VersionStatus.approved())) {
+				kinds.put(version.getContentId(), AffiliationVersionMapper.toDomain(version).body().kind());
+			}
+		}
+		return kinds;
 	}
 
 	private static String entryField(String listField, int index) {

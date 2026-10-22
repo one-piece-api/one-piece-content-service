@@ -2,6 +2,7 @@ package dev.onepieceapi.contentservice.persistence.entity;
 
 import dev.onepieceapi.contentservice.domain.character.CharacterStatus;
 import dev.onepieceapi.contentservice.domain.character.Gender;
+import dev.onepieceapi.contentservice.domain.character.Membership;
 import dev.onepieceapi.contentservice.domain.workflow.NaturalKey;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.CollectionTable;
@@ -85,6 +86,12 @@ public class CharacterVersionEntity extends VersionBodyEntity {
 	@Column(name = "species_content_id")
 	private List<UUID> speciesIds = new ArrayList<>();
 
+	/** In the order they are shown; the position is the index in the list. */
+	@OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+	@JoinColumn(name = "version_id", nullable = false)
+	@OrderColumn(name = "position")
+	private List<CharacterMembershipEntity> affiliations = new ArrayList<>();
+
 	/** The id of its image; null for none. */
 	private String imageId;
 
@@ -121,7 +128,23 @@ public class CharacterVersionEntity extends VersionBodyEntity {
 		this.aliases.addAll(fields.aliases());
 		this.speciesIds.clear();
 		this.speciesIds.addAll(fields.speciesIds());
+		rewriteAffiliations(fields.affiliations());
 		touch(now);
+	}
+
+	/** As the epithets: each position keeps its row, only the end of the list changes. */
+	private void rewriteAffiliations(List<Membership> written) {
+		for (int index = 0; index < written.size(); index++) {
+			if (index < this.affiliations.size()) {
+				this.affiliations.get(index).rewrite(written.get(index));
+			}
+			else {
+				this.affiliations.add(new CharacterMembershipEntity(written.get(index)));
+			}
+		}
+		while (this.affiliations.size() > written.size()) {
+			this.affiliations.removeLast();
+		}
 	}
 
 	/**

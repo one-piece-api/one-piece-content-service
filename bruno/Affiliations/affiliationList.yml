@@ -200,6 +200,7 @@ examples:
                   "username": ""
                 },
                 "body": {
+                  "memberCount": 0,
                   "names": {},
                   "romaji": ""
                 },

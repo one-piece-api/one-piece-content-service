@@ -31,6 +31,7 @@ import java.util.UUID;
  * @param epithets translated nicknames (D6); none is never null
  * @param aliases other names, the same in every language (D6); none is never null
  * @param speciesIds the content ids of its species (D8), in order; none is "not stated"
+ * @param affiliations its memberships (D10), in order; none is never null
  * @param imageId its portrait (D7), optional and not localized
  * @param firstAppearance where it is first shown or named (D9); {@link StoryPoint#NONE}
  * for none, which a draft may keep - it is required to submit and to go online
@@ -38,7 +39,7 @@ import java.util.UUID;
 @Builder(toBuilder = true)
 public record Character(String romaji, String japaneseName, Map<String, CharacterTranslation> translations,
 		CharacterStatus status, Gender gender, MonthDay birthday, List<Epithet> epithets, List<String> aliases,
-		List<UUID> speciesIds, String imageId,
+		List<UUID> speciesIds, List<Membership> affiliations, String imageId,
 		StoryPoint firstAppearance) implements ContentBody<Character>, FirstAppearing {
 
 	public static final int ROMAJI_MAX_LENGTH = 100;
@@ -53,6 +54,8 @@ public record Character(String romaji, String japaneseName, Map<String, Characte
 
 	public static final int ALIAS_MAX_LENGTH = 100;
 
+	public static final int ROLE_MAX_LENGTH = 100;
+
 	public static final int MAX_EPITHETS = 20;
 
 	public static final int MAX_ALIASES = 20;
@@ -63,6 +66,10 @@ public record Character(String romaji, String japaneseName, Map<String, Characte
 	public static final String STATUS_ATTRIBUTE = "characterStatus";
 
 	public static final String SPECIES_ATTRIBUTE = "species";
+
+	public static final String AFFILIATION_ATTRIBUTE = "affiliation";
+
+	public static final String AFFILIATION_KIND_ATTRIBUTE = "affiliationKind";
 
 	private static final String ROMAJI_FIELD = "romaji";
 
@@ -77,12 +84,15 @@ public record Character(String romaji, String japaneseName, Map<String, Characte
 
 	private static final String EPITHET_FIELD = "epithets[%d].text[%s]";
 
+	private static final String ROLE_FIELD = "affiliations[%d].role[%s]";
+
 	/** Nothing chosen is {@link StoryPoint#NONE}, no list is null. */
 	public Character {
 		translations = translations == null ? Map.of() : translations;
 		epithets = epithets == null ? List.of() : List.copyOf(epithets);
 		aliases = aliases == null ? List.of() : List.copyOf(aliases);
 		speciesIds = speciesIds == null ? List.of() : List.copyOf(speciesIds);
+		affiliations = affiliations == null ? List.of() : List.copyOf(affiliations);
 		firstAppearance = StoryPoint.orNone(firstAppearance);
 	}
 
@@ -109,14 +119,19 @@ public record Character(String romaji, String japaneseName, Map<String, Characte
 			.translations(written)
 			.epithets(this.epithets.stream().map(Epithet::normalized).toList())
 			.aliases(this.aliases.stream().map(String::strip).toList())
+			.affiliations(this.affiliations.stream().map(Membership::normalized).toList())
 			.build();
 	}
 
-	/** The languages of the character and of its epithets. */
+	/**
+	 * The languages of the character, of its epithets and of the roles of its
+	 * memberships.
+	 */
 	@Override
 	public Set<String> languages() {
 		Set<String> languages = new TreeSet<>(this.translations.keySet());
 		this.epithets.forEach(epithet -> languages.addAll(epithet.text().keySet()));
+		this.affiliations.forEach(membership -> languages.addAll(membership.role().keySet()));
 		return languages;
 	}
 
@@ -138,9 +153,10 @@ public record Character(String romaji, String japaneseName, Map<String, Characte
 
 	/**
 	 * The romaji, the status, the gender and the first appearance, then a name and a
-	 * description per language, then the text of each epithet per language - every one
-	 * missing. The Japanese name, the birthday, the aliases, the species and the image
-	 * are never missing.
+	 * description per language, then the text of each epithet per language, then the role
+	 * of each membership that has one in some language, in the others - every one
+	 * missing. The Japanese name, the birthday, the aliases, the species, the rank, the
+	 * former flag and the image are never missing.
 	 */
 	@Override
 	public List<String> missingFields(Collection<String> languages) {
@@ -171,6 +187,14 @@ public record Character(String romaji, String japaneseName, Map<String, Characte
 			for (String language : languages) {
 				if (epithet.textIn(language) == null) {
 					missing.add(EPITHET_FIELD.formatted(index, language));
+				}
+			}
+		}
+		for (int index = 0; index < this.affiliations.size(); index++) {
+			Membership membership = this.affiliations.get(index);
+			for (String language : languages) {
+				if (membership.hasRole() && membership.roleIn(language) == null) {
+					missing.add(ROLE_FIELD.formatted(index, language));
 				}
 			}
 		}

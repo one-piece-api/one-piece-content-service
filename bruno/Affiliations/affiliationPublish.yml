@@ -1,7 +1,7 @@
 info:
   name: affiliationPublish
   type: http
-  seq: 14
+  seq: 15
   tags:
     - Affiliations
 

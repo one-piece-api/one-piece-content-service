@@ -1,10 +1,12 @@
 package dev.onepieceapi.contentservice.web.controller;
 
 import dev.onepieceapi.contentservice.domain.character.Character;
+import dev.onepieceapi.contentservice.domain.character.Membership;
 import dev.onepieceapi.contentservice.domain.image.ImageChange;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSortField;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAccess;
+import dev.onepieceapi.contentservice.service.affiliation.AffiliationLinks;
 import dev.onepieceapi.contentservice.service.bounty.BountyLinks;
 import dev.onepieceapi.contentservice.service.character.CharacterLinks;
 import dev.onepieceapi.contentservice.service.character.CharacterService;
@@ -55,7 +57,8 @@ import java.util.UUID;
  * The Character section: every endpoint of {@link ContentController}, plus creating a
  * content and editing its draft (UF-CNT-01, UF-CNT-02), which take {@code content:write},
  * with or without its portrait, and the characters a bounty may be linked to. Its list is
- * narrowed by status and species too (implementation plan of the Character, D16).
+ * narrowed by status, species, affiliation and affiliation kind too (implementation plan
+ * of the Character, D16).
  */
 @RestController
 @RequestMapping(ApiPaths.CHARACTERS)
@@ -75,10 +78,12 @@ class CharacterController extends ContentController<Character, CharacterResponse
 
 	@Autowired
 	CharacterController(CharacterService service, CharacterLinks links, BountyLinks bounties, SpeciesLinks species,
-			FirstAppearanceLinks firstAppearances, ImageResponseMapper images) {
+			AffiliationLinks affiliations, FirstAppearanceLinks firstAppearances, ImageResponseMapper images) {
 		super(service,
 				access -> CharacterResponseMapper.toVersionResponse(access,
 						species.referencesOf(access.body().speciesIds()),
+						affiliations.referencesOf(
+								access.body().affiliations().stream().map(Membership::affiliationContentId).toList()),
 						firstAppearances.referencesFor(List.of(access.body())), images));
 		this.service = service;
 		this.links = links;

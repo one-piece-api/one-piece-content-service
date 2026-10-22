@@ -28,6 +28,7 @@ import java.util.UUID;
  * @param epithets in the order they are shown; left out for none
  * @param aliases in the order they are shown; left out for none
  * @param species the content ids of its species, in order; left out for none
+ * @param affiliations its memberships, in order; left out for none
  * @param removeImage true to remove the draft's portrait; not together with an uploaded
  * one. Left out, the portrait is kept - or replaced, when one is uploaded with the
  * request
@@ -41,7 +42,8 @@ public record CharacterRequest(@Size(max = Character.ROMAJI_MAX_LENGTH) String r
 		@Schema(type = "string", example = "--05-05") MonthDay birthday,
 		@Size(max = Character.MAX_EPITHETS) List<@NotNull @Valid EpithetRequest> epithets,
 		@Size(max = Character.MAX_ALIASES) List<@NotNull @Size(max = Character.ALIAS_MAX_LENGTH) String> aliases,
-		@Schema(description = "The content ids of its species") List<@NotNull UUID> species, Boolean removeImage,
+		@Schema(description = "The content ids of its species") List<@NotNull UUID> species,
+		List<@NotNull @Valid MembershipRequest> affiliations, Boolean removeImage,
 		FirstAppearanceRequest firstAppearance) {
 
 	/** Whether the portrait is to be removed; not saying so keeps it. */

@@ -53,6 +53,7 @@ enum SecuredEndpoint {
 	LINKABLE_EPISODES(HttpMethod.GET, ApiPaths.EPISODES_LINKABLE, Permission.CONTENT_WRITE),
 	LINKABLE_BOUNTIES(HttpMethod.GET, ApiPaths.BOUNTIES_LINKABLE, Permission.CONTENT_WRITE),
 	LINKABLE_SPECIES(HttpMethod.GET, ApiPaths.SPECIES_LINKABLE, Permission.CONTENT_WRITE),
+	LINKABLE_AFFILIATIONS(HttpMethod.GET, ApiPaths.AFFILIATIONS_LINKABLE, Permission.CONTENT_WRITE),
 	LINKABLE_CHARACTERS(HttpMethod.GET, ApiPaths.CHARACTERS_LINKABLE, Permission.CONTENT_WRITE),
 
 	// An image, for whoever sees a version using it - decided inside the service, like

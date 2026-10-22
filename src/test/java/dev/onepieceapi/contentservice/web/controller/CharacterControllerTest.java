@@ -1,7 +1,11 @@
 package dev.onepieceapi.contentservice.web.controller;
 
 import dev.onepieceapi.contentservice.domain.character.Character;
+import dev.onepieceapi.contentservice.domain.affiliation.AffiliationKind;
+import dev.onepieceapi.contentservice.domain.affiliation.AffiliationReference;
 import dev.onepieceapi.contentservice.domain.character.CharacterStatus;
+import dev.onepieceapi.contentservice.domain.character.MarineRank;
+import dev.onepieceapi.contentservice.domain.character.Membership;
 import dev.onepieceapi.contentservice.domain.character.CharacterTranslation;
 import dev.onepieceapi.contentservice.domain.character.Epithet;
 import dev.onepieceapi.contentservice.domain.character.Gender;
@@ -20,6 +24,7 @@ import dev.onepieceapi.contentservice.domain.workflow.Version;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAccess;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAction;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
+import dev.onepieceapi.contentservice.service.affiliation.AffiliationLinks;
 import dev.onepieceapi.contentservice.service.character.CharacterService;
 import dev.onepieceapi.contentservice.service.exception.CharacterNotFoundException;
 import dev.onepieceapi.contentservice.service.exception.ValueAlreadyUsedException;
@@ -86,6 +91,10 @@ class CharacterControllerTest {
 
 	private static final UUID NINGEN = UUID.fromString("7a1d3c2b-5e4f-4a6b-8c9d-0e1f2a3b4c5d");
 
+	private static final UUID KAIGUN = UUID.fromString("a1b2c3d4-0000-4000-8000-00000000a001");
+
+	private static final UUID MUGIWARA = UUID.fromString("a1b2c3d4-0000-4000-8000-00000000a002");
+
 	private static final UUID GYOJIN = UUID.fromString("8b2e4d3c-6f5a-4b7c-9d0e-1f2a3b4c5d6e");
 
 	private static final Instant CREATED = Instant.parse("2026-10-21T08:00:00Z");
@@ -101,6 +110,9 @@ class CharacterControllerTest {
 
 	@MockitoBean
 	private SpeciesLinks species;
+
+	@MockitoBean
+	private AffiliationLinks affiliations;
 
 	@MockitoBean
 	private CharacterLinks links;
@@ -180,19 +192,79 @@ class CharacterControllerTest {
 	}
 
 	@Test
-	void theListIsNarrowedByTheStatusOfTheCharacterAndBySpecies() throws Exception {
+	void theListIsNarrowedByTheStatusOfTheCharacterBySpeciesAndByAffiliationAndItsKind() throws Exception {
 		when(this.service.list(any(), any(), any(), any(), any())).thenReturn(new PageImpl<>(List.of()));
 
 		this.mockMvc
 			.perform(get("/characters").param("characterStatus", "DECEASED")
 				.param("species", NINGEN.toString())
+				.param("affiliation", KAIGUN.toString())
+				.param("affiliationKind", "NAVY")
 				.with(callerWith(Permission.CONTENT_READ)))
 			.andExpect(status().isOk());
 
 		var filter = ArgumentCaptor.forClass(ContentFilter.class);
 		verify(this.service).list(any(), any(), filter.capture(), any(), any());
-		assertThat(filter.getValue().attributes()).isEqualTo(
-				Map.of(Character.STATUS_ATTRIBUTE, CharacterStatus.DECEASED, Character.SPECIES_ATTRIBUTE, NINGEN));
+		assertThat(filter.getValue().attributes()).isEqualTo(Map.of(Character.STATUS_ATTRIBUTE,
+				CharacterStatus.DECEASED, Character.SPECIES_ATTRIBUTE, NINGEN, Character.AFFILIATION_ATTRIBUTE, KAIGUN,
+				Character.AFFILIATION_KIND_ATTRIBUTE, AffiliationKind.NAVY));
+	}
+
+	@Test
+	void aVersionShowsEachMembershipInOrderWithItsAffiliationAsOfTodayItsRoleAndRank() throws Exception {
+		var memberships = List.of(new Membership(KAIGUN, Map.of("en", "Hero"), MarineRank.CAPTAIN, false),
+				new Membership(MUGIWARA, Map.of(), null, true));
+		when(this.service.getVersion(any(), any(), eq(CONTENT_ID), eq(1)))
+			.thenReturn(new VersionAccess<>(version(VersionStatus.PUBLISHED, null, memberships), Set.of()));
+		when(this.affiliations.referencesOf(List.of(KAIGUN, MUGIWARA))).thenReturn(Map.of(KAIGUN,
+				new AffiliationReference(KAIGUN, "Kaigun", Map.of("it", "Marina"), AffiliationKind.NAVY)));
+		when(this.firstAppearances.referencesFor(anyCollection())).thenReturn(Map.of());
+
+		this.mockMvc.perform(get("/characters/" + CONTENT_ID + "/versions/1").with(callerWith(Permission.CONTENT_READ)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.body.affiliations[0].affiliation.id").value(KAIGUN.toString()))
+			.andExpect(jsonPath("$.body.affiliations[0].affiliation.romaji").value("Kaigun"))
+			.andExpect(jsonPath("$.body.affiliations[0].affiliation.names.it").value("Marina"))
+			.andExpect(jsonPath("$.body.affiliations[0].affiliation.kind").value("NAVY"))
+			.andExpect(jsonPath("$.body.affiliations[0].role.en").value("Hero"))
+			.andExpect(jsonPath("$.body.affiliations[0].marineRank").value("CAPTAIN"))
+			.andExpect(jsonPath("$.body.affiliations[0].former").value(false))
+			.andExpect(jsonPath("$.body.affiliations[1].affiliation.id").value(MUGIWARA.toString()))
+			.andExpect(jsonPath("$.body.affiliations[1].affiliation.romaji").doesNotExist())
+			.andExpect(jsonPath("$.body.affiliations[1].marineRank").doesNotExist())
+			.andExpect(jsonPath("$.body.affiliations[1].former").value(true));
+	}
+
+	@Test
+	void creatingPassesOnTheMembershipsAndAMembershipWithoutAnAffiliationOrTooLongARoleIsABadRequest()
+			throws Exception {
+		var draft = new VersionAccess<>(version(VersionStatus.DRAFT, null), EnumSet.of(VersionAction.EDIT));
+		when(this.service.create(any(), any(), any(), any())).thenReturn(new Content<>(CONTENT_ID, List.of(draft)));
+
+		this.mockMvc
+			.perform(post("/characters").with(callerWith(Permission.CONTENT_WRITE))
+				.contentType("application/json")
+				.content("""
+						{"romaji":"Koby","affiliations":[
+						{"affiliation":"%s","role":{"en":"Hero","it":null},"marineRank":"CAPTAIN"},
+						{"affiliation":"%s","former":true}]}""".formatted(KAIGUN, MUGIWARA)))
+			.andExpect(status().isCreated());
+		for (String body : List.of("{\"affiliations\":[{}]}", "{\"affiliations\":[null]}",
+				"{\"affiliations\":[{\"affiliation\":\"" + KAIGUN + "\",\"role\":{\"en\":\"" + "x".repeat(101)
+						+ "\"}}]}",
+				"{\"affiliations\":[{\"affiliation\":\"" + KAIGUN + "\",\"marineRank\":\"GENERAL\"}]}")) {
+			this.mockMvc
+				.perform(post("/characters").with(callerWith(Permission.CONTENT_WRITE))
+					.contentType("application/json")
+					.content(body))
+				.andExpect(status().isBadRequest());
+		}
+
+		var written = ArgumentCaptor.forClass(Character.class);
+		verify(this.service).create(any(), any(), written.capture(), any());
+		assertThat(written.getValue().affiliations()).containsExactly(
+				new Membership(KAIGUN, Map.of("en", "Hero"), MarineRank.CAPTAIN, false),
+				new Membership(MUGIWARA, Map.of(), null, true));
 	}
 
 	@Test
@@ -356,7 +428,13 @@ class CharacterControllerTest {
 	}
 
 	private static Version<Character> version(VersionStatus status, String imageId) {
+		return version(status, imageId, null);
+	}
+
+	/** With these memberships, or none for null. */
+	private static Version<Character> version(VersionStatus status, String imageId, List<Membership> affiliations) {
 		var body = Character.builder()
+			.affiliations(affiliations)
 			.romaji("Nami")
 			.japaneseName("ナミ")
 			.translations(Map.of("it", new CharacterTranslation("Nami", "La navigatrice")))

@@ -1,6 +1,9 @@
 package dev.onepieceapi.contentservice.service.character;
 
 import dev.onepieceapi.contentservice.config.RulesProperties;
+import dev.onepieceapi.contentservice.domain.affiliation.Affiliation;
+import dev.onepieceapi.contentservice.domain.affiliation.AffiliationKind;
+import dev.onepieceapi.contentservice.domain.affiliation.AffiliationTranslation;
 import dev.onepieceapi.contentservice.domain.bounty.Bounty;
 import dev.onepieceapi.contentservice.domain.bounty.BountyCondition;
 import dev.onepieceapi.contentservice.domain.character.Character;
@@ -13,15 +16,18 @@ import dev.onepieceapi.contentservice.domain.security.User;
 import dev.onepieceapi.contentservice.domain.species.Species;
 import dev.onepieceapi.contentservice.domain.workflow.EntityType;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
+import dev.onepieceapi.contentservice.persistence.entity.AffiliationVersionEntity;
 import dev.onepieceapi.contentservice.persistence.entity.BountyVersionEntity;
 import dev.onepieceapi.contentservice.persistence.entity.CharacterVersionEntity;
 import dev.onepieceapi.contentservice.persistence.entity.ContentEntity;
 import dev.onepieceapi.contentservice.persistence.entity.ContentVersionEntity;
 import dev.onepieceapi.contentservice.persistence.entity.SpeciesVersionEntity;
+import dev.onepieceapi.contentservice.persistence.mapper.AffiliationVersionMapper;
 import dev.onepieceapi.contentservice.persistence.mapper.BountyVersionMapper;
 import dev.onepieceapi.contentservice.persistence.mapper.CharacterVersionMapper;
 import dev.onepieceapi.contentservice.persistence.mapper.SpeciesVersionMapper;
 import dev.onepieceapi.contentservice.persistence.mapper.UserMapper;
+import dev.onepieceapi.contentservice.persistence.repository.AffiliationVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
 import dev.onepieceapi.contentservice.persistence.repository.BountyVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
@@ -32,10 +38,14 @@ import dev.onepieceapi.contentservice.persistence.repository.EpisodeVersionRepos
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
 import dev.onepieceapi.contentservice.persistence.repository.SpeciesVersionRepository;
 import dev.onepieceapi.contentservice.service.audit.AuditLogService;
+import dev.onepieceapi.contentservice.service.affiliation.AffiliationDefinition;
+import dev.onepieceapi.contentservice.service.affiliation.AffiliationRules;
+import dev.onepieceapi.contentservice.service.affiliation.AffiliationService;
 import dev.onepieceapi.contentservice.service.image.ContentImages;
 import dev.onepieceapi.contentservice.service.species.SpeciesDefinition;
 import dev.onepieceapi.contentservice.service.species.SpeciesRules;
 import dev.onepieceapi.contentservice.service.species.SpeciesService;
+import dev.onepieceapi.contentservice.service.validation.AffiliationValidator;
 import dev.onepieceapi.contentservice.service.validation.CharacterValidator;
 import dev.onepieceapi.contentservice.service.validation.SpeciesValidator;
 import dev.onepieceapi.exception.DomainException;
@@ -86,6 +96,9 @@ final class CharacterFixtures {
 
 	private final BountyVersionRepository bounties;
 
+	/** Only the tests that name an affiliation need it. */
+	private final AffiliationVersionRepository affiliations;
+
 	private final ChapterVersionRepository chapters;
 
 	private final EpisodeVersionRepository episodes;
@@ -109,9 +122,9 @@ final class CharacterFixtures {
 	CharacterService service(ContentImages images) {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
 		var validator = new CharacterValidator(this.characters, this.languages, this.chapters, this.episodes,
-				this.species);
-		var rules = new CharacterRules(this.contents, this.chapters, this.episodes, this.species, this.bounties,
-				new RulesProperties(5));
+				this.species, this.affiliations);
+		var rules = new CharacterRules(this.contents, this.chapters, this.episodes, this.species, this.affiliations,
+				this.bounties, new RulesProperties(5));
 		return new CharacterService(new CharacterDefinition(this.characters, validator, rules), this.contentVersions,
 				this.contents, new AuditLogService(this.auditLog, clock), clock, images);
 	}
@@ -124,6 +137,17 @@ final class CharacterFixtures {
 				new RulesProperties(5));
 		return new SpeciesService(new SpeciesDefinition(this.species, validator, rules), this.contentVersions,
 				this.contents, new AuditLogService(this.auditLog, clock), clock, mock(ContentImages.class));
+	}
+
+	/** The service of the affiliations, to publish and retire one a character names. */
+	AffiliationService affiliationService() {
+		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
+		var validator = new AffiliationValidator(this.affiliations, this.languages, this.chapters, this.episodes);
+		var rules = new AffiliationRules(this.contents, this.chapters, this.episodes, this.characters,
+				new RulesProperties(5));
+		return new AffiliationService(new AffiliationDefinition(this.affiliations, validator, rules),
+				this.contentVersions, this.contents, new AuditLogService(this.auditLog, clock), clock,
+				mock(ContentImages.class));
 	}
 
 	/**
@@ -156,6 +180,26 @@ final class CharacterFixtures {
 		return this.species.save(version).getContentId();
 	}
 
+	/**
+	 * A new affiliation of this kind, complete but for its emblem, with its first version
+	 * in this status.
+	 */
+	UUID affiliation(VersionStatus status, String romaji, AffiliationKind kind) {
+		UUID contentId = content(EntityType.AFFILIATION);
+		affiliationVersion(contentId, 1, status, romaji, kind);
+		return contentId;
+	}
+
+	/** A later version of an affiliation, in this status and of this kind. */
+	void affiliationVersion(UUID contentId, int number, VersionStatus status, String romaji, AffiliationKind kind) {
+		var version = new AffiliationVersionEntity(workflow(contentId, status, number));
+		AffiliationVersionMapper.rewrite(version, new Affiliation(romaji,
+				Map.of("it", new AffiliationTranslation(romaji + " (it)", "Descrizione"), "en",
+						new AffiliationTranslation(romaji + " (en)", "Description")),
+				null, this.firstAppearance, kind), EARLIER);
+		this.affiliations.save(version);
+	}
+
 	/** A new bounty held by this character, with its first version in this status. */
 	UUID bounty(VersionStatus status, UUID holder) {
 		var version = new BountyVersionEntity(workflow(content(EntityType.BOUNTY), status));
@@ -176,9 +220,13 @@ final class CharacterFixtures {
 	}
 
 	private static ContentVersionEntity workflow(UUID contentId, VersionStatus status) {
+		return workflow(contentId, status, 1);
+	}
+
+	private static ContentVersionEntity workflow(UUID contentId, VersionStatus status, int number) {
 		return ContentVersionEntity.builder()
 			.contentId(contentId)
-			.versionNumber(1)
+			.versionNumber(number)
 			.author(UserMapper.toEmbeddable(CHOPPER))
 			.status(status)
 			.createdAt(EARLIER)

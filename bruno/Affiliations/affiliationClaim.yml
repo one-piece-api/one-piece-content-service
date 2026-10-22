@@ -1,7 +1,7 @@
 info:
   name: affiliationClaim
   type: http
-  seq: 12
+  seq: 13
   tags:
     - Affiliations
 

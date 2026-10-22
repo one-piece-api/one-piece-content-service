@@ -1,7 +1,7 @@
 info:
   name: affiliationEvents
   type: http
-  seq: 13
+  seq: 14
   tags:
     - Affiliations
 

@@ -70,6 +70,31 @@ http:
       type: query
       description: The content id of a Species
       disabled: true
+    - name: affiliation
+      value: ""
+      type: query
+      description: The content id of an Affiliation
+      disabled: true
+    - name: affiliationKind
+      value: PIRATE_CREW
+      type: query
+      disabled: true
+    - name: affiliationKind
+      value: NAVY
+      type: query
+      disabled: true
+    - name: affiliationKind
+      value: WORLD_GOVERNMENT
+      type: query
+      disabled: true
+    - name: affiliationKind
+      value: REVOLUTIONARY_ARMY
+      type: query
+      disabled: true
+    - name: affiliationKind
+      value: OTHER
+      type: query
+      disabled: true
     - name: page
       value: "0"
       type: query
@@ -159,6 +184,31 @@ examples:
           value: ""
           type: query
           description: The content id of a Species
+          disabled: true
+        - name: affiliation
+          value: ""
+          type: query
+          description: The content id of an Affiliation
+          disabled: true
+        - name: affiliationKind
+          value: PIRATE_CREW
+          type: query
+          disabled: true
+        - name: affiliationKind
+          value: NAVY
+          type: query
+          disabled: true
+        - name: affiliationKind
+          value: WORLD_GOVERNMENT
+          type: query
+          disabled: true
+        - name: affiliationKind
+          value: REVOLUTIONARY_ARMY
+          type: query
+          disabled: true
+        - name: affiliationKind
+          value: OTHER
+          type: query
           disabled: true
         - name: page
           value: "0"
@@ -280,6 +330,31 @@ examples:
           type: query
           description: The content id of a Species
           disabled: true
+        - name: affiliation
+          value: ""
+          type: query
+          description: The content id of an Affiliation
+          disabled: true
+        - name: affiliationKind
+          value: PIRATE_CREW
+          type: query
+          disabled: true
+        - name: affiliationKind
+          value: NAVY
+          type: query
+          disabled: true
+        - name: affiliationKind
+          value: WORLD_GOVERNMENT
+          type: query
+          disabled: true
+        - name: affiliationKind
+          value: REVOLUTIONARY_ARMY
+          type: query
+          disabled: true
+        - name: affiliationKind
+          value: OTHER
+          type: query
+          disabled: true
         - name: page
           value: "0"
           type: query
@@ -382,6 +457,31 @@ examples:
           value: ""
           type: query
           description: The content id of a Species
+          disabled: true
+        - name: affiliation
+          value: ""
+          type: query
+          description: The content id of an Affiliation
+          disabled: true
+        - name: affiliationKind
+          value: PIRATE_CREW
+          type: query
+          disabled: true
+        - name: affiliationKind
+          value: NAVY
+          type: query
+          disabled: true
+        - name: affiliationKind
+          value: WORLD_GOVERNMENT
+          type: query
+          disabled: true
+        - name: affiliationKind
+          value: REVOLUTIONARY_ARMY
+          type: query
+          disabled: true
+        - name: affiliationKind
+          value: OTHER
+          type: query
           disabled: true
         - name: page
           value: "0"

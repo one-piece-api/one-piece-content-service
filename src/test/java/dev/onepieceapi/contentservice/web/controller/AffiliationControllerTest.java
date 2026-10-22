@@ -2,6 +2,7 @@ package dev.onepieceapi.contentservice.web.controller;
 
 import dev.onepieceapi.contentservice.domain.affiliation.Affiliation;
 import dev.onepieceapi.contentservice.domain.affiliation.AffiliationKind;
+import dev.onepieceapi.contentservice.domain.affiliation.AffiliationReference;
 import dev.onepieceapi.contentservice.domain.affiliation.AffiliationTranslation;
 import dev.onepieceapi.contentservice.domain.image.ImageChange;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
@@ -17,6 +18,7 @@ import dev.onepieceapi.contentservice.domain.workflow.Version;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAccess;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAction;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
+import dev.onepieceapi.contentservice.service.affiliation.AffiliationLinks;
 import dev.onepieceapi.contentservice.service.affiliation.AffiliationService;
 import dev.onepieceapi.contentservice.service.exception.AffiliationNotFoundException;
 import dev.onepieceapi.contentservice.service.exception.ContentErrorCode;
@@ -89,6 +91,9 @@ class AffiliationControllerTest {
 	private AffiliationService service;
 
 	@MockitoBean
+	private AffiliationLinks links;
+
+	@MockitoBean
 	private FirstAppearanceLinks firstAppearances;
 
 	@MockitoBean
@@ -115,15 +120,28 @@ class AffiliationControllerTest {
 	}
 
 	@Test
-	void eachRowOfTheListSaysTheRomajiAndTheNames() throws Exception {
+	void eachRowOfTheListSaysTheRomajiTheNamesAndHowManyMembersItHas() throws Exception {
 		var rows = List.of(new ContentSummary<>(CONTENT_ID, version(VersionStatus.PUBLISHED, null), 1, Set.of()));
 		when(this.service.list(any(), any(), any(), any(), any()))
 			.thenReturn(new PageImpl<>(rows, PageRequest.of(0, 20), 1));
+		when(this.links.memberCounts(List.of(CONTENT_ID))).thenReturn(Map.of(CONTENT_ID, 9L));
 
 		this.mockMvc.perform(get("/affiliations").param("sort", "name").with(callerWith(Permission.CONTENT_READ)))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.content[0].body.romaji").value("Mugiwara no Ichimi"))
-			.andExpect(jsonPath("$.content[0].body.names.it").value("Pirati di Cappello di Paglia"));
+			.andExpect(jsonPath("$.content[0].body.names.it").value("Pirati di Cappello di Paglia"))
+			.andExpect(jsonPath("$.content[0].body.memberCount").value(9));
+	}
+
+	@Test
+	void anAffiliationWithNoMemberHasACountOfZero() throws Exception {
+		var rows = List.of(new ContentSummary<>(CONTENT_ID, version(VersionStatus.PUBLISHED, null), 1, Set.of()));
+		when(this.service.list(any(), any(), any(), any(), any()))
+			.thenReturn(new PageImpl<>(rows, PageRequest.of(0, 20), 1));
+
+		this.mockMvc.perform(get("/affiliations").with(callerWith(Permission.CONTENT_READ)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.content[0].body.memberCount").value(0));
 	}
 
 	@Test
@@ -293,9 +311,18 @@ class AffiliationControllerTest {
 	}
 
 	@Test
-	void thereIsNoLinkableEndpoint() throws Exception {
-		this.mockMvc.perform(get("/affiliations/linkable").with(callerWith(Permission.CONTENT_WRITE)))
-			.andExpect(status().is4xxClientError());
+	void theAffiliationsThatCanBeLinkedAreListedByTheirRomajiWithTheirKind() throws Exception {
+		when(this.links.linkable(any(), eq(0), eq(20))).thenReturn(new PageImpl<>(
+				List.of(new AffiliationReference(CONTENT_ID, "Kaigun", Map.of("it", "Marina"), AffiliationKind.NAVY))));
+
+		this.mockMvc.perform(get("/affiliations/linkable").param("q", "kai").with(callerWith(Permission.CONTENT_WRITE)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.content[0].id").value(CONTENT_ID.toString()))
+			.andExpect(jsonPath("$.content[0].romaji").value("Kaigun"))
+			.andExpect(jsonPath("$.content[0].names.it").value("Marina"))
+			.andExpect(jsonPath("$.content[0].kind").value("NAVY"));
+		this.mockMvc.perform(get("/affiliations/linkable").with(callerWith(Permission.CONTENT_READ)))
+			.andExpect(status().isForbidden());
 	}
 
 	private static MockMultipartFile versionPart(String json) {

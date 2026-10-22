@@ -144,6 +144,50 @@ paths:
       tags:
       - Affiliations
       x-required-permission: content:read
+  /affiliations/linkable:
+    get:
+      operationId: affiliationLinkable
+      parameters:
+      - description: "0-based page, 0 when missing"
+        in: query
+        name: page
+        required: false
+        schema:
+          type: integer
+          format: int32
+          minimum: 0
+      - description: "Page size: 20 when missing, at most 50"
+        in: query
+        name: size
+        required: false
+        schema:
+          type: integer
+          format: int32
+          maximum: 50
+          minimum: 1
+      - description: "Text the romaji or a name contains, case-insensitive; 100 characters\
+          \ at most"
+        in: query
+        name: q
+        required: false
+        schema:
+          type: string
+          maxLength: 100
+          minLength: 0
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PageResponseAffiliationReferenceResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Affiliations
+      x-required-permission: content:write
   /affiliations/summary:
     get:
       operationId: affiliationSummary
@@ -2988,6 +3032,25 @@ paths:
           type: string
           format: uuid
           description: The content id of a Species
+      - description: The content id of an Affiliation
+        in: query
+        name: affiliation
+        required: false
+        schema:
+          type: string
+          format: uuid
+          description: The content id of an Affiliation
+      - in: query
+        name: affiliationKind
+        required: false
+        schema:
+          type: string
+          enum:
+          - PIRATE_CREW
+          - NAVY
+          - WORLD_GOVERNMENT
+          - REVOLUTIONARY_ARMY
+          - OTHER
       - description: Zero-based page index (0..N)
         in: query
         name: page
@@ -8328,6 +8391,29 @@ components:
     AffiliationNamesResponse:
       type: object
       properties:
+        memberCount:
+          type: integer
+          format: int64
+        names:
+          type: object
+          additionalProperties:
+            type: string
+        romaji:
+          type: string
+    AffiliationReferenceResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        kind:
+          type: string
+          enum:
+          - PIRATE_CREW
+          - NAVY
+          - WORLD_GOVERNMENT
+          - REVOLUTIONARY_ARMY
+          - OTHER
         names:
           type: object
           additionalProperties:
@@ -8471,6 +8557,8 @@ components:
           - FIRST_APPEARANCE_MISSING
           - PREVIOUS_ALREADY_REPLACED
           - BOUNTY_CHAIN_CYCLE
+          - MARINE_RANK_NOT_ALLOWED
+          - MARINE_RANK_IN_USE
     BountyNamesResponse:
       type: object
       properties:
@@ -8688,6 +8776,10 @@ components:
     CharacterRequest:
       type: object
       properties:
+        affiliations:
+          type: array
+          items:
+            $ref: "#/components/schemas/MembershipRequest"
         aliases:
           type: array
           items:
@@ -8742,6 +8834,10 @@ components:
     CharacterResponse:
       type: object
       properties:
+        affiliations:
+          type: array
+          items:
+            $ref: "#/components/schemas/MembershipResponse"
         aliases:
           type: array
           items:
@@ -9938,6 +10034,76 @@ components:
           type: string
         name:
           type: string
+    MembershipRequest:
+      type: object
+      properties:
+        affiliation:
+          type: string
+          format: uuid
+          description: The content id of an Affiliation
+        former:
+          type: boolean
+        marineRank:
+          type: string
+          enum:
+          - FLEET_ADMIRAL
+          - ADMIRAL
+          - VICE_ADMIRAL
+          - REAR_ADMIRAL
+          - COMMODORE
+          - CAPTAIN
+          - COMMANDER
+          - LIEUTENANT_COMMANDER
+          - LIEUTENANT
+          - LIEUTENANT_JUNIOR_GRADE
+          - ENSIGN
+          - WARRANT_OFFICER
+          - MASTER_CHIEF_PETTY_OFFICER
+          - CHIEF_PETTY_OFFICER
+          - PETTY_OFFICER
+          - SEAMAN_FIRST_CLASS
+          - SEAMAN_APPRENTICE
+          - SEAMAN_RECRUIT
+          - CHORE_BOY
+        role:
+          type: object
+          additionalProperties:
+            type: string
+      required:
+      - affiliation
+    MembershipResponse:
+      type: object
+      properties:
+        affiliation:
+          $ref: "#/components/schemas/AffiliationReferenceResponse"
+        former:
+          type: boolean
+        marineRank:
+          type: string
+          enum:
+          - FLEET_ADMIRAL
+          - ADMIRAL
+          - VICE_ADMIRAL
+          - REAR_ADMIRAL
+          - COMMODORE
+          - CAPTAIN
+          - COMMANDER
+          - LIEUTENANT_COMMANDER
+          - LIEUTENANT
+          - LIEUTENANT_JUNIOR_GRADE
+          - ENSIGN
+          - WARRANT_OFFICER
+          - MASTER_CHIEF_PETTY_OFFICER
+          - CHIEF_PETTY_OFFICER
+          - PETTY_OFFICER
+          - SEAMAN_FIRST_CLASS
+          - SEAMAN_APPRENTICE
+          - SEAMAN_RECRUIT
+          - CHORE_BOY
+        role:
+          type: object
+          additionalProperties:
+            type: string
     NewVersionRequest:
       type: object
       properties:
@@ -9958,6 +10124,25 @@ components:
           additionalProperties:
             type: string
         number:
+          type: integer
+          format: int32
+    PageResponseAffiliationReferenceResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/AffiliationReferenceResponse"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
           type: integer
           format: int32
     PageResponseBountyReferenceResponse:

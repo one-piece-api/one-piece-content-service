@@ -3,10 +3,12 @@ package dev.onepieceapi.contentservice.persistence.mapper;
 import dev.onepieceapi.contentservice.domain.character.Character;
 import dev.onepieceapi.contentservice.domain.character.CharacterTranslation;
 import dev.onepieceapi.contentservice.domain.character.Epithet;
+import dev.onepieceapi.contentservice.domain.character.Membership;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.domain.workflow.Version;
 import dev.onepieceapi.contentservice.persistence.entity.CharacterEpithetEntity;
 import dev.onepieceapi.contentservice.persistence.entity.CharacterFields;
+import dev.onepieceapi.contentservice.persistence.entity.CharacterMembershipEntity;
 import dev.onepieceapi.contentservice.persistence.entity.CharacterTranslationEmbeddable;
 import dev.onepieceapi.contentservice.persistence.entity.CharacterVersionEntity;
 import lombok.experimental.UtilityClass;
@@ -35,6 +37,7 @@ public class CharacterVersionMapper {
 			.epithets(entity.getEpithets().stream().map(CharacterVersionMapper::toDomain).toList())
 			.aliases(entity.getAliases())
 			.speciesIds(entity.getSpeciesIds())
+			.affiliations(entity.getAffiliations().stream().map(CharacterVersionMapper::toDomain).toList())
 			.imageId(entity.getImageId())
 			.firstAppearance(new StoryPoint(entity.getFirstAppearanceChapterId(), entity.getFirstAppearanceEpisodeId()))
 			.build();
@@ -55,6 +58,7 @@ public class CharacterVersionMapper {
 			.epithets(body.epithets().stream().map(Epithet::text).toList())
 			.aliases(body.aliases())
 			.speciesIds(body.speciesIds())
+			.affiliations(body.affiliations())
 			.imageId(body.imageId())
 			.firstAppearance(FirstAppearanceMapper.toIds(body.firstAppearance()))
 			.build(), now);
@@ -64,6 +68,14 @@ public class CharacterVersionMapper {
 	private static MonthDay birthdayOf(CharacterVersionEntity entity) {
 		return entity.getBirthdayMonth() == null ? null
 				: MonthDay.of(entity.getBirthdayMonth(), entity.getBirthdayDay());
+	}
+
+	/**
+	 * The role sorted by language code, so the same membership always reads the same way.
+	 */
+	private static Membership toDomain(CharacterMembershipEntity membership) {
+		return new Membership(membership.getAffiliationContentId(), new TreeMap<>(membership.getRole()),
+				membership.getMarineRank(), membership.isFormer());
 	}
 
 	/** Sorted by language code, so the same epithet always reads the same way. */
