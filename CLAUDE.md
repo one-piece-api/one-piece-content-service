@@ -37,6 +37,7 @@ Layered packages, one sub-package per feature inside each layer:
 - 0005 entity rules are descriptor hooks (`ContentRules`), blocked actions carry a `BlockReason`.
 - 0006 images stored in PostgreSQL; 0007 natural key per entity + generic relations.
 - 0008 first appearance (chapter, episode or both).
+- 0009 invariants between contents: checked on publish, serialized by locks (fruit row, pair advisory lock).
 
 Adding an entity type: skill `new-content-type`. Copy the closest existing entity rather than inventing a new shape.
 

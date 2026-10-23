@@ -109,3 +109,23 @@ would multiply fake romaji columns and copies of the same rules.
   must know which content is saved (a bounty is not its own previous) overrides it.
 - **Trade-off:** the attributes map is untyped; the entity's request mapper and repository share the names as
   constants (`Bounty.CONDITION_ATTRIBUTE`, `Bounty.VALIDITY_ATTRIBUTE`).
+
+## Addendum - lists of relations inside a version (Character, C1-C12)
+
+- **Why:** a character names many species, affiliations, fruits and relatives, each with its own data (role, rank,
+  `former`, kind). A `RelationDescriptor` points one target per body or per part.
+- **A list is child tables:** one table per list (`character_version_<list>`, `position INT` for the order), plus a
+  translation table when an entry is localized (epithets, roles), published as child views
+  (`published.character_<list>`). Not a JSON column: no foreign key, no index, no relation rules.
+- **Each entry is a relation of its own:** the descriptor of the list is applied per entry through the list variants
+  of `RelationRules` (`notLinkable`, `lockTargetBefore`, `targetNotOnline` on `List<P>`). Violations name the entry
+  (`species[1]`, `affiliations[0].marineRank`); block details carry the index and the target
+  (`affiliationsIndex`/`affiliationId`/`affiliationRomaji`). Generic codes stay `RELATED_NOT_ONLINE` and
+  `ONLINE_ITEMS_LINKED`.
+- **Rules re-checked on publish and restore:** what was true on save may have changed (an affiliation no longer
+  `NAVY`: `MARINE_RANK_NOT_ALLOWED`); the link, the rank and the invariants between contents are checked then
+  (ADR-0009).
+- **Derived reads:** the other side of a list (members, fruit users, relatives) is a query over online versions,
+  returned as read-only fields (`memberCount`, `users`, `relativesOf`), never a stored list.
+- **Trade-off:** many small tables and mappers per list, in exchange for referential integrity and filters by
+  entry (`?species=`, `?affiliation=`, `?devilFruit=`, the last two counting current entries only).
