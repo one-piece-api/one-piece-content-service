@@ -23,11 +23,11 @@ import static org.assertj.core.api.Assertions.tuple;
 import static org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase.Replace;
 
 /**
- * The Character in the interface one-piece-public-api reads ({@code V27}, {@code V33})
- * against a real PostgreSQL (Testcontainers): only the versions online are shown, one row
- * per language, with their epithets, aliases, species and memberships in the order of the
- * version, and the portrait visible only while a character online uses it. Seeded in SQL,
- * as the table owner, and read through the {@code published} views.
+ * The Character in the interface one-piece-public-api reads ({@code V27}, {@code V33},
+ * {@code V37}) against a real PostgreSQL (Testcontainers): only the versions online are
+ * shown, one row per language, with their epithets, aliases, species and memberships in
+ * the order of the version, and the portrait visible only while a character online uses
+ * it. Seeded in SQL, as the table owner, and read through the {@code published} views.
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = Replace.NONE)
@@ -228,6 +228,29 @@ class PublishedCharacterViewIntegrationTest {
 	}
 
 	@Test
+	void theRelativesOfTheVersionOnlineAreShownInTheirOrderWithTheirKindAndOnlyThoseOnline() {
+		UUID garp = characterOnline("Monkey D. Garp");
+		UUID dragon = characterOnline("Monkey D. Dragon");
+		UUID retired = content(CHARACTER);
+		character(retired, 1, "RETIRED", "Kuma", "it");
+		UUID luffy = content(CHARACTER);
+		UUID online = character(luffy, 1, PUBLISHED, "Monkey D. Luffy", "it");
+		relative(online, 2, dragon, "PARENT");
+		relative(online, 0, garp, "GRANDPARENT");
+		relative(online, 1, retired, "SIBLING");
+		relative(character(luffy, 2, "DRAFT", "Monkey D. Luffy", "it"), 0, dragon, "CHILD");
+
+		var rows = this.jdbc
+			.sql("select character_id, position, relative_id, kind from published.character_relative"
+					+ " order by position")
+			.query((rs, n) -> tuple(rs.getObject("character_id"), rs.getInt("position"), rs.getObject("relative_id"),
+					rs.getString("kind")))
+			.list();
+
+		assertThat(rows).containsExactly(tuple(luffy, 0, garp, "GRANDPARENT"), tuple(luffy, 2, dragon, "PARENT"));
+	}
+
+	@Test
 	void theFruitViewSaysWhetherSeveralCharactersMayUseIt() {
 		var columns = this.jdbc
 			.sql("select column_name from information_schema.columns where table_schema = 'published'"
@@ -340,6 +363,20 @@ class PublishedCharacterViewIntegrationTest {
 					+ " values (?, ?, ?, ?)")
 			.params(versionId, position, devilFruitId, former)
 			.update();
+	}
+
+	private void relative(UUID versionId, int position, UUID relativeId, String kind) {
+		this.jdbc
+			.sql("insert into character_version_relative (version_id, position, relative_content_id, kind)"
+					+ " values (?, ?, ?, ?)")
+			.params(versionId, position, relativeId, kind)
+			.update();
+	}
+
+	private UUID characterOnline(String romaji) {
+		UUID id = content(CHARACTER);
+		character(id, 1, PUBLISHED, romaji, "it");
+		return id;
 	}
 
 	private UUID fruitOnline(String romaji) {
