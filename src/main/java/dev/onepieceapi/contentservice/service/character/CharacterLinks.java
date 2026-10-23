@@ -2,11 +2,13 @@ package dev.onepieceapi.contentservice.service.character;
 
 import dev.onepieceapi.contentservice.domain.character.Character;
 import dev.onepieceapi.contentservice.domain.character.CharacterReference;
+import dev.onepieceapi.contentservice.domain.character.RelativeOf;
 import dev.onepieceapi.contentservice.domain.workflow.ContentFilter;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSortField;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.entity.CharacterVersionEntity;
 import dev.onepieceapi.contentservice.persistence.mapper.CharacterVersionMapper;
+import dev.onepieceapi.contentservice.persistence.projection.RelativeLink;
 import dev.onepieceapi.contentservice.persistence.repository.CharacterVersionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.util.Collection;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
@@ -55,6 +59,22 @@ public class CharacterLinks {
 	}
 
 	/**
+	 * The characters online that name this one as their relative, each with the kind as
+	 * this one reads it - the inverse of the stored one (D13) - by romaji. One with
+	 * nothing approved to call it by is left out, which a character online never is.
+	 */
+	public List<RelativeOf> relativesOf(UUID contentId) {
+		List<RelativeLink> links = this.repository.findLinksOnlineTo(contentId);
+		Map<UUID, CharacterReference> holders = referencesOf(
+				links.stream().map(RelativeLink::holderContentId).toList());
+		return links.stream()
+			.filter(link -> holders.containsKey(link.holderContentId()))
+			.map(link -> new RelativeOf(holders.get(link.holderContentId()), link.kind().inverse()))
+			.sorted(Comparator.comparing(RelativeOf::romaji))
+			.toList();
+	}
+
+	/**
 	 * The characters a content may be linked to - those with a version that passed review
 	 * - one page at a time, by romaji, narrowed by what their romaji or a name contains.
 	 */
@@ -67,7 +87,8 @@ public class CharacterLinks {
 
 	private static CharacterReference referenceOf(CharacterVersionEntity version) {
 		Character character = CharacterVersionMapper.toDomain(version).body();
-		return new CharacterReference(version.getContentId(), character.romaji(), character.names());
+		return new CharacterReference(version.getContentId(), character.romaji(), character.names(),
+				character.gender());
 	}
 
 }

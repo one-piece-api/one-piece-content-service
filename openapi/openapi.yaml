@@ -8612,6 +8612,7 @@ components:
           - MARINE_RANK_NOT_ALLOWED
           - MARINE_RANK_IN_USE
           - DEVIL_FRUIT_IN_USE
+          - RELATIVE_ALREADY_LINKED
     BountyNamesResponse:
       type: object
       properties:
@@ -8817,6 +8818,12 @@ components:
     CharacterReferenceResponse:
       type: object
       properties:
+        gender:
+          type: string
+          enum:
+          - MALE
+          - FEMALE
+          - UNKNOWN
         id:
           type: string
           format: uuid
@@ -8866,6 +8873,10 @@ components:
           type: string
           maxLength: 100
           minLength: 0
+        relatives:
+          type: array
+          items:
+            $ref: "#/components/schemas/RelativeRequest"
         removeImage:
           type: boolean
         romaji:
@@ -8922,6 +8933,14 @@ components:
           $ref: "#/components/schemas/ImageResponse"
         japaneseName:
           type: string
+        relatives:
+          type: array
+          items:
+            $ref: "#/components/schemas/RelativeResponse"
+        relativesOf:
+          type: array
+          items:
+            $ref: "#/components/schemas/RelativeResponse"
         romaji:
           type: string
         species:
@@ -10631,6 +10650,51 @@ components:
           minLength: 8
       required:
       - reason
+    RelativeRequest:
+      type: object
+      properties:
+        kind:
+          type: string
+          enum:
+          - PARENT
+          - CHILD
+          - GRANDPARENT
+          - GRANDCHILD
+          - UNCLE_AUNT
+          - NEPHEW_NIECE
+          - ADOPTIVE_PARENT
+          - ADOPTIVE_CHILD
+          - SIBLING
+          - COUSIN
+          - SPOUSE
+          - SWORN_SIBLING
+        relative:
+          type: string
+          format: uuid
+          description: The content id of a Character
+      required:
+      - kind
+      - relative
+    RelativeResponse:
+      type: object
+      properties:
+        kind:
+          type: string
+          enum:
+          - PARENT
+          - CHILD
+          - GRANDPARENT
+          - GRANDCHILD
+          - UNCLE_AUNT
+          - NEPHEW_NIECE
+          - ADOPTIVE_PARENT
+          - ADOPTIVE_CHILD
+          - SIBLING
+          - COUSIN
+          - SPOUSE
+          - SWORN_SIBLING
+        relative:
+          $ref: "#/components/schemas/CharacterReferenceResponse"
     ReleaseRequest:
       type: object
       properties:

@@ -211,6 +211,7 @@ examples:
                   "amount": 0,
                   "condition": "DEAD_OR_ALIVE",
                   "holder": {
+                    "gender": "MALE",
                     "id": "",
                     "names": {},
                     "romaji": ""

@@ -5,6 +5,7 @@ import dev.onepieceapi.contentservice.domain.affiliation.AffiliationKind;
 import dev.onepieceapi.contentservice.domain.character.Character;
 import dev.onepieceapi.contentservice.domain.character.FruitUse;
 import dev.onepieceapi.contentservice.domain.character.Membership;
+import dev.onepieceapi.contentservice.domain.character.Relative;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
 import dev.onepieceapi.contentservice.domain.workflow.ActionBlock;
 import dev.onepieceapi.contentservice.domain.workflow.BlockReason;
@@ -57,6 +58,13 @@ import java.util.stream.IntStream;
  * of their ids, a current one exclusively and a former one shared: two characters going
  * online with the same current fruit never check it together, and a fruit going online or
  * being retired waits for them too ({@code DevilFruitRules}).
+ * <p>
+ * Every relative must be online, and none may name the character in its own online
+ * version: a pair is linked by one of the two (D13). The relatives are held shared, so
+ * the retirement of one waits for a character going online with it, and the pair of each
+ * is held by an advisory lock, in the order of the pairs: two characters going online
+ * each naming the other never check it together. A character's retirement is refused
+ * while online characters name it as a relative.
  */
 @Component
 @RequiredArgsConstructor(onConstructor_ = { @Autowired })
@@ -93,6 +101,31 @@ public class CharacterRules implements ContentRules<Character> {
 		RelationRules.lockTargetBefore(action, CharacterRelations.AFFILIATION, character.affiliations(),
 				this.contentRepository);
 		lockDevilFruitsBefore(action, character);
+		RelationRules.lockTargetBefore(action, CharacterRelations.RELATIVE, character.relatives(),
+				this.contentRepository);
+		lockRelativePairsBefore(action, contentId, character);
+	}
+
+	/**
+	 * One lock per relative, in the order of the keys of the pairs, so two characters
+	 * sharing relatives never wait for each other in turns.
+	 */
+	private void lockRelativePairsBefore(VersionAction action, UUID contentId, Character character) {
+		if (!RelationRules.GOING_ONLINE.contains(action)) {
+			return;
+		}
+		character.relatives()
+			.stream()
+			.map(relative -> pairKey(contentId, relative.relativeContentId()))
+			.distinct()
+			.sorted()
+			.forEach(this.contentRepository::lockRelativePair);
+	}
+
+	/** The same for the same two characters, whichever of them is first. */
+	private static String pairKey(UUID first, UUID second) {
+		return first.compareTo(second) <= 0 ? "character-relatives:" + first + ":" + second
+				: "character-relatives:" + second + ":" + first;
 	}
 
 	/**
@@ -128,10 +161,43 @@ public class CharacterRules implements ContentRules<Character> {
 					CharacterRelations.AFFILIATIONS_FIELD, this.affiliationRepository))
 			.or(() -> RelationRules.targetNotOnline(action, CharacterRelations.DEVIL_FRUIT, character.devilFruits(),
 					CharacterRelations.DEVIL_FRUITS_FIELD, this.devilFruitRepository))
+			.or(() -> RelationRules.targetNotOnline(action, CharacterRelations.RELATIVE, character.relatives(),
+					CharacterRelations.RELATIVES_FIELD, this.characterRepository))
 			.or(() -> rankNotAllowed(action, character))
 			.or(() -> devilFruitInUse(action, contentId, character))
+			.or(() -> relativeAlreadyLinked(action, contentId, character))
 			.or(() -> RelationRules.onlineItemsLinked(action, BountyRelations.HOLDER, contentId, holdingBounties(),
-					this.properties.blockingPreviewSize()));
+					this.properties.blockingPreviewSize()))
+			.or(() -> RelationRules.onlineItemsLinked(action, CharacterRelations.RELATIVE, contentId,
+					namingAsRelative(), this.properties.blockingPreviewSize()));
+	}
+
+	/**
+	 * Going online, the first relative whose online version names this character: the
+	 * save checked its versions, two drafts may both have passed. Every relative is
+	 * online by now: the check before this one.
+	 */
+	private Optional<ActionBlock> relativeAlreadyLinked(VersionAction action, UUID contentId, Character character) {
+		if (!RelationRules.GOING_ONLINE.contains(action)) {
+			return Optional.empty();
+		}
+		List<Relative> relatives = character.relatives();
+		return IntStream.range(0, relatives.size())
+			.filter(index -> this.characterRepository.namesAsRelative(relatives.get(index).relativeContentId(),
+					contentId, Set.of(VersionStatus.PUBLISHED)))
+			.mapToObj(index -> linkedBlock(index, relatives.get(index).relativeContentId()))
+			.findFirst();
+	}
+
+	private ActionBlock linkedBlock(int index, UUID relativeContentId) {
+		Map<String, Object> detail = new LinkedHashMap<>();
+		detail.put(CharacterRelations.RELATIVES_FIELD + "Index", index);
+		detail.put(CharacterRelations.RELATIVE.name() + "Id", relativeContentId);
+		this.characterRepository.findMostRecent(List.of(relativeContentId), Set.of(VersionStatus.PUBLISHED))
+			.stream()
+			.findFirst()
+			.ifPresent(online -> detail.put(CharacterRelations.RELATIVE.name() + "Romaji", online.getRomaji()));
+		return new ActionBlock(BlockReason.RELATIVE_ALREADY_LINKED, detail);
 	}
 
 	/**
@@ -204,6 +270,12 @@ public class CharacterRules implements ContentRules<Character> {
 
 	private static DevilFruit onlineFruit(DevilFruitVersionEntity version) {
 		return DevilFruitVersionMapper.toDomain(version).body();
+	}
+
+	/** The queries of the characters online for the character they name as a relative. */
+	private LinkedItems namingAsRelative() {
+		return new LinkedItems(this.characterRepository::countOnlineWithRelative,
+				this.characterRepository::findOnlineWithRelative);
 	}
 
 	/** The queries of the bounties for the character they name as holder. */

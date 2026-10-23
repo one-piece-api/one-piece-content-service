@@ -17,6 +17,9 @@ import java.util.Map;
  * @param species each species as of today, in order
  * @param affiliations each membership, in order
  * @param devilFruits each Devil Fruit, in order
+ * @param relatives each relative as the version stores it, in order
+ * @param relativesOf the characters online that name this one as their relative, each
+ * with the inverse kind; derived, never part of the version
  * @param image its portrait; null for none
  * @param firstAppearance the chapter and/or the episode it first appears in; null for
  * none
@@ -26,6 +29,7 @@ public record CharacterResponse(String romaji, String japaneseName,
 		Map<String, CharacterTranslationResponse> translations, CharacterStatus status, Gender gender,
 		@Schema(type = "string", example = "--05-05") MonthDay birthday, List<EpithetResponse> epithets,
 		List<String> aliases, List<SpeciesReferenceResponse> species, List<MembershipResponse> affiliations,
-		List<FruitUseResponse> devilFruits, ImageResponse image, FirstAppearanceResponse firstAppearance) {
+		List<FruitUseResponse> devilFruits, List<RelativeResponse> relatives, List<RelativeResponse> relativesOf,
+		ImageResponse image, FirstAppearanceResponse firstAppearance) {
 
 }

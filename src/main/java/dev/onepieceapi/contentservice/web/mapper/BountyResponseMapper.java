@@ -98,7 +98,7 @@ public class BountyResponseMapper {
 			return null;
 		}
 		CharacterReference holder = holders.get(holderContentId);
-		return holder == null ? new CharacterReferenceResponse(holderContentId, null, Map.of())
+		return holder == null ? new CharacterReferenceResponse(holderContentId, null, Map.of(), null)
 				: CharacterResponseMapper.toResponse(holder);
 	}
 

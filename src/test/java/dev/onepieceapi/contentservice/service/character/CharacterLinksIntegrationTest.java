@@ -1,6 +1,7 @@
 package dev.onepieceapi.contentservice.service.character;
 
 import dev.onepieceapi.contentservice.domain.character.CharacterReference;
+import dev.onepieceapi.contentservice.domain.character.Gender;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
 import dev.onepieceapi.contentservice.persistence.repository.BountyVersionRepository;
@@ -149,8 +150,8 @@ class CharacterLinksIntegrationTest {
 		Map<UUID, CharacterReference> references = this.links.referencesOf(List.of(approved, draft, UUID.randomUUID()));
 
 		assertThat(references).containsOnlyKeys(approved);
-		assertThat(references.get(approved))
-			.isEqualTo(new CharacterReference(approved, "Nami", Map.of("it", "Nami (it)", "en", "Nami (en)")));
+		assertThat(references.get(approved)).isEqualTo(
+				new CharacterReference(approved, "Nami", Map.of("it", "Nami (it)", "en", "Nami (en)"), Gender.FEMALE));
 		assertThat(this.links.referencesOf(List.of())).isEmpty();
 	}
 

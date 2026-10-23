@@ -9,7 +9,8 @@ import java.util.UUID;
  * today, never a copy kept in the pointing version.
  *
  * @param names the name per language code, for the languages that have one
+ * @param gender as the work presents the character; it gives the labels of a relative
  */
-public record CharacterReference(UUID id, String romaji, Map<String, String> names) {
+public record CharacterReference(UUID id, String romaji, Map<String, String> names, Gender gender) {
 
 }

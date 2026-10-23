@@ -8,6 +8,7 @@ import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.entity.CharacterVersionEntity;
 import dev.onepieceapi.contentservice.persistence.projection.AffiliationMemberCount;
 import dev.onepieceapi.contentservice.persistence.projection.FruitUserCount;
+import dev.onepieceapi.contentservice.persistence.projection.RelativeLink;
 import dev.onepieceapi.contentservice.persistence.specification.CharacterSpecifications;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -232,6 +233,45 @@ public interface CharacterVersionRepository extends VersionBodyRepository<Charac
 				and v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED
 			group by u.devilFruitContentId""")
 	List<FruitUserCount> countCurrentUsersOf(Collection<UUID> devilFruitContentIds);
+
+	/** How many characters are online naming this character as a relative (D13). */
+	@Query("""
+			select count(d) from CharacterVersionEntity d join d.version v join d.relatives r
+			where r.relativeContentId = :relativeContentId
+				and v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED""")
+	long countOnlineWithRelative(UUID relativeContentId);
+
+	/**
+	 * The characters online naming this character as a relative, by romaji: as many as
+	 * the page asks for.
+	 */
+	@Query("""
+			select d from CharacterVersionEntity d join fetch d.version v join d.relatives r
+			where r.relativeContentId = :relativeContentId
+				and v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED
+			order by d.romaji""")
+	List<CharacterVersionEntity> findOnlineWithRelative(UUID relativeContentId, Pageable pageable);
+
+	/**
+	 * Every link the characters online hold to this one, with the kind as they stored it
+	 * (D13).
+	 */
+	@Query("""
+			select new dev.onepieceapi.contentservice.persistence.projection.RelativeLink(v.contentId, r.kind)
+			from CharacterVersionEntity d join d.version v join d.relatives r
+			where r.relativeContentId = :relativeContentId
+				and v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED""")
+	List<RelativeLink> findLinksOnlineTo(UUID relativeContentId);
+
+	/**
+	 * Whether a version of this character, in one of these statuses, names that one as a
+	 * relative (D13): a pair is linked by one of the two only.
+	 */
+	@Query("""
+			select count(d) > 0 from CharacterVersionEntity d join d.version v join d.relatives r
+			where v.contentId = :holderContentId and r.relativeContentId = :namedContentId
+				and v.status in :statuses""")
+	boolean namesAsRelative(UUID holderContentId, UUID namedContentId, Collection<VersionStatus> statuses);
 
 	/** The epithets count too: a language they are written in is in use. */
 	@Override

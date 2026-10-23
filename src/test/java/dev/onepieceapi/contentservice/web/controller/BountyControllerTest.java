@@ -6,6 +6,7 @@ import dev.onepieceapi.contentservice.domain.bounty.BountyCondition;
 import dev.onepieceapi.contentservice.domain.bounty.BountyReference;
 import dev.onepieceapi.contentservice.domain.bounty.BountyTranslation;
 import dev.onepieceapi.contentservice.domain.character.CharacterReference;
+import dev.onepieceapi.contentservice.domain.character.Gender;
 import dev.onepieceapi.contentservice.domain.bounty.BountyValidity;
 import dev.onepieceapi.contentservice.domain.image.ImageChange;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
@@ -142,8 +143,8 @@ class BountyControllerTest {
 		var access = new VersionAccess<>(version(VersionStatus.PUBLISHED, false, null, HOLDER_ID), Set.of());
 		when(this.service.getVersion(any(), any(), eq(CONTENT_ID), eq(1))).thenReturn(access);
 		when(this.links.chainOf(eq(CONTENT_ID), any(), any())).thenReturn(new BountyChain(List.of(CONTENT_ID), null));
-		when(this.characters.referencesOf(List.of(HOLDER_ID)))
-			.thenReturn(Map.of(HOLDER_ID, new CharacterReference(HOLDER_ID, "Nami", Map.of("en", "Nami"))));
+		when(this.characters.referencesOf(List.of(HOLDER_ID))).thenReturn(
+				Map.of(HOLDER_ID, new CharacterReference(HOLDER_ID, "Nami", Map.of("en", "Nami"), Gender.FEMALE)));
 
 		this.mockMvc.perform(get("/bounties/" + CONTENT_ID + "/versions/1").with(callerWith(Permission.CONTENT_READ)))
 			.andExpect(status().isOk())
@@ -207,8 +208,8 @@ class BountyControllerTest {
 		when(this.service.list(any(), any(), any(), any(), any()))
 			.thenReturn(new PageImpl<>(rows, PageRequest.of(0, 20), 2));
 		when(this.links.replacedAmong(anyCollection(), any())).thenReturn(Set.of());
-		when(this.characters.referencesOf(Set.of(HOLDER_ID)))
-			.thenReturn(Map.of(HOLDER_ID, new CharacterReference(HOLDER_ID, "Nami", Map.of("en", "Nami"))));
+		when(this.characters.referencesOf(Set.of(HOLDER_ID))).thenReturn(
+				Map.of(HOLDER_ID, new CharacterReference(HOLDER_ID, "Nami", Map.of("en", "Nami"), Gender.FEMALE)));
 
 		this.mockMvc.perform(get("/bounties").with(callerWith(Permission.CONTENT_READ)))
 			.andExpect(status().isOk())

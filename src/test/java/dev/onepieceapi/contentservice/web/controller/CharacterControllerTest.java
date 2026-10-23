@@ -6,6 +6,9 @@ import dev.onepieceapi.contentservice.domain.affiliation.AffiliationReference;
 import dev.onepieceapi.contentservice.domain.character.CharacterStatus;
 import dev.onepieceapi.contentservice.domain.character.MarineRank;
 import dev.onepieceapi.contentservice.domain.character.Membership;
+import dev.onepieceapi.contentservice.domain.character.Relative;
+import dev.onepieceapi.contentservice.domain.character.RelativeKind;
+import dev.onepieceapi.contentservice.domain.character.RelativeOf;
 import dev.onepieceapi.contentservice.domain.character.CharacterTranslation;
 import dev.onepieceapi.contentservice.domain.character.Epithet;
 import dev.onepieceapi.contentservice.domain.character.FruitUse;
@@ -104,6 +107,12 @@ class CharacterControllerTest {
 
 	private static final UUID HANA_HANA = UUID.fromString("b1b2c3d4-0000-4000-8000-00000000b002");
 
+	private static final UUID GARP = UUID.fromString("b1b2c3d4-0000-4000-8000-00000000c001");
+
+	private static final UUID DRAGON = UUID.fromString("b1b2c3d4-0000-4000-8000-00000000c002");
+
+	private static final UUID ACE = UUID.fromString("b1b2c3d4-0000-4000-8000-00000000c003");
+
 	private static final UUID GYOJIN = UUID.fromString("8b2e4d3c-6f5a-4b7c-9d0e-1f2a3b4c5d6e");
 
 	private static final Instant CREATED = Instant.parse("2026-10-21T08:00:00Z");
@@ -192,8 +201,8 @@ class CharacterControllerTest {
 
 	@Test
 	void theCharactersThatCanBeLinkedAreListedByTheirRomaji() throws Exception {
-		when(this.links.linkable(any(), eq(0), eq(20)))
-			.thenReturn(new PageImpl<>(List.of(new CharacterReference(CONTENT_ID, "Nami", Map.of("it", "Nami")))));
+		when(this.links.linkable(any(), eq(0), eq(20))).thenReturn(new PageImpl<>(
+				List.of(new CharacterReference(CONTENT_ID, "Nami", Map.of("it", "Nami"), Gender.FEMALE))));
 
 		this.mockMvc.perform(get("/characters/linkable").param("q", "nam").with(callerWith(Permission.CONTENT_WRITE)))
 			.andExpect(status().isOk())
@@ -327,6 +336,63 @@ class CharacterControllerTest {
 		verify(this.service).create(any(), any(), written.capture(), any());
 		assertThat(written.getValue().devilFruits()).containsExactly(new FruitUse(MERA_MERA, true),
 				new FruitUse(HANA_HANA, false));
+	}
+
+	@Test
+	void aVersionShowsEachRelativeInOrderAsItIsTodayAndTheCharactersNamingItThroughTheInverseKind() throws Exception {
+		var body = version(VersionStatus.PUBLISHED, null).body()
+			.toBuilder()
+			.relatives(List.of(new Relative(GARP, RelativeKind.GRANDPARENT), new Relative(DRAGON, RelativeKind.PARENT)))
+			.build();
+		when(this.service.getVersion(any(), any(), eq(CONTENT_ID), eq(1)))
+			.thenReturn(new VersionAccess<>(withBody(body), Set.of()));
+		when(this.links.referencesOf(List.of(GARP, DRAGON))).thenReturn(
+				Map.of(GARP, new CharacterReference(GARP, "Monkey D. Garp", Map.of("it", "Garp"), Gender.MALE)));
+		when(this.links.relativesOf(CONTENT_ID)).thenReturn(
+				List.of(new RelativeOf(new CharacterReference(ACE, "Portgas D. Ace", Map.of("it", "Ace"), Gender.MALE),
+						RelativeKind.SIBLING)));
+		when(this.firstAppearances.referencesFor(anyCollection())).thenReturn(Map.of());
+
+		this.mockMvc.perform(get("/characters/" + CONTENT_ID + "/versions/1").with(callerWith(Permission.CONTENT_READ)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.body.relatives[0].relative.id").value(GARP.toString()))
+			.andExpect(jsonPath("$.body.relatives[0].relative.romaji").value("Monkey D. Garp"))
+			.andExpect(jsonPath("$.body.relatives[0].relative.gender").value("MALE"))
+			.andExpect(jsonPath("$.body.relatives[0].kind").value("GRANDPARENT"))
+			.andExpect(jsonPath("$.body.relatives[1].relative.id").value(DRAGON.toString()))
+			.andExpect(jsonPath("$.body.relatives[1].relative.romaji").doesNotExist())
+			.andExpect(jsonPath("$.body.relatives[1].kind").value("PARENT"))
+			.andExpect(jsonPath("$.body.relativesOf[0].relative.id").value(ACE.toString()))
+			.andExpect(jsonPath("$.body.relativesOf[0].kind").value("SIBLING"));
+	}
+
+	@Test
+	void creatingPassesOnTheRelativesAndAnEntryWithoutARelativeOrAKindIsABadRequest() throws Exception {
+		var draft = new VersionAccess<>(version(VersionStatus.DRAFT, null), EnumSet.of(VersionAction.EDIT));
+		when(this.service.create(any(), any(), any(), any())).thenReturn(new Content<>(CONTENT_ID, List.of(draft)));
+
+		this.mockMvc
+			.perform(post("/characters").with(callerWith(Permission.CONTENT_WRITE))
+				.contentType("application/json")
+				.content(
+						"""
+								{"romaji":"Luffy","relatives":[{"relative":"%s","kind":"GRANDPARENT"},{"relative":"%s","kind":"PARENT"}]}"""
+							.formatted(GARP, DRAGON)))
+			.andExpect(status().isCreated());
+		for (String body : List.of("{\"relatives\":[{}]}", "{\"relatives\":[null]}",
+				"{\"relatives\":[{\"relative\":\"%s\"}]}".formatted(GARP),
+				"{\"relatives\":[{\"relative\":\"%s\",\"kind\":\"CAPTAIN\"}]}".formatted(GARP))) {
+			this.mockMvc
+				.perform(post("/characters").with(callerWith(Permission.CONTENT_WRITE))
+					.contentType("application/json")
+					.content(body))
+				.andExpect(status().isBadRequest());
+		}
+
+		var written = ArgumentCaptor.forClass(Character.class);
+		verify(this.service).create(any(), any(), written.capture(), any());
+		assertThat(written.getValue().relatives()).containsExactly(new Relative(GARP, RelativeKind.GRANDPARENT),
+				new Relative(DRAGON, RelativeKind.PARENT));
 	}
 
 	@Test

@@ -93,6 +93,7 @@ examples:
                 }
               },
               "holder": {
+                "gender": "MALE",
                 "id": "",
                 "names": {},
                 "romaji": ""

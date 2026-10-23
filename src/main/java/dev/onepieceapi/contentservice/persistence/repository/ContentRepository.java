@@ -53,4 +53,15 @@ public interface ContentRepository extends Repository<ContentEntity, UUID> {
 	@Query(value = "select cast(pg_advisory_xact_lock(hashtext('bounty-chain')) as text)", nativeQuery = true)
 	String lockBountyChain();
 
+	/**
+	 * Holds, until the transaction ends, the lock every change to the online links of one
+	 * pair of characters takes (implementation plan of the Character, C12): two
+	 * characters going online, each naming the other as a relative, never pass the checks
+	 * together. Not tied to a content, as a pair has none: an advisory lock of the
+	 * database, keyed by the pair. The answer is of no use, only there to be read.
+	 * @param pairKey the same text for the same pair, whichever of the two is first
+	 */
+	@Query(value = "select cast(pg_advisory_xact_lock(hashtext(:pairKey)) as text)", nativeQuery = true)
+	String lockRelativePair(String pairKey);
+
 }

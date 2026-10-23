@@ -3,6 +3,7 @@ package dev.onepieceapi.contentservice.service.character;
 import dev.onepieceapi.contentservice.domain.character.Character;
 import dev.onepieceapi.contentservice.domain.character.FruitUse;
 import dev.onepieceapi.contentservice.domain.character.Membership;
+import dev.onepieceapi.contentservice.domain.character.Relative;
 import dev.onepieceapi.contentservice.domain.workflow.BlockReason;
 import dev.onepieceapi.contentservice.service.content.FirstAppearanceRules;
 import dev.onepieceapi.contentservice.service.content.RelationDescriptor;
@@ -13,8 +14,8 @@ import java.util.function.Function;
 /**
  * The relations of a Character (implementation plan of the Character, D8, D9): the
  * chapter and the episode it first appears in (ADR-0008), each of its species and the
- * affiliation of each of its memberships (D10) and each of its Devil Fruits (D12). All
- * keep their target from being retired as {@code characters}.
+ * affiliation of each of its memberships (D10), each of its Devil Fruits (D12) and each
+ * of its relatives (D13). All keep their target from being retired as {@code characters}.
  */
 public final class CharacterRelations {
 
@@ -29,6 +30,9 @@ public final class CharacterRelations {
 
 	/** The list of Devil Fruits as a request names it, e.g. {@code devilFruits[1]}. */
 	public static final String DEVIL_FRUITS_FIELD = "devilFruits";
+
+	/** The list of relatives as a request names it, e.g. {@code relatives[1]}. */
+	public static final String RELATIVES_FIELD = "relatives";
 
 	/** The chapter a character first appears in. */
 	public static final RelationDescriptor<Character> FIRST_APPEARANCE_CHAPTER = FirstAppearanceRules
@@ -71,6 +75,20 @@ public final class CharacterRelations {
 		.name("devilFruit")
 		.target(FruitUse::devilFruitContentId)
 		.notLinkable("must be a Devil Fruit with an approved version")
+		.targetNotOnline(BlockReason.RELATED_NOT_ONLINE)
+		.onlineItemsLinked(BlockReason.ONLINE_ITEMS_LINKED)
+		.itemsName(ITEMS_NAME)
+		.build();
+
+	/**
+	 * The relative of one entry of the relatives of a character. Named in the singular,
+	 * so the detail of a block reads {@code relativeId} and {@code relativeRomaji}, and
+	 * the index {@code relativesIndex}.
+	 */
+	public static final RelationDescriptor<Relative> RELATIVE = RelationDescriptor.<Relative>builder()
+		.name("relative")
+		.target(Relative::relativeContentId)
+		.notLinkable("must be a Character with an approved version")
 		.targetNotOnline(BlockReason.RELATED_NOT_ONLINE)
 		.onlineItemsLinked(BlockReason.ONLINE_ITEMS_LINKED)
 		.itemsName(ITEMS_NAME)

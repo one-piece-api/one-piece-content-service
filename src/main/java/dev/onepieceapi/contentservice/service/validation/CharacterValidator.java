@@ -5,6 +5,7 @@ import dev.onepieceapi.contentservice.domain.character.Character;
 import dev.onepieceapi.contentservice.domain.character.Epithet;
 import dev.onepieceapi.contentservice.domain.character.FruitUse;
 import dev.onepieceapi.contentservice.domain.character.Membership;
+import dev.onepieceapi.contentservice.domain.character.Relative;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.entity.AffiliationVersionEntity;
 import dev.onepieceapi.contentservice.persistence.mapper.AffiliationVersionMapper;
@@ -25,6 +26,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -42,11 +44,13 @@ import java.util.UUID;
  * once, each one it may be linked to; an affiliation named once in its memberships, each
  * one it may be linked to, a rank only in an affiliation that, as last approved, is a
  * Navy one (D10); a Devil Fruit named once, one it may be linked to (D12) - that it has
- * one current user is for publishing to say, never a save. Its first appearance, when
- * chosen, is in a chapter and an episode it may be linked to (3.4.3). Each entry at fault
- * is reported, the later of two equal ones. Its portrait is checked against the
- * {@code character} image profile when uploaded, as every image. A birthday is always a
- * real date: a {@code MonthDay} cannot be anything else.
+ * one current user is for publishing to say, never a save; a relative named once, never
+ * the character itself, one it may be linked to and not naming this character in a
+ * version that is online or still open (D13). Its first appearance, when chosen, is in a
+ * chapter and an episode it may be linked to (3.4.3). Each entry at fault is reported,
+ * the later of two equal ones. Its portrait is checked against the {@code character}
+ * image profile when uploaded, as every image. A birthday is always a real date: a
+ * {@code MonthDay} cannot be anything else.
  */
 @Component
 public class CharacterValidator extends ContentValidator<Character, CharacterVersionEntity> {
@@ -77,6 +81,25 @@ public class CharacterValidator extends ContentValidator<Character, CharacterVer
 
 	private static final String DEVIL_FRUIT_PART = "devilFruit";
 
+	private static final String REPEATED_RELATIVE = "is another relative of this character";
+
+	private static final String ITSELF = "must not be the character itself";
+
+	private static final String ALREADY_LINKED = "already names this character as a relative";
+
+	private static final String RELATIVE_PART = "relative";
+
+	/**
+	 * The versions of a character whose relatives count against a new link: the one
+	 * online and those still moving through the workflow. A version that left it -
+	 * superseded, retired, archived - says nothing any more.
+	 */
+	private static final Set<VersionStatus> LINKING_STATUSES = EnumSet.of(VersionStatus.PUBLISHED);
+
+	static {
+		LINKING_STATUSES.addAll(VersionStatus.open());
+	}
+
 	private static final String MEMBERSHIP_FIELD = "%s[%d].%s";
 
 	private static final String AFFILIATION_PART = "affiliation";
@@ -93,6 +116,8 @@ public class CharacterValidator extends ContentValidator<Character, CharacterVer
 
 	private final DevilFruitVersionRepository devilFruitRepository;
 
+	private final CharacterVersionRepository characterRepository;
+
 	@Autowired
 	public CharacterValidator(CharacterVersionRepository versionRepository, LanguageRepository languageRepository,
 			ChapterVersionRepository chapterRepository, EpisodeVersionRepository episodeRepository,
@@ -104,6 +129,7 @@ public class CharacterValidator extends ContentValidator<Character, CharacterVer
 		this.speciesRepository = speciesRepository;
 		this.affiliationRepository = affiliationRepository;
 		this.devilFruitRepository = devilFruitRepository;
+		this.characterRepository = versionRepository;
 	}
 
 	@Override
@@ -116,6 +142,7 @@ public class CharacterValidator extends ContentValidator<Character, CharacterVer
 		requireDistinctSpecies(body.speciesIds(), violations);
 		requireDistinctAffiliations(body.affiliations(), violations);
 		requireDistinctDevilFruits(body.devilFruits(), violations);
+		requireDistinctRelatives(body.relatives(), violations);
 		if (!violations.isEmpty()) {
 			throw new ValueInvalidException(violations);
 		}
@@ -123,7 +150,7 @@ public class CharacterValidator extends ContentValidator<Character, CharacterVer
 
 	/** Every first appearance and every species at fault is reported. */
 	@Override
-	protected void requireValidRelations(Character body) {
+	protected void requireValidRelations(UUID contentId, Character body) {
 		List<FieldViolation> violations = new ArrayList<>();
 		RelationRules.notLinkable(CharacterRelations.FIRST_APPEARANCE_CHAPTER, body, "", this.chapterRepository)
 			.ifPresent(violations::add);
@@ -133,6 +160,7 @@ public class CharacterValidator extends ContentValidator<Character, CharacterVer
 				CharacterRelations.SPECIES_FIELD, this.speciesRepository));
 		violations.addAll(membershipViolations(body.affiliations()));
 		violations.addAll(devilFruitViolations(body.devilFruits()));
+		violations.addAll(relativeViolations(contentId, body.relatives()));
 		if (!violations.isEmpty()) {
 			throw new ValueInvalidException(violations);
 		}
@@ -207,6 +235,42 @@ public class CharacterValidator extends ContentValidator<Character, CharacterVer
 						REPEATED_DEVIL_FRUIT));
 			}
 		}
+	}
+
+	private static void requireDistinctRelatives(List<Relative> relatives, List<FieldViolation> violations) {
+		Set<UUID> seen = new HashSet<>();
+		for (int index = 0; index < relatives.size(); index++) {
+			if (!seen.add(relatives.get(index).relativeContentId())) {
+				violations.add(new FieldViolation(
+						MEMBERSHIP_FIELD.formatted(CharacterRelations.RELATIVES_FIELD, index, RELATIVE_PART),
+						REPEATED_RELATIVE));
+			}
+		}
+	}
+
+	/**
+	 * Each relative that is the character itself, that may not be linked, or that names
+	 * the character in a version online or still open: the pair is linked by one of the
+	 * two. Publishing checks the online ones again.
+	 */
+	private List<FieldViolation> relativeViolations(UUID contentId, List<Relative> relatives) {
+		List<FieldViolation> violations = new ArrayList<>();
+		for (int index = 0; index < relatives.size(); index++) {
+			Relative relative = relatives.get(index);
+			String prefix = "%s[%d].".formatted(CharacterRelations.RELATIVES_FIELD, index);
+			if (relative.relativeContentId().equals(contentId)) {
+				violations.add(new FieldViolation(prefix + RELATIVE_PART, ITSELF));
+				continue;
+			}
+			var notLinkable = RelationRules.notLinkable(CharacterRelations.RELATIVE, relative, prefix,
+					this.characterRepository);
+			notLinkable.ifPresent(violations::add);
+			if (notLinkable.isEmpty() && this.characterRepository.namesAsRelative(relative.relativeContentId(),
+					contentId, LINKING_STATUSES)) {
+				violations.add(new FieldViolation(prefix + RELATIVE_PART, ALREADY_LINKED));
+			}
+		}
+		return violations;
 	}
 
 	/** Each Devil Fruit that may not be linked, named as the entry and its fruit. */

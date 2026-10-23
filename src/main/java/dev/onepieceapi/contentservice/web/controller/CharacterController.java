@@ -74,16 +74,41 @@ class CharacterController extends ContentController<Character, CharacterResponse
 
 	private final BountyLinks bounties;
 
+	private final CharacterReferences references;
+
+	private final FirstAppearanceLinks firstAppearances;
+
+	private final ImageResponseMapper images;
+
 	@Autowired
 	CharacterController(CharacterService service, CharacterLinks links, BountyLinks bounties,
 			CharacterReferences references, FirstAppearanceLinks firstAppearances, ImageResponseMapper images) {
-		super(service,
-				access -> CharacterResponseMapper.toVersionResponse(access, references.speciesOf(access.body()),
-						references.affiliationsOf(access.body()), references.devilFruitsOf(access.body()),
-						firstAppearances.referencesFor(List.of(access.body())), images));
+		super(service, CharacterController::answeredWithTheContent);
 		this.service = service;
 		this.links = links;
 		this.bounties = bounties;
+		this.references = references;
+		this.firstAppearances = firstAppearances;
+		this.images = images;
+	}
+
+	/**
+	 * A character is never answered without knowing which content it is: the characters
+	 * naming it as a relative are not part of the version.
+	 * {@link #versionResponse(UUID, VersionAccess, AuthenticatedCaller)} is the one way,
+	 * and this is what the generic controller is built with so that nothing can reach it
+	 * any other.
+	 */
+	private static VersionResponse<CharacterResponse> answeredWithTheContent(VersionAccess<Character> access) {
+		throw new UnsupportedOperationException("A character is answered with its content");
+	}
+
+	@Override
+	protected VersionResponse<CharacterResponse> versionResponse(UUID contentId, VersionAccess<Character> access,
+			AuthenticatedCaller caller) {
+		Character character = access.body();
+		return CharacterResponseMapper.toVersionResponse(access, this.references.lookupsOf(contentId, character),
+				this.firstAppearances.referencesFor(List.of(character)), this.images);
 	}
 
 	/**
@@ -177,7 +202,7 @@ class CharacterController extends ContentController<Character, CharacterResponse
 		ImageChange change = CharacterRequestMapper.toImageChange(request, image);
 		VersionAccess<Character> version = this.service.edit(caller.permissions(), caller.user(), id, number, written,
 				change);
-		return versionResponse(version);
+		return versionResponse(id, version, caller);
 	}
 
 }

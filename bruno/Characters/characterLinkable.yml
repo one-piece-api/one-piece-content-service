@@ -67,6 +67,7 @@ examples:
           {
             "content": [
               {
+                "gender": "MALE",
                 "id": "",
                 "names": {},
                 "romaji": ""

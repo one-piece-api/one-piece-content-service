@@ -5,12 +5,14 @@ import dev.onepieceapi.contentservice.domain.character.CharacterTranslation;
 import dev.onepieceapi.contentservice.domain.character.Epithet;
 import dev.onepieceapi.contentservice.domain.character.FruitUse;
 import dev.onepieceapi.contentservice.domain.character.Membership;
+import dev.onepieceapi.contentservice.domain.character.Relative;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.domain.workflow.Version;
 import dev.onepieceapi.contentservice.persistence.entity.CharacterEpithetEntity;
 import dev.onepieceapi.contentservice.persistence.entity.CharacterFields;
 import dev.onepieceapi.contentservice.persistence.entity.CharacterFruitUseEmbeddable;
 import dev.onepieceapi.contentservice.persistence.entity.CharacterMembershipEntity;
+import dev.onepieceapi.contentservice.persistence.entity.CharacterRelativeEmbeddable;
 import dev.onepieceapi.contentservice.persistence.entity.CharacterTranslationEmbeddable;
 import dev.onepieceapi.contentservice.persistence.entity.CharacterVersionEntity;
 import lombok.experimental.UtilityClass;
@@ -41,6 +43,7 @@ public class CharacterVersionMapper {
 			.speciesIds(entity.getSpeciesIds())
 			.affiliations(entity.getAffiliations().stream().map(CharacterVersionMapper::toDomain).toList())
 			.devilFruits(entity.getDevilFruits().stream().map(CharacterVersionMapper::toDomain).toList())
+			.relatives(entity.getRelatives().stream().map(CharacterVersionMapper::toDomain).toList())
 			.imageId(entity.getImageId())
 			.firstAppearance(new StoryPoint(entity.getFirstAppearanceChapterId(), entity.getFirstAppearanceEpisodeId()))
 			.build();
@@ -63,6 +66,7 @@ public class CharacterVersionMapper {
 			.speciesIds(body.speciesIds())
 			.affiliations(body.affiliations())
 			.devilFruits(body.devilFruits())
+			.relatives(body.relatives())
 			.imageId(body.imageId())
 			.firstAppearance(FirstAppearanceMapper.toIds(body.firstAppearance()))
 			.build(), now);
@@ -84,6 +88,10 @@ public class CharacterVersionMapper {
 
 	private static FruitUse toDomain(CharacterFruitUseEmbeddable use) {
 		return new FruitUse(use.getDevilFruitContentId(), use.isFormer());
+	}
+
+	private static Relative toDomain(CharacterRelativeEmbeddable relative) {
+		return new Relative(relative.getRelativeContentId(), relative.getKind());
 	}
 
 	/** Sorted by language code, so the same epithet always reads the same way. */

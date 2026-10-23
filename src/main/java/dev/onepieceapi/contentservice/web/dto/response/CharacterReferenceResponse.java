@@ -1,5 +1,7 @@
 package dev.onepieceapi.contentservice.web.dto.response;
 
+import dev.onepieceapi.contentservice.domain.character.Gender;
+
 import java.util.Map;
 import java.util.UUID;
 
@@ -10,7 +12,8 @@ import java.util.UUID;
  * @param id the content id of the character
  * @param romaji null when the character has nothing approved to call it by
  * @param names the name per language code, for the languages that have one
+ * @param gender null when the character has nothing approved to call it by
  */
-public record CharacterReferenceResponse(UUID id, String romaji, Map<String, String> names) {
+public record CharacterReferenceResponse(UUID id, String romaji, Map<String, String> names, Gender gender) {
 
 }

@@ -46,6 +46,12 @@ http:
         },
         "gender": "MALE",
         "japaneseName": "",
+        "relatives": [
+          {
+            "kind": "PARENT",
+            "relative": ""
+          }
+        ],
         "removeImage": false,
         "romaji": "",
         "species": [],
@@ -105,6 +111,12 @@ examples:
             },
             "gender": "MALE",
             "japaneseName": "",
+            "relatives": [
+              {
+                "kind": "PARENT",
+                "relative": ""
+              }
+            ],
             "removeImage": false,
             "romaji": "",
             "species": [],
@@ -187,6 +199,28 @@ examples:
                 "url": ""
               },
               "japaneseName": "",
+              "relatives": [
+                {
+                  "kind": "PARENT",
+                  "relative": {
+                    "gender": "MALE",
+                    "id": "",
+                    "names": {},
+                    "romaji": ""
+                  }
+                }
+              ],
+              "relativesOf": [
+                {
+                  "kind": "PARENT",
+                  "relative": {
+                    "gender": "MALE",
+                    "id": "",
+                    "names": {},
+                    "romaji": ""
+                  }
+                }
+              ],
               "romaji": "",
               "species": [
                 {
@@ -256,6 +290,12 @@ examples:
             },
             "gender": "MALE",
             "japaneseName": "",
+            "relatives": [
+              {
+                "kind": "PARENT",
+                "relative": ""
+              }
+            ],
             "removeImage": false,
             "romaji": "",
             "species": [],
@@ -328,6 +368,12 @@ examples:
             },
             "gender": "MALE",
             "japaneseName": "",
+            "relatives": [
+              {
+                "kind": "PARENT",
+                "relative": ""
+              }
+            ],
             "removeImage": false,
             "romaji": "",
             "species": [],

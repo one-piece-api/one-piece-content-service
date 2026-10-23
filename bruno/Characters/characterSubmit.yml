@@ -113,6 +113,28 @@ examples:
                 "url": ""
               },
               "japaneseName": "",
+              "relatives": [
+                {
+                  "kind": "PARENT",
+                  "relative": {
+                    "gender": "MALE",
+                    "id": "",
+                    "names": {},
+                    "romaji": ""
+                  }
+                }
+              ],
+              "relativesOf": [
+                {
+                  "kind": "PARENT",
+                  "relative": {
+                    "gender": "MALE",
+                    "id": "",
+                    "names": {},
+                    "romaji": ""
+                  }
+                }
+              ],
               "romaji": "",
               "species": [
                 {

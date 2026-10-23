@@ -98,6 +98,12 @@ public class CharacterVersionEntity extends VersionBodyEntity {
 	@OrderColumn(name = "position")
 	private List<CharacterFruitUseEmbeddable> devilFruits = new ArrayList<>();
 
+	/** Its relatives, in the order they are shown. */
+	@ElementCollection
+	@CollectionTable(name = "character_version_relative", joinColumns = @JoinColumn(name = "version_id"))
+	@OrderColumn(name = "position")
+	private List<CharacterRelativeEmbeddable> relatives = new ArrayList<>();
+
 	/** The id of its image; null for none. */
 	private String imageId;
 
@@ -139,6 +145,10 @@ public class CharacterVersionEntity extends VersionBodyEntity {
 		fields.devilFruits()
 			.forEach(use -> this.devilFruits
 				.add(new CharacterFruitUseEmbeddable(use.devilFruitContentId(), use.former())));
+		this.relatives.clear();
+		fields.relatives()
+			.forEach(relative -> this.relatives
+				.add(new CharacterRelativeEmbeddable(relative.relativeContentId(), relative.kind())));
 		touch(now);
 	}
 

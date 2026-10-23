@@ -2,11 +2,13 @@ package dev.onepieceapi.contentservice.web.mapper;
 
 import dev.onepieceapi.contentservice.domain.affiliation.AffiliationReference;
 import dev.onepieceapi.contentservice.domain.character.Character;
+import dev.onepieceapi.contentservice.domain.character.CharacterLookups;
 import dev.onepieceapi.contentservice.domain.character.CharacterReference;
 import dev.onepieceapi.contentservice.domain.character.CharacterTranslation;
 import dev.onepieceapi.contentservice.domain.character.Epithet;
 import dev.onepieceapi.contentservice.domain.character.FruitUse;
 import dev.onepieceapi.contentservice.domain.character.Membership;
+import dev.onepieceapi.contentservice.domain.character.Relative;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitReference;
 import dev.onepieceapi.contentservice.domain.species.SpeciesReference;
 import dev.onepieceapi.contentservice.domain.story.NumberedReference;
@@ -22,6 +24,7 @@ import dev.onepieceapi.contentservice.web.dto.response.DevilFruitReferenceRespon
 import dev.onepieceapi.contentservice.web.dto.response.EpithetResponse;
 import dev.onepieceapi.contentservice.web.dto.response.FruitUseResponse;
 import dev.onepieceapi.contentservice.web.dto.response.MembershipResponse;
+import dev.onepieceapi.contentservice.web.dto.response.RelativeResponse;
 import dev.onepieceapi.contentservice.web.dto.response.SpeciesReferenceResponse;
 import dev.onepieceapi.contentservice.web.dto.response.VersionResponse;
 import lombok.experimental.UtilityClass;
@@ -41,11 +44,9 @@ public class CharacterResponseMapper {
 
 	/** A version of a Character as its caller meets it, with everything it says. */
 	public VersionResponse<CharacterResponse> toVersionResponse(VersionAccess<Character> access,
-			Map<UUID, SpeciesReference> species, Map<UUID, AffiliationReference> affiliations,
-			Map<UUID, DevilFruitReference> devilFruits, Map<UUID, NumberedReference> storyItems,
-			ImageResponseMapper images) {
+			CharacterLookups lookups, Map<UUID, NumberedReference> storyItems, ImageResponseMapper images) {
 		return ContentResponseMapper.toVersionResponse(access,
-				character -> toResponse(character, species, affiliations, devilFruits, storyItems, images));
+				character -> toResponse(character, lookups, storyItems, images));
 	}
 
 	/**
@@ -59,8 +60,7 @@ public class CharacterResponseMapper {
 	}
 
 	/** Everything the version says, its lists in their order. */
-	public CharacterResponse toResponse(Character character, Map<UUID, SpeciesReference> species,
-			Map<UUID, AffiliationReference> affiliations, Map<UUID, DevilFruitReference> devilFruits,
+	public CharacterResponse toResponse(Character character, CharacterLookups lookups,
 			Map<UUID, NumberedReference> storyItems, ImageResponseMapper images) {
 		Map<String, CharacterTranslationResponse> translations = new TreeMap<>();
 		character.translations()
@@ -74,9 +74,16 @@ public class CharacterResponseMapper {
 			.birthday(character.birthday())
 			.epithets(character.epithets().stream().map(CharacterResponseMapper::toResponse).toList())
 			.aliases(character.aliases())
-			.species(character.speciesIds().stream().map(id -> toSpeciesResponse(id, species)).toList())
-			.affiliations(character.affiliations().stream().map(entry -> toResponse(entry, affiliations)).toList())
-			.devilFruits(character.devilFruits().stream().map(entry -> toResponse(entry, devilFruits)).toList())
+			.species(character.speciesIds().stream().map(id -> toSpeciesResponse(id, lookups.species())).toList())
+			.affiliations(
+					character.affiliations().stream().map(entry -> toResponse(entry, lookups.affiliations())).toList())
+			.devilFruits(
+					character.devilFruits().stream().map(entry -> toResponse(entry, lookups.devilFruits())).toList())
+			.relatives(character.relatives().stream().map(entry -> toResponse(entry, lookups.relatives())).toList())
+			.relativesOf(lookups.relativesOf()
+				.stream()
+				.map(entry -> new RelativeResponse(toResponse(entry.character()), entry.kind()))
+				.toList())
 			.image(images.toResponse(character.imageId()))
 			.firstAppearance(FirstAppearanceMapper.toResponse(character.firstAppearance(), storyItems))
 			.build();
@@ -111,6 +118,15 @@ public class CharacterResponseMapper {
 				: AffiliationResponseMapper.toResponse(reference);
 	}
 
+	/** The relative as of today, with what it is to the character. */
+	private static RelativeResponse toResponse(Relative relative, Map<UUID, CharacterReference> relatives) {
+		CharacterReference reference = relatives.get(relative.relativeContentId());
+		return new RelativeResponse(
+				reference == null ? new CharacterReferenceResponse(relative.relativeContentId(), null, Map.of(), null)
+						: toResponse(reference),
+				relative.kind());
+	}
+
 	/** The fruit as of today, with whether the character still has its power. */
 	private static FruitUseResponse toResponse(FruitUse use, Map<UUID, DevilFruitReference> devilFruits) {
 		return new FruitUseResponse(toDevilFruitResponse(use.devilFruitContentId(), devilFruits), use.former());
@@ -135,7 +151,8 @@ public class CharacterResponseMapper {
 
 	/** A character a bounty may point to. */
 	public CharacterReferenceResponse toResponse(CharacterReference reference) {
-		return new CharacterReferenceResponse(reference.id(), reference.romaji(), reference.names());
+		return new CharacterReferenceResponse(reference.id(), reference.romaji(), reference.names(),
+				reference.gender());
 	}
 
 	private static CharacterTranslationResponse toResponse(CharacterTranslation translation) {

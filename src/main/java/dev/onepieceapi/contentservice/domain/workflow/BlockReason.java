@@ -83,6 +83,14 @@ public enum BlockReason {
 	 * online, a fruit that has one user at a time while several characters online use it,
 	 * has their {@code count} and the first {@code characters}, with id and romaji.
 	 */
-	DEVIL_FRUIT_IN_USE
+	DEVIL_FRUIT_IN_USE,
+
+	/**
+	 * The relative of a character online already names the character as one of its
+	 * relatives, and a pair is linked by one of the two only (implementation plan of the
+	 * Character, C12). The detail names the entry ({@code relativesIndex}) and the
+	 * relative ({@code relativeId}, {@code relativeRomaji}).
+	 */
+	RELATIVE_ALREADY_LINKED
 
 }

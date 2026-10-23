@@ -5,6 +5,7 @@ import dev.onepieceapi.contentservice.domain.character.CharacterTranslation;
 import dev.onepieceapi.contentservice.domain.character.Epithet;
 import dev.onepieceapi.contentservice.domain.character.FruitUse;
 import dev.onepieceapi.contentservice.domain.character.Membership;
+import dev.onepieceapi.contentservice.domain.character.Relative;
 import dev.onepieceapi.contentservice.domain.image.ImageChange;
 import dev.onepieceapi.contentservice.domain.workflow.ContentFilter;
 import dev.onepieceapi.contentservice.web.dto.request.CharacterListRequest;
@@ -13,6 +14,7 @@ import dev.onepieceapi.contentservice.web.dto.request.CharacterTranslationReques
 import dev.onepieceapi.contentservice.web.dto.request.EpithetRequest;
 import dev.onepieceapi.contentservice.web.dto.request.FruitUseRequest;
 import dev.onepieceapi.contentservice.web.dto.request.MembershipRequest;
+import dev.onepieceapi.contentservice.web.dto.request.RelativeRequest;
 import lombok.experimental.UtilityClass;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -57,6 +59,11 @@ public class CharacterRequestMapper {
 				.stream()
 				.map(CharacterRequestMapper::toDomain)
 				.toList())
+			.relatives(Optional.ofNullable(request.relatives())
+				.orElseGet(List::of)
+				.stream()
+				.map(CharacterRequestMapper::toDomain)
+				.toList())
 			.firstAppearance(FirstAppearanceMapper.toDomain(request.firstAppearance()))
 			.build();
 	}
@@ -90,6 +97,10 @@ public class CharacterRequestMapper {
 		}
 		return request.devilFruit() == null ? filter
 				: filter.withAttribute(Character.DEVIL_FRUIT_ATTRIBUTE, request.devilFruit());
+	}
+
+	private static Relative toDomain(RelativeRequest relative) {
+		return new Relative(relative.relative(), relative.kind());
 	}
 
 	private static FruitUse toDomain(FruitUseRequest use) {

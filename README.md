@@ -57,13 +57,18 @@ copertina PNG), **Capitolo** ed **Episodio** (relazioni verso arco/volume, date 
   di epiteti (per lingua), alias e specie (`/species/linkable`, al massimo 20 epiteti e 20 alias),
   ritratto PNG opzionale (4:5, senza trasparenza), prima apparizione. Appartenenze (`affiliations`,
   lista ordinata: affiliazione, `role` per lingua, `marineRank` solo se l'affiliazione è `NAVY`,
-  `former`) e frutti del diavolo (`devilFruits`, lista ordinata: frutto, `former`). Filtri
+  `former`), frutti del diavolo (`devilFruits`, lista ordinata: frutto, `former`) e parenti (`relatives`, lista
+  ordinata: personaggio, `kind` letto "il parente è `kind` di questo personaggio"). Filtri
   `?characterStatus=`, `?species=`, `?affiliation=`, `?affiliationKind=` e `?devilFruit=` (solo
   appartenenze e frutti attuali). Va online solo con prima apparizione, ogni specie, affiliazione e
   frutto online (`RELATED_NOT_ONLINE`, `speciesIndex`/`affiliationsIndex`/`devilFruitsIndex`), un grado
   solo in un'affiliazione online `NAVY` (`MARINE_RANK_NOT_ALLOWED`) e un frutto attuale che nessun altro
   personaggio online ha come attuale (`DEVIL_FRUIT_IN_USE`, mai in salvataggio; verificato sotto un lock
-  sul frutto), salvo i frutti con `multipleUsers`; un capitolo o un episodio con personaggi online non si ritira (voce `characters`).
+  sul frutto), salvo i frutti con `multipleUsers`. Un legame di parentela si memorizza una sola volta, da uno dei due:
+  non il personaggio stesso, e solo se nessuna versione online o aperta dell'altro nomina questo (422
+  `relatives[i].relative`; in pubblicazione `RELATIVE_ALREADY_LINKED`, sotto un lock per coppia).
+  La risposta aggiunge `relativesOf` (sola lettura): i personaggi online che nominano questo, con il tipo
+  inverso. Un personaggio non si ritira finché personaggi online lo nominano come parente. Un capitolo o un episodio con personaggi online non si ritira (voce `characters`).
 - **Dashboard** (`/dashboard`): contatori per stato, attività recente del chiamante
   (dall'audit log) e pagine per stato trasversali alle entità.
 

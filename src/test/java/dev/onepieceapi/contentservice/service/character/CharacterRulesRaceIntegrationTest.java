@@ -2,6 +2,8 @@ package dev.onepieceapi.contentservice.service.character;
 
 import dev.onepieceapi.contentservice.domain.character.Character;
 import dev.onepieceapi.contentservice.domain.character.FruitUse;
+import dev.onepieceapi.contentservice.domain.character.Relative;
+import dev.onepieceapi.contentservice.domain.character.RelativeKind;
 import dev.onepieceapi.contentservice.domain.security.User;
 import dev.onepieceapi.contentservice.domain.workflow.BlockReason;
 import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
@@ -33,6 +35,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
@@ -59,7 +62,9 @@ import static org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTest
  * go online (implementation plan of the Character, C10, D12). The side that comes first
  * is held right after it read the users of the fruit, and the other is started: it must
  * wait for the first to finish, then find what the first wrote and be refused. Not run
- * inside a test transaction: each caller commits, as in production.
+ * inside a test transaction: each caller commits, as in production. The same for two
+ * characters going online each naming the other as a relative (C12, D13): the pair is
+ * held by an advisory lock.
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = Replace.NONE)
@@ -181,6 +186,65 @@ class CharacterRulesRaceIntegrationTest {
 		Boolean secondOnline = transaction.execute(status -> this.characterRepository.findOnline(second).isPresent());
 		assertThat(firstOnline).isTrue();
 		assertThat(secondOnline).isFalse();
+	}
+
+	@Test
+	void twoCharactersNamingEachOtherPublishedTogetherGoOnlineOneAfterTheOtherAndOnlyTheFirstDoes() throws Exception {
+		var transaction = new TransactionTemplate(this.transactionManager);
+		UUID first = transaction
+			.execute(status -> this.fixtures.character(PUBLISHED, this.fixtures.complete("Pair Ace")));
+		UUID second = transaction
+			.execute(status -> this.fixtures.character(PUBLISHED, this.fixtures.complete("Pair Sabo")));
+		transaction.executeWithoutResult(status -> {
+			this.fixtures.characterVersion(first, 2, READY_TO_PUBLISH, withRelative("Pair Ace", second));
+			this.fixtures.characterVersion(second, 2, READY_TO_PUBLISH, withRelative("Pair Sabo", first));
+		});
+		var firstChecked = new CountDownLatch(1);
+		var letFirstGo = new CountDownLatch(1);
+		CharacterVersionRepository holdingCheck = mock(CharacterVersionRepository.class,
+				delegatesTo(this.characterRepository));
+		doAnswer(invocation -> {
+			boolean linked = this.characterRepository.namesAsRelative(second, first, invocation.getArgument(2));
+			firstChecked.countDown();
+			letFirstGo.await(WAIT_SECONDS, TimeUnit.SECONDS);
+			return linked;
+		}).when(holdingCheck).namesAsRelative(eq(second), eq(first), any());
+		var holding = this.fixtures.service(holdingCheck);
+		var free = this.fixtures.service();
+
+		try (var executor = Executors.newFixedThreadPool(2)) {
+			Future<?> publishFirst = executor
+				.submit(() -> transaction.execute(status -> holding.publish(PUBLISHER, this.luffy, first, 2)));
+			assertThat(firstChecked.await(WAIT_SECONDS, TimeUnit.SECONDS)).isTrue();
+			Future<?> publishSecond = executor
+				.submit(() -> transaction.execute(status -> free.publish(PUBLISHER, this.vivi, second, 2)));
+
+			Thread.sleep(SETTLE_MILLIS);
+			assertThat(publishSecond.isDone()).as("the second publication waits for the first").isFalse();
+			letFirstGo.countDown();
+
+			assertThat(publishFirst.get(WAIT_SECONDS, TimeUnit.SECONDS)).isNotNull();
+			assertThatThrownBy(() -> publishSecond.get(WAIT_SECONDS, TimeUnit.SECONDS))
+				.isInstanceOf(ExecutionException.class)
+				.hasCauseInstanceOf(VersionActionBlockedException.class)
+				.cause()
+				.satisfies(refused -> assertThat(((VersionActionBlockedException) refused).getDetails())
+					.containsEntry("reason", BlockReason.RELATIVE_ALREADY_LINKED));
+		}
+
+		Boolean firstNamesSecond = transaction
+			.execute(status -> this.characterRepository.namesAsRelative(first, second, Set.of(PUBLISHED)));
+		Boolean secondNamesFirst = transaction
+			.execute(status -> this.characterRepository.namesAsRelative(second, first, Set.of(PUBLISHED)));
+		assertThat(firstNamesSecond).isTrue();
+		assertThat(secondNamesFirst).isFalse();
+	}
+
+	private Character withRelative(String romaji, UUID relative) {
+		return this.fixtures.complete(romaji)
+			.toBuilder()
+			.relatives(List.of(new Relative(relative, RelativeKind.SIBLING)))
+			.build();
 	}
 
 	private Character withFruit(String romaji, UUID fruit) {

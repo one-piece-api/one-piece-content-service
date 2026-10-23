@@ -33,6 +33,7 @@ import java.util.UUID;
  * @param speciesIds the content ids of its species (D8), in order; none is "not stated"
  * @param affiliations its memberships (D10), in order; none is never null
  * @param devilFruits the fruits it ate (D12), in order; none is never null
+ * @param relatives its relatives (D13), in order; none is never null
  * @param imageId its portrait (D7), optional and not localized
  * @param firstAppearance where it is first shown or named (D9); {@link StoryPoint#NONE}
  * for none, which a draft may keep - it is required to submit and to go online
@@ -40,8 +41,8 @@ import java.util.UUID;
 @Builder(toBuilder = true)
 public record Character(String romaji, String japaneseName, Map<String, CharacterTranslation> translations,
 		CharacterStatus status, Gender gender, MonthDay birthday, List<Epithet> epithets, List<String> aliases,
-		List<UUID> speciesIds, List<Membership> affiliations, List<FruitUse> devilFruits, String imageId,
-		StoryPoint firstAppearance) implements ContentBody<Character>, FirstAppearing {
+		List<UUID> speciesIds, List<Membership> affiliations, List<FruitUse> devilFruits, List<Relative> relatives,
+		String imageId, StoryPoint firstAppearance) implements ContentBody<Character>, FirstAppearing {
 
 	public static final int ROMAJI_MAX_LENGTH = 100;
 
@@ -97,6 +98,7 @@ public record Character(String romaji, String japaneseName, Map<String, Characte
 		speciesIds = speciesIds == null ? List.of() : List.copyOf(speciesIds);
 		affiliations = affiliations == null ? List.of() : List.copyOf(affiliations);
 		devilFruits = devilFruits == null ? List.of() : List.copyOf(devilFruits);
+		relatives = relatives == null ? List.of() : List.copyOf(relatives);
 		firstAppearance = StoryPoint.orNone(firstAppearance);
 	}
 
