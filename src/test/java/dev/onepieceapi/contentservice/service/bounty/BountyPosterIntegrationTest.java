@@ -25,7 +25,6 @@ import dev.onepieceapi.contentservice.service.exception.VersionIdenticalExceptio
 import dev.onepieceapi.contentservice.service.image.ContentImages;
 import dev.onepieceapi.contentservice.service.image.ImageNormalizer;
 import dev.onepieceapi.contentservice.service.image.ImageService;
-import dev.onepieceapi.contentservice.service.image.PngImageEncoder;
 import dev.onepieceapi.contentservice.service.validation.ImageValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -54,6 +53,7 @@ import static dev.onepieceapi.contentservice.service.bounty.BountyFixtures.CHOPP
 import static dev.onepieceapi.contentservice.service.bounty.BountyFixtures.EDITOR;
 import static dev.onepieceapi.contentservice.service.bounty.BountyFixtures.READER;
 import static dev.onepieceapi.contentservice.service.bounty.BountyFixtures.REVIEWER;
+import static dev.onepieceapi.contentservice.service.image.TestImages.ENCODER;
 import static dev.onepieceapi.contentservice.service.image.TestImages.drawn;
 import static dev.onepieceapi.contentservice.service.image.TestImages.opaquePng;
 import static dev.onepieceapi.contentservice.service.image.TestImages.png;
@@ -67,7 +67,7 @@ import static org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTest
  * reading (implementation plan of the Bounty, D4) by the same mechanism as the image of a
  * Devil Fruit and the cover of a volume, covered by
  * {@code DevilFruitImageIntegrationTest} and {@code VolumeCoverIntegrationTest}: stored
- * with the draft as a PNG of the canvas, shared by identical uploads, kept by new
+ * with the draft as a WebP of the canvas, shared by identical uploads, kept by new
  * versions, deleted as soon as no version uses it, and seen only by whoever sees a
  * version using it.
  */
@@ -140,8 +140,7 @@ class BountyPosterIntegrationTest {
 	void setUp() {
 		var clock = Clock.fixed(BountyFixtures.NOW, ZoneOffset.UTC);
 		var store = new JpaImageStore(this.imageRepository, clock);
-		var images = new ContentImages(new ImageValidator(), new ImageNormalizer(new PngImageEncoder()), store,
-				POSTER_IMAGES);
+		var images = new ContentImages(new ImageValidator(), new ImageNormalizer(ENCODER), store, POSTER_IMAGES);
 		this.fixtures = BountyFixtures.builder()
 			.contents(this.contentRepository)
 			.bounties(this.bountyRepository)
@@ -158,7 +157,7 @@ class BountyPosterIntegrationTest {
 	}
 
 	@Test
-	void aNewBountyKeepsItsUploadAsAPngOfTheCanvasAndEditsKeepIt() {
+	void aNewBountyKeepsItsUploadAsAWebpOfTheCanvasAndEditsKeepIt() {
 		var content = this.service.create(EDITOR, CHOPPER, bounty(1), ImageChange.replaceWith(opaquePng(1120, 1600)));
 		stored();
 		String posterId = posterOf(content.id(), 1);
@@ -169,7 +168,7 @@ class BountyPosterIntegrationTest {
 
 		assertThat(posterOf(content.id(), 1)).isEqualTo(posterId);
 		var image = this.imageService.get(EDITOR, posterId);
-		assertThat(image.contentType()).isEqualTo("image/png");
+		assertThat(image.contentType()).isEqualTo("image/webp");
 		assertThat(image.width()).isEqualTo(420);
 		assertThat(image.height()).isEqualTo(600);
 	}

@@ -29,7 +29,7 @@ import dev.onepieceapi.contentservice.service.audit.AuditLogService;
 import dev.onepieceapi.contentservice.service.exception.VersionActionBlockedException;
 import dev.onepieceapi.contentservice.service.image.ContentImages;
 import dev.onepieceapi.contentservice.service.image.ImageNormalizer;
-import dev.onepieceapi.contentservice.service.image.PngImageEncoder;
+import dev.onepieceapi.contentservice.service.image.TestImages;
 import dev.onepieceapi.contentservice.service.validation.ArcValidator;
 import dev.onepieceapi.contentservice.service.validation.ChapterValidator;
 import dev.onepieceapi.contentservice.service.validation.EpisodeValidator;
@@ -172,7 +172,7 @@ class StoryItemsRulesIntegrationTest {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
 		var auditLogService = new AuditLogService(this.auditLogRepository, clock);
 		var properties = new RulesProperties(5);
-		var images = new ContentImages(new ImageValidator(), new ImageNormalizer(new PngImageEncoder()),
+		var images = new ContentImages(new ImageValidator(), new ImageNormalizer(TestImages.ENCODER),
 				new JpaImageStore(this.imageRepository, clock), StoryFixtures.VOLUME_IMAGES);
 		this.arcs = new ArcService(this.arcRepository, this.contentVersionRepository, this.contentRepository,
 				new ArcValidator(this.arcRepository, this.languageRepository, this.sagaRepository),

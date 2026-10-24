@@ -26,7 +26,6 @@ import dev.onepieceapi.contentservice.service.exception.VersionIdenticalExceptio
 import dev.onepieceapi.contentservice.service.image.ContentImages;
 import dev.onepieceapi.contentservice.service.image.ImageNormalizer;
 import dev.onepieceapi.contentservice.service.image.ImageService;
-import dev.onepieceapi.contentservice.service.image.PngImageEncoder;
 import dev.onepieceapi.contentservice.service.validation.ImageValidator;
 import dev.onepieceapi.contentservice.service.validation.VolumeValidator;
 import org.junit.jupiter.api.BeforeEach;
@@ -52,6 +51,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import static dev.onepieceapi.contentservice.domain.workflow.VersionStatus.IN_REVIEW;
+import static dev.onepieceapi.contentservice.service.image.TestImages.ENCODER;
 import static dev.onepieceapi.contentservice.service.image.TestImages.drawn;
 import static dev.onepieceapi.contentservice.service.image.TestImages.opaquePng;
 import static dev.onepieceapi.contentservice.service.image.TestImages.png;
@@ -64,7 +64,7 @@ import static org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTest
  * The cover of a volume against a real PostgreSQL (Testcontainers), from upload to
  * reading (implementation plan of the story structure, S6) by the same mechanism as the
  * image of a Devil Fruit, covered by {@code DevilFruitImageIntegrationTest}: stored with
- * the draft as a PNG of the canvas, shared by identical uploads, kept by new versions,
+ * the draft as a WebP of the canvas, shared by identical uploads, kept by new versions,
  * deleted as soon as no version uses it, and seen only by whoever sees a version using
  * it.
  */
@@ -138,7 +138,7 @@ class VolumeCoverIntegrationTest {
 	void setUp() {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
 		var store = new JpaImageStore(this.imageRepository, clock);
-		var images = new ContentImages(new ImageValidator(), new ImageNormalizer(new PngImageEncoder()), store,
+		var images = new ContentImages(new ImageValidator(), new ImageNormalizer(ENCODER), store,
 				StoryFixtures.VOLUME_IMAGES);
 		this.service = new VolumeService(this.contentVersionRepository, this.contentRepository,
 				new AuditLogService(this.auditLogRepository, clock), clock, images,
@@ -150,7 +150,7 @@ class VolumeCoverIntegrationTest {
 	}
 
 	@Test
-	void aNewVolumeKeepsItsUploadAsAPngOfTheCanvasAndEditsKeepIt() {
+	void aNewVolumeKeepsItsUploadAsAWebpOfTheCanvasAndEditsKeepIt() {
 		var content = this.service.create(EDITOR, this.nami, StoryFixtures.completeVolume(1),
 				ImageChange.replaceWith(opaquePng(1120, 1600)));
 		stored();
@@ -162,7 +162,7 @@ class VolumeCoverIntegrationTest {
 
 		assertThat(coverOf(content.id(), 1)).isEqualTo(coverId);
 		var image = this.imageService.get(EDITOR, coverId);
-		assertThat(image.contentType()).isEqualTo("image/png");
+		assertThat(image.contentType()).isEqualTo("image/webp");
 		assertThat(image.width()).isEqualTo(420);
 		assertThat(image.height()).isEqualTo(600);
 	}

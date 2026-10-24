@@ -34,7 +34,7 @@ import dev.onepieceapi.contentservice.service.exception.ValueInvalidException;
 import dev.onepieceapi.contentservice.service.exception.VersionIncompleteException;
 import dev.onepieceapi.contentservice.service.image.ContentImages;
 import dev.onepieceapi.contentservice.service.image.ImageNormalizer;
-import dev.onepieceapi.contentservice.service.image.PngImageEncoder;
+import dev.onepieceapi.contentservice.service.image.TestImages;
 import dev.onepieceapi.contentservice.service.validation.ArcValidator;
 import dev.onepieceapi.contentservice.service.validation.ChapterValidator;
 import dev.onepieceapi.contentservice.service.validation.EpisodeValidator;
@@ -182,7 +182,7 @@ class StoryItemsDraftIntegrationTest {
 	void setUp() {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
 		var auditLogService = new AuditLogService(this.auditLogRepository, clock);
-		var images = new ContentImages(new ImageValidator(), new ImageNormalizer(new PngImageEncoder()),
+		var images = new ContentImages(new ImageValidator(), new ImageNormalizer(TestImages.ENCODER),
 				new JpaImageStore(this.imageRepository, clock), StoryFixtures.VOLUME_IMAGES);
 		this.volumes = new VolumeService(this.contentVersionRepository, this.contentRepository, auditLogService, clock,
 				images,

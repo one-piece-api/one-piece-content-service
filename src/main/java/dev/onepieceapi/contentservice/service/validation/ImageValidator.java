@@ -21,8 +21,8 @@ import java.util.Map;
  * size and ratio from the header - before decoding, so a small file that would decode
  * into a huge image never does - and last the transparency of the decoded pixels. Answers
  * the decoded image, for {@code ImageNormalizer}; refuses with one
- * {@link ImageRefusedException} per reason. A file that looks like a PNG but does not
- * decode is an unsupported format.
+ * {@link ImageRefusedException} per reason. A file that looks like a PNG or a WebP but
+ * does not decode is an unsupported format.
  */
 @Component
 public class ImageValidator {

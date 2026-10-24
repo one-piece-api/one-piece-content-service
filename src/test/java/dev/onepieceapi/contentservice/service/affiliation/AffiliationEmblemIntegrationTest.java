@@ -25,7 +25,6 @@ import dev.onepieceapi.contentservice.service.exception.ImageRefusedException;
 import dev.onepieceapi.contentservice.service.image.ContentImages;
 import dev.onepieceapi.contentservice.service.image.ImageNormalizer;
 import dev.onepieceapi.contentservice.service.image.ImageService;
-import dev.onepieceapi.contentservice.service.image.PngImageEncoder;
 import dev.onepieceapi.contentservice.service.validation.ImageValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -50,6 +49,7 @@ import java.util.UUID;
 import static dev.onepieceapi.contentservice.service.affiliation.AffiliationFixtures.CHOPPER;
 import static dev.onepieceapi.contentservice.service.affiliation.AffiliationFixtures.EDITOR;
 import static dev.onepieceapi.contentservice.service.affiliation.AffiliationFixtures.READER;
+import static dev.onepieceapi.contentservice.service.image.TestImages.ENCODER;
 import static dev.onepieceapi.contentservice.service.image.TestImages.opaquePng;
 import static dev.onepieceapi.contentservice.service.image.TestImages.transparentPng;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -134,8 +134,7 @@ class AffiliationEmblemIntegrationTest {
 	void setUp() {
 		var clock = Clock.fixed(AffiliationFixtures.NOW, ZoneOffset.UTC);
 		var store = new JpaImageStore(this.imageRepository, clock);
-		var images = new ContentImages(new ImageValidator(), new ImageNormalizer(new PngImageEncoder()), store,
-				EMBLEM_IMAGES);
+		var images = new ContentImages(new ImageValidator(), new ImageNormalizer(ENCODER), store, EMBLEM_IMAGES);
 		this.fixtures = AffiliationFixtures.builder()
 			.contents(this.contentRepository)
 			.affiliations(this.affiliationRepository)
@@ -153,7 +152,7 @@ class AffiliationEmblemIntegrationTest {
 	}
 
 	@Test
-	void aTransparentSquareEmblemIsKeptAsAPngOfTheCanvasAndEditsKeepIt() {
+	void aTransparentSquareEmblemIsKeptAsAWebpOfTheCanvasAndEditsKeepIt() {
 		var content = this.service.create(EDITOR, CHOPPER, affiliation("Mugiwara no Ichimi"),
 				ImageChange.replaceWith(transparentPng(1024, 1024)));
 		stored();
@@ -164,7 +163,7 @@ class AffiliationEmblemIntegrationTest {
 
 		assertThat(emblemOf(content.id())).isEqualTo(emblemId);
 		var image = this.imageService.get(EDITOR, emblemId);
-		assertThat(image.contentType()).isEqualTo("image/png");
+		assertThat(image.contentType()).isEqualTo("image/webp");
 		assertThat(image.width()).isEqualTo(400);
 		assertThat(image.height()).isEqualTo(400);
 	}

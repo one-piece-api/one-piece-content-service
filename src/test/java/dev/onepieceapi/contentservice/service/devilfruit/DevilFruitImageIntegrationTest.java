@@ -40,7 +40,6 @@ import dev.onepieceapi.contentservice.service.exception.ImageRefusedException;
 import dev.onepieceapi.contentservice.service.exception.VersionIdenticalException;
 import dev.onepieceapi.contentservice.service.image.ContentImages;
 import dev.onepieceapi.contentservice.service.image.ImageNormalizer;
-import dev.onepieceapi.contentservice.service.image.PngImageEncoder;
 import dev.onepieceapi.contentservice.service.validation.DevilFruitValidator;
 import dev.onepieceapi.contentservice.service.validation.ImageValidator;
 import org.junit.jupiter.api.BeforeEach;
@@ -71,10 +70,12 @@ import java.util.UUID;
 
 import static dev.onepieceapi.contentservice.domain.workflow.VersionStatus.IN_REVIEW;
 import static dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED;
+import static dev.onepieceapi.contentservice.service.image.TestImages.ENCODER;
 import static dev.onepieceapi.contentservice.service.image.TestImages.drawn;
 import static dev.onepieceapi.contentservice.service.image.TestImages.opaquePng;
 import static dev.onepieceapi.contentservice.service.image.TestImages.png;
 import static dev.onepieceapi.contentservice.service.image.TestImages.transparentPng;
+import static dev.onepieceapi.contentservice.service.image.TestImages.transparentWebp;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
@@ -179,8 +180,7 @@ class DevilFruitImageIntegrationTest {
 		var validator = new DevilFruitValidator(this.versionRepository, this.languageRepository, this.typeRepository,
 				this.chapterRepository, this.episodeRepository);
 		var store = new JpaImageStore(this.imageRepository, clock);
-		var images = new ContentImages(new ImageValidator(), new ImageNormalizer(new PngImageEncoder()), store,
-				PROPERTIES);
+		var images = new ContentImages(new ImageValidator(), new ImageNormalizer(ENCODER), store, PROPERTIES);
 		this.service = new DevilFruitService(
 				new DevilFruitDefinition(this.versionRepository, validator,
 						new DevilFruitRules(this.contentRepository, this.typeRepository, this.chapterRepository,
@@ -202,9 +202,9 @@ class DevilFruitImageIntegrationTest {
 	}
 
 	@Test
-	void aNewFruitKeepsItsUploadAsAPngOfTheCanvasAndEditsKeepIt() {
+	void aNewFruitKeepsItsWebpUploadAsAWebpOfTheCanvasAndEditsKeepIt() {
 		var content = this.service.create(EDITOR, this.nami, written("Mera Mera"),
-				ImageChange.replaceWith(transparentPng(1280, 1600)));
+				ImageChange.replaceWith(transparentWebp(1280, 1600)));
 		stored();
 		String imageId = imageOf(content.id(), 1);
 
@@ -213,7 +213,7 @@ class DevilFruitImageIntegrationTest {
 
 		assertThat(imageOf(content.id(), 1)).isEqualTo(imageId);
 		var image = this.imageService.get(EDITOR, imageId);
-		assertThat(image.contentType()).isEqualTo("image/png");
+		assertThat(image.contentType()).isEqualTo("image/webp");
 		assertThat(image.width()).isEqualTo(640);
 		assertThat(image.height()).isEqualTo(800);
 	}

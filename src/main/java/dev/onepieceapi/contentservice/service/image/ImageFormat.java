@@ -8,11 +8,10 @@ import java.util.Arrays;
 import java.util.Optional;
 
 /**
- * The formats an upload may come in (implementation plan of the Devil Fruit, D6),
- * recognized by their leading bytes - never by file name or {@code Content-Type} - and
- * only when static: an animated PNG is not recognized. PNG only for now: WebP waits for a
- * Java reader that decodes the transparency of lossless WebP right (TwelveMonkeys 3.15.3
- * reads its transparent pixels as alpha 3), a new constant here when it does.
+ * The formats an upload may come in (implementation plan of the Devil Fruit, D6;
+ * implementation plan WebP, W-D4), recognized by their leading bytes - never by file name
+ * or {@code Content-Type} - and only when static: an animated PNG or WebP is not
+ * recognized. Whatever the format, the stored image is WebP ({@link ImageEncoder}).
  */
 public enum ImageFormat {
 
@@ -26,9 +25,38 @@ public enum ImageFormat {
 		public ImageReader newReader() {
 			return ImageIO.getImageReadersByFormatName("png").next();
 		}
+	},
+
+	/**
+	 * Lossy or lossless, with or without alpha (RFC 9649): a RIFF container whose first
+	 * chunk is the image itself, or the extended header without its animation flag.
+	 */
+	WEBP {
+		@Override
+		boolean recognizes(byte[] bytes) {
+			if (bytes.length < WEBP_HEADER_LENGTH || !ascii(bytes, 0, 4).equals("RIFF")
+					|| !ascii(bytes, 8, 4).equals("WEBP")) {
+				return false;
+			}
+			String firstChunk = ascii(bytes, 12, 4);
+			return firstChunk.equals("VP8 ") || firstChunk.equals("VP8L")
+					|| (firstChunk.equals("VP8X") && (bytes[WEBP_EXTENDED_FLAGS] & WEBP_ANIMATION_FLAG) == 0);
+		}
+
+		@Override
+		public ImageReader newReader() {
+			return ImageIO.getImageReadersByMIMEType(WebpImageEncoder.CONTENT_TYPE).next();
+		}
 	};
 
 	private static final byte[] PNG_SIGNATURE = { (byte) 0x89, 'P', 'N', 'G', '\r', '\n', 0x1A, '\n' };
+
+	/** "RIFF", its size, "WEBP", the first chunk's type and size, the extended flags. */
+	private static final int WEBP_HEADER_LENGTH = 21;
+
+	private static final int WEBP_EXTENDED_FLAGS = 20;
+
+	private static final int WEBP_ANIMATION_FLAG = 0x02;
 
 	public static Optional<ImageFormat> of(byte[] bytes) {
 		return Arrays.stream(values()).filter(format -> format.recognizes(bytes)).findFirst();

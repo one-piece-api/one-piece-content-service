@@ -21,8 +21,8 @@ public class ImageRefusedException extends DomainException {
 	}
 
 	public static ImageRefusedException formatUnsupported() {
-		return new ImageRefusedException(ContentErrorCode.IMAGE_FORMAT_UNSUPPORTED, "The image must be a static PNG",
-				Map.of());
+		return new ImageRefusedException(ContentErrorCode.IMAGE_FORMAT_UNSUPPORTED,
+				"The image must be a static PNG or WebP", Map.of());
 	}
 
 }

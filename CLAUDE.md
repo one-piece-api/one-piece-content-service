@@ -35,7 +35,7 @@ Layered packages, one sub-package per feature inside each layer:
 - 0002 one version table with status; 0003 `published` views are the contract with public-api.
 - 0004 generic framework = Strategy: the generic service runs with each entity's `ContentDefinition`; per-entity classes only bind types.
 - 0005 entity rules are descriptor hooks (`ContentRules`), blocked actions carry a `BlockReason`.
-- 0006 images stored in PostgreSQL; 0007 natural key per entity + generic relations.
+- 0006 images stored in PostgreSQL, 0010 uploaded in WebP/PNG and stored as lossy WebP (native libwebp: glibc base image); 0007 natural key per entity + generic relations.
 - 0008 first appearance (chapter, episode or both).
 - 0009 invariants between contents: checked on publish, serialized by locks (fruit row, pair advisory lock).
 

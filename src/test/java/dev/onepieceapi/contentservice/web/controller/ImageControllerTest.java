@@ -47,14 +47,27 @@ class ImageControllerTest {
 	void anImageIsItsBytesCachedPrivatelyForGood() throws Exception {
 		byte[] bytes = { 1, 2, 3 };
 		when(this.service.get(eq(Set.of(Permission.CONTENT_READ)), eq(ID)))
-			.thenReturn(new NormalizedImage(ID, "image/png", 640, 800, bytes));
+			.thenReturn(new NormalizedImage(ID, "image/webp", 640, 800, bytes));
 
 		this.mockMvc.perform(get("/images/" + ID).with(callerWith(Permission.CONTENT_READ)))
 			.andExpect(status().isOk())
-			.andExpect(content().contentType("image/png"))
+			.andExpect(content().contentType("image/webp"))
 			.andExpect(content().bytes(bytes))
 			.andExpect(header().string("Cache-Control", "max-age=31536000, private, immutable"))
 			.andExpect(header().string("ETag", "\"" + ID + "\""));
+	}
+
+	@Test
+	void anImageStoredBeforeWebpIsStillServedAsAPngWhateverTheBrowserPrefers() throws Exception {
+		byte[] bytes = { 1, 2, 3 };
+		when(this.service.get(any(), eq(ID))).thenReturn(new NormalizedImage(ID, "image/png", 640, 800, bytes));
+
+		this.mockMvc
+			.perform(get("/images/" + ID).with(callerWith(Permission.CONTENT_READ))
+				.header("Accept", "image/avif,image/webp,*/*;q=0.8"))
+			.andExpect(status().isOk())
+			.andExpect(content().contentType("image/png"))
+			.andExpect(content().bytes(bytes));
 	}
 
 	@Test

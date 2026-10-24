@@ -4,7 +4,7 @@ Backend applicativo (Spring Boot) per il workflow editoriale dei contenuti One P
 lineare di versioni per contenuto, revisione con presa in carico, pubblicazione, ritiro e
 ripristino, su un framework generico per entità. Entità: **Devil Fruit Type** e **Devil Fruit**
 (con relazione al tipo e immagine) e la struttura narrativa — **Saga, Arco, Volume** (con
-copertina PNG), **Capitolo** ed **Episodio** (relazioni verso arco/volume, date per paese) e il
+copertina), **Capitolo** ed **Episodio** (relazioni verso arco/volume, date per paese) e il
 **Bounty** (un manifesto di taglia, chiave `posterName` + `amount`) e l'**Affiliazione**
 (ciurma, organizzazione, chiave `romaji`). Espone:
 
@@ -14,7 +14,8 @@ copertina PNG), **Capitolo** ed **Episodio** (relazioni verso arco/volume, date 
   transizioni del workflow (invio, presa in carico, approvazione, rifiuto, pubblicazione,
   archiviazione, ritiro, ripristino, nuova versione), con le azioni consentite al chiamante.
 - **Devil Fruit** (`/devil-fruits`): le stesse operazioni, più il tipo (relazione verso un
-  tipo approvato) e l'immagine PNG (salvataggio multipart, validata e normalizzata). Un frutto
+  tipo approvato) e l'immagine (salvataggio multipart; WebP o PNG statici in ingresso,
+  validata e salvata come WebP lossy, ADR-0010). Un frutto
   va online solo con il suo tipo online; un tipo con frutti online non si ritira. `multipleUsers`
   (falso di default, vero per gli SMILE) fa parte della versione. `GET /devil-fruits/linkable` elenca
   i frutti con una versione approvata (per i personaggi); ogni riga della lista dice quanti
@@ -33,12 +34,12 @@ copertina PNG), **Capitolo** ed **Episodio** (relazioni verso arco/volume, date 
   (`ONLINE_ITEMS_LINKED`).
 - **Bounty** (`/bounties`): un elemento per manifesto, chiave composta `posterName` + `amount` (slug
   `monkey-d-luffy-3000000000`; un duplicato nomina entrambi i campi), `condition`, flag `inactive`,
-  descrizione per lingua, poster PNG opzionale, prima apparizione. `previous` è il bounty sostituito
+  descrizione per lingua, poster opzionale, prima apparizione. `previous` è il bounty sostituito
   (`/bounties/linkable`): al massimo un sostituto e nessun ciclo, serializzati da un lock
   (`PREVIOUS_ALREADY_REPLACED`, `BOUNTY_CHAIN_CYCLE`). La `validity` (`ACTIVE`, `SUPERSEDED`,
   `INACTIVE`) è derivata, mai salvata; si filtra con `?validity=` e `?condition=` e si ordina per `amount`.
 - **Affiliazione** (`/affiliations`): chiave `romaji` (slug `mugiwara-no-ichimi`), nome unico per
-  lingua e descrizione, emblema PNG opzionale (quadrato, sfondo trasparente), prima apparizione.
+  lingua e descrizione, emblema opzionale (quadrato, sfondo trasparente), prima apparizione.
   `kind` (`PIRATE_CREW`, `NAVY`, `WORLD_GOVERNMENT`, `REVOLUTIONARY_ARMY`, `OTHER`): obbligatorio dalla
   prossima sottomissione (le versioni esistenti restano a `null`), filtro `?kind=`.
   `GET /affiliations/linkable` elenca le affiliazioni con una versione approvata, col `kind` (per i
@@ -48,14 +49,14 @@ copertina PNG), **Capitolo** ed **Episodio** (relazioni verso arco/volume, date 
   grado (`MARINE_RANK_IN_USE`). Un capitolo o un episodio con affiliazioni online come prima
   apparizione non si ritira (`ONLINE_ITEMS_LINKED`, voce `affiliations`).
 - **Specie** (`/species`): la razza di un personaggio. Chiave `romaji` (slug `gyojin`), nome unico per
-  lingua e descrizione, immagine PNG opzionale (ritratto 4:5, senza trasparenza richiesta), prima
+  lingua e descrizione, immagine opzionale (ritratto 4:5, senza trasparenza richiesta), prima
   apparizione. `GET /species/linkable` elenca le specie con una versione approvata (per i personaggi).
   Un capitolo o un episodio con specie online come prima apparizione non si ritira
   (`ONLINE_ITEMS_LINKED`, voce `species`), né una specie indicata da personaggi online.
 - **Personaggio** (`/characters`): chiave `romaji` (slug `nami`), nome unico per lingua e
   descrizione, `japaneseName`, `status`, `gender`, `birthday` (`--07-03`, opzionale), liste ordinate
   di epiteti (per lingua), alias e specie (`/species/linkable`, al massimo 20 epiteti e 20 alias),
-  ritratto PNG opzionale (4:5, senza trasparenza), prima apparizione. Appartenenze (`affiliations`,
+  ritratto opzionale (4:5, senza trasparenza), prima apparizione. Appartenenze (`affiliations`,
   lista ordinata: affiliazione, `role` per lingua, `marineRank` solo se l'affiliazione è `NAVY`,
   `former`), frutti del diavolo (`devilFruits`, lista ordinata: frutto, `former`) e parenti (`relatives`, lista
   ordinata: personaggio, `kind` letto "il parente è `kind` di questo personaggio"). Filtri

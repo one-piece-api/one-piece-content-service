@@ -24,7 +24,6 @@ import dev.onepieceapi.contentservice.service.exception.ImageRefusedException;
 import dev.onepieceapi.contentservice.service.image.ContentImages;
 import dev.onepieceapi.contentservice.service.image.ImageNormalizer;
 import dev.onepieceapi.contentservice.service.image.ImageService;
-import dev.onepieceapi.contentservice.service.image.PngImageEncoder;
 import dev.onepieceapi.contentservice.service.validation.ImageValidator;
 import dev.onepieceapi.contentservice.service.content.OnlineChapters;
 import org.junit.jupiter.api.BeforeEach;
@@ -50,6 +49,7 @@ import java.util.UUID;
 import static dev.onepieceapi.contentservice.service.character.CharacterFixtures.CHOPPER;
 import static dev.onepieceapi.contentservice.service.character.CharacterFixtures.EDITOR;
 import static dev.onepieceapi.contentservice.service.character.CharacterFixtures.READER;
+import static dev.onepieceapi.contentservice.service.image.TestImages.ENCODER;
 import static dev.onepieceapi.contentservice.service.image.TestImages.opaquePng;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -133,8 +133,7 @@ class CharacterPortraitIntegrationTest {
 	void setUp() {
 		var clock = Clock.fixed(CharacterFixtures.NOW, ZoneOffset.UTC);
 		var store = new JpaImageStore(this.imageRepository, clock);
-		var images = new ContentImages(new ImageValidator(), new ImageNormalizer(new PngImageEncoder()), store,
-				PORTRAIT_IMAGES);
+		var images = new ContentImages(new ImageValidator(), new ImageNormalizer(ENCODER), store, PORTRAIT_IMAGES);
 		this.fixtures = CharacterFixtures.builder()
 			.contents(this.contentRepository)
 			.characters(this.characterRepository)
@@ -153,7 +152,7 @@ class CharacterPortraitIntegrationTest {
 	}
 
 	@Test
-	void anOpaquePortraitIsKeptAsAPngOfTheCanvasAndEditsKeepIt() {
+	void anOpaquePortraitIsKeptAsAWebpOfTheCanvasAndEditsKeepIt() {
 		var content = this.service.create(EDITOR, CHOPPER, character("Nami"),
 				ImageChange.replaceWith(opaquePng(800, 1000)));
 		stored();
@@ -164,7 +163,7 @@ class CharacterPortraitIntegrationTest {
 
 		assertThat(portraitOf(content.id())).isEqualTo(portraitId);
 		var image = this.imageService.get(EDITOR, portraitId);
-		assertThat(image.contentType()).isEqualTo("image/png");
+		assertThat(image.contentType()).isEqualTo("image/webp");
 		assertThat(image.width()).isEqualTo(320);
 		assertThat(image.height()).isEqualTo(400);
 	}

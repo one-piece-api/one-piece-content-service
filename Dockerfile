@@ -3,8 +3,10 @@
 # Dockerfile - see scripts/build-image.sh for local dev. Same pattern as
 # one-piece-user-service's Dockerfile (keeps GitHub Packages credentials one-piece-exception
 # needs, see build.gradle.kts, confined to wherever Gradle actually runs).
-FROM eclipse-temurin:25-jre-alpine
-RUN addgroup -S app && adduser -S app -G app
+# glibc base (Ubuntu), not Alpine: the WebP plugin bundles libwebp built for glibc only,
+# and extracts it into /tmp at first use - see docs/adr/0010-webp-images.md.
+FROM eclipse-temurin:25-jre
+RUN groupadd --system app && useradd --system --gid app app
 WORKDIR /app
 COPY build/libs/*.jar app.jar
 USER app

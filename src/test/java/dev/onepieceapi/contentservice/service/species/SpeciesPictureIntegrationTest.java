@@ -24,7 +24,6 @@ import dev.onepieceapi.contentservice.service.exception.ImageRefusedException;
 import dev.onepieceapi.contentservice.service.image.ContentImages;
 import dev.onepieceapi.contentservice.service.image.ImageNormalizer;
 import dev.onepieceapi.contentservice.service.image.ImageService;
-import dev.onepieceapi.contentservice.service.image.PngImageEncoder;
 import dev.onepieceapi.contentservice.service.validation.ImageValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -49,6 +48,7 @@ import java.util.UUID;
 import static dev.onepieceapi.contentservice.service.species.SpeciesFixtures.CHOPPER;
 import static dev.onepieceapi.contentservice.service.species.SpeciesFixtures.EDITOR;
 import static dev.onepieceapi.contentservice.service.species.SpeciesFixtures.READER;
+import static dev.onepieceapi.contentservice.service.image.TestImages.ENCODER;
 import static dev.onepieceapi.contentservice.service.image.TestImages.opaquePng;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -131,8 +131,7 @@ class SpeciesPictureIntegrationTest {
 	void setUp() {
 		var clock = Clock.fixed(SpeciesFixtures.NOW, ZoneOffset.UTC);
 		var store = new JpaImageStore(this.imageRepository, clock);
-		var images = new ContentImages(new ImageValidator(), new ImageNormalizer(new PngImageEncoder()), store,
-				PICTURE_IMAGES);
+		var images = new ContentImages(new ImageValidator(), new ImageNormalizer(ENCODER), store, PICTURE_IMAGES);
 		this.fixtures = new SpeciesFixtures(this.contentRepository, this.speciesRepository, this.chapterRepository,
 				this.episodeRepository, this.contentVersionRepository, this.languageRepository,
 				this.auditLogRepository);
@@ -142,7 +141,7 @@ class SpeciesPictureIntegrationTest {
 	}
 
 	@Test
-	void anOpaquePortraitIsKeptAsAPngOfTheCanvasAndEditsKeepIt() {
+	void anOpaquePortraitIsKeptAsAWebpOfTheCanvasAndEditsKeepIt() {
 		var content = this.service.create(EDITOR, CHOPPER, species("Gyojin"),
 				ImageChange.replaceWith(opaquePng(800, 1000)));
 		stored();
@@ -153,7 +152,7 @@ class SpeciesPictureIntegrationTest {
 
 		assertThat(pictureOf(content.id())).isEqualTo(pictureId);
 		var image = this.imageService.get(EDITOR, pictureId);
-		assertThat(image.contentType()).isEqualTo("image/png");
+		assertThat(image.contentType()).isEqualTo("image/webp");
 		assertThat(image.width()).isEqualTo(320);
 		assertThat(image.height()).isEqualTo(400);
 	}

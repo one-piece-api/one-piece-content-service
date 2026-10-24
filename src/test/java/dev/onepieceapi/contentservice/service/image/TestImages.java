@@ -1,8 +1,14 @@
 package dev.onepieceapi.contentservice.service.image;
 
+import com.luciad.imageio.webp.CompressionType;
+import com.luciad.imageio.webp.WebPWriteParam;
+import dev.onepieceapi.contentservice.config.WebpProperties;
 import dev.onepieceapi.contentservice.domain.image.ImageProfile;
 
+import javax.imageio.IIOImage;
 import javax.imageio.ImageIO;
+import javax.imageio.ImageWriter;
+import javax.imageio.stream.MemoryCacheImageOutputStream;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
@@ -15,7 +21,7 @@ import java.util.Arrays;
 
 /**
  * Uploads for the tests of images, drawn in memory - a red disc, on a transparent
- * background or on white.
+ * background or on white - as PNG or lossless WebP; and the encoder as configured.
  */
 public final class TestImages {
 
@@ -41,6 +47,9 @@ public final class TestImages {
 		.minTransparentPercent(0)
 		.build();
 
+	/** The stored format as configured: lossy WebP, quality 90, method 4. */
+	public static final WebpImageEncoder ENCODER = new WebpImageEncoder(new WebpProperties(90, 4));
+
 	private static final int END_OF_PNG_HEADER = 8 + 4 + 4 + 13 + 4;
 
 	private TestImages() {
@@ -54,6 +63,30 @@ public final class TestImages {
 	/** The same disc, on white: no transparency at all. */
 	public static byte[] opaquePng(int width, int height) {
 		return png(drawn(width, height, Color.WHITE));
+	}
+
+	/** The transparent disc as a lossless WebP, as an editor exports it. */
+	public static byte[] transparentWebp(int width, int height) {
+		return webp(drawn(width, height, null));
+	}
+
+	/** The disc on white as a lossless WebP: no transparency at all. */
+	public static byte[] opaqueWebp(int width, int height) {
+		return webp(drawn(width, height, Color.WHITE));
+	}
+
+	/**
+	 * The extended header of an animated WebP (RFC 9649): its animation flag is all the
+	 * format detection reads.
+	 */
+	public static byte[] animatedWebp() {
+		return ByteBuffer.allocate(30)
+			.put("RIFF".getBytes(StandardCharsets.US_ASCII))
+			.putInt(Integer.reverseBytes(22))
+			.put("WEBPVP8X".getBytes(StandardCharsets.US_ASCII))
+			.putInt(Integer.reverseBytes(10))
+			.put((byte) 0x12)
+			.array();
 	}
 
 	/** A red disc on this background; null for a transparent one. */
@@ -99,6 +132,24 @@ public final class TestImages {
 				png.length - END_OF_PNG_HEADER);
 		System.arraycopy(chunk, 0, apng, END_OF_PNG_HEADER, chunk.length);
 		return apng;
+	}
+
+	public static byte[] webp(BufferedImage image) {
+		ImageWriter writer = ImageIO.getImageWritersByMIMEType("image/webp").next();
+		var param = (WebPWriteParam) writer.getDefaultWriteParam();
+		param.setCompressionType(CompressionType.Lossless);
+		var output = new ByteArrayOutputStream();
+		try (var stream = new MemoryCacheImageOutputStream(output)) {
+			writer.setOutput(stream);
+			writer.write(null, new IIOImage(image, null, null), param);
+		}
+		catch (IOException ex) {
+			throw new UncheckedIOException(ex);
+		}
+		finally {
+			writer.dispose();
+		}
+		return output.toByteArray();
 	}
 
 	private static byte[] encode(BufferedImage image, String format) {

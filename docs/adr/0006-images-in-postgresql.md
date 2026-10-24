@@ -1,5 +1,7 @@
 # ADR-0006: Images of contents in PostgreSQL, part of the version
 
+Formats superseded by ADR-0010 (2026-10-24): uploads in WebP or PNG, stored as lossy WebP. The rest stands.
+
 ## Context
 
 A Devil Fruit has an optional image (`docs/implementation-plan-devil-fruit.md` in

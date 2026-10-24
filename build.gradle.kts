@@ -36,6 +36,10 @@ repositories {
 	}
 }
 
+// The Kotlin standard library is only there for webp-imageio, built against 2.4.0: kept at
+// that version instead of the older one Spring Boot manages.
+extra["kotlin.version"] = "2.4.0"
+
 dependencies {
 	implementation("dev.onepieceapi:one-piece-exception:0.6.0")
 	implementation("org.springframework.boot:spring-boot-starter-actuator")
@@ -50,6 +54,9 @@ dependencies {
 	// docs/adr/0001-openapi-contract-and-bruno-collection.md. Not managed by Spring Boot's
 	// BOM; 3.1.x is the line built against Boot 4.1.
 	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.1")
+	// WebP reader and writer for ImageIO, libwebp bundled as native code for glibc (x86_64,
+	// aarch64): stored images are WebP - see docs/adr/0010-webp-images.md.
+	implementation("com.github.usefulness:webp-imageio:0.11.0")
 	compileOnly("org.projectlombok:lombok")
 	annotationProcessor("org.projectlombok:lombok")
 	testCompileOnly("org.projectlombok:lombok")
@@ -66,8 +73,17 @@ dependencies {
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
+// The WebP plugin loads its libwebp through System.load: allowed explicitly, as Java 25
+// asks of native code (a warning today, refused in a future release).
+val nativeAccess = "ALL-UNNAMED"
+
+tasks.bootJar {
+	manifest { attributes("Enable-Native-Access" to nativeAccess) }
+}
+
 tasks.withType<Test> {
 	useJUnitPlatform()
+	jvmArgs("--enable-native-access=$nativeAccess")
 	// Every integration test class keeps its own Spring context (and its PostgreSQL container
 	// connection pool) cached for the whole run: the 512 MB default no longer holds them all.
 	maxHeapSize = "1g"

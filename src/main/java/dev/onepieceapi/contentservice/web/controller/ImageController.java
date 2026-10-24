@@ -2,6 +2,7 @@ package dev.onepieceapi.contentservice.web.controller;
 
 import dev.onepieceapi.contentservice.domain.image.NormalizedImage;
 import dev.onepieceapi.contentservice.service.image.ImageService;
+import dev.onepieceapi.contentservice.service.image.WebpImageEncoder;
 import dev.onepieceapi.contentservice.web.ApiPaths;
 import dev.onepieceapi.contentservice.web.security.AuthenticatedCaller;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -22,8 +23,8 @@ import java.time.Duration;
  * the Devil Fruit, D5); {@code content:read}. An image never changes under its id - the
  * hash of its bytes - so the browser may keep it as long as it likes, but only for the
  * caller: {@code private}, never in a shared cache, since who may see it depends on who
- * asks. PNG, the one format images are stored in today ({@code PngImageEncoder}): another
- * encoder changes it here too.
+ * asks. WebP, the format images are stored in ({@code WebpImageEncoder}); PNG for the
+ * images stored before it (implementation plan WebP, W5 replaces them).
  */
 @RestController
 @Tag(name = "Images")
@@ -36,7 +37,7 @@ class ImageController {
 
 	private final ImageService service;
 
-	@GetMapping(path = ApiPaths.IMAGE_BY_ID, produces = MediaType.IMAGE_PNG_VALUE)
+	@GetMapping(path = ApiPaths.IMAGE_BY_ID, produces = { WebpImageEncoder.CONTENT_TYPE, MediaType.IMAGE_PNG_VALUE })
 	ResponseEntity<byte[]> get(@PathVariable String id, @AuthenticationPrincipal AuthenticatedCaller caller) {
 		NormalizedImage image = this.service.get(caller.permissions(), id);
 		return ResponseEntity.ok()
