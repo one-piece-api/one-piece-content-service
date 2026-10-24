@@ -86,14 +86,15 @@ class ImageNormalizerTest {
 
 	@Test
 	void aVolumeCoverIsStoredAsTheCanvasOfItsProfileWithoutAnyMetadata() throws IOException {
-		var image = this.normalizer.normalize(drawn(1120, 1600, Color.WHITE), VOLUME_PROFILE);
+		var image = this.normalizer.normalize(drawn(1008, 1596, Color.WHITE), VOLUME_PROFILE);
 
 		BufferedImage stored = decoded(image.bytes());
 		assertThat(stored.getWidth()).isEqualTo(420);
-		assertThat(stored.getHeight()).isEqualTo(600);
+		assertThat(stored.getHeight()).isEqualTo(665);
 		assertThat(image.width()).isEqualTo(420);
-		assertThat(image.height()).isEqualTo(600);
+		assertThat(image.height()).isEqualTo(665);
 		assertThat(alphaAt(stored, 0, 0)).isEqualTo(OPAQUE);
+		assertThat(alphaAt(stored, 419, 664)).isEqualTo(OPAQUE);
 		String chunks = new String(image.bytes(), StandardCharsets.ISO_8859_1);
 		assertThat(chunks).doesNotContain("EXIF", "XMP ", "ICCP");
 	}

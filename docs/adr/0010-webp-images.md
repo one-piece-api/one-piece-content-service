@@ -44,3 +44,14 @@ page of covers is several MB (`docs/implementation-plan-webp/` in `one-piece-api
   plugin's 2.4.0 over Spring Boot's managed version).
 - Native code in the service: a new platform (e.g. musl, another architecture) needs the plugin's support.
 - PNG rows stored before keep working until replaced (plan WebP, W5).
+
+## Addendum - Volume canvas at the real covers' ratio (plan WebP, W5)
+
+- **Context:** the volume canvas was 420 x 600 (7:10). Real covers measure 0.628-0.636 (11 volumes from 1 to
+  110 on One Piece Wiki), so each one was scaled to about 381 x 600 and centred between two transparent bands.
+- **Decision:** canvas 420 x 665 (12:19, about 0.632), minimum 504 x 800, tolerance unchanged (10 %). A real
+  cover fills it to within 2 px.
+- **Alternatives:** 420 x 672 (5:8, a simpler ratio for editors, bands up to 6 px); filling the canvas by
+  cropping (against "never cropped"). The bounty poster keeps 420 x 600.
+- **Consequences:** covers stored at 420 x 600 keep that size until replaced (only volume 1's, in review); an
+  upload at 7:10 is now 10.8 % off the canvas and refused as `CONTENT_IMAGE_WRONG_RATIO`.

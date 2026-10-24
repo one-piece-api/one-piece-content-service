@@ -264,7 +264,7 @@ class VolumeControllerTest {
 	@Test
 	void aRefusedCoverNamesItsReasonAndNumbers() throws Exception {
 		when(this.service.create(any(), any(), any(), any())).thenThrow(new ImageRefusedException(
-				ContentErrorCode.IMAGE_TOO_SMALL, "The image is too small", Map.of("width", 280, "minWidth", 560)));
+				ContentErrorCode.IMAGE_TOO_SMALL, "The image is too small", Map.of("width", 280, "minWidth", 504)));
 
 		this.mockMvc
 			.perform(multipart("/volumes").file(versionPart("{\"number\":1}"))
@@ -273,7 +273,7 @@ class VolumeControllerTest {
 			.andExpect(status().isUnprocessableContent())
 			.andExpect(jsonPath("$.errorCode").value("CONTENT_IMAGE_TOO_SMALL"))
 			.andExpect(jsonPath("$.width").value(280))
-			.andExpect(jsonPath("$.minWidth").value(560));
+			.andExpect(jsonPath("$.minWidth").value(504));
 	}
 
 	@Test

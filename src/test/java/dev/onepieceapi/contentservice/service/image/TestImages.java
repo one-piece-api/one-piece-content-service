@@ -38,8 +38,8 @@ public final class TestImages {
 	/** The volume profile as configured: a portrait cover, with no transparency asked. */
 	public static final ImageProfile VOLUME_PROFILE = ImageProfile.builder()
 		.width(420)
-		.height(600)
-		.minWidth(560)
+		.height(665)
+		.minWidth(504)
 		.minHeight(800)
 		.ratioTolerance(0.1)
 		.maxBytes(5L * 1024 * 1024)

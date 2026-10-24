@@ -152,7 +152,7 @@ class VolumeCoverIntegrationTest {
 	@Test
 	void aNewVolumeKeepsItsUploadAsAWebpOfTheCanvasAndEditsKeepIt() {
 		var content = this.service.create(EDITOR, this.nami, StoryFixtures.completeVolume(1),
-				ImageChange.replaceWith(opaquePng(1120, 1600)));
+				ImageChange.replaceWith(opaquePng(1008, 1596)));
 		stored();
 		String coverId = coverOf(content.id(), 1);
 
@@ -164,7 +164,7 @@ class VolumeCoverIntegrationTest {
 		var image = this.imageService.get(EDITOR, coverId);
 		assertThat(image.contentType()).isEqualTo("image/webp");
 		assertThat(image.width()).isEqualTo(420);
-		assertThat(image.height()).isEqualTo(600);
+		assertThat(image.height()).isEqualTo(665);
 	}
 
 	@Test
@@ -190,12 +190,12 @@ class VolumeCoverIntegrationTest {
 	@Test
 	void aReplacedCoverIsDeletedOnceNoVersionUsesItAndARemovedOneToo() {
 		var content = this.service.create(EDITOR, this.nami, StoryFixtures.completeVolume(1),
-				ImageChange.replaceWith(opaquePng(560, 800)));
+				ImageChange.replaceWith(opaquePng(504, 800)));
 		stored();
 		String first = coverOf(content.id(), 1);
 
 		this.service.edit(EDITOR, this.nami, content.id(), 1, StoryFixtures.completeVolume(1),
-				ImageChange.replaceWith(opaquePng(560, 800)));
+				ImageChange.replaceWith(opaquePng(504, 800)));
 		stored();
 		assertThat(coverOf(content.id(), 1)).isEqualTo(first);
 
@@ -215,9 +215,9 @@ class VolumeCoverIntegrationTest {
 	@Test
 	void theSameUploadIsOneCoverKeptUntilItsLastDraftIsDiscarded() {
 		var first = this.service.create(EDITOR, this.nami, StoryFixtures.completeVolume(1),
-				ImageChange.replaceWith(opaquePng(560, 800)));
+				ImageChange.replaceWith(opaquePng(504, 800)));
 		var second = this.service.create(EDITOR, this.nami, StoryFixtures.completeVolume(2),
-				ImageChange.replaceWith(opaquePng(560, 800)));
+				ImageChange.replaceWith(opaquePng(504, 800)));
 		stored();
 		String shared = coverOf(first.id(), 1);
 		assertThat(coverOf(second.id(), 1)).isEqualTo(shared);
@@ -235,7 +235,7 @@ class VolumeCoverIntegrationTest {
 	@Test
 	void aNewVersionTakesTheCoverOfItsBaseWhichStaysWhileTheBaseUsesIt() {
 		var content = this.service.create(EDITOR, this.nami, StoryFixtures.completeVolume(1),
-				ImageChange.replaceWith(opaquePng(560, 800)));
+				ImageChange.replaceWith(opaquePng(504, 800)));
 		stored();
 		String online = coverOf(content.id(), 1);
 		publish(content.id());
@@ -255,7 +255,7 @@ class VolumeCoverIntegrationTest {
 	@Test
 	void aNewVersionDifferingOnlyInItsCoverIsNotIdentical() {
 		var content = this.service.create(EDITOR, this.nami, StoryFixtures.completeVolume(1),
-				ImageChange.replaceWith(opaquePng(560, 800)));
+				ImageChange.replaceWith(opaquePng(504, 800)));
 		stored();
 		publish(content.id());
 		this.service.openNewVersion(EDITOR, this.nami, content.id(), 1);
@@ -274,7 +274,7 @@ class VolumeCoverIntegrationTest {
 	@Test
 	void aCoverIsSeenOnlyByWhoeverSeesAVersionUsingIt() {
 		var content = this.service.create(EDITOR, this.nami, StoryFixtures.completeVolume(1),
-				ImageChange.replaceWith(opaquePng(560, 800)));
+				ImageChange.replaceWith(opaquePng(504, 800)));
 		stored();
 		String coverId = coverOf(content.id(), 1);
 
@@ -302,7 +302,7 @@ class VolumeCoverIntegrationTest {
 
 	/** The usual disc with a blue corner: another image. */
 	private static BufferedImage withBlueCorner() {
-		var image = drawn(560, 800, Color.WHITE);
+		var image = drawn(504, 800, Color.WHITE);
 		var graphics = image.createGraphics();
 		graphics.setColor(Color.BLUE);
 		graphics.fillRect(0, 0, 10, 10);

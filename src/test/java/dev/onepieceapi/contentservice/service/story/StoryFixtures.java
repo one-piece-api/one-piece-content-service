@@ -48,7 +48,7 @@ final class StoryFixtures {
 
 	/** The volume profile as configured. */
 	static final ImageProperties VOLUME_IMAGES = new ImageProperties("/api/content", Map.of(EntityType.VOLUME,
-			new ImageProperties.Profile(420, 600, 560, 800, 0.1, DataSize.ofMegabytes(5), 25_000_000, 0)));
+			new ImageProperties.Profile(420, 665, 504, 800, 0.1, DataSize.ofMegabytes(5), 25_000_000, 0)));
 
 	private final TestEntityManager entityManager;
 
