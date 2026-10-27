@@ -81,9 +81,9 @@ class BountyPosterIntegrationTest {
 	@ServiceConnection
 	static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:18.6");
 
-	/** The bounty profile as configured: the canvas of a cover, no transparency asked. */
+	/** The bounty profile as configured: a 350 x 520 poster, no transparency asked. */
 	private static final ImageProperties POSTER_IMAGES = new ImageProperties("/api/content", Map.of(EntityType.BOUNTY,
-			new ImageProperties.Profile(420, 600, 560, 800, 0.1, DataSize.ofMegabytes(5), 25_000_000, 0)));
+			new ImageProperties.Profile(350, 520, 350, 520, 0.1, DataSize.ofMegabytes(5), 25_000_000, 0)));
 
 	@Autowired
 	private BountyVersionRepository bountyRepository;
@@ -169,8 +169,8 @@ class BountyPosterIntegrationTest {
 		assertThat(posterOf(content.id(), 1)).isEqualTo(posterId);
 		var image = this.imageService.get(EDITOR, posterId);
 		assertThat(image.contentType()).isEqualTo("image/webp");
-		assertThat(image.width()).isEqualTo(420);
-		assertThat(image.height()).isEqualTo(600);
+		assertThat(image.width()).isEqualTo(350);
+		assertThat(image.height()).isEqualTo(520);
 	}
 
 	@Test
@@ -184,7 +184,7 @@ class BountyPosterIntegrationTest {
 
 	@Test
 	void aPosterThatIsTheLeastAcceptedSizeAndNeedsNoTransparencyIsAccepted() {
-		var content = this.service.create(EDITOR, CHOPPER, bounty(1), ImageChange.replaceWith(opaquePng(560, 800)));
+		var content = this.service.create(EDITOR, CHOPPER, bounty(1), ImageChange.replaceWith(opaquePng(350, 520)));
 		stored();
 
 		assertThat(posterOf(content.id(), 1)).isNotNull();
@@ -195,7 +195,7 @@ class BountyPosterIntegrationTest {
 		var landscape = catchThrowableOfType(ImageRefusedException.class,
 				() -> this.service.create(EDITOR, CHOPPER, bounty(1), ImageChange.replaceWith(opaquePng(1600, 1120))));
 		var small = catchThrowableOfType(ImageRefusedException.class,
-				() -> this.service.create(EDITOR, CHOPPER, bounty(2), ImageChange.replaceWith(opaquePng(420, 600))));
+				() -> this.service.create(EDITOR, CHOPPER, bounty(2), ImageChange.replaceWith(opaquePng(262, 390))));
 		stored();
 
 		assertThat(landscape.getErrorCode()).isEqualTo(ContentErrorCode.IMAGE_WRONG_RATIO);
@@ -206,11 +206,11 @@ class BountyPosterIntegrationTest {
 
 	@Test
 	void aReplacedPosterIsDeletedOnceNoVersionUsesItAndARemovedOneToo() {
-		var content = this.service.create(EDITOR, CHOPPER, bounty(1), ImageChange.replaceWith(opaquePng(560, 800)));
+		var content = this.service.create(EDITOR, CHOPPER, bounty(1), ImageChange.replaceWith(opaquePng(350, 520)));
 		stored();
 		String first = posterOf(content.id(), 1);
 
-		this.service.edit(EDITOR, CHOPPER, content.id(), 1, bounty(1), ImageChange.replaceWith(opaquePng(560, 800)));
+		this.service.edit(EDITOR, CHOPPER, content.id(), 1, bounty(1), ImageChange.replaceWith(opaquePng(350, 520)));
 		stored();
 		assertThat(posterOf(content.id(), 1)).isEqualTo(first);
 
@@ -228,8 +228,8 @@ class BountyPosterIntegrationTest {
 
 	@Test
 	void theSameUploadIsOnePosterKeptUntilItsLastDraftIsDiscarded() {
-		var first = this.service.create(EDITOR, CHOPPER, bounty(1), ImageChange.replaceWith(opaquePng(560, 800)));
-		var second = this.service.create(EDITOR, CHOPPER, bounty(2), ImageChange.replaceWith(opaquePng(560, 800)));
+		var first = this.service.create(EDITOR, CHOPPER, bounty(1), ImageChange.replaceWith(opaquePng(350, 520)));
+		var second = this.service.create(EDITOR, CHOPPER, bounty(2), ImageChange.replaceWith(opaquePng(350, 520)));
 		stored();
 		String shared = posterOf(first.id(), 1);
 		assertThat(posterOf(second.id(), 1)).isEqualTo(shared);
@@ -246,7 +246,7 @@ class BountyPosterIntegrationTest {
 
 	@Test
 	void aNewVersionTakesThePosterOfItsBaseWhichStaysWhileTheBaseUsesIt() {
-		var content = this.service.create(EDITOR, CHOPPER, bounty(1), ImageChange.replaceWith(opaquePng(560, 800)));
+		var content = this.service.create(EDITOR, CHOPPER, bounty(1), ImageChange.replaceWith(opaquePng(350, 520)));
 		stored();
 		String online = posterOf(content.id(), 1);
 		publish(content.id());
@@ -264,7 +264,7 @@ class BountyPosterIntegrationTest {
 
 	@Test
 	void aNewVersionDifferingOnlyInItsPosterIsNotIdentical() {
-		var content = this.service.create(EDITOR, CHOPPER, bounty(1), ImageChange.replaceWith(opaquePng(560, 800)));
+		var content = this.service.create(EDITOR, CHOPPER, bounty(1), ImageChange.replaceWith(opaquePng(350, 520)));
 		stored();
 		publish(content.id());
 		this.service.openNewVersion(EDITOR, CHOPPER, content.id(), 1);
@@ -281,7 +281,7 @@ class BountyPosterIntegrationTest {
 
 	@Test
 	void aPosterIsSeenOnlyByWhoeverSeesAVersionUsingIt() {
-		var content = this.service.create(EDITOR, CHOPPER, bounty(1), ImageChange.replaceWith(opaquePng(560, 800)));
+		var content = this.service.create(EDITOR, CHOPPER, bounty(1), ImageChange.replaceWith(opaquePng(350, 520)));
 		stored();
 		String posterId = posterOf(content.id(), 1);
 

@@ -55,3 +55,13 @@ page of covers is several MB (`docs/implementation-plan-webp/` in `one-piece-api
   cropping (against "never cropped"). The bounty poster keeps 420 x 600.
 - **Consequences:** covers stored at 420 x 600 keep that size until replaced (only volume 1's, in review); an
   upload at 7:10 is now 10.8 % off the canvas and refused as `CONTENT_IMAGE_WRONG_RATIO`.
+
+## Addendum - Bounty poster at the size of the loaded posters (2026-10-27)
+
+- **Context:** the posters loaded by the AI editor are 350 x 520 (0.673); the profile asked for at least 560 x 800
+  and a 420 x 600 canvas, so none was accepted. The statement above that the bounty poster keeps 420 x 600 is
+  superseded.
+- **Decision:** canvas 350 x 520, minimum 350 x 520, tolerance unchanged (10 %). A poster is never enlarged, so
+  asking more than the real size would refuse every loaded poster.
+- **Consequences:** posters stored at 420 x 600 keep that size until replaced; a poster at 7:10 is about 4 % off the
+  canvas, within the tolerance, and is fitted with thin bands.
