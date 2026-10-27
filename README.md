@@ -39,7 +39,7 @@ copertina), **Capitolo** ed **Episodio** (relazioni verso arco/volume, date per 
   (`PREVIOUS_ALREADY_REPLACED`, `BOUNTY_CHAIN_CYCLE`). La `validity` (`ACTIVE`, `SUPERSEDED`,
   `INACTIVE`) è derivata, mai salvata; si filtra con `?validity=` e `?condition=` e si ordina per `amount`.
 - **Affiliazione** (`/affiliations`): chiave `romaji` (slug `mugiwara-no-ichimi`), nome unico per
-  lingua e descrizione, emblema opzionale (quadrato, sfondo trasparente), prima apparizione.
+  lingua e descrizione, bandiera opzionale (4:3, anche senza trasparenza), prima apparizione.
   `kind` (`PIRATE_CREW`, `NAVY`, `WORLD_GOVERNMENT`, `REVOLUTIONARY_ARMY`, `OTHER`): obbligatorio dalla
   prossima sottomissione (le versioni esistenti restano a `null`), filtro `?kind=`.
   `GET /affiliations/linkable` elenca le affiliazioni con una versione approvata, col `kind` (per i

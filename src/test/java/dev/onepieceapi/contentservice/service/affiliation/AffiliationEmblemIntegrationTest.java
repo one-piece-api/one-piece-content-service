@@ -51,18 +51,17 @@ import static dev.onepieceapi.contentservice.service.affiliation.AffiliationFixt
 import static dev.onepieceapi.contentservice.service.affiliation.AffiliationFixtures.READER;
 import static dev.onepieceapi.contentservice.service.image.TestImages.ENCODER;
 import static dev.onepieceapi.contentservice.service.image.TestImages.opaquePng;
-import static dev.onepieceapi.contentservice.service.image.TestImages.transparentPng;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase.Replace;
 
 /**
- * The emblem of an affiliation against a real PostgreSQL (Testcontainers), by the same
+ * The flag of an affiliation against a real PostgreSQL (Testcontainers), by the same
  * mechanism as the image of a Devil Fruit and the poster of a bounty (implementation plan
- * of the Affiliation, D5), so only what its profile asks is covered here: a square
- * canvas, a larger upload than the canvas, a transparent background; and that a replaced
- * or discarded emblem is deleted once no version uses it.
+ * of the Affiliation, D5, revised by the user flow revision 15), so only what its profile
+ * asks is covered here: a 4:3 canvas, a larger upload than the canvas, no transparency
+ * required; and that a replaced or discarded flag is deleted once no version uses it.
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = Replace.NONE)
@@ -74,10 +73,10 @@ class AffiliationEmblemIntegrationTest {
 	@ServiceConnection
 	static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:18.6");
 
-	/** The affiliation profile as configured: square, transparency asked. */
+	/** The affiliation profile as configured: a 4:3 flag, no transparency asked. */
 	private static final ImageProperties EMBLEM_IMAGES = new ImageProperties("/api/content",
 			Map.of(EntityType.AFFILIATION,
-					new ImageProperties.Profile(400, 400, 512, 512, 0.1, DataSize.ofMegabytes(5), 25_000_000, 5)));
+					new ImageProperties.Profile(400, 300, 512, 384, 0.1, DataSize.ofMegabytes(5), 25_000_000, 0)));
 
 	@Autowired
 	private AffiliationVersionRepository affiliationRepository;
@@ -152,9 +151,9 @@ class AffiliationEmblemIntegrationTest {
 	}
 
 	@Test
-	void aTransparentSquareEmblemIsKeptAsAWebpOfTheCanvasAndEditsKeepIt() {
+	void aFlagOfFourByThreeIsKeptAsAWebpOfTheCanvasAndEditsKeepIt() {
 		var content = this.service.create(EDITOR, CHOPPER, affiliation("Mugiwara no Ichimi"),
-				ImageChange.replaceWith(transparentPng(1024, 1024)));
+				ImageChange.replaceWith(opaquePng(800, 600)));
 		stored();
 		String emblemId = emblemOf(content.id());
 
@@ -165,19 +164,17 @@ class AffiliationEmblemIntegrationTest {
 		var image = this.imageService.get(EDITOR, emblemId);
 		assertThat(image.contentType()).isEqualTo("image/webp");
 		assertThat(image.width()).isEqualTo(400);
-		assertThat(image.height()).isEqualTo(400);
+		assertThat(image.height()).isEqualTo(300);
 	}
 
 	@Test
-	void anEmblemTooSmallNotSquareOrWithoutTransparencyIsRefusedWithItsReasonAndSavesNothing() {
-		var small = refusal("Kaigun", transparentPng(400, 400));
-		var portrait = refusal("Kaigun", transparentPng(640, 800));
-		var opaque = refusal("Kaigun", opaquePng(512, 512));
+	void aFlagTooSmallOrOutOfProportionIsRefusedWithItsReasonAndSavesNothing() {
+		var small = refusal("Kaigun", opaquePng(400, 300));
+		var square = refusal("Kaigun", opaquePng(512, 512));
 		stored();
 
 		assertThat(small.getErrorCode()).isEqualTo(ContentErrorCode.IMAGE_TOO_SMALL);
-		assertThat(portrait.getErrorCode()).isEqualTo(ContentErrorCode.IMAGE_WRONG_RATIO);
-		assertThat(opaque.getErrorCode()).isEqualTo(ContentErrorCode.IMAGE_NOT_TRANSPARENT);
+		assertThat(square.getErrorCode()).isEqualTo(ContentErrorCode.IMAGE_WRONG_RATIO);
 		assertThat(this.jdbc.queryForObject("SELECT count(*) FROM affiliation_version", Long.class)).isZero();
 		assertThat(this.imageRepository.count()).isZero();
 	}
@@ -185,7 +182,7 @@ class AffiliationEmblemIntegrationTest {
 	@Test
 	void aRemovedEmblemIsDeletedAndADiscardedDraftTakesItsEmblemWithIt() {
 		var removed = this.service.create(EDITOR, CHOPPER, affiliation("Kaigun"),
-				ImageChange.replaceWith(transparentPng(512, 512)));
+				ImageChange.replaceWith(opaquePng(800, 600)));
 		stored();
 		this.service.edit(EDITOR, CHOPPER, removed.id(), 1, affiliation("Kaigun"), ImageChange.REMOVE);
 		stored();
@@ -193,7 +190,7 @@ class AffiliationEmblemIntegrationTest {
 		assertThat(this.imageRepository.count()).isZero();
 
 		var discarded = this.service.create(EDITOR, CHOPPER, affiliation("Mugiwara no Ichimi"),
-				ImageChange.replaceWith(transparentPng(512, 512)));
+				ImageChange.replaceWith(opaquePng(800, 600)));
 		stored();
 		this.service.delete(EDITOR, CHOPPER, discarded.id(), 1);
 		stored();
@@ -203,7 +200,7 @@ class AffiliationEmblemIntegrationTest {
 	@Test
 	void anEmblemIsSeenOnlyByWhoeverSeesAVersionUsingIt() {
 		var content = this.service.create(EDITOR, CHOPPER, affiliation("Kaigun"),
-				ImageChange.replaceWith(transparentPng(512, 512)));
+				ImageChange.replaceWith(opaquePng(800, 600)));
 		stored();
 		String emblemId = emblemOf(content.id());
 
