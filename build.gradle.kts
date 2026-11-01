@@ -19,19 +19,22 @@ java {
 
 repositories {
 	mavenCentral()
-	// one-piece-exception (shared error-handling library) - GitHub Packages requires
-	// authentication even to resolve a public package; GITHUB_ACTOR/GITHUB_TOKEN are
-	// already set in CI, a personal PAT with read:packages covers local dev (see that
-	// repo's README). Same setup as one-piece-user-service.
-	maven {
-		name = "GitHubPackages"
-		url = uri("https://maven.pkg.github.com/one-piece-api/one-piece-exception")
-		// gpr.user/gpr.token in ~/.gradle/gradle.properties for local dev (a PAT classic with
-		// read:packages only), GITHUB_ACTOR/GITHUB_TOKEN in CI - a global GITHUB_TOKEN env var
-		// would also take over the gh CLI's own login.
-		credentials {
-			username = providers.gradleProperty("gpr.user").orElse(providers.environmentVariable("GITHUB_ACTOR")).orNull
-			password = providers.gradleProperty("gpr.token").orElse(providers.environmentVariable("GITHUB_TOKEN")).orNull
+	// Shared libraries: one-piece-exception (error handling) and one-piece-reader-time
+	// (reader-axis rules). GitHub Packages requires authentication even to resolve a public
+	// package; GITHUB_ACTOR/GITHUB_TOKEN are already set in CI, a personal PAT with
+	// read:packages covers local dev (see one-piece-exception's README). Same setup as
+	// one-piece-user-service.
+	listOf("one-piece-exception", "one-piece-reader-time").forEach { library ->
+		maven {
+			name = "GitHubPackages-$library"
+			url = uri("https://maven.pkg.github.com/one-piece-api/$library")
+			// gpr.user/gpr.token in ~/.gradle/gradle.properties for local dev (a PAT classic with
+			// read:packages only), GITHUB_ACTOR/GITHUB_TOKEN in CI - a global GITHUB_TOKEN env var
+			// would also take over the gh CLI's own login.
+			credentials {
+				username = providers.gradleProperty("gpr.user").orElse(providers.environmentVariable("GITHUB_ACTOR")).orNull
+				password = providers.gradleProperty("gpr.token").orElse(providers.environmentVariable("GITHUB_TOKEN")).orNull
+			}
 		}
 	}
 }
@@ -42,6 +45,7 @@ extra["kotlin.version"] = "2.4.0"
 
 dependencies {
 	implementation("dev.onepieceapi:one-piece-exception:0.6.0")
+	implementation("dev.onepieceapi:one-piece-reader-time:0.1.0")
 	implementation("org.springframework.boot:spring-boot-starter-actuator")
 	implementation("org.springframework.boot:spring-boot-starter-security-oauth2-resource-server")
 	implementation("org.springframework.boot:spring-boot-starter-validation")
