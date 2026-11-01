@@ -17,7 +17,9 @@ import dev.onepieceapi.contentservice.domain.workflow.VersionAction;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.domain.affiliation.Affiliation;
 import dev.onepieceapi.contentservice.domain.bounty.Bounty;
+import dev.onepieceapi.contentservice.domain.character.Alias;
 import dev.onepieceapi.contentservice.domain.character.Character;
+import dev.onepieceapi.contentservice.domain.readertime.StoryWindow;
 import dev.onepieceapi.contentservice.domain.bounty.BountyCondition;
 import dev.onepieceapi.contentservice.persistence.entity.AffiliationVersionEntity;
 import dev.onepieceapi.contentservice.persistence.entity.BountyVersionEntity;
@@ -206,7 +208,10 @@ class FirstAppearanceIntegrationTest {
 						new DevilFruitValidator(this.fruitRepository, this.languageRepository, this.typeRepository,
 								this.chapterRepository, this.episodeRepository),
 						new DevilFruitRules(this.contentRepository, this.typeRepository, this.chapterRepository,
-								this.episodeRepository, this.characterRepository, new RulesProperties(5))),
+								this.episodeRepository, this.characterRepository,
+								new ReaderAxisRules(this.contentRepository, this.chapterRepository,
+										this.episodeRepository),
+								new RulesProperties(5))),
 				this.contentVersionRepository, this.contentRepository, auditLogService, clock,
 				mock(ContentImages.class));
 		this.types = new DevilFruitTypeService(this.typeRepository, this.contentVersionRepository,
@@ -520,6 +525,29 @@ class FirstAppearanceIntegrationTest {
 			.isEqualTo(Map.of("count", 1L, "characters", List.of(Map.of("id", inChapter, "romaji", "Nami"))));
 		assertThat(byEpisode.getDetails().get("detail"))
 			.isEqualTo(Map.of("count", 1L, "characters", List.of(Map.of("id", inEpisode, "romaji", "Robin"))));
+	}
+
+	@Test
+	void aChapterOrAnEpisodeIsNotRetiredWhileACharacterOnlineUsesItAsAPointOfAWindow() {
+		UUID ended = OnlineChapters.chapter(this.contentRepository, this.chapterRepository, PUBLISHED, 20);
+		UUID discovered = OnlineChapters.episode(this.contentRepository, this.episodeRepository, PUBLISHED, 30);
+		var firstAppearance = new StoryPoint(chapter(PUBLISHED), episode(PUBLISHED));
+		UUID usopp = characterContent(PUBLISHED,
+				character("Usopp", firstAppearance).toBuilder()
+					.aliases(List.of(new Alias("Sogeking", StoryWindow.from(StoryPoint.ofEpisode(discovered))),
+							new Alias("Usopp-kun", new StoryWindow(firstAppearance, StoryPoint.ofChapter(ended)))))
+					.build());
+		stored();
+
+		var byChapter = catchThrowableOfType(VersionActionBlockedException.class,
+				() -> this.chapters.retire(ADMIN, this.vivi, ended, 1));
+		var byEpisode = catchThrowableOfType(VersionActionBlockedException.class,
+				() -> this.episodes.retire(ADMIN, this.vivi, discovered, 1));
+
+		var named = Map.of("count", 1L, "characters", List.of(Map.of("id", usopp, "romaji", "Usopp")));
+		assertThat(byChapter.getDetails()).containsEntry("reason", BlockReason.ONLINE_ITEMS_LINKED);
+		assertThat(byChapter.getDetails().get("detail")).isEqualTo(named);
+		assertThat(byEpisode.getDetails().get("detail")).isEqualTo(named);
 	}
 
 	@Test

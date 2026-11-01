@@ -3,6 +3,7 @@ package dev.onepieceapi.contentservice.service.character;
 import dev.onepieceapi.contentservice.domain.character.Character;
 import dev.onepieceapi.contentservice.domain.character.CharacterTranslation;
 import dev.onepieceapi.contentservice.domain.character.Epithet;
+import dev.onepieceapi.contentservice.domain.readertime.StoryWindow;
 import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
 import dev.onepieceapi.contentservice.persistence.repository.BountyVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
@@ -132,9 +133,10 @@ class CharacterDraftIntegrationTest {
 	void aNewCharacterIsBornWithADraftSayingWhatWasWrittenItsListsInTheirOrder() {
 		var written = this.fixtures.complete("  Arlong ")
 			.toBuilder()
-			.epithets(List.of(new Epithet(Map.of("en", " Saw-Tooth ")), new Epithet(Map.of("it", "Il Sega"))))
-			.aliases(List.of("Arlong-san", " Sawshark "))
-			.speciesIds(List.of(this.gyojin, this.ningen))
+			.epithets(List.of(this.fixtures.epithet(Map.of("en", " Saw-Tooth ")),
+					this.fixtures.epithet(Map.of("it", "Il Sega"))))
+			.aliases(this.fixtures.aliases("Arlong-san", " Sawshark "))
+			.species(this.fixtures.speciesEntries(this.gyojin, this.ningen))
 			.build();
 
 		var content = this.service.create(EDITOR, CHOPPER, written);
@@ -142,10 +144,10 @@ class CharacterDraftIntegrationTest {
 
 		var body = this.service.getVersion(EDITOR, CHOPPER, content.id(), 1).version().body();
 		assertThat(body.romaji()).isEqualTo("Arlong");
-		assertThat(body.epithets()).containsExactly(new Epithet(Map.of("en", "Saw-Tooth")),
-				new Epithet(Map.of("it", "Il Sega")));
-		assertThat(body.aliases()).containsExactly("Arlong-san", "Sawshark");
-		assertThat(body.speciesIds()).containsExactly(this.gyojin, this.ningen);
+		assertThat(body.epithets()).containsExactly(this.fixtures.epithet(Map.of("en", "Saw-Tooth")),
+				this.fixtures.epithet(Map.of("it", "Il Sega")));
+		assertThat(body.aliases()).containsExactlyElementsOf(this.fixtures.aliases("Arlong-san", "Sawshark"));
+		assertThat(body.species()).containsExactlyElementsOf(this.fixtures.speciesEntries(this.gyojin, this.ningen));
 	}
 
 	@Test
@@ -170,8 +172,10 @@ class CharacterDraftIntegrationTest {
 
 	@Test
 	void moreAliasesThanAllowedAreRefused() {
-		List<String> aliases = IntStream.rangeClosed(1, Character.MAX_ALIASES + 1).mapToObj(i -> "Alias " + i).toList();
-		var written = Character.builder().romaji("Robin").aliases(aliases).build();
+		String[] names = IntStream.rangeClosed(1, Character.MAX_ALIASES + 1)
+			.mapToObj(i -> "Alias " + i)
+			.toArray(String[]::new);
+		var written = Character.builder().romaji("Robin").aliases(this.fixtures.aliases(names)).build();
 
 		var refused = catchThrowableOfType(ValueInvalidException.class,
 				() -> this.service.create(EDITOR, CHOPPER, written));
@@ -183,10 +187,10 @@ class CharacterDraftIntegrationTest {
 	void aRepeatedEpithetAliasOrSpeciesAndABlankEntryAreRefusedByTheirIndex() {
 		var written = Character.builder()
 			.romaji("Robin")
-			.epithets(List.of(new Epithet(Map.of("en", "Devil Child", "it", "Figlia del demonio")),
-					new Epithet(Map.of("en", "devil child")), new Epithet(Map.of("it", " "))))
-			.aliases(List.of("Miss All Sunday", " ", "MISS ALL SUNDAY"))
-			.speciesIds(List.of(this.ningen, this.ningen))
+			.epithets(List.of(this.fixtures.epithet(Map.of("en", "Devil Child", "it", "Figlia del demonio")),
+					this.fixtures.epithet(Map.of("en", "devil child")), this.fixtures.epithet(Map.of("it", " "))))
+			.aliases(this.fixtures.aliases("Miss All Sunday", " ", "MISS ALL SUNDAY"))
+			.species(this.fixtures.speciesEntries(this.ningen, this.ningen))
 			.build();
 
 		var refused = catchThrowableOfType(ValueInvalidException.class,
@@ -200,7 +204,11 @@ class CharacterDraftIntegrationTest {
 	void aSpeciesNothingApprovedOfIsRefusedByItsIndex() {
 		UUID draft = this.fixtures.species(DRAFT, "Mink");
 		stored();
-		var written = Character.builder().romaji("Carrot").speciesIds(List.of(this.ningen, draft)).build();
+		var written = Character.builder()
+			.romaji("Carrot")
+			.firstAppearance(this.fixtures.fromStart().discovered())
+			.species(this.fixtures.speciesEntries(this.ningen, draft))
+			.build();
 
 		var refused = catchThrowableOfType(ValueInvalidException.class,
 				() -> this.service.create(EDITOR, CHOPPER, written));
@@ -210,13 +218,13 @@ class CharacterDraftIntegrationTest {
 
 	@Test
 	void reorderingTheListsOfADraftKeepsTheNewOrder() {
-		var first = new Epithet(Map.of("en", "Cat Burglar"));
-		var second = new Epithet(Map.of("en", "Navigator"));
+		var first = this.fixtures.epithet(Map.of("en", "Cat Burglar"));
+		var second = this.fixtures.epithet(Map.of("en", "Navigator"));
 		var written = this.fixtures.complete("Robin")
 			.toBuilder()
 			.epithets(List.of(first, second))
-			.aliases(List.of("A", "B"))
-			.speciesIds(List.of(this.ningen, this.gyojin))
+			.aliases(this.fixtures.aliases("A", "B"))
+			.species(this.fixtures.speciesEntries(this.ningen, this.gyojin))
 			.build();
 		var content = this.service.create(EDITOR, CHOPPER, written);
 		stored();
@@ -224,8 +232,8 @@ class CharacterDraftIntegrationTest {
 		this.service.edit(EDITOR, CHOPPER, content.id(), 1,
 				written.toBuilder()
 					.epithets(List.of(second, first))
-					.aliases(List.of("B", "A"))
-					.speciesIds(List.of(this.gyojin, this.ningen))
+					.aliases(this.fixtures.aliases("B", "A"))
+					.species(this.fixtures.speciesEntries(this.gyojin, this.ningen))
 					.build());
 		stored();
 		// What the commit would check: the species, swapped row by row, end up distinct.
@@ -233,18 +241,18 @@ class CharacterDraftIntegrationTest {
 
 		var body = this.service.getVersion(EDITOR, CHOPPER, content.id(), 1).version().body();
 		assertThat(body.epithets()).containsExactly(second, first);
-		assertThat(body.aliases()).containsExactly("B", "A");
-		assertThat(body.speciesIds()).containsExactly(this.gyojin, this.ningen);
+		assertThat(body.aliases()).containsExactlyElementsOf(this.fixtures.aliases("B", "A"));
+		assertThat(body.species()).containsExactlyElementsOf(this.fixtures.speciesEntries(this.gyojin, this.ningen));
 	}
 
 	@Test
 	void aNewVersionStartsFromItsBaseWithEveryListInItsOrder() {
 		var body = this.fixtures.complete("Robin")
 			.toBuilder()
-			.epithets(
-					List.of(new Epithet(Map.of("en", "Devil Child")), new Epithet(Map.of("en", "Light of Revolution"))))
-			.aliases(List.of("Miss All Sunday", "Nico Robin"))
-			.speciesIds(List.of(this.gyojin, this.ningen))
+			.epithets(List.of(this.fixtures.epithet(Map.of("en", "Devil Child")),
+					this.fixtures.epithet(Map.of("en", "Light of Revolution"))))
+			.aliases(this.fixtures.aliases("Miss All Sunday", "Nico Robin"))
+			.species(this.fixtures.speciesEntries(this.gyojin, this.ningen))
 			.build();
 		UUID robin = this.fixtures.character(PUBLISHED, body);
 		stored();
@@ -261,7 +269,7 @@ class CharacterDraftIntegrationTest {
 				Character.builder()
 					.romaji("Robin")
 					.translations(Map.of("it", new CharacterTranslation("Robin", null)))
-					.epithets(List.of(new Epithet(Map.of("it", "Figlia del demonio"))))
+					.epithets(List.of(new Epithet(Map.of("it", "Figlia del demonio"), StoryWindow.NONE)))
 					.build());
 		stored();
 
@@ -269,14 +277,15 @@ class CharacterDraftIntegrationTest {
 				() -> this.service.submit(EDITOR, CHOPPER, content.id(), 1));
 
 		assertThat(fieldsOf(refused)).containsExactly("status", "gender", "firstAppearance", "translations[en].name",
-				"translations[en].description", "translations[it].description", "epithets[0].text[en]");
+				"translations[en].description", "translations[it].description", "epithets[0].text[en]",
+				"epithets[0].discovered");
 	}
 
 	@Test
 	void theDatabaseRefusesASpeciesThatIsNoSpecies() {
 		UUID chapter = OnlineChapters.chapter(this.contentRepository, this.chapterRepository, PUBLISHED);
 		this.fixtures.character(DRAFT,
-				this.fixtures.complete("Robin").toBuilder().speciesIds(List.of(chapter)).build());
+				this.fixtures.complete("Robin").toBuilder().species(this.fixtures.speciesEntries(chapter)).build());
 
 		assertThatThrownBy(this::stored).isInstanceOf(ConstraintViolationException.class)
 			.hasMessageContaining("fk_character_version_species");
@@ -285,7 +294,10 @@ class CharacterDraftIntegrationTest {
 	@Test
 	void theDatabaseRefusesTheSameSpeciesTwiceInAVersionOnceTheTransactionChecksIt() {
 		this.fixtures.character(DRAFT,
-				this.fixtures.complete("Robin").toBuilder().speciesIds(List.of(this.ningen, this.ningen)).build());
+				this.fixtures.complete("Robin")
+					.toBuilder()
+					.species(this.fixtures.speciesEntries(this.ningen, this.ningen))
+					.build());
 		stored();
 
 		// Deferred to the commit, which a test rolled back never reaches: checked now
@@ -300,7 +312,7 @@ class CharacterDraftIntegrationTest {
 		this.fixtures.character(DRAFT,
 				Character.builder()
 					.romaji("Robin")
-					.epithets(List.of(new Epithet(Map.of("fr", "Enfant du démon"))))
+					.epithets(List.of(this.fixtures.epithet(Map.of("fr", "Enfant du démon"))))
 					.build());
 		stored();
 

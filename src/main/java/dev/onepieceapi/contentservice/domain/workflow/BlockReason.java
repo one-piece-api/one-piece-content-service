@@ -63,8 +63,9 @@ public enum BlockReason {
 	/**
 	 * A membership holds a Marine rank in an affiliation whose online version is not a
 	 * Navy one, so the character cannot be online (implementation plan of the Character,
-	 * C8). The detail names the membership ({@code affiliationsIndex}) and the
-	 * affiliation ({@code affiliationId}, {@code affiliationRomaji}).
+	 * C8). The detail names the membership ({@code affiliationsIndex}), its period
+	 * ({@code periodsIndex}) and the affiliation ({@code affiliationId},
+	 * {@code affiliationRomaji}).
 	 */
 	MARINE_RANK_NOT_ALLOWED,
 
@@ -76,12 +77,14 @@ public enum BlockReason {
 	MARINE_RANK_IN_USE,
 
 	/**
-	 * Another character online already has this Devil Fruit as a current one, and the
-	 * fruit has one user at a time (implementation plan of the Character, C10). Going
-	 * online, a character's detail names the entry ({@code devilFruitIndex}), the fruit
-	 * ({@code devilFruitId}, {@code devilFruitRomaji}) and its {@code characters}; going
-	 * online, a fruit that has one user at a time while several characters online use it,
-	 * has their {@code count} and the first {@code characters}, with id and romaji.
+	 * Another character online already uses this Devil Fruit, and the fruit has one user
+	 * at a time: their windows would overlap on an axis
+	 * (docs/user-flows/content-editorial-workflow.md 3.4.8, revision 17). Going online, a
+	 * character's detail names the entry ({@code devilFruitsIndex}), the fruit
+	 * ({@code devilFruitId}, {@code devilFruitRomaji}) and the {@code characters} it
+	 * overlaps; going online, a fruit that has one user at a time while the windows of
+	 * characters online using it overlap, has their {@code count} and the first
+	 * {@code characters}, with id and romaji.
 	 */
 	DEVIL_FRUIT_IN_USE,
 
@@ -91,6 +94,16 @@ public enum BlockReason {
 	 * Character, C12). The detail names the entry ({@code relativesIndex}) and the
 	 * relative ({@code relativeId}, {@code relativeRomaji}).
 	 */
-	RELATIVE_ALREADY_LINKED
+	RELATIVE_ALREADY_LINKED,
+
+	/**
+	 * A point of the reader axis breaks its rules on the numbers online: a chapter or an
+	 * episode may have been renumbered since the save
+	 * (docs/user-flows/content-editorial-workflow.md 3.7.4). The detail names the part or
+	 * the period ({@code field}, e.g.
+	 * {@code affiliations[0].periods[1].discovered.chapter}) and the rule
+	 * ({@code message}, as a save words it).
+	 */
+	STORY_POINT_OUT_OF_RANGE
 
 }

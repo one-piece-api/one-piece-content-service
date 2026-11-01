@@ -38,6 +38,7 @@ Layered packages, one sub-package per feature inside each layer:
 - 0006 images stored in PostgreSQL, 0010 uploaded in WebP/PNG and stored as lossy WebP (native libwebp: glibc base image); 0007 natural key per entity + generic relations.
 - 0008 first appearance (chapter, episode or both).
 - 0009 invariants between contents: checked on publish, serialized by locks (fruit row, pair advisory lock).
+- 0011 reader axis: a window (`discovered`, `ended`) on every list entry, periods on memberships; `former` derived; points checked by `ReaderAxisRules` + library `one-piece-reader-time`; fruit users must not overlap.
 
 Adding an entity type: skill `new-content-type`. Copy the closest existing entity rather than inventing a new shape.
 

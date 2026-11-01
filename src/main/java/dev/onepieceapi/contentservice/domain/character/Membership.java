@@ -1,51 +1,32 @@
 package dev.onepieceapi.contentservice.domain.character;
 
-import dev.onepieceapi.contentservice.domain.workflow.Text;
-
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.List;
 import java.util.UUID;
 
 /**
- * A character's place in an affiliation, as of today (implementation plan of the
- * Character, D10): the affiliation, what the character is in it - "Capitano" / "Captain"
- * - and, in the Navy, its rank. Part of the character's version, in the order it is
- * shown.
+ * A character's place in an affiliation (implementation plan of the Character, D10;
+ * workflow 3.4.7): the affiliation and every stay in it, its periods, in order. Current
+ * while one of its periods is, former when all are: derived, never stored. Part of the
+ * character's version, in the order it is shown. A draft may hold none; submitting
+ * requires one.
  *
  * @param affiliationContentId the content id of the affiliation
- * @param role per language code, for the languages it is written in; none for no role
- * @param marineRank null for none; allowed only in a Navy affiliation
- * @param former whether the character no longer belongs to it
+ * @param periods in order; none is never null
  */
-public record Membership(UUID affiliationContentId, Map<String, String> role, MarineRank marineRank, boolean former) {
+public record Membership(UUID affiliationContentId, List<MembershipPeriod> periods) {
 
 	public Membership {
-		role = role == null ? Map.of() : Map.copyOf(role);
+		periods = periods == null ? List.of() : List.copyOf(periods);
 	}
 
-	/**
-	 * Every text of the role without the space around it; a language left blank is not
-	 * written.
-	 */
 	Membership normalized() {
-		Map<String, String> written = new TreeMap<>();
-		this.role.forEach((language, value) -> {
-			String normalized = Text.stripToNull(value);
-			if (normalized != null) {
-				written.put(language, normalized);
-			}
-		});
-		return new Membership(this.affiliationContentId, written, this.marineRank, this.former);
+		return new Membership(this.affiliationContentId,
+				this.periods.stream().map(MembershipPeriod::normalized).toList());
 	}
 
-	/** What the role says in this language; null when nothing is written in it. */
-	public String roleIn(String language) {
-		return this.role.get(language);
-	}
-
-	/** Whether the role is written in at least one language. */
-	public boolean hasRole() {
-		return !this.role.isEmpty();
+	/** Whether one of its periods holds a Marine rank. */
+	public boolean hasRank() {
+		return this.periods.stream().anyMatch(period -> period.marineRank() != null);
 	}
 
 }

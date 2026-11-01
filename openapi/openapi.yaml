@@ -8538,6 +8538,28 @@ components:
           type: string
         name:
           type: string
+    AliasRequest:
+      type: object
+      properties:
+        alias:
+          type: string
+          maxLength: 100
+          minLength: 0
+        discovered:
+          $ref: "#/components/schemas/FirstAppearanceRequest"
+        ended:
+          $ref: "#/components/schemas/FirstAppearanceRequest"
+      required:
+      - alias
+    AliasResponse:
+      type: object
+      properties:
+        alias:
+          type: string
+        discovered:
+          $ref: "#/components/schemas/FirstAppearanceResponse"
+        ended:
+          $ref: "#/components/schemas/FirstAppearanceResponse"
     ArcNamesResponse:
       type: object
       properties:
@@ -8617,6 +8639,7 @@ components:
           - MARINE_RANK_IN_USE
           - DEVIL_FRUIT_IN_USE
           - RELATIVE_ALREADY_LINKED
+          - STORY_POINT_OUT_OF_RANGE
     BountyNamesResponse:
       type: object
       properties:
@@ -8847,9 +8870,7 @@ components:
         aliases:
           type: array
           items:
-            type: string
-            maxLength: 100
-            minLength: 0
+            $ref: "#/components/schemas/AliasRequest"
           maxItems: 20
           minItems: 0
         birthday:
@@ -8889,10 +8910,8 @@ components:
           minLength: 0
         species:
           type: array
-          description: The content ids of its species
           items:
-            type: string
-            format: uuid
+            $ref: "#/components/schemas/SpeciesEntryRequest"
         status:
           type: string
           enum:
@@ -8913,7 +8932,7 @@ components:
         aliases:
           type: array
           items:
-            type: string
+            $ref: "#/components/schemas/AliasResponse"
         birthday:
           type: string
           example: --05-05
@@ -8950,7 +8969,7 @@ components:
         species:
           type: array
           items:
-            $ref: "#/components/schemas/SpeciesReferenceResponse"
+            $ref: "#/components/schemas/SpeciesEntryResponse"
         status:
           type: string
           enum:
@@ -10086,6 +10105,10 @@ components:
     EpithetRequest:
       type: object
       properties:
+        discovered:
+          $ref: "#/components/schemas/FirstAppearanceRequest"
+        ended:
+          $ref: "#/components/schemas/FirstAppearanceRequest"
         text:
           type: object
           additionalProperties:
@@ -10093,6 +10116,10 @@ components:
     EpithetResponse:
       type: object
       properties:
+        discovered:
+          $ref: "#/components/schemas/FirstAppearanceResponse"
+        ended:
+          $ref: "#/components/schemas/FirstAppearanceResponse"
         text:
           type: object
           additionalProperties:
@@ -10132,8 +10159,10 @@ components:
           type: string
           format: uuid
           description: The content id of a Devil Fruit
-        former:
-          type: boolean
+        discovered:
+          $ref: "#/components/schemas/FirstAppearanceRequest"
+        ended:
+          $ref: "#/components/schemas/FirstAppearanceRequest"
       required:
       - devilFruit
     FruitUseResponse:
@@ -10141,8 +10170,10 @@ components:
       properties:
         devilFruit:
           $ref: "#/components/schemas/DevilFruitReferenceResponse"
-        former:
-          type: boolean
+        discovered:
+          $ref: "#/components/schemas/FirstAppearanceResponse"
+        ended:
+          $ref: "#/components/schemas/FirstAppearanceResponse"
     ImageResponse:
       type: object
       properties:
@@ -10157,6 +10188,72 @@ components:
           type: string
         name:
           type: string
+    MembershipPeriodRequest:
+      type: object
+      properties:
+        discovered:
+          $ref: "#/components/schemas/FirstAppearanceRequest"
+        ended:
+          $ref: "#/components/schemas/FirstAppearanceRequest"
+        marineRank:
+          type: string
+          enum:
+          - FLEET_ADMIRAL
+          - ADMIRAL
+          - VICE_ADMIRAL
+          - REAR_ADMIRAL
+          - COMMODORE
+          - CAPTAIN
+          - COMMANDER
+          - LIEUTENANT_COMMANDER
+          - LIEUTENANT
+          - LIEUTENANT_JUNIOR_GRADE
+          - ENSIGN
+          - WARRANT_OFFICER
+          - MASTER_CHIEF_PETTY_OFFICER
+          - CHIEF_PETTY_OFFICER
+          - PETTY_OFFICER
+          - SEAMAN_FIRST_CLASS
+          - SEAMAN_APPRENTICE
+          - SEAMAN_RECRUIT
+          - CHORE_BOY
+        role:
+          type: object
+          additionalProperties:
+            type: string
+    MembershipPeriodResponse:
+      type: object
+      properties:
+        discovered:
+          $ref: "#/components/schemas/FirstAppearanceResponse"
+        ended:
+          $ref: "#/components/schemas/FirstAppearanceResponse"
+        marineRank:
+          type: string
+          enum:
+          - FLEET_ADMIRAL
+          - ADMIRAL
+          - VICE_ADMIRAL
+          - REAR_ADMIRAL
+          - COMMODORE
+          - CAPTAIN
+          - COMMANDER
+          - LIEUTENANT_COMMANDER
+          - LIEUTENANT
+          - LIEUTENANT_JUNIOR_GRADE
+          - ENSIGN
+          - WARRANT_OFFICER
+          - MASTER_CHIEF_PETTY_OFFICER
+          - CHIEF_PETTY_OFFICER
+          - PETTY_OFFICER
+          - SEAMAN_FIRST_CLASS
+          - SEAMAN_APPRENTICE
+          - SEAMAN_RECRUIT
+          - CHORE_BOY
+        role:
+          type: object
+          additionalProperties:
+            type: string
     MembershipRequest:
       type: object
       properties:
@@ -10164,34 +10261,12 @@ components:
           type: string
           format: uuid
           description: The content id of an Affiliation
-        former:
-          type: boolean
-        marineRank:
-          type: string
-          enum:
-          - FLEET_ADMIRAL
-          - ADMIRAL
-          - VICE_ADMIRAL
-          - REAR_ADMIRAL
-          - COMMODORE
-          - CAPTAIN
-          - COMMANDER
-          - LIEUTENANT_COMMANDER
-          - LIEUTENANT
-          - LIEUTENANT_JUNIOR_GRADE
-          - ENSIGN
-          - WARRANT_OFFICER
-          - MASTER_CHIEF_PETTY_OFFICER
-          - CHIEF_PETTY_OFFICER
-          - PETTY_OFFICER
-          - SEAMAN_FIRST_CLASS
-          - SEAMAN_APPRENTICE
-          - SEAMAN_RECRUIT
-          - CHORE_BOY
-        role:
-          type: object
-          additionalProperties:
-            type: string
+        periods:
+          type: array
+          items:
+            $ref: "#/components/schemas/MembershipPeriodRequest"
+          maxItems: 20
+          minItems: 0
       required:
       - affiliation
     MembershipResponse:
@@ -10199,34 +10274,10 @@ components:
       properties:
         affiliation:
           $ref: "#/components/schemas/AffiliationReferenceResponse"
-        former:
-          type: boolean
-        marineRank:
-          type: string
-          enum:
-          - FLEET_ADMIRAL
-          - ADMIRAL
-          - VICE_ADMIRAL
-          - REAR_ADMIRAL
-          - COMMODORE
-          - CAPTAIN
-          - COMMANDER
-          - LIEUTENANT_COMMANDER
-          - LIEUTENANT
-          - LIEUTENANT_JUNIOR_GRADE
-          - ENSIGN
-          - WARRANT_OFFICER
-          - MASTER_CHIEF_PETTY_OFFICER
-          - CHIEF_PETTY_OFFICER
-          - PETTY_OFFICER
-          - SEAMAN_FIRST_CLASS
-          - SEAMAN_APPRENTICE
-          - SEAMAN_RECRUIT
-          - CHORE_BOY
-        role:
-          type: object
-          additionalProperties:
-            type: string
+        periods:
+          type: array
+          items:
+            $ref: "#/components/schemas/MembershipPeriodResponse"
     NewVersionRequest:
       type: object
       properties:
@@ -10657,6 +10708,10 @@ components:
     RelativeRequest:
       type: object
       properties:
+        discovered:
+          $ref: "#/components/schemas/FirstAppearanceRequest"
+        ended:
+          $ref: "#/components/schemas/FirstAppearanceRequest"
         kind:
           type: string
           enum:
@@ -10682,6 +10737,10 @@ components:
     RelativeResponse:
       type: object
       properties:
+        discovered:
+          $ref: "#/components/schemas/FirstAppearanceResponse"
+        ended:
+          $ref: "#/components/schemas/FirstAppearanceResponse"
         kind:
           type: string
           enum:
@@ -10752,6 +10811,28 @@ components:
           type: object
           additionalProperties:
             $ref: "#/components/schemas/StoryTranslationResponse"
+    SpeciesEntryRequest:
+      type: object
+      properties:
+        discovered:
+          $ref: "#/components/schemas/FirstAppearanceRequest"
+        ended:
+          $ref: "#/components/schemas/FirstAppearanceRequest"
+        species:
+          type: string
+          format: uuid
+          description: The content id of a Species
+      required:
+      - species
+    SpeciesEntryResponse:
+      type: object
+      properties:
+        discovered:
+          $ref: "#/components/schemas/FirstAppearanceResponse"
+        ended:
+          $ref: "#/components/schemas/FirstAppearanceResponse"
+        species:
+          $ref: "#/components/schemas/SpeciesReferenceResponse"
     SpeciesNamesResponse:
       type: object
       properties:

@@ -402,8 +402,8 @@ class CharacterRelativesIntegrationTest {
 		return this.fixtures.complete(romaji).toBuilder().relatives(List.of(relatives)).build();
 	}
 
-	private static Relative link(UUID relative, RelativeKind kind) {
-		return new Relative(relative, kind);
+	private Relative link(UUID relative, RelativeKind kind) {
+		return this.fixtures.relative(relative, kind);
 	}
 
 	private void stored() {

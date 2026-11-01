@@ -7,17 +7,13 @@ import java.util.UUID;
 
 /**
  * A Devil Fruit of a Character, as a draft is saved (implementation plan of the
- * Character, D12).
+ * Character, D12; workflow 3.4.8): former once its window has an end.
  *
  * @param devilFruit the content id of the fruit
- * @param former true once the character no longer has its power; left out is false
+ * @param discovered as {@link WindowedRequest#discovered()}
+ * @param ended where the reader learns the character lost its power; left out for none
  */
 public record FruitUseRequest(@NotNull @Schema(description = "The content id of a Devil Fruit") UUID devilFruit,
-		Boolean former) {
-
-	/** Whether the character lost the power; not saying so is not. */
-	public boolean isFormer() {
-		return Boolean.TRUE.equals(this.former);
-	}
+		FirstAppearanceRequest discovered, FirstAppearanceRequest ended) implements WindowedRequest {
 
 }

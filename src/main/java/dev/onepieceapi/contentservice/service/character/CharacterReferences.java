@@ -7,6 +7,7 @@ import dev.onepieceapi.contentservice.domain.character.CharacterReference;
 import dev.onepieceapi.contentservice.domain.character.FruitUse;
 import dev.onepieceapi.contentservice.domain.character.Membership;
 import dev.onepieceapi.contentservice.domain.character.Relative;
+import dev.onepieceapi.contentservice.domain.character.SpeciesEntry;
 import dev.onepieceapi.contentservice.domain.character.RelativeOf;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitReference;
 import dev.onepieceapi.contentservice.domain.species.SpeciesReference;
@@ -48,7 +49,7 @@ public class CharacterReferences {
 	}
 
 	public Map<UUID, SpeciesReference> speciesOf(Character character) {
-		return this.species.referencesOf(character.speciesIds());
+		return this.species.referencesOf(character.species().stream().map(SpeciesEntry::speciesContentId).toList());
 	}
 
 	public Map<UUID, AffiliationReference> affiliationsOf(Character character) {

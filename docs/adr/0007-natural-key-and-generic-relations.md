@@ -113,7 +113,7 @@ would multiply fake romaji columns and copies of the same rules.
 ## Addendum - lists of relations inside a version (Character, C1-C12)
 
 - **Why:** a character names many species, affiliations, fruits and relatives, each with its own data (role, rank,
-  `former`, kind). A `RelationDescriptor` points one target per body or per part.
+  `former`, kind; `former` replaced by a window, ADR-0011). A `RelationDescriptor` points one target per body or per part.
 - **A list is child tables:** one table per list (`character_version_<list>`, `position INT` for the order), plus a
   translation table when an entry is localized (epithets, roles), published as child views
   (`published.character_<list>`). Not a JSON column: no foreign key, no index, no relation rules.

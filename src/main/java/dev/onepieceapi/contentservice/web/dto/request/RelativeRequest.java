@@ -13,8 +13,11 @@ import java.util.UUID;
  * @param relative the content id of the relative
  * @param kind what the relative is to the character: {@code GRANDPARENT} for Garp on
  * Luffy
+ * @param discovered as {@link WindowedRequest#discovered()}
+ * @param ended as {@link WindowedRequest#ended()}
  */
 public record RelativeRequest(@NotNull @Schema(description = "The content id of a Character") UUID relative,
-		@NotNull RelativeKind kind) {
+		@NotNull RelativeKind kind, FirstAppearanceRequest discovered,
+		FirstAppearanceRequest ended) implements WindowedRequest {
 
 }

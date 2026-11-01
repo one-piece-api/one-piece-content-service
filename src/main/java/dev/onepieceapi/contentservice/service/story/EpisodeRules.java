@@ -113,8 +113,8 @@ public class EpisodeRules implements ContentRules<Episode> {
 	}
 
 	private Optional<ActionBlock> charactersLinked(VersionAction action, UUID contentId) {
-		var characters = new LinkedItems(this.characterRepository::countOnlineFirstAppearingIn,
-				this.characterRepository::findOnlineFirstAppearingIn);
+		var characters = new LinkedItems(this.characterRepository::countOnlineWithPointIn,
+				this.characterRepository::findOnlineWithPointIn);
 		return RelationRules.onlineItemsLinked(action, CharacterRelations.FIRST_APPEARANCE_EPISODE, contentId,
 				characters, this.properties.blockingPreviewSize());
 	}

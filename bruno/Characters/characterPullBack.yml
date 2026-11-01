@@ -72,12 +72,67 @@ examples:
                     "names": {},
                     "romaji": ""
                   },
-                  "former": false,
-                  "marineRank": "FLEET_ADMIRAL",
-                  "role": {}
+                  "periods": [
+                    {
+                      "discovered": {
+                        "chapter": {
+                          "id": "",
+                          "names": {},
+                          "number": 0
+                        },
+                        "episode": {
+                          "id": "",
+                          "names": {},
+                          "number": 0
+                        }
+                      },
+                      "ended": {
+                        "chapter": {
+                          "id": "",
+                          "names": {},
+                          "number": 0
+                        },
+                        "episode": {
+                          "id": "",
+                          "names": {},
+                          "number": 0
+                        }
+                      },
+                      "marineRank": "FLEET_ADMIRAL",
+                      "role": {}
+                    }
+                  ]
                 }
               ],
-              "aliases": [],
+              "aliases": [
+                {
+                  "alias": "",
+                  "discovered": {
+                    "chapter": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    },
+                    "episode": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    }
+                  },
+                  "ended": {
+                    "chapter": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    },
+                    "episode": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    }
+                  }
+                }
+              ],
               "birthday": "--05-05",
               "devilFruits": [
                 {
@@ -87,11 +142,58 @@ examples:
                     "names": {},
                     "romaji": ""
                   },
-                  "former": false
+                  "discovered": {
+                    "chapter": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    },
+                    "episode": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    }
+                  },
+                  "ended": {
+                    "chapter": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    },
+                    "episode": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    }
+                  }
                 }
               ],
               "epithets": [
                 {
+                  "discovered": {
+                    "chapter": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    },
+                    "episode": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    }
+                  },
+                  "ended": {
+                    "chapter": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    },
+                    "episode": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    }
+                  },
                   "text": {}
                 }
               ],
@@ -115,6 +217,30 @@ examples:
               "japaneseName": "",
               "relatives": [
                 {
+                  "discovered": {
+                    "chapter": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    },
+                    "episode": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    }
+                  },
+                  "ended": {
+                    "chapter": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    },
+                    "episode": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    }
+                  },
                   "kind": "PARENT",
                   "relative": {
                     "gender": "MALE",
@@ -126,6 +252,30 @@ examples:
               ],
               "relativesOf": [
                 {
+                  "discovered": {
+                    "chapter": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    },
+                    "episode": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    }
+                  },
+                  "ended": {
+                    "chapter": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    },
+                    "episode": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    }
+                  },
                   "kind": "PARENT",
                   "relative": {
                     "gender": "MALE",
@@ -138,9 +288,35 @@ examples:
               "romaji": "",
               "species": [
                 {
-                  "id": "",
-                  "names": {},
-                  "romaji": ""
+                  "discovered": {
+                    "chapter": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    },
+                    "episode": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    }
+                  },
+                  "ended": {
+                    "chapter": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    },
+                    "episode": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    }
+                  },
+                  "species": {
+                    "id": "",
+                    "names": {},
+                    "romaji": ""
+                  }
                 }
               ],
               "status": "ALIVE",

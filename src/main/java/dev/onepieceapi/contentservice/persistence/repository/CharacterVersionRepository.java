@@ -7,6 +7,7 @@ import dev.onepieceapi.contentservice.domain.workflow.ContentFilter;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.entity.CharacterVersionEntity;
 import dev.onepieceapi.contentservice.persistence.projection.AffiliationMemberCount;
+import dev.onepieceapi.contentservice.persistence.projection.FruitUseWindow;
 import dev.onepieceapi.contentservice.persistence.projection.FruitUserCount;
 import dev.onepieceapi.contentservice.persistence.projection.RelativeLink;
 import dev.onepieceapi.contentservice.persistence.specification.CharacterSpecifications;
@@ -84,30 +85,63 @@ public interface CharacterVersionRepository extends VersionBodyRepository<Charac
 	boolean usesImage(String imageId, Collection<VersionStatus> statuses);
 
 	/**
-	 * How many characters are online first appearing in this chapter or episode
-	 * (ADR-0008).
+	 * The versions online naming this chapter or episode at any point of the reader axis
+	 * (workflow 3.7.4): the first appearance or a point of any window. Each part is
+	 * indexed (V26, V38).
 	 */
-	@Query("""
-			select count(d) from CharacterVersionEntity d join d.version v
-			where (d.firstAppearanceChapterId = :storyContentId or d.firstAppearanceEpisodeId = :storyContentId)
-				and v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED""")
-	long countOnlineFirstAppearingIn(UUID storyContentId);
+	@Query(value = """
+			select v.id from content_version v
+			where v.status = 'PUBLISHED' and v.id in (
+			    select version_id from character_version
+			    where first_appearance_chapter_id = :storyContentId
+			        or first_appearance_episode_id = :storyContentId
+			    union select version_id from character_version_epithet
+			    where discovered_chapter_id = :storyContentId or discovered_episode_id = :storyContentId
+			        or ended_chapter_id = :storyContentId or ended_episode_id = :storyContentId
+			    union select version_id from character_version_alias
+			    where discovered_chapter_id = :storyContentId or discovered_episode_id = :storyContentId
+			        or ended_chapter_id = :storyContentId or ended_episode_id = :storyContentId
+			    union select version_id from character_version_species
+			    where discovered_chapter_id = :storyContentId or discovered_episode_id = :storyContentId
+			        or ended_chapter_id = :storyContentId or ended_episode_id = :storyContentId
+			    union select version_id from character_version_devil_fruit
+			    where discovered_chapter_id = :storyContentId or discovered_episode_id = :storyContentId
+			        or ended_chapter_id = :storyContentId or ended_episode_id = :storyContentId
+			    union select version_id from character_version_relative
+			    where discovered_chapter_id = :storyContentId or discovered_episode_id = :storyContentId
+			        or ended_chapter_id = :storyContentId or ended_episode_id = :storyContentId
+			    union select m.version_id from character_version_affiliation m
+			        join character_version_affiliation_period p on p.membership_id = m.id
+			    where p.discovered_chapter_id = :storyContentId or p.discovered_episode_id = :storyContentId
+			        or p.ended_chapter_id = :storyContentId or p.ended_episode_id = :storyContentId)""",
+			nativeQuery = true)
+	List<UUID> findOnlineVersionIdsWithPointIn(UUID storyContentId);
+
+	/** How many characters are online naming this chapter or episode at any point. */
+	default long countOnlineWithPointIn(UUID storyContentId) {
+		return findOnlineVersionIdsWithPointIn(storyContentId).size();
+	}
 
 	/**
-	 * The characters online first appearing in this chapter or episode, by romaji: as
+	 * The characters online naming this chapter or episode at any point, by romaji: as
 	 * many as the page asks for.
 	 */
+	default List<CharacterVersionEntity> findOnlineWithPointIn(UUID storyContentId, Pageable pageable) {
+		List<UUID> versionIds = findOnlineVersionIdsWithPointIn(storyContentId);
+		return versionIds.isEmpty() ? List.of() : findByVersionIdsByRomaji(versionIds, pageable);
+	}
+
+	/** These versions, by romaji: as many as the page asks for. */
 	@Query("""
 			select d from CharacterVersionEntity d join fetch d.version v
-			where (d.firstAppearanceChapterId = :storyContentId or d.firstAppearanceEpisodeId = :storyContentId)
-				and v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED
+			where d.versionId in :versionIds
 			order by d.romaji""")
-	List<CharacterVersionEntity> findOnlineFirstAppearingIn(UUID storyContentId, Pageable pageable);
+	List<CharacterVersionEntity> findByVersionIdsByRomaji(Collection<UUID> versionIds, Pageable pageable);
 
 	/** How many characters are online naming this species (D8). */
 	@Query("""
-			select count(d) from CharacterVersionEntity d join d.version v
-			where :speciesContentId member of d.speciesIds
+			select count(d) from CharacterVersionEntity d join d.version v join d.species s
+			where s.speciesContentId = :speciesContentId
 				and v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED""")
 	long countOnlineWithSpecies(UUID speciesContentId);
 
@@ -115,8 +149,8 @@ public interface CharacterVersionRepository extends VersionBodyRepository<Charac
 	 * The characters online naming this species, by romaji: as many as the page asks for.
 	 */
 	@Query("""
-			select d from CharacterVersionEntity d join fetch d.version v
-			where :speciesContentId member of d.speciesIds
+			select d from CharacterVersionEntity d join fetch d.version v join d.species s
+			where s.speciesContentId = :speciesContentId
 				and v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED
 			order by d.romaji""")
 	List<CharacterVersionEntity> findOnlineWithSpecies(UUID speciesContentId, Pageable pageable);
@@ -143,8 +177,9 @@ public interface CharacterVersionRepository extends VersionBodyRepository<Charac
 
 	/** How many characters are online holding a rank in this affiliation (D10). */
 	@Query("""
-			select count(d) from CharacterVersionEntity d join d.version v join d.affiliations m
-			where m.affiliationContentId = :affiliationContentId and m.marineRank is not null
+			select count(distinct d) from CharacterVersionEntity d join d.version v join d.affiliations m
+				join m.periods p
+			where m.affiliationContentId = :affiliationContentId and p.marineRank is not null
 				and v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED""")
 	long countOnlineWithRankIn(UUID affiliationContentId);
 
@@ -153,21 +188,24 @@ public interface CharacterVersionRepository extends VersionBodyRepository<Charac
 	 * page asks for.
 	 */
 	@Query("""
-			select d from CharacterVersionEntity d join fetch d.version v join d.affiliations m
-			where m.affiliationContentId = :affiliationContentId and m.marineRank is not null
+			select distinct d from CharacterVersionEntity d join fetch d.version v join d.affiliations m
+				join m.periods p
+			where m.affiliationContentId = :affiliationContentId and p.marineRank is not null
 				and v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED
 			order by d.romaji""")
 	List<CharacterVersionEntity> findOnlineWithRankIn(UUID affiliationContentId, Pageable pageable);
 
 	/**
 	 * How many characters online belong to each of these affiliations: those whose
-	 * membership is not marked former. An affiliation with none is not in the result.
+	 * membership has a period without an end (workflow 3.4.7). An affiliation with none
+	 * is not in the result.
 	 */
 	@Query("""
 			select new dev.onepieceapi.contentservice.persistence.projection.AffiliationMemberCount(
-				m.affiliationContentId, count(d))
-			from CharacterVersionEntity d join d.version v join d.affiliations m
-			where m.affiliationContentId in :affiliationContentIds and m.former = false
+				m.affiliationContentId, count(distinct d))
+			from CharacterVersionEntity d join d.version v join d.affiliations m join m.periods p
+			where m.affiliationContentId in :affiliationContentIds
+				and p.window.endedChapterId is null and p.window.endedEpisodeId is null
 				and v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED
 			group by m.affiliationContentId""")
 	List<AffiliationMemberCount> countMembersOf(Collection<UUID> affiliationContentIds);
@@ -190,46 +228,30 @@ public interface CharacterVersionRepository extends VersionBodyRepository<Charac
 			order by d.romaji""")
 	List<CharacterVersionEntity> findOnlineWithDevilFruit(UUID devilFruitContentId, Pageable pageable);
 
-	/** How many characters are online with this Devil Fruit as a current one (D12). */
-	@Query("""
-			select count(d) from CharacterVersionEntity d join d.version v join d.devilFruits u
-			where u.devilFruitContentId = :devilFruitContentId and u.former = false
-				and v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED""")
-	long countOnlineCurrentUsersOf(UUID devilFruitContentId);
-
 	/**
-	 * The characters online with this Devil Fruit as a current one, by romaji: as many as
-	 * the page asks for.
+	 * Every use of this Devil Fruit by a character online, with its window, by romaji:
+	 * what the invariant of its users compares (workflow 3.4.8).
 	 */
 	@Query("""
-			select d from CharacterVersionEntity d join fetch d.version v join d.devilFruits u
-			where u.devilFruitContentId = :devilFruitContentId and u.former = false
+			select new dev.onepieceapi.contentservice.persistence.projection.FruitUseWindow(v.contentId, d.romaji,
+				u.window.discoveredChapterId, u.window.discoveredEpisodeId, u.window.endedChapterId,
+				u.window.endedEpisodeId)
+			from CharacterVersionEntity d join d.version v join d.devilFruits u
+			where u.devilFruitContentId = :devilFruitContentId
 				and v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED
 			order by d.romaji""")
-	List<CharacterVersionEntity> findOnlineCurrentUsersOf(UUID devilFruitContentId, Pageable pageable);
-
-	/**
-	 * The same, the character of this content left out: the one going online, whose
-	 * previous version may be the one online.
-	 */
-	@Query("""
-			select d from CharacterVersionEntity d join fetch d.version v join d.devilFruits u
-			where u.devilFruitContentId = :devilFruitContentId and u.former = false
-				and v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED
-				and v.contentId <> :excludedContentId
-			order by d.romaji""")
-	List<CharacterVersionEntity> findOnlineOtherCurrentUsersOf(UUID devilFruitContentId, UUID excludedContentId,
-			Pageable pageable);
+	List<FruitUseWindow> findOnlineUsesOf(UUID devilFruitContentId);
 
 	/**
 	 * How many characters online currently use each of these Devil Fruits: those whose
-	 * entry is not marked former. A fruit with none is not in the result.
+	 * entry has no end (workflow 3.4.8). A fruit with none is not in the result.
 	 */
 	@Query("""
 			select new dev.onepieceapi.contentservice.persistence.projection.FruitUserCount(
 				u.devilFruitContentId, count(d))
 			from CharacterVersionEntity d join d.version v join d.devilFruits u
-			where u.devilFruitContentId in :devilFruitContentIds and u.former = false
+			where u.devilFruitContentId in :devilFruitContentIds
+				and u.window.endedChapterId is null and u.window.endedEpisodeId is null
 				and v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED
 			group by u.devilFruitContentId""")
 	List<FruitUserCount> countCurrentUsersOf(Collection<UUID> devilFruitContentIds);
@@ -254,10 +276,12 @@ public interface CharacterVersionRepository extends VersionBodyRepository<Charac
 
 	/**
 	 * Every link the characters online hold to this one, with the kind as they stored it
-	 * (D13).
+	 * (D13) and its window, the same on both sides.
 	 */
 	@Query("""
-			select new dev.onepieceapi.contentservice.persistence.projection.RelativeLink(v.contentId, r.kind)
+			select new dev.onepieceapi.contentservice.persistence.projection.RelativeLink(v.contentId, r.kind,
+				r.window.discoveredChapterId, r.window.discoveredEpisodeId, r.window.endedChapterId,
+				r.window.endedEpisodeId)
 			from CharacterVersionEntity d join d.version v join d.relatives r
 			where r.relativeContentId = :relativeContentId
 				and v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED""")
@@ -273,13 +297,13 @@ public interface CharacterVersionRepository extends VersionBodyRepository<Charac
 				and v.status in :statuses""")
 	boolean namesAsRelative(UUID holderContentId, UUID namedContentId, Collection<VersionStatus> statuses);
 
-	/** The epithets count too: a language they are written in is in use. */
+	/** The epithets and the roles count too: a language they are written in is in use. */
 	@Override
 	@Query(value = """
 			select exists (select 1 from character_version_translation where language_code = :languageCode)
 			    or exists (select 1 from character_version_epithet_translation
 			               where language_code = :languageCode)
-			    or exists (select 1 from character_version_affiliation_translation
+			    or exists (select 1 from character_version_affiliation_period_translation
 			               where language_code = :languageCode)""", nativeQuery = true)
 	boolean existsByLanguage(String languageCode);
 

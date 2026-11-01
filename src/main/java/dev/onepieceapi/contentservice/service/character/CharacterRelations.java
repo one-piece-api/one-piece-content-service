@@ -4,12 +4,10 @@ import dev.onepieceapi.contentservice.domain.character.Character;
 import dev.onepieceapi.contentservice.domain.character.FruitUse;
 import dev.onepieceapi.contentservice.domain.character.Membership;
 import dev.onepieceapi.contentservice.domain.character.Relative;
+import dev.onepieceapi.contentservice.domain.character.SpeciesEntry;
 import dev.onepieceapi.contentservice.domain.workflow.BlockReason;
 import dev.onepieceapi.contentservice.service.content.FirstAppearanceRules;
 import dev.onepieceapi.contentservice.service.content.RelationDescriptor;
-
-import java.util.UUID;
-import java.util.function.Function;
 
 /**
  * The relations of a Character (implementation plan of the Character, D8, D9): the
@@ -42,10 +40,10 @@ public final class CharacterRelations {
 	public static final RelationDescriptor<Character> FIRST_APPEARANCE_EPISODE = FirstAppearanceRules
 		.episodeRelation(ITEMS_NAME);
 
-	/** One species of a character: each entry of the list is the target itself. */
-	public static final RelationDescriptor<UUID> SPECIES = RelationDescriptor.<UUID>builder()
+	/** The species of one entry of the species of a character. */
+	public static final RelationDescriptor<SpeciesEntry> SPECIES = RelationDescriptor.<SpeciesEntry>builder()
 		.name(SPECIES_FIELD)
-		.target(Function.identity())
+		.target(SpeciesEntry::speciesContentId)
 		.notLinkable("must be a Species with an approved version")
 		.targetNotOnline(BlockReason.RELATED_NOT_ONLINE)
 		.onlineItemsLinked(BlockReason.ONLINE_ITEMS_LINKED)

@@ -1,6 +1,7 @@
 package dev.onepieceapi.contentservice.persistence.entity;
 
 import jakarta.persistence.Embeddable;
+import jakarta.persistence.Embedded;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -22,6 +23,8 @@ public class CharacterFruitUseEmbeddable {
 	/** The content of the fruit. */
 	private UUID devilFruitContentId;
 
-	private boolean former;
+	/** Null when none of its points is chosen. */
+	@Embedded
+	private StoryWindowEmbeddable window;
 
 }

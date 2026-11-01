@@ -1,17 +1,13 @@
 package dev.onepieceapi.contentservice.web.dto.response;
 
-import dev.onepieceapi.contentservice.domain.character.MarineRank;
-
-import java.util.Map;
+import java.util.List;
 
 /**
- * A membership of a Character.
+ * A membership of a Character: current while one of its periods has no end, derived.
  *
  * @param affiliation the affiliation as of today, with its kind
- * @param role per language code, for the languages it is written in
- * @param marineRank null for none
+ * @param periods every stay in it, in order
  */
-public record MembershipResponse(AffiliationReferenceResponse affiliation, Map<String, String> role,
-		MarineRank marineRank, boolean former) {
+public record MembershipResponse(AffiliationReferenceResponse affiliation, List<MembershipPeriodResponse> periods) {
 
 }

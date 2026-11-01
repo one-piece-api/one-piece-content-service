@@ -6,13 +6,23 @@ import dev.onepieceapi.contentservice.domain.affiliation.AffiliationKind;
 import dev.onepieceapi.contentservice.domain.affiliation.AffiliationTranslation;
 import dev.onepieceapi.contentservice.domain.bounty.Bounty;
 import dev.onepieceapi.contentservice.domain.bounty.BountyCondition;
+import dev.onepieceapi.contentservice.domain.character.Alias;
 import dev.onepieceapi.contentservice.domain.character.Character;
 import dev.onepieceapi.contentservice.domain.character.CharacterStatus;
 import dev.onepieceapi.contentservice.domain.character.CharacterTranslation;
+import dev.onepieceapi.contentservice.domain.character.Epithet;
+import dev.onepieceapi.contentservice.domain.character.FruitUse;
 import dev.onepieceapi.contentservice.domain.character.Gender;
+import dev.onepieceapi.contentservice.domain.character.MarineRank;
+import dev.onepieceapi.contentservice.domain.character.Membership;
+import dev.onepieceapi.contentservice.domain.character.MembershipPeriod;
+import dev.onepieceapi.contentservice.domain.character.Relative;
+import dev.onepieceapi.contentservice.domain.character.RelativeKind;
+import dev.onepieceapi.contentservice.domain.character.SpeciesEntry;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitTranslation;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
+import dev.onepieceapi.contentservice.domain.readertime.StoryWindow;
 import dev.onepieceapi.contentservice.domain.security.Permission;
 import dev.onepieceapi.contentservice.domain.security.User;
 import dev.onepieceapi.contentservice.domain.species.Species;
@@ -67,6 +77,8 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import dev.onepieceapi.contentservice.service.content.ReaderAxisRules;
+import java.util.Arrays;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -144,12 +156,18 @@ final class CharacterFixtures {
 
 	private CharacterService service(ContentImages images, CharacterVersionRepository rulesCharacters) {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
-		var validator = new CharacterValidator(this.characters, this.languages, this.chapters, this.episodes,
-				this.species, this.affiliations, this.devilFruits);
+		var axis = readerAxisRules();
+		var validator = new CharacterValidator(this.characters, this.languages, this.species, this.affiliations,
+				this.devilFruits, axis);
 		var rules = new CharacterRules(this.contents, this.chapters, this.episodes, this.species, this.affiliations,
-				this.bounties, this.devilFruits, rulesCharacters, new RulesProperties(5));
+				this.bounties, this.devilFruits, rulesCharacters, axis, new RulesProperties(5));
 		return new CharacterService(new CharacterDefinition(this.characters, validator, rules), this.contentVersions,
 				this.contents, new AuditLogService(this.auditLog, clock), clock, images);
+	}
+
+	/** The rules of the reader axis over the repositories of the test. */
+	ReaderAxisRules readerAxisRules() {
+		return new ReaderAxisRules(this.contents, this.chapters, this.episodes);
 	}
 
 	/** The service of the species, to retire one a character names. */
@@ -185,6 +203,40 @@ final class CharacterFixtures {
 			.gender(Gender.FEMALE)
 			.firstAppearance(this.firstAppearance)
 			.build();
+	}
+
+	/**
+	 * Discovered at the first appearance, with no end: the window of every entry whose
+	 * window is not under test.
+	 */
+	StoryWindow fromStart() {
+		return StoryWindow.from(this.firstAppearance);
+	}
+
+	Epithet epithet(Map<String, String> text) {
+		return new Epithet(text, fromStart());
+	}
+
+	List<Alias> aliases(String... names) {
+		return Arrays.stream(names).map(name -> new Alias(name, fromStart())).toList();
+	}
+
+	List<SpeciesEntry> speciesEntries(UUID... speciesIds) {
+		return Arrays.stream(speciesIds).map(id -> new SpeciesEntry(id, fromStart())).toList();
+	}
+
+	/** A membership of a single period, current. */
+	Membership membership(UUID affiliationContentId, Map<String, String> role, MarineRank marineRank) {
+		return new Membership(affiliationContentId, List.of(new MembershipPeriod(fromStart(), role, marineRank)));
+	}
+
+	/** A Devil Fruit the character has today. */
+	FruitUse fruitUse(UUID devilFruitContentId) {
+		return new FruitUse(devilFruitContentId, fromStart());
+	}
+
+	Relative relative(UUID relativeContentId, RelativeKind kind) {
+		return new Relative(relativeContentId, kind, fromStart());
 	}
 
 	/** A new character with its first version in this status. */
@@ -238,7 +290,7 @@ final class CharacterFixtures {
 		var types = mock(DevilFruitTypeVersionRepository.class);
 		when(types.existsWithStatus(any(), anyCollection())).thenReturn(true);
 		return new DevilFruitRules(this.contents, types, this.chapters, this.episodes, this.characters,
-				new RulesProperties(5));
+				readerAxisRules(), new RulesProperties(5));
 	}
 
 	/**
@@ -269,9 +321,12 @@ final class CharacterFixtures {
 
 	/** The fields a refusal names. */
 	static List<String> fieldsOf(DomainException refused) {
-		@SuppressWarnings("unchecked")
-		List<FieldViolation> violations = (List<FieldViolation>) refused.getDetails().get("errors");
-		return violations.stream().map(FieldViolation::field).toList();
+		return violationsOf(refused).stream().map(FieldViolation::field).toList();
+	}
+
+	@SuppressWarnings("unchecked")
+	static List<FieldViolation> violationsOf(DomainException refused) {
+		return (List<FieldViolation>) refused.getDetails().get("errors");
 	}
 
 	private UUID content(EntityType entityType) {

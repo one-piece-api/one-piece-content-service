@@ -45,6 +45,12 @@ public final class OnlineChapters {
 
 	/** An episode, number 4, with a single version in this status. */
 	public static UUID episode(ContentRepository contents, EpisodeVersionRepository episodes, VersionStatus status) {
+		return episode(contents, episodes, status, 4);
+	}
+
+	/** An episode with this number, with a single version in this status. */
+	public static UUID episode(ContentRepository contents, EpisodeVersionRepository episodes, VersionStatus status,
+			int number) {
 		UUID contentId = contents.save(new ContentEntity(UUID.randomUUID(), EntityType.EPISODE, EARLIER)).getId();
 		var version = new EpisodeVersionEntity(ContentVersionEntity.builder()
 			.contentId(contentId)
@@ -54,25 +60,37 @@ public final class OnlineChapters {
 			.createdAt(EARLIER)
 			.updatedAt(EARLIER)
 			.build());
-		StoryVersionMapper.rewrite(version, Episode.builder().number(4).build(), EARLIER);
+		StoryVersionMapper.rewrite(version, Episode.builder().number(number).build(), EARLIER);
 		episodes.save(version);
 		return contentId;
 	}
 
-	/** A chapter with a single version in this status. */
+	/** A chapter, number 1, with a single version in this status. */
 	public static UUID chapter(ContentRepository contents, ChapterVersionRepository chapters, VersionStatus status) {
+		return chapter(contents, chapters, status, 1);
+	}
+
+	/** A chapter with this number, with a single version in this status. */
+	public static UUID chapter(ContentRepository contents, ChapterVersionRepository chapters, VersionStatus status,
+			int number) {
 		UUID contentId = contents.save(new ContentEntity(UUID.randomUUID(), EntityType.CHAPTER, EARLIER)).getId();
+		chapterVersion(chapters, contentId, 1, status, number);
+		return contentId;
+	}
+
+	/** Another version of a chapter, with this number in this status. */
+	public static void chapterVersion(ChapterVersionRepository chapters, UUID contentId, int versionNumber,
+			VersionStatus status, int number) {
 		var version = new ChapterVersionEntity(ContentVersionEntity.builder()
 			.contentId(contentId)
-			.versionNumber(1)
+			.versionNumber(versionNumber)
 			.author(UserMapper.toEmbeddable(AUTHOR))
 			.status(status)
 			.createdAt(EARLIER)
 			.updatedAt(EARLIER)
 			.build());
-		StoryVersionMapper.rewrite(version, Chapter.builder().number(1).build(), EARLIER);
+		StoryVersionMapper.rewrite(version, Chapter.builder().number(number).build(), EARLIER);
 		chapters.save(version);
-		return contentId;
 	}
 
 }

@@ -1,6 +1,7 @@
 package dev.onepieceapi.contentservice.web.mapper;
 
 import dev.onepieceapi.contentservice.domain.affiliation.AffiliationReference;
+import dev.onepieceapi.contentservice.domain.character.Alias;
 import dev.onepieceapi.contentservice.domain.character.Character;
 import dev.onepieceapi.contentservice.domain.character.CharacterLookups;
 import dev.onepieceapi.contentservice.domain.character.CharacterReference;
@@ -8,13 +9,18 @@ import dev.onepieceapi.contentservice.domain.character.CharacterTranslation;
 import dev.onepieceapi.contentservice.domain.character.Epithet;
 import dev.onepieceapi.contentservice.domain.character.FruitUse;
 import dev.onepieceapi.contentservice.domain.character.Membership;
+import dev.onepieceapi.contentservice.domain.character.MembershipPeriod;
 import dev.onepieceapi.contentservice.domain.character.Relative;
+import dev.onepieceapi.contentservice.domain.character.RelativeOf;
+import dev.onepieceapi.contentservice.domain.character.SpeciesEntry;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitReference;
+import dev.onepieceapi.contentservice.domain.readertime.StoryWindow;
 import dev.onepieceapi.contentservice.domain.species.SpeciesReference;
 import dev.onepieceapi.contentservice.domain.story.NumberedReference;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAccess;
 import dev.onepieceapi.contentservice.web.dto.response.AffiliationReferenceResponse;
+import dev.onepieceapi.contentservice.web.dto.response.AliasResponse;
 import dev.onepieceapi.contentservice.web.dto.response.CharacterNamesResponse;
 import dev.onepieceapi.contentservice.web.dto.response.CharacterReferenceResponse;
 import dev.onepieceapi.contentservice.web.dto.response.CharacterResponse;
@@ -22,9 +28,12 @@ import dev.onepieceapi.contentservice.web.dto.response.CharacterTranslationRespo
 import dev.onepieceapi.contentservice.web.dto.response.ContentSummaryResponse;
 import dev.onepieceapi.contentservice.web.dto.response.DevilFruitReferenceResponse;
 import dev.onepieceapi.contentservice.web.dto.response.EpithetResponse;
+import dev.onepieceapi.contentservice.web.dto.response.FirstAppearanceResponse;
 import dev.onepieceapi.contentservice.web.dto.response.FruitUseResponse;
+import dev.onepieceapi.contentservice.web.dto.response.MembershipPeriodResponse;
 import dev.onepieceapi.contentservice.web.dto.response.MembershipResponse;
 import dev.onepieceapi.contentservice.web.dto.response.RelativeResponse;
+import dev.onepieceapi.contentservice.web.dto.response.SpeciesEntryResponse;
 import dev.onepieceapi.contentservice.web.dto.response.SpeciesReferenceResponse;
 import dev.onepieceapi.contentservice.web.dto.response.VersionResponse;
 import lombok.experimental.UtilityClass;
@@ -36,8 +45,8 @@ import java.util.UUID;
 /**
  * From Characters to their response bodies: what a version says is mapped here, the
  * workflow around it by {@link ContentResponseMapper}. The species, the affiliations, the
- * chapter and the episode it points to are given already looked up, so the mapper reads
- * no database.
+ * chapters and the episodes it points to - its first appearance and the points of its
+ * windows - are given already looked up, so the mapper reads no database.
  */
 @UtilityClass
 public class CharacterResponseMapper {
@@ -72,21 +81,23 @@ public class CharacterResponseMapper {
 			.status(character.status())
 			.gender(character.gender())
 			.birthday(character.birthday())
-			.epithets(character.epithets().stream().map(CharacterResponseMapper::toResponse).toList())
-			.aliases(character.aliases())
-			.species(character.speciesIds().stream().map(id -> toSpeciesResponse(id, lookups.species())).toList())
+			.epithets(character.epithets().stream().map(entry -> toResponse(entry, storyItems)).toList())
+			.aliases(character.aliases().stream().map(entry -> toResponse(entry, storyItems)).toList())
+			.species(character.species().stream().map(entry -> toResponse(entry, lookups, storyItems)).toList())
 			.affiliations(
-					character.affiliations().stream().map(entry -> toResponse(entry, lookups.affiliations())).toList())
-			.devilFruits(
-					character.devilFruits().stream().map(entry -> toResponse(entry, lookups.devilFruits())).toList())
-			.relatives(character.relatives().stream().map(entry -> toResponse(entry, lookups.relatives())).toList())
-			.relativesOf(lookups.relativesOf()
-				.stream()
-				.map(entry -> new RelativeResponse(toResponse(entry.character()), entry.kind()))
-				.toList())
+					character.affiliations().stream().map(entry -> toResponse(entry, lookups, storyItems)).toList())
+			.devilFruits(character.devilFruits().stream().map(entry -> toResponse(entry, lookups, storyItems)).toList())
+			.relatives(character.relatives().stream().map(entry -> toResponse(entry, lookups, storyItems)).toList())
+			.relativesOf(lookups.relativesOf().stream().map(entry -> toResponse(entry, storyItems)).toList())
 			.image(images.toResponse(character.imageId()))
 			.firstAppearance(FirstAppearanceMapper.toResponse(character.firstAppearance(), storyItems))
 			.build();
+	}
+
+	private static SpeciesEntryResponse toResponse(SpeciesEntry entry, CharacterLookups lookups,
+			Map<UUID, NumberedReference> storyItems) {
+		return new SpeciesEntryResponse(toSpeciesResponse(entry.speciesContentId(), lookups.species()),
+				discovered(entry.window(), storyItems), ended(entry.window(), storyItems));
 	}
 
 	/**
@@ -100,10 +111,18 @@ public class CharacterResponseMapper {
 				: SpeciesResponseMapper.toResponse(reference);
 	}
 
-	/** The affiliation as of today, with its role and rank as written. */
-	private static MembershipResponse toResponse(Membership membership, Map<UUID, AffiliationReference> affiliations) {
-		return new MembershipResponse(toAffiliationResponse(membership.affiliationContentId(), affiliations),
-				new TreeMap<>(membership.role()), membership.marineRank(), membership.former());
+	/** The affiliation as of today, with its periods as written. */
+	private static MembershipResponse toResponse(Membership membership, CharacterLookups lookups,
+			Map<UUID, NumberedReference> storyItems) {
+		return new MembershipResponse(toAffiliationResponse(membership.affiliationContentId(), lookups.affiliations()),
+				membership.periods().stream().map(period -> toResponse(period, storyItems)).toList());
+	}
+
+	/** Its role sorted by language code. */
+	private static MembershipPeriodResponse toResponse(MembershipPeriod period,
+			Map<UUID, NumberedReference> storyItems) {
+		return new MembershipPeriodResponse(discovered(period.window(), storyItems), ended(period.window(), storyItems),
+				new TreeMap<>(period.role()), period.marineRank());
 	}
 
 	/**
@@ -119,17 +138,28 @@ public class CharacterResponseMapper {
 	}
 
 	/** The relative as of today, with what it is to the character. */
-	private static RelativeResponse toResponse(Relative relative, Map<UUID, CharacterReference> relatives) {
-		CharacterReference reference = relatives.get(relative.relativeContentId());
+	private static RelativeResponse toResponse(Relative relative, CharacterLookups lookups,
+			Map<UUID, NumberedReference> storyItems) {
+		CharacterReference reference = lookups.relatives().get(relative.relativeContentId());
 		return new RelativeResponse(
 				reference == null ? new CharacterReferenceResponse(relative.relativeContentId(), null, Map.of(), null)
 						: toResponse(reference),
-				relative.kind());
+				relative.kind(), discovered(relative.window(), storyItems), ended(relative.window(), storyItems));
 	}
 
-	/** The fruit as of today, with whether the character still has its power. */
-	private static FruitUseResponse toResponse(FruitUse use, Map<UUID, DevilFruitReference> devilFruits) {
-		return new FruitUseResponse(toDevilFruitResponse(use.devilFruitContentId(), devilFruits), use.former());
+	/**
+	 * A character naming this one as a relative, with the inverse kind and its window.
+	 */
+	private static RelativeResponse toResponse(RelativeOf relative, Map<UUID, NumberedReference> storyItems) {
+		return new RelativeResponse(toResponse(relative.character()), relative.kind(),
+				discovered(relative.window(), storyItems), ended(relative.window(), storyItems));
+	}
+
+	/** The fruit as of today, with its window. */
+	private static FruitUseResponse toResponse(FruitUse use, CharacterLookups lookups,
+			Map<UUID, NumberedReference> storyItems) {
+		return new FruitUseResponse(toDevilFruitResponse(use.devilFruitContentId(), lookups.devilFruits()),
+				discovered(use.window(), storyItems), ended(use.window(), storyItems));
 	}
 
 	/**
@@ -160,8 +190,22 @@ public class CharacterResponseMapper {
 	}
 
 	/** Sorted by language code, so the same epithet always reads the same way. */
-	private static EpithetResponse toResponse(Epithet epithet) {
-		return new EpithetResponse(new TreeMap<>(epithet.text()));
+	private static EpithetResponse toResponse(Epithet epithet, Map<UUID, NumberedReference> storyItems) {
+		return new EpithetResponse(new TreeMap<>(epithet.text()), discovered(epithet.window(), storyItems),
+				ended(epithet.window(), storyItems));
+	}
+
+	private static AliasResponse toResponse(Alias alias, Map<UUID, NumberedReference> storyItems) {
+		return new AliasResponse(alias.name(), discovered(alias.window(), storyItems),
+				ended(alias.window(), storyItems));
+	}
+
+	private static FirstAppearanceResponse discovered(StoryWindow window, Map<UUID, NumberedReference> storyItems) {
+		return FirstAppearanceMapper.toResponse(window.discovered(), storyItems);
+	}
+
+	private static FirstAppearanceResponse ended(StoryWindow window, Map<UUID, NumberedReference> storyItems) {
+		return FirstAppearanceMapper.toResponse(window.ended(), storyItems);
 	}
 
 }

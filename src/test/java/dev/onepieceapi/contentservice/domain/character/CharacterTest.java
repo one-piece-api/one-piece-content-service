@@ -1,6 +1,9 @@
 package dev.onepieceapi.contentservice.domain.character;
 
+import dev.onepieceapi.contentservice.domain.readertime.NamedWindow;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
+import dev.onepieceapi.contentservice.domain.readertime.StoryWindow;
+import dev.onepieceapi.contentservice.domain.readertime.WindowSequence;
 import org.junit.jupiter.api.Test;
 
 import java.time.MonthDay;
@@ -12,12 +15,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
 /**
- * How what an editor typed becomes what is stored and compared, and what a character
- * needs to be submitted.
+ * How what an editor typed becomes what is stored and compared, what a character needs to
+ * be submitted, and how its windows are named.
  */
 class CharacterTest {
 
 	private static final UUID CHAPTER = UUID.fromString("0f6c3e5a-4b7d-4c1e-9a58-3d2b1c0e7f11");
+
+	private static final UUID LATER_CHAPTER = UUID.fromString("0f6c3e5a-4b7d-4c1e-9a58-3d2b1c0e7f12");
+
+	private static final UUID EPISODE = UUID.fromString("0f6c3e5a-4b7d-4c1e-9a58-3d2b1c0e7f21");
 
 	private static final UUID KAIGUN = UUID.fromString("a1b2c3d4-0000-4000-8000-00000000a001");
 
@@ -25,13 +32,21 @@ class CharacterTest {
 
 	private static final UUID NINGEN = UUID.fromString("7a1d3c2b-5e4f-4a6b-8c9d-0e1f2a3b4c5d");
 
+	private static final UUID MERA_MERA = UUID.fromString("7a1d3c2b-5e4f-4a6b-8c9d-0e1f2a3b4c5e");
+
+	/** Discovered at the first appearance, with no end. */
+	private static final StoryWindow FROM_START = StoryWindow.from(StoryPoint.ofChapter(CHAPTER));
+
+	private static final StoryWindow ENDED = new StoryWindow(StoryPoint.ofChapter(CHAPTER),
+			StoryPoint.ofChapter(LATER_CHAPTER));
+
 	@Test
 	void theKeyIsTheRomajiAndTheNamesAreUniquePerLanguage() {
 		var nami = Character.builder()
 			.romaji("Nami")
 			.translations(Map.of("it", new CharacterTranslation("Nami", null), "en",
 					new CharacterTranslation(null, "The navigator")))
-			.epithets(List.of(new Epithet(Map.of("fr", "Chatte voleuse"))))
+			.epithets(List.of(new Epithet(Map.of("fr", "Chatte voleuse"), FROM_START)))
 			.build();
 
 		assertThat(nami.naturalKey().field()).isEqualTo("romaji");
@@ -42,14 +57,16 @@ class CharacterTest {
 	}
 
 	@Test
-	void noListIsEverNullAndNothingChosenIsNoFirstAppearance() {
+	void noListIsEverNullAndNothingChosenIsNoFirstAppearanceAndNoWindow() {
 		var empty = Character.builder().build();
 
 		assertThat(empty.translations()).isEmpty();
 		assertThat(empty.epithets()).isEmpty();
 		assertThat(empty.aliases()).isEmpty();
-		assertThat(empty.speciesIds()).isEmpty();
+		assertThat(empty.species()).isEmpty();
 		assertThat(empty.firstAppearance()).isEqualTo(StoryPoint.NONE);
+		assertThat(new Alias("Sogeking", null).window()).isEqualTo(StoryWindow.NONE);
+		assertThat(new Membership(KAIGUN, null).periods()).isEmpty();
 	}
 
 	@Test
@@ -59,9 +76,9 @@ class CharacterTest {
 			.japaneseName(" ナミ ")
 			.translations(Map.of("it", new CharacterTranslation(" Nami ", "\n Navigatrice "), "en",
 					new CharacterTranslation(" ", null)))
-			.epithets(List.of(new Epithet(Map.of("it", " Gatta ladra ", "en", "  "))))
-			.aliases(List.of(" Miss All Sunday ", "  "))
-			.speciesIds(List.of(NINGEN))
+			.epithets(List.of(new Epithet(Map.of("it", " Gatta ladra ", "en", "  "), FROM_START)))
+			.aliases(List.of(new Alias(" Miss All Sunday ", FROM_START), new Alias("  ", null)))
+			.species(List.of(new SpeciesEntry(NINGEN, FROM_START)))
 			.imageId("img")
 			.firstAppearance(StoryPoint.ofChapter(CHAPTER))
 			.build();
@@ -72,9 +89,9 @@ class CharacterTest {
 		assertThat(normalized.japaneseName()).isEqualTo("ナミ");
 		assertThat(normalized.translations()).containsOnlyKeys("it");
 		assertThat(normalized.translationIn("it")).isEqualTo(new CharacterTranslation("Nami", "Navigatrice"));
-		assertThat(normalized.epithets()).containsExactly(new Epithet(Map.of("it", "Gatta ladra")));
-		assertThat(normalized.aliases()).containsExactly("Miss All Sunday", "");
-		assertThat(normalized.speciesIds()).containsExactly(NINGEN);
+		assertThat(normalized.epithets()).containsExactly(new Epithet(Map.of("it", "Gatta ladra"), FROM_START));
+		assertThat(normalized.aliases()).containsExactly(new Alias("Miss All Sunday", FROM_START), new Alias("", null));
+		assertThat(normalized.species()).containsExactly(new SpeciesEntry(NINGEN, FROM_START));
 		assertThat(normalized.imageId()).isEqualTo("img");
 		assertThat(normalized.firstAppearance()).isEqualTo(StoryPoint.ofChapter(CHAPTER));
 		assertThat(Character.builder().romaji("   ").build().normalized().romaji()).isNull();
@@ -82,13 +99,13 @@ class CharacterTest {
 
 	@Test
 	void anEpithetWrittenInNoLanguageIsEmpty() {
-		assertThat(new Epithet(Map.of("it", " ")).normalized().isEmpty()).isTrue();
-		assertThat(new Epithet(null).isEmpty()).isTrue();
+		assertThat(new Epithet(Map.of("it", " "), FROM_START).normalized().isEmpty()).isTrue();
+		assertThat(new Epithet(null, null).isEmpty()).isTrue();
 	}
 
 	@Test
 	void whatIsRequiredForReviewIsNamedInOrder() {
-		var empty = Character.builder().epithets(List.of(new Epithet(Map.of("it", "Gatta ladra")))).build();
+		var empty = Character.builder().epithets(List.of(new Epithet(Map.of("it", "Gatta ladra"), FROM_START))).build();
 
 		assertThat(empty.missingFields(List.of("en", "it"))).containsExactly("romaji", "status", "gender",
 				"firstAppearance", "translations[en].name", "translations[en].description", "translations[it].name",
@@ -97,68 +114,131 @@ class CharacterTest {
 
 	@Test
 	void theJapaneseNameTheBirthdayTheAliasesTheSpeciesAndTheImageAreNeverMissing() {
-		var complete = Character.builder()
-			.romaji("Nami")
-			.translations(Map.of("it", new CharacterTranslation("Nami", "Navigatrice")))
-			.status(CharacterStatus.ALIVE)
-			.gender(Gender.FEMALE)
-			.firstAppearance(StoryPoint.ofEpisode(CHAPTER))
-			.build();
+		var complete = complete().build();
 
 		assertThat(complete.missingFields(List.of("it"))).isEmpty();
 	}
 
 	@Test
-	void anotherBirthdayListOrderOrImageMakesAnotherVersion() {
-		var base = Character.builder().romaji("Nami").aliases(List.of("A", "B")).build();
+	void everyWindowNeedsItsDiscoveredPointToBeSubmittedButNeverAnEnd() {
+		var drafted = complete()
+			.aliases(List.of(new Alias("Sogeking", StoryWindow.NONE), new Alias("Usopp-ojisan", ENDED)))
+			.species(List.of(new SpeciesEntry(NINGEN, new StoryWindow(null, StoryPoint.ofChapter(LATER_CHAPTER)))))
+			.affiliations(List.of(new Membership(KAIGUN,
+					List.of(new MembershipPeriod(ENDED, null, null), new MembershipPeriod(null, null, null)))))
+			.devilFruits(List.of(new FruitUse(MERA_MERA, FROM_START)))
+			.build();
 
-		assertThat(base).isEqualTo(Character.builder().romaji("Nami").aliases(List.of("A", "B")).build())
-			.isNotEqualTo(base.toBuilder().aliases(List.of("B", "A")).build())
+		assertThat(drafted.missingFields(List.of("it"))).containsExactly("aliases[0].discovered",
+				"species[0].discovered", "affiliations[0].periods[1].discovered");
+	}
+
+	@Test
+	void aMembershipWithoutPeriodsIsADraftsAndSubmittingNamesItsPeriods() {
+		var drafted = complete().affiliations(List.of(new Membership(KAIGUN, List.of()))).build();
+
+		assertThat(drafted.missingFields(List.of("it"))).containsExactly("affiliations[0].periods");
+	}
+
+	@Test
+	void theWindowsAreNamedListByListAsARequestNamesThem() {
+		var usopp = complete().epithets(List.of(new Epithet(Map.of("it", "Re dei cecchini"), FROM_START)))
+			.aliases(List.of(new Alias("Sogeking", ENDED)))
+			.species(List.of(new SpeciesEntry(NINGEN, FROM_START)))
+			.affiliations(List.of(new Membership(KAIGUN,
+					List.of(new MembershipPeriod(ENDED, null, null), new MembershipPeriod(FROM_START, null, null)))))
+			.devilFruits(List.of(new FruitUse(MERA_MERA, ENDED)))
+			.relatives(List.of(new Relative(KAIGUN2, RelativeKind.PARENT, FROM_START)))
+			.build();
+
+		assertThat(usopp.windows()).extracting(NamedWindow::field)
+			.containsExactly("epithets[0]", "aliases[0]", "species[0]", "affiliations[0].periods[0]",
+					"affiliations[0].periods[1]", "devilFruits[0]", "relatives[0]");
+		assertThat(usopp.windowSequences())
+			.containsExactly(new WindowSequence("affiliations[0].periods", List.of(ENDED, FROM_START)));
+	}
+
+	@Test
+	void thePointsOfACharacterAreItsFirstAppearanceThenThoseOfItsWindowsChosen() {
+		var luffy = complete().firstAppearance(new StoryPoint(CHAPTER, EPISODE))
+			.aliases(List.of(new Alias("Lucy", ENDED), new Alias("Mugiwara", StoryWindow.NONE)))
+			.build();
+
+		assertThat(luffy.points()).containsExactly(new StoryPoint(CHAPTER, EPISODE), StoryPoint.ofChapter(CHAPTER),
+				StoryPoint.ofChapter(LATER_CHAPTER));
+	}
+
+	@Test
+	void anotherBirthdayListOrderWindowOrImageMakesAnotherVersion() {
+		var base = Character.builder()
+			.romaji("Nami")
+			.aliases(List.of(new Alias("A", FROM_START), new Alias("B", FROM_START)))
+			.build();
+
+		assertThat(base)
+			.isEqualTo(Character.builder()
+				.romaji("Nami")
+				.aliases(List.of(new Alias("A", FROM_START), new Alias("B", FROM_START)))
+				.build())
+			.isNotEqualTo(
+					base.toBuilder().aliases(List.of(new Alias("B", FROM_START), new Alias("A", FROM_START))).build())
+			.isNotEqualTo(base.toBuilder().aliases(List.of(new Alias("A", FROM_START), new Alias("B", ENDED))).build())
 			.isNotEqualTo(base.toBuilder().birthday(MonthDay.of(7, 3)).build())
 			.isNotEqualTo(base.withImage("img"));
 	}
 
 	@Test
 	void aRoleWrittenInSomeLanguageIsRequiredInTheOthersButNoRoleIsNeverMissing() {
-		var withRoles = Character.builder()
-			.romaji("Nami")
+		var withRoles = complete()
 			.translations(Map.of("it", new CharacterTranslation("Nami", "Navigatrice"), "en",
 					new CharacterTranslation("Nami", "Navigator")))
-			.status(CharacterStatus.ALIVE)
-			.gender(Gender.FEMALE)
-			.firstAppearance(StoryPoint.ofChapter(CHAPTER))
-			.affiliations(List.of(new Membership(KAIGUN, Map.of(), null, false),
-					new Membership(KAIGUN2, Map.of("it", "Navigatrice"), null, false)))
+			.affiliations(List.of(new Membership(KAIGUN, List.of(new MembershipPeriod(FROM_START, Map.of(), null))),
+					new Membership(KAIGUN2,
+							List.of(new MembershipPeriod(ENDED, null, null),
+									new MembershipPeriod(FROM_START, Map.of("it", "Navigatrice"), null)))))
 			.build();
 
-		assertThat(withRoles.missingFields(List.of("en", "it"))).containsExactly("affiliations[1].role[en]");
+		assertThat(withRoles.missingFields(List.of("en", "it"))).containsExactly("affiliations[1].periods[1].role[en]");
 	}
 
 	@Test
 	void theSpaceAroundARoleDoesNotCountAndTheLanguagesOfRolesAreThoseInUse() {
 		var typed = Character.builder()
-			.affiliations(
-					List.of(new Membership(KAIGUN, Map.of("fr", " Capitaine ", "it", "  "), MarineRank.CAPTAIN, true)))
+			.affiliations(List.of(new Membership(KAIGUN,
+					List.of(new MembershipPeriod(ENDED, Map.of("fr", " Capitaine ", "it", "  "), MarineRank.CAPTAIN)))))
 			.build();
 
 		var normalized = typed.normalized();
 
-		assertThat(normalized.affiliations())
-			.containsExactly(new Membership(KAIGUN, Map.of("fr", "Capitaine"), MarineRank.CAPTAIN, true));
+		assertThat(normalized.affiliations()).containsExactly(new Membership(KAIGUN,
+				List.of(new MembershipPeriod(ENDED, Map.of("fr", "Capitaine"), MarineRank.CAPTAIN))));
 		assertThat(typed.languages()).containsExactly("fr", "it");
 		assertThat(Character.builder().build().affiliations()).isEmpty();
 	}
 
 	@Test
-	void theOrderOfTheMembershipsOrAFormerFlagMakesAnotherVersion() {
-		var current = new Membership(KAIGUN, Map.of(), null, false);
-		var other = new Membership(KAIGUN2, Map.of(), null, false);
+	void theOrderOfTheMembershipsOrOfThePeriodsOrAnEndMakesAnotherVersion() {
+		var first = new MembershipPeriod(ENDED, null, null);
+		var second = new MembershipPeriod(FROM_START, null, null);
+		var current = new Membership(KAIGUN, List.of(first, second));
+		var other = new Membership(KAIGUN2, List.of(second));
 		var base = Character.builder().romaji("Nami").affiliations(List.of(current, other)).build();
 
 		assertThat(base).isNotEqualTo(base.toBuilder().affiliations(List.of(other, current)).build())
 			.isNotEqualTo(base.toBuilder()
-				.affiliations(List.of(new Membership(KAIGUN, Map.of(), null, true), other))
-				.build());
+				.affiliations(List.of(new Membership(KAIGUN, List.of(second, first)), other))
+				.build())
+			.isNotEqualTo(
+					base.toBuilder().affiliations(List.of(current, new Membership(KAIGUN2, List.of(first)))).build());
+	}
+
+	@Test
+	void aMembershipHasARankWhenOneOfItsPeriodsHoldsOne() {
+		var koby = new Membership(KAIGUN, List.of(new MembershipPeriod(ENDED, null, null),
+				new MembershipPeriod(FROM_START, null, MarineRank.CAPTAIN)));
+
+		assertThat(koby.hasRank()).isTrue();
+		assertThat(new Membership(KAIGUN, List.of(new MembershipPeriod(ENDED, null, null))).hasRank()).isFalse();
 	}
 
 	@Test
@@ -167,6 +247,16 @@ class CharacterTest {
 		assertThat(MarineRank.values()[0]).isEqualTo(MarineRank.FLEET_ADMIRAL);
 		assertThat(MarineRank.ADMIRAL.compareTo(MarineRank.COMMODORE)).isNegative();
 		assertThat(MarineRank.values()[18]).isEqualTo(MarineRank.CHORE_BOY);
+	}
+
+	/** Complete in Italian, its first appearance in {@link #CHAPTER}. */
+	private static Character.CharacterBuilder complete() {
+		return Character.builder()
+			.romaji("Nami")
+			.translations(Map.of("it", new CharacterTranslation("Nami", "Navigatrice")))
+			.status(CharacterStatus.ALIVE)
+			.gender(Gender.FEMALE)
+			.firstAppearance(StoryPoint.ofChapter(CHAPTER));
 	}
 
 }

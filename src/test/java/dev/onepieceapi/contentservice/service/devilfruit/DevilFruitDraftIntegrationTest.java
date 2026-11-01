@@ -58,6 +58,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import dev.onepieceapi.contentservice.service.content.ReaderAxisRules;
 import java.util.UUID;
 
 import static org.mockito.Mockito.mock;
@@ -154,7 +155,10 @@ class DevilFruitDraftIntegrationTest {
 		this.service = new DevilFruitService(
 				new DevilFruitDefinition(this.versionRepository, validator,
 						new DevilFruitRules(this.contentRepository, this.typeRepository, this.chapterRepository,
-								this.episodeRepository, this.characterRepository, new RulesProperties(5))),
+								this.episodeRepository, this.characterRepository,
+								new ReaderAxisRules(this.contentRepository, this.chapterRepository,
+										this.episodeRepository),
+								new RulesProperties(5))),
 				this.contentVersionRepository, this.contentRepository, auditLogService, clock,
 				mock(ContentImages.class));
 

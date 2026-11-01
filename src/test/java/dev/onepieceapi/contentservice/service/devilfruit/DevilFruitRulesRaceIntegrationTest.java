@@ -64,6 +64,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import dev.onepieceapi.contentservice.service.content.ReaderAxisRules;
 import java.util.concurrent.TimeUnit;
 
 import static dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED;
@@ -319,7 +320,10 @@ class DevilFruitRulesRaceIntegrationTest {
 						new DevilFruitValidator(this.fruitRepository, this.languageRepository, types,
 								this.chapterRepository, this.episodeRepository),
 						new DevilFruitRules(this.contentRepository, types, this.chapterRepository,
-								this.episodeRepository, this.characterRepository, new RulesProperties(5))),
+								this.episodeRepository, this.characterRepository,
+								new ReaderAxisRules(this.contentRepository, this.chapterRepository,
+										this.episodeRepository),
+								new RulesProperties(5))),
 				this.contentVersionRepository, this.contentRepository,
 				new AuditLogService(this.auditLogRepository, clock), clock, mock(ContentImages.class));
 	}

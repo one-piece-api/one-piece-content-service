@@ -12,7 +12,6 @@ import lombok.Builder;
 import java.time.MonthDay;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 /**
  * What a draft of a Character is saved with - everything the version says, in place of
@@ -27,7 +26,7 @@ import java.util.UUID;
  * an unreadable request
  * @param epithets in the order they are shown; left out for none
  * @param aliases in the order they are shown; left out for none
- * @param species the content ids of its species, in order; left out for none
+ * @param species its species, in order; left out for none
  * @param affiliations its memberships, in order; left out for none
  * @param devilFruits the fruits it ate, in order; left out for none
  * @param relatives its relatives, in order; left out for none
@@ -43,10 +42,10 @@ public record CharacterRequest(@Size(max = Character.ROMAJI_MAX_LENGTH) String r
 		Map<String, @Valid CharacterTranslationRequest> translations, CharacterStatus status, Gender gender,
 		@Schema(type = "string", example = "--05-05") MonthDay birthday,
 		@Size(max = Character.MAX_EPITHETS) List<@NotNull @Valid EpithetRequest> epithets,
-		@Size(max = Character.MAX_ALIASES) List<@NotNull @Size(max = Character.ALIAS_MAX_LENGTH) String> aliases,
-		@Schema(description = "The content ids of its species") List<@NotNull UUID> species,
-		List<@NotNull @Valid MembershipRequest> affiliations, List<@NotNull @Valid FruitUseRequest> devilFruits,
-		List<@NotNull @Valid RelativeRequest> relatives, Boolean removeImage, FirstAppearanceRequest firstAppearance) {
+		@Size(max = Character.MAX_ALIASES) List<@NotNull @Valid AliasRequest> aliases,
+		List<@NotNull @Valid SpeciesEntryRequest> species, List<@NotNull @Valid MembershipRequest> affiliations,
+		List<@NotNull @Valid FruitUseRequest> devilFruits, List<@NotNull @Valid RelativeRequest> relatives,
+		Boolean removeImage, FirstAppearanceRequest firstAppearance) {
 
 	/** Whether the portrait is to be removed; not saying so keeps it. */
 	public boolean removesImage() {

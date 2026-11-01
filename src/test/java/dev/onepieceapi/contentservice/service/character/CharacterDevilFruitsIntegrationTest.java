@@ -2,6 +2,8 @@ package dev.onepieceapi.contentservice.service.character;
 
 import dev.onepieceapi.contentservice.domain.character.Character;
 import dev.onepieceapi.contentservice.domain.character.FruitUse;
+import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
+import dev.onepieceapi.contentservice.domain.readertime.StoryWindow;
 import dev.onepieceapi.contentservice.domain.workflow.BlockReason;
 import dev.onepieceapi.contentservice.domain.workflow.BlockedAction;
 import dev.onepieceapi.contentservice.domain.workflow.ContentFilter;
@@ -62,11 +64,12 @@ import static org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTest
 
 /**
  * The Devil Fruits of a character (implementation plan of the Character, C10, D12),
- * against a real PostgreSQL (Testcontainers): kept in their order with the former flag;
- * the save refusing what it should, entry by entry, and never the fruit another character
- * has; what a character needs to go online with them - one current user per fruit, unless
- * the fruit has several - and what a fruit owes its characters; the list narrowed by
- * fruit. Whoever breaks a rule is refused with the reason, even an administrator.
+ * against a real PostgreSQL (Testcontainers): kept in their order with their window; the
+ * save refusing what it should, entry by entry, and never the fruit another character
+ * has; what a character needs to go online with them - users whose windows do not
+ * overlap, unless the fruit has several - and what a fruit owes its characters; the list
+ * narrowed by fruit. Whoever breaks a rule is refused with the reason, even an
+ * administrator.
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = Replace.NONE)
@@ -122,6 +125,9 @@ class CharacterDevilFruitsIntegrationTest {
 
 	private UUID smile;
 
+	/** A chapter online after the first appearance: where a former use ends. */
+	private StoryPoint later;
+
 	@BeforeEach
 	void setUp() {
 		this.fixtures = CharacterFixtures.builder()
@@ -140,26 +146,28 @@ class CharacterDevilFruitsIntegrationTest {
 		this.service = this.fixtures.service();
 		this.meraMera = this.fixtures.devilFruit(PUBLISHED, "Mera Mera no Mi", false);
 		this.smile = this.fixtures.devilFruit(PUBLISHED, "SMILE Zoan", true);
+		this.later = StoryPoint
+			.ofChapter(OnlineChapters.chapter(this.contentRepository, this.chapterRepository, PUBLISHED, 10));
 		stored();
 	}
 
 	// ---- Saving
 
 	@Test
-	void aNewCharacterKeepsItsFruitsInTheirOrderWithTheFormerFlag() {
-		var written = withFruits("Sabo", use(this.meraMera, false), use(this.smile, true));
+	void aNewCharacterKeepsItsFruitsInTheirOrderWithTheirWindow() {
+		var written = withFruits("Sabo", current(this.meraMera), former(this.smile));
 
 		var content = this.service.create(EDITOR, CHOPPER, written);
 		stored();
 
 		assertThat(this.service.getVersion(EDITOR, CHOPPER, content.id(), 1).version().body().devilFruits())
-			.containsExactly(use(this.meraMera, false), use(this.smile, true));
+			.containsExactly(current(this.meraMera), former(this.smile));
 	}
 
 	@Test
 	void reorderingAndShorteningTheFruitsOfADraftKeepsTheNewList() {
-		var first = use(this.meraMera, true);
-		var second = use(this.smile, false);
+		var first = former(this.meraMera);
+		var second = current(this.smile);
 		var written = withFruits("Ace", first, second);
 		var content = this.service.create(EDITOR, CHOPPER, written);
 		stored();
@@ -181,7 +189,7 @@ class CharacterDevilFruitsIntegrationTest {
 
 	@Test
 	void aNewVersionStartsFromItsBaseWithEveryFruitInItsOrder() {
-		var body = withFruits("Ace", use(this.smile, true), use(this.meraMera, false));
+		var body = withFruits("Ace", former(this.smile), current(this.meraMera));
 		UUID ace = this.fixtures.character(PUBLISHED, body);
 		stored();
 
@@ -195,7 +203,7 @@ class CharacterDevilFruitsIntegrationTest {
 	void aFruitNamedTwiceIsRefusedByTheIndexOfItsRepeat() {
 		var written = Character.builder()
 			.romaji("Ace")
-			.devilFruits(List.of(use(this.meraMera, false), use(this.smile, false), use(this.meraMera, true)))
+			.devilFruits(List.of(current(this.meraMera), current(this.smile), former(this.meraMera)))
 			.build();
 
 		var refused = catchThrowableOfType(ValueInvalidException.class,
@@ -210,7 +218,8 @@ class CharacterDevilFruitsIntegrationTest {
 		stored();
 		var written = Character.builder()
 			.romaji("Robin")
-			.devilFruits(List.of(use(this.meraMera, false), use(draft, false), use(UUID.randomUUID(), false)))
+			.firstAppearance(this.fixtures.fromStart().discovered())
+			.devilFruits(List.of(current(this.meraMera), current(draft), current(UUID.randomUUID())))
 			.build();
 
 		var refused = catchThrowableOfType(ValueInvalidException.class,
@@ -221,10 +230,10 @@ class CharacterDevilFruitsIntegrationTest {
 
 	@Test
 	void aFruitAnotherCharacterHasAsACurrentOneIsNeverRefusedOnSave() {
-		this.fixtures.character(PUBLISHED, withFruits("Ace", use(this.meraMera, false)));
+		this.fixtures.character(PUBLISHED, withFruits("Ace", current(this.meraMera)));
 		stored();
 
-		var content = this.service.create(EDITOR, CHOPPER, withFruits("Sabo", use(this.meraMera, false)));
+		var content = this.service.create(EDITOR, CHOPPER, withFruits("Sabo", current(this.meraMera)));
 		stored();
 
 		assertThat(this.service.submit(EDITOR, CHOPPER, content.id(), 1).version().status()).isEqualTo(IN_REVIEW);
@@ -233,7 +242,7 @@ class CharacterDevilFruitsIntegrationTest {
 	@Test
 	void theDatabaseRefusesAFruitThatIsNoDevilFruit() {
 		UUID ningen = this.fixtures.species(PUBLISHED, "Ningen");
-		this.fixtures.character(DRAFT, withFruits("Ace", use(ningen, false)));
+		this.fixtures.character(DRAFT, withFruits("Ace", current(ningen)));
 
 		assertThatThrownBy(this::stored).isInstanceOf(ConstraintViolationException.class)
 			.hasMessageContaining("fk_character_version_devil_fruit");
@@ -241,7 +250,7 @@ class CharacterDevilFruitsIntegrationTest {
 
 	@Test
 	void theDatabaseRefusesTheSameFruitTwiceInAVersionOnceTheTransactionChecksIt() {
-		this.fixtures.character(DRAFT, withFruits("Ace", use(this.meraMera, false), use(this.meraMera, true)));
+		this.fixtures.character(DRAFT, withFruits("Ace", current(this.meraMera), former(this.meraMera)));
 		stored();
 
 		assertThatThrownBy(() -> this.jdbc.execute("set constraints uq_character_version_devil_fruit immediate"))
@@ -253,7 +262,7 @@ class CharacterDevilFruitsIntegrationTest {
 	@Test
 	void aCharacterGoesOnlineWithItsFruitsWhileEveryOneIsOnline() {
 		UUID ace = this.fixtures.character(READY_TO_PUBLISH,
-				withFruits("Ace", use(this.meraMera, false), use(this.smile, true)));
+				withFruits("Ace", current(this.meraMera), former(this.smile)));
 		stored();
 
 		assertThat(this.service.publish(PUBLISHER, CHOPPER, ace, 1).version().status()).isEqualTo(PUBLISHED);
@@ -263,7 +272,7 @@ class CharacterDevilFruitsIntegrationTest {
 	void aCharacterDoesNotGoOnlineWhileAFruitOfItsListIsNotNamingItsIndexEvenForAnAdministrator() {
 		UUID hana = this.fixtures.devilFruit(ARCHIVED, "Hana Hana no Mi", false);
 		UUID robin = this.fixtures.character(READY_TO_PUBLISH,
-				withFruits("Robin", use(this.meraMera, true), use(hana, false)));
+				withFruits("Robin", former(this.meraMera), current(hana)));
 		stored();
 
 		var refused = catchThrowableOfType(VersionActionBlockedException.class,
@@ -276,9 +285,9 @@ class CharacterDevilFruitsIntegrationTest {
 
 	@Test
 	void aSecondCurrentUserOfAFruitDoesNotGoOnlineNamingTheFirstEvenForAnAdministrator() {
-		UUID ace = this.fixtures.character(PUBLISHED, withFruits("Ace", use(this.meraMera, false)));
+		UUID ace = this.fixtures.character(PUBLISHED, withFruits("Ace", current(this.meraMera)));
 		UUID sabo = this.fixtures.character(READY_TO_PUBLISH,
-				withFruits("Sabo", use(this.smile, false), use(this.meraMera, false)));
+				withFruits("Sabo", current(this.smile), current(this.meraMera)));
 		stored();
 
 		var refused = catchThrowableOfType(VersionActionBlockedException.class,
@@ -292,8 +301,8 @@ class CharacterDevilFruitsIntegrationTest {
 
 	@Test
 	void theBlockIsShownInAdvanceAsEveryOther() {
-		this.fixtures.character(PUBLISHED, withFruits("Ace", use(this.meraMera, false)));
-		UUID sabo = this.fixtures.character(READY_TO_PUBLISH, withFruits("Sabo", use(this.meraMera, false)));
+		this.fixtures.character(PUBLISHED, withFruits("Ace", current(this.meraMera)));
+		UUID sabo = this.fixtures.character(READY_TO_PUBLISH, withFruits("Sabo", current(this.meraMera)));
 		stored();
 
 		var blocked = this.service.getVersion(ADMIN, CHOPPER, sabo, 1).blockedActions();
@@ -304,28 +313,42 @@ class CharacterDevilFruitsIntegrationTest {
 
 	@Test
 	void severalCurrentUsersOfAFruitWithSeveralUsersAllGoOnline() {
-		this.fixtures.character(PUBLISHED, withFruits("Caesar", use(this.smile, false)));
-		UUID momonosuke = this.fixtures.character(READY_TO_PUBLISH, withFruits("Momonosuke", use(this.smile, false)));
+		this.fixtures.character(PUBLISHED, withFruits("Caesar", current(this.smile)));
+		UUID momonosuke = this.fixtures.character(READY_TO_PUBLISH, withFruits("Momonosuke", current(this.smile)));
 		stored();
 
 		assertThat(this.service.publish(PUBLISHER, CHOPPER, momonosuke, 1).version().status()).isEqualTo(PUBLISHED);
 	}
 
 	@Test
-	void aFormerUserDoesNotBlockTheNextOneNorTheOtherWayRound() {
-		UUID ace = this.fixtures.character(READY_TO_PUBLISH, withFruits("Ace", use(this.meraMera, true)));
-		UUID sabo = this.fixtures.character(READY_TO_PUBLISH, withFruits("Sabo", use(this.meraMera, false)));
-		UUID marco = this.fixtures.character(READY_TO_PUBLISH, withFruits("Marco", use(this.meraMera, true)));
+	void aUseEndingWhereTheNextStartsDoesNotOverlapItInEitherOrder() {
+		// Ace loses the fruit where Sabo is discovered eating it (workflow 3.7.5).
+		UUID sabo = this.fixtures.character(READY_TO_PUBLISH, withFruits("Sabo", fromLater(this.meraMera)));
+		UUID ace = this.fixtures.character(READY_TO_PUBLISH, withFruits("Ace", former(this.meraMera)));
 		stored();
 
-		assertThat(this.service.publish(PUBLISHER, CHOPPER, ace, 1).version().status()).isEqualTo(PUBLISHED);
 		assertThat(this.service.publish(PUBLISHER, CHOPPER, sabo, 1).version().status()).isEqualTo(PUBLISHED);
-		assertThat(this.service.publish(PUBLISHER, CHOPPER, marco, 1).version().status()).isEqualTo(PUBLISHED);
+		assertThat(this.service.publish(PUBLISHER, CHOPPER, ace, 1).version().status()).isEqualTo(PUBLISHED);
+	}
+
+	@Test
+	void aFormerUseStillOverlapsAUseOfTheSameStretchEvenForAnAdministrator() {
+		UUID ace = this.fixtures.character(PUBLISHED, withFruits("Ace", former(this.meraMera)));
+		UUID marco = this.fixtures.character(READY_TO_PUBLISH, withFruits("Marco", former(this.meraMera)));
+		stored();
+
+		var refused = catchThrowableOfType(VersionActionBlockedException.class,
+				() -> this.service.publish(ADMIN, CHOPPER, marco, 1));
+
+		assertThat(refused.getDetails()).containsEntry("reason", BlockReason.DEVIL_FRUIT_IN_USE);
+		assertThat(refused.getDetails().get("detail"))
+			.isEqualTo(Map.of("devilFruitsIndex", 0, "devilFruitId", this.meraMera, "devilFruitRomaji",
+					"Mera Mera no Mi", "characters", List.of(Map.of("id", ace, "romaji", "Ace"))));
 	}
 
 	@Test
 	void aCharacterIsNotBlockedByItsOwnVersionOnline() {
-		var body = withFruits("Ace", use(this.meraMera, false));
+		var body = withFruits("Ace", current(this.meraMera));
 		UUID ace = this.fixtures.character(PUBLISHED, body);
 		this.fixtures.characterVersion(ace, 2, READY_TO_PUBLISH, body.toBuilder().japaneseName("x").build());
 		stored();
@@ -336,11 +359,13 @@ class CharacterDevilFruitsIntegrationTest {
 	// ---- What a fruit owes its characters
 
 	@Test
-	void aFruitWithOneUserAtATimeDoesNotGoOnlineWhileSeveralCharactersOnlineHaveItCurrentEvenForAnAdministrator() {
+	void aFruitWithOneUserAtATimeDoesNotGoOnlineWhileCharactersOnlineHaveItInOverlappingWindowsEvenForAnAdministrator() {
 		UUID fruit = this.fixtures.devilFruit(READY_TO_PUBLISH, "Gura Gura no Mi", false);
-		UUID shirohige = this.fixtures.character(PUBLISHED, withFruits("Shirohige", use(fruit, false)));
-		UUID teach = this.fixtures.character(PUBLISHED, withFruits("Teach", use(fruit, false)));
-		this.fixtures.character(PUBLISHED, withFruits("Rocks", use(fruit, true)));
+		UUID shirohige = this.fixtures.character(PUBLISHED, withFruits("Shirohige", current(fruit)));
+		UUID teach = this.fixtures.character(PUBLISHED, withFruits("Teach", current(fruit)));
+		// Discovered and over at the same point: an empty window overlaps nothing.
+		this.fixtures.character(PUBLISHED,
+				withFruits("Rocks", new FruitUse(fruit, new StoryWindow(this.later, this.later))));
 		stored();
 
 		var blocked = this.fixtures.devilFruitRules()
@@ -355,10 +380,10 @@ class CharacterDevilFruitsIntegrationTest {
 	@Test
 	void aFruitWithOneUserAtATimeGoesOnlineWithOneCurrentUserAndASharedOneWithAny() {
 		UUID gura = this.fixtures.devilFruit(READY_TO_PUBLISH, "Gura Gura no Mi", false);
-		this.fixtures.character(PUBLISHED, withFruits("Shirohige", use(gura, false)));
+		this.fixtures.character(PUBLISHED, withFruits("Shirohige", current(gura)));
 		UUID shared = this.fixtures.devilFruit(READY_TO_PUBLISH, "SMILE Zoan 2", true);
-		this.fixtures.character(PUBLISHED, withFruits("Caesar", use(shared, false)));
-		this.fixtures.character(PUBLISHED, withFruits("Momonosuke", use(shared, false)));
+		this.fixtures.character(PUBLISHED, withFruits("Caesar", current(shared)));
+		this.fixtures.character(PUBLISHED, withFruits("Momonosuke", current(shared)));
 		stored();
 
 		var rules = this.fixtures.devilFruitRules();
@@ -368,7 +393,7 @@ class CharacterDevilFruitsIntegrationTest {
 
 	@Test
 	void aFruitIsNotRetiredWhileOnlineCharactersNameItEvenIfTheyLostItEvenForAnAdministrator() {
-		UUID ace = this.fixtures.character(PUBLISHED, withFruits("Ace", use(this.meraMera, true)));
+		UUID ace = this.fixtures.character(PUBLISHED, withFruits("Ace", former(this.meraMera)));
 		stored();
 
 		var blocked = this.fixtures.devilFruitRules()
@@ -382,7 +407,7 @@ class CharacterDevilFruitsIntegrationTest {
 
 	@Test
 	void aFruitNoOnlineCharacterNamesIsRetired() {
-		this.fixtures.character(READY_TO_PUBLISH, withFruits("Ace", use(this.meraMera, false)));
+		this.fixtures.character(READY_TO_PUBLISH, withFruits("Ace", current(this.meraMera)));
 		stored();
 
 		assertThat(this.fixtures.devilFruitRules()
@@ -393,8 +418,8 @@ class CharacterDevilFruitsIntegrationTest {
 
 	@Test
 	void theListIsNarrowedByTheFruitTheCharacterCurrentlyHas() {
-		UUID sabo = this.fixtures.character(PUBLISHED, withFruits("Sabo", use(this.meraMera, false)));
-		this.fixtures.character(PUBLISHED, withFruits("Ace", use(this.meraMera, true)));
+		UUID sabo = this.fixtures.character(PUBLISHED, withFruits("Sabo", current(this.meraMera)));
+		this.fixtures.character(PUBLISHED, withFruits("Ace", former(this.meraMera)));
 		this.fixtures.character(PUBLISHED, this.fixtures.complete("Nami"));
 		stored();
 
@@ -408,9 +433,9 @@ class CharacterDevilFruitsIntegrationTest {
 
 	@Test
 	void aFruitCountsItsCurrentUsersOnlineAndTheLinkableOnesCarryWhetherTheyHaveSeveral() {
-		this.fixtures.character(PUBLISHED, withFruits("Sabo", use(this.meraMera, false)));
-		this.fixtures.character(PUBLISHED, withFruits("Ace", use(this.meraMera, true)));
-		this.fixtures.character(DRAFT, withFruits("Marco", use(this.meraMera, false)));
+		this.fixtures.character(PUBLISHED, withFruits("Sabo", current(this.meraMera)));
+		this.fixtures.character(PUBLISHED, withFruits("Ace", former(this.meraMera)));
+		this.fixtures.character(DRAFT, withFruits("Marco", current(this.meraMera)));
 		stored();
 		var links = new DevilFruitLinks(this.devilFruitRepository, this.characterRepository,
 				Clock.fixed(CharacterFixtures.NOW, ZoneOffset.UTC));
@@ -428,8 +453,19 @@ class CharacterDevilFruitsIntegrationTest {
 		return this.fixtures.complete(romaji).toBuilder().devilFruits(List.of(uses)).build();
 	}
 
-	private static FruitUse use(UUID devilFruit, boolean former) {
-		return new FruitUse(devilFruit, former);
+	/** Had from the first appearance, still today. */
+	private FruitUse current(UUID devilFruit) {
+		return this.fixtures.fruitUse(devilFruit);
+	}
+
+	/** Had from the first appearance, lost at {@link #later}. */
+	private FruitUse former(UUID devilFruit) {
+		return new FruitUse(devilFruit, new StoryWindow(this.fixtures.fromStart().discovered(), this.later));
+	}
+
+	/** Had from {@link #later}, still today. */
+	private FruitUse fromLater(UUID devilFruit) {
+		return new FruitUse(devilFruit, StoryWindow.from(this.later));
 	}
 
 	private List<UUID> search(ContentFilter filter) {

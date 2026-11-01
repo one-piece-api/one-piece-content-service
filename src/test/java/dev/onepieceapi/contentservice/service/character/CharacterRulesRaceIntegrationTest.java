@@ -1,8 +1,6 @@
 package dev.onepieceapi.contentservice.service.character;
 
 import dev.onepieceapi.contentservice.domain.character.Character;
-import dev.onepieceapi.contentservice.domain.character.FruitUse;
-import dev.onepieceapi.contentservice.domain.character.Relative;
 import dev.onepieceapi.contentservice.domain.character.RelativeKind;
 import dev.onepieceapi.contentservice.domain.security.User;
 import dev.onepieceapi.contentservice.domain.workflow.BlockReason;
@@ -153,12 +151,11 @@ class CharacterRulesRaceIntegrationTest {
 		CharacterVersionRepository holdingCheck = mock(CharacterVersionRepository.class,
 				delegatesTo(this.characterRepository));
 		doAnswer(invocation -> {
-			var others = this.characterRepository.findOnlineOtherCurrentUsersOf(fruit, first,
-					invocation.getArgument(2));
+			var uses = this.characterRepository.findOnlineUsesOf(fruit);
 			firstChecked.countDown();
 			letFirstGo.await(WAIT_SECONDS, TimeUnit.SECONDS);
-			return others;
-		}).when(holdingCheck).findOnlineOtherCurrentUsersOf(eq(fruit), eq(first), any());
+			return uses;
+		}).when(holdingCheck).findOnlineUsesOf(eq(fruit));
 		var holding = this.fixtures.service(holdingCheck);
 		var free = this.fixtures.service();
 
@@ -243,12 +240,12 @@ class CharacterRulesRaceIntegrationTest {
 	private Character withRelative(String romaji, UUID relative) {
 		return this.fixtures.complete(romaji)
 			.toBuilder()
-			.relatives(List.of(new Relative(relative, RelativeKind.SIBLING)))
+			.relatives(List.of(this.fixtures.relative(relative, RelativeKind.SIBLING)))
 			.build();
 	}
 
 	private Character withFruit(String romaji, UUID fruit) {
-		return this.fixtures.complete(romaji).toBuilder().devilFruits(List.of(new FruitUse(fruit, false))).build();
+		return this.fixtures.complete(romaji).toBuilder().devilFruits(List.of(this.fixtures.fruitUse(fruit))).build();
 	}
 
 }

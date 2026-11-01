@@ -2,11 +2,9 @@ package dev.onepieceapi.contentservice.persistence.entity;
 
 import dev.onepieceapi.contentservice.domain.character.CharacterStatus;
 import dev.onepieceapi.contentservice.domain.character.Gender;
-import dev.onepieceapi.contentservice.domain.character.Membership;
 import dev.onepieceapi.contentservice.domain.workflow.NaturalKey;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.CollectionTable;
-import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -76,15 +74,13 @@ public class CharacterVersionEntity extends VersionBodyEntity {
 	@ElementCollection
 	@CollectionTable(name = "character_version_alias", joinColumns = @JoinColumn(name = "version_id"))
 	@OrderColumn(name = "position")
-	@Column(name = "alias")
-	private List<String> aliases = new ArrayList<>();
+	private List<CharacterAliasEmbeddable> aliases = new ArrayList<>();
 
-	/** The content of each species, in the order they are shown. */
+	/** Its species, in the order they are shown. */
 	@ElementCollection
 	@CollectionTable(name = "character_version_species", joinColumns = @JoinColumn(name = "version_id"))
 	@OrderColumn(name = "position")
-	@Column(name = "species_content_id")
-	private List<UUID> speciesIds = new ArrayList<>();
+	private List<CharacterSpeciesEmbeddable> species = new ArrayList<>();
 
 	/** In the order they are shown; the position is the index in the list. */
 	@OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
@@ -135,55 +131,20 @@ public class CharacterVersionEntity extends VersionBodyEntity {
 		this.firstAppearanceEpisodeId = fields.firstAppearance().episodeId();
 		this.translations.clear();
 		this.translations.putAll(fields.translations());
-		rewriteEpithets(fields.epithets());
-		this.aliases.clear();
-		this.aliases.addAll(fields.aliases());
-		this.speciesIds.clear();
-		this.speciesIds.addAll(fields.speciesIds());
-		rewriteAffiliations(fields.affiliations());
-		this.devilFruits.clear();
-		fields.devilFruits()
-			.forEach(use -> this.devilFruits
-				.add(new CharacterFruitUseEmbeddable(use.devilFruitContentId(), use.former())));
-		this.relatives.clear();
-		fields.relatives()
-			.forEach(relative -> this.relatives
-				.add(new CharacterRelativeEmbeddable(relative.relativeContentId(), relative.kind())));
+		PositionalRows.rewrite(this.epithets, fields.epithets(), CharacterEpithetEntity::new,
+				CharacterEpithetEntity::rewrite);
+		replace(this.aliases, fields.aliases());
+		replace(this.species, fields.species());
+		PositionalRows.rewrite(this.affiliations, fields.affiliations(), CharacterMembershipEntity::new,
+				CharacterMembershipEntity::rewrite);
+		replace(this.devilFruits, fields.devilFruits());
+		replace(this.relatives, fields.relatives());
 		touch(now);
 	}
 
-	/** As the epithets: each position keeps its row, only the end of the list changes. */
-	private void rewriteAffiliations(List<Membership> written) {
-		for (int index = 0; index < written.size(); index++) {
-			if (index < this.affiliations.size()) {
-				this.affiliations.get(index).rewrite(written.get(index));
-			}
-			else {
-				this.affiliations.add(new CharacterMembershipEntity(written.get(index)));
-			}
-		}
-		while (this.affiliations.size() > written.size()) {
-			this.affiliations.removeLast();
-		}
-	}
-
-	/**
-	 * Each position keeps its row, rewritten in place; only the end of the list grows or
-	 * shrinks. Replacing the rows would insert a position before the old row holding it
-	 * is deleted.
-	 */
-	private void rewriteEpithets(List<Map<String, String>> written) {
-		for (int index = 0; index < written.size(); index++) {
-			if (index < this.epithets.size()) {
-				this.epithets.get(index).rewrite(written.get(index));
-			}
-			else {
-				this.epithets.add(new CharacterEpithetEntity(written.get(index)));
-			}
-		}
-		while (this.epithets.size() > written.size()) {
-			this.epithets.removeLast();
-		}
+	private static <V> void replace(List<V> values, List<V> written) {
+		values.clear();
+		values.addAll(written);
 	}
 
 }

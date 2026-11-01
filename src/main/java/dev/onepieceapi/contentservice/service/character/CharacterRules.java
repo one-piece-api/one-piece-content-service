@@ -5,8 +5,10 @@ import dev.onepieceapi.contentservice.domain.affiliation.AffiliationKind;
 import dev.onepieceapi.contentservice.domain.character.Character;
 import dev.onepieceapi.contentservice.domain.character.FruitUse;
 import dev.onepieceapi.contentservice.domain.character.Membership;
+import dev.onepieceapi.contentservice.domain.character.MembershipPeriod;
 import dev.onepieceapi.contentservice.domain.character.Relative;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
+import dev.onepieceapi.contentservice.domain.readertime.StoryWindow;
 import dev.onepieceapi.contentservice.domain.workflow.ActionBlock;
 import dev.onepieceapi.contentservice.domain.workflow.BlockReason;
 import dev.onepieceapi.contentservice.domain.workflow.Version;
@@ -15,6 +17,7 @@ import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.entity.DevilFruitVersionEntity;
 import dev.onepieceapi.contentservice.persistence.mapper.AffiliationVersionMapper;
 import dev.onepieceapi.contentservice.persistence.mapper.DevilFruitVersionMapper;
+import dev.onepieceapi.contentservice.persistence.projection.FruitUseWindow;
 import dev.onepieceapi.contentservice.persistence.repository.AffiliationVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.BountyVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
@@ -27,10 +30,10 @@ import dev.onepieceapi.contentservice.service.content.ContentRules;
 import dev.onepieceapi.contentservice.service.content.FirstAppearanceRules;
 import dev.onepieceapi.contentservice.service.content.LinkedItems;
 import dev.onepieceapi.contentservice.service.bounty.BountyRelations;
+import dev.onepieceapi.contentservice.service.content.ReaderAxisRules;
 import dev.onepieceapi.contentservice.service.content.RelationRules;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
 import java.util.Comparator;
@@ -41,23 +44,26 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /**
  * What a Character needs to go online - published or restored (implementation plan of the
  * Character, D8, D9, D10, D12): a first appearance in a chapter or an episode, each one
- * it names online, every species, affiliation and Devil Fruit of its lists online, a rank
- * only in an affiliation whose online version is a Navy one, and a current Devil Fruit
- * that no other character online has as a current one - unless the fruit has several
- * users. Not even {@code content:admin} lifts it. Its retirement is refused while online
- * bounties name it as their holder (C6).
+ * it names online, every species, affiliation and Devil Fruit of its lists online, every
+ * point of its windows online and in order on the numbers online
+ * ({@link ReaderAxisRules}), a rank only in an affiliation whose online version is a Navy
+ * one, and a Devil Fruit whose window overlaps that of no other character online using it
+ * - unless the fruit has several users (workflow 3.4.8). Not even {@code content:admin}
+ * lifts it. Its retirement is refused while online bounties name it as their holder (C6).
  * <p>
- * The chapter, the episode, every species and every affiliation are held shared first, so
- * the retirement of any of them - or an affiliation going online as another kind - waits
- * for a character going online with it ({@code ChapterRules}, {@code EpisodeRules},
- * {@code SpeciesRules}, {@code AffiliationRules}). The Devil Fruits are held in the order
- * of their ids, a current one exclusively and a former one shared: two characters going
- * online with the same current fruit never check it together, and a fruit going online or
- * being retired waits for them too ({@code DevilFruitRules}).
+ * The chapters and episodes of its first appearance and of its windows, every species and
+ * every affiliation are held shared first, so the retirement of any of them - or an
+ * affiliation going online as another kind - waits for a character going online with it
+ * ({@code ChapterRules}, {@code EpisodeRules}, {@code SpeciesRules},
+ * {@code AffiliationRules}). The Devil Fruits are held exclusively, in the order of their
+ * ids: two characters going online with the same fruit never compare their windows
+ * together, and a fruit going online or being retired waits for them too
+ * ({@code DevilFruitRules}).
  * <p>
  * Every relative must be online, and none may name the character in its own online
  * version: a pair is linked by one of the two (D13). The relatives are held shared, so
@@ -69,6 +75,8 @@ import java.util.stream.IntStream;
 @Component
 @RequiredArgsConstructor(onConstructor_ = { @Autowired })
 public class CharacterRules implements ContentRules<Character> {
+
+	private static final String PERIODS_INDEX = "periodsIndex";
 
 	private final ContentRepository contentRepository;
 
@@ -86,6 +94,8 @@ public class CharacterRules implements ContentRules<Character> {
 
 	private final CharacterVersionRepository characterRepository;
 
+	private final ReaderAxisRules readerAxisRules;
+
 	private final RulesProperties properties;
 
 	@Override
@@ -96,8 +106,8 @@ public class CharacterRules implements ContentRules<Character> {
 				this.contentRepository);
 		RelationRules.lockTargetBefore(action, CharacterRelations.FIRST_APPEARANCE_EPISODE, character,
 				this.contentRepository);
-		RelationRules.lockTargetBefore(action, CharacterRelations.SPECIES, character.speciesIds(),
-				this.contentRepository);
+		this.readerAxisRules.lockBefore(action, character);
+		RelationRules.lockTargetBefore(action, CharacterRelations.SPECIES, character.species(), this.contentRepository);
 		RelationRules.lockTargetBefore(action, CharacterRelations.AFFILIATION, character.affiliations(),
 				this.contentRepository);
 		lockDevilFruitsBefore(action, character);
@@ -136,14 +146,11 @@ public class CharacterRules implements ContentRules<Character> {
 		if (!RelationRules.GOING_ONLINE.contains(action)) {
 			return;
 		}
-		character.devilFruits().stream().sorted(Comparator.comparing(FruitUse::devilFruitContentId)).forEach(use -> {
-			if (use.former()) {
-				this.contentRepository.lockShared(use.devilFruitContentId());
-			}
-			else {
-				this.contentRepository.lockExclusive(use.devilFruitContentId());
-			}
-		});
+		character.devilFruits()
+			.stream()
+			.map(FruitUse::devilFruitContentId)
+			.sorted(Comparator.naturalOrder())
+			.forEach(this.contentRepository::lockExclusive);
 	}
 
 	/** First what the character itself lacks, then what it points to, in its order. */
@@ -155,7 +162,7 @@ public class CharacterRules implements ContentRules<Character> {
 					this.chapterRepository))
 			.or(() -> RelationRules.targetNotOnline(action, CharacterRelations.FIRST_APPEARANCE_EPISODE, character,
 					this.episodeRepository))
-			.or(() -> RelationRules.targetNotOnline(action, CharacterRelations.SPECIES, character.speciesIds(),
+			.or(() -> RelationRules.targetNotOnline(action, CharacterRelations.SPECIES, character.species(),
 					CharacterRelations.SPECIES_FIELD, this.speciesRepository))
 			.or(() -> RelationRules.targetNotOnline(action, CharacterRelations.AFFILIATION, character.affiliations(),
 					CharacterRelations.AFFILIATIONS_FIELD, this.affiliationRepository))
@@ -163,6 +170,7 @@ public class CharacterRules implements ContentRules<Character> {
 					CharacterRelations.DEVIL_FRUITS_FIELD, this.devilFruitRepository))
 			.or(() -> RelationRules.targetNotOnline(action, CharacterRelations.RELATIVE, character.relatives(),
 					CharacterRelations.RELATIVES_FIELD, this.characterRepository))
+			.or(() -> this.readerAxisRules.blockOf(action, character))
 			.or(() -> rankNotAllowed(action, character))
 			.or(() -> devilFruitInUse(action, contentId, character))
 			.or(() -> relativeAlreadyLinked(action, contentId, character))
@@ -201,9 +209,9 @@ public class CharacterRules implements ContentRules<Character> {
 	}
 
 	/**
-	 * Going online, the first rank held in an affiliation whose online version is not a
-	 * Navy one - the save checked the latest approved one, which may have changed since.
-	 * Every affiliation is online by now: the check before this one.
+	 * Going online, the first period holding a rank in an affiliation whose online
+	 * version is not a Navy one - the save checked the latest approved one, which may
+	 * have changed since. Every affiliation is online by now: a check before this one.
 	 */
 	private Optional<ActionBlock> rankNotAllowed(VersionAction action, Character character) {
 		if (!RelationRules.GOING_ONLINE.contains(action)) {
@@ -211,13 +219,19 @@ public class CharacterRules implements ContentRules<Character> {
 		}
 		List<Membership> memberships = character.affiliations();
 		return IntStream.range(0, memberships.size())
-			.filter(index -> memberships.get(index).marineRank() != null)
-			.mapToObj(index -> notNavyOnline(index, memberships.get(index).affiliationContentId()))
+			.filter(index -> memberships.get(index).hasRank())
+			.mapToObj(index -> notNavyOnline(index, memberships.get(index)))
 			.flatMap(Optional::stream)
 			.findFirst();
 	}
 
-	private Optional<ActionBlock> notNavyOnline(int index, UUID affiliationContentId) {
+	private Optional<ActionBlock> notNavyOnline(int index, Membership membership) {
+		UUID affiliationContentId = membership.affiliationContentId();
+		List<MembershipPeriod> periods = membership.periods();
+		int rankedPeriod = IntStream.range(0, periods.size())
+			.filter(period -> periods.get(period).marineRank() != null)
+			.findFirst()
+			.orElseThrow();
 		return this.affiliationRepository.findMostRecent(List.of(affiliationContentId), Set.of(VersionStatus.PUBLISHED))
 			.stream()
 			.findFirst()
@@ -225,6 +239,7 @@ public class CharacterRules implements ContentRules<Character> {
 			.map(online -> {
 				Map<String, Object> detail = new LinkedHashMap<>();
 				detail.put(CharacterRelations.AFFILIATIONS_FIELD + "Index", index);
+				detail.put(PERIODS_INDEX, rankedPeriod);
 				detail.put("affiliationId", affiliationContentId);
 				detail.put("affiliationRomaji", online.getRomaji());
 				return new ActionBlock(BlockReason.MARINE_RANK_NOT_ALLOWED, detail);
@@ -232,9 +247,10 @@ public class CharacterRules implements ContentRules<Character> {
 	}
 
 	/**
-	 * Going online, the first current fruit that has one user at a time - as its online
-	 * version says - and that another character online has as a current one. Every fruit
-	 * is online by now: the check before the rank.
+	 * Going online, the first fruit that has one user at a time - as its online version
+	 * says - whose window overlaps, on the numbers online, that of another character
+	 * online using it (workflow 3.4.8). Every fruit and every point is online by now:
+	 * checks before this one.
 	 */
 	private Optional<ActionBlock> devilFruitInUse(VersionAction action, UUID contentId, Character character) {
 		if (!RelationRules.GOING_ONLINE.contains(action)) {
@@ -242,30 +258,51 @@ public class CharacterRules implements ContentRules<Character> {
 		}
 		List<FruitUse> fruits = character.devilFruits();
 		return IntStream.range(0, fruits.size())
-			.filter(index -> !fruits.get(index).former())
-			.mapToObj(index -> inUseByOthers(index, fruits.get(index).devilFruitContentId(), contentId))
+			.mapToObj(index -> overlappingUsers(index, fruits.get(index), contentId))
 			.flatMap(Optional::stream)
 			.findFirst();
 	}
 
-	private Optional<ActionBlock> inUseByOthers(int index, UUID devilFruitContentId, UUID contentId) {
+	private Optional<ActionBlock> overlappingUsers(int index, FruitUse use, UUID contentId) {
+		UUID devilFruitContentId = use.devilFruitContentId();
 		return this.devilFruitRepository.findMostRecent(List.of(devilFruitContentId), Set.of(VersionStatus.PUBLISHED))
 			.stream()
 			.findFirst()
 			.filter(online -> !onlineFruit(online).multipleUsers())
 			.flatMap(online -> {
-				var users = this.characterRepository.findOnlineOtherCurrentUsersOf(devilFruitContentId, contentId,
-						PageRequest.ofSize(this.properties.blockingPreviewSize()));
-				if (users.isEmpty()) {
+				List<FruitUseWindow> overlapping = overlapping(use.window(),
+						otherUsers(devilFruitContentId, contentId));
+				if (overlapping.isEmpty()) {
 					return Optional.empty();
 				}
 				Map<String, Object> detail = new LinkedHashMap<>();
 				detail.put(CharacterRelations.DEVIL_FRUITS_FIELD + "Index", index);
 				detail.put("devilFruitId", devilFruitContentId);
 				detail.put("devilFruitRomaji", online.getRomaji());
-				detail.put(CharacterRelations.ITEMS_NAME, users.stream().map(RelationRules::named).toList());
+				detail.put(CharacterRelations.ITEMS_NAME,
+						overlapping.stream()
+							.limit(this.properties.blockingPreviewSize())
+							.map(FruitUseWindow::named)
+							.toList());
 				return Optional.of(new ActionBlock(BlockReason.DEVIL_FRUIT_IN_USE, detail));
 			});
+	}
+
+	private List<FruitUseWindow> otherUsers(UUID devilFruitContentId, UUID contentId) {
+		return this.characterRepository.findOnlineUsesOf(devilFruitContentId)
+			.stream()
+			.filter(user -> !user.characterContentId().equals(contentId))
+			.toList();
+	}
+
+	/** The users whose window overlaps this one on an axis, on the numbers online. */
+	private List<FruitUseWindow> overlapping(StoryWindow window, List<FruitUseWindow> users) {
+		var windows = this.readerAxisRules
+			.onlineWindows(Stream.concat(Stream.of(window), users.stream().map(FruitUseWindow::window)).toList());
+		return IntStream.range(0, users.size())
+			.filter(index -> !windows.get(0).overlapsOn(windows.get(index + 1)).isEmpty())
+			.mapToObj(users::get)
+			.toList();
 	}
 
 	private static DevilFruit onlineFruit(DevilFruitVersionEntity version) {

@@ -1,20 +1,26 @@
 package dev.onepieceapi.contentservice.web.mapper;
 
+import dev.onepieceapi.contentservice.domain.character.Alias;
 import dev.onepieceapi.contentservice.domain.character.Character;
 import dev.onepieceapi.contentservice.domain.character.CharacterTranslation;
 import dev.onepieceapi.contentservice.domain.character.Epithet;
 import dev.onepieceapi.contentservice.domain.character.FruitUse;
 import dev.onepieceapi.contentservice.domain.character.Membership;
+import dev.onepieceapi.contentservice.domain.character.MembershipPeriod;
 import dev.onepieceapi.contentservice.domain.character.Relative;
+import dev.onepieceapi.contentservice.domain.character.SpeciesEntry;
 import dev.onepieceapi.contentservice.domain.image.ImageChange;
 import dev.onepieceapi.contentservice.domain.workflow.ContentFilter;
+import dev.onepieceapi.contentservice.web.dto.request.AliasRequest;
 import dev.onepieceapi.contentservice.web.dto.request.CharacterListRequest;
 import dev.onepieceapi.contentservice.web.dto.request.CharacterRequest;
 import dev.onepieceapi.contentservice.web.dto.request.CharacterTranslationRequest;
 import dev.onepieceapi.contentservice.web.dto.request.EpithetRequest;
 import dev.onepieceapi.contentservice.web.dto.request.FruitUseRequest;
+import dev.onepieceapi.contentservice.web.dto.request.MembershipPeriodRequest;
 import dev.onepieceapi.contentservice.web.dto.request.MembershipRequest;
 import dev.onepieceapi.contentservice.web.dto.request.RelativeRequest;
+import dev.onepieceapi.contentservice.web.dto.request.SpeciesEntryRequest;
 import lombok.experimental.UtilityClass;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -23,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
+import java.util.function.Function;
 
 /** From the requests about Characters to the domain. */
 @UtilityClass
@@ -34,11 +41,6 @@ public class CharacterRequestMapper {
 		Optional.ofNullable(request.translations())
 			.orElseGet(Map::of)
 			.forEach((language, translation) -> translations.put(language, toDomain(translation)));
-		List<Epithet> epithets = Optional.ofNullable(request.epithets())
-			.orElseGet(List::of)
-			.stream()
-			.map(CharacterRequestMapper::toDomain)
-			.toList();
 		return Character.builder()
 			.romaji(request.romaji())
 			.japaneseName(request.japaneseName())
@@ -46,24 +48,12 @@ public class CharacterRequestMapper {
 			.status(request.status())
 			.gender(request.gender())
 			.birthday(request.birthday())
-			.epithets(epithets)
-			.aliases(request.aliases())
-			.speciesIds(request.species())
-			.affiliations(Optional.ofNullable(request.affiliations())
-				.orElseGet(List::of)
-				.stream()
-				.map(CharacterRequestMapper::toDomain)
-				.toList())
-			.devilFruits(Optional.ofNullable(request.devilFruits())
-				.orElseGet(List::of)
-				.stream()
-				.map(CharacterRequestMapper::toDomain)
-				.toList())
-			.relatives(Optional.ofNullable(request.relatives())
-				.orElseGet(List::of)
-				.stream()
-				.map(CharacterRequestMapper::toDomain)
-				.toList())
+			.epithets(entries(request.epithets(), CharacterRequestMapper::toDomain))
+			.aliases(entries(request.aliases(), CharacterRequestMapper::toDomain))
+			.species(entries(request.species(), CharacterRequestMapper::toDomain))
+			.affiliations(entries(request.affiliations(), CharacterRequestMapper::toDomain))
+			.devilFruits(entries(request.devilFruits(), CharacterRequestMapper::toDomain))
+			.relatives(entries(request.relatives(), CharacterRequestMapper::toDomain))
 			.firstAppearance(FirstAppearanceMapper.toDomain(request.firstAppearance()))
 			.build();
 	}
@@ -99,23 +89,35 @@ public class CharacterRequestMapper {
 				: filter.withAttribute(Character.DEVIL_FRUIT_ATTRIBUTE, request.devilFruit());
 	}
 
+	/** A list left out is an empty one; each entry mapped in its order. */
+	private static <R, D> List<D> entries(List<R> requests, Function<R, D> toDomain) {
+		return Optional.ofNullable(requests).orElseGet(List::of).stream().map(toDomain).toList();
+	}
+
+	private static Alias toDomain(AliasRequest alias) {
+		return new Alias(alias.alias(), FirstAppearanceMapper.toWindow(alias));
+	}
+
+	private static SpeciesEntry toDomain(SpeciesEntryRequest species) {
+		return new SpeciesEntry(species.species(), FirstAppearanceMapper.toWindow(species));
+	}
+
 	private static Relative toDomain(RelativeRequest relative) {
-		return new Relative(relative.relative(), relative.kind());
+		return new Relative(relative.relative(), relative.kind(), FirstAppearanceMapper.toWindow(relative));
 	}
 
 	private static FruitUse toDomain(FruitUseRequest use) {
-		return new FruitUse(use.devilFruit(), use.isFormer());
+		return new FruitUse(use.devilFruit(), FirstAppearanceMapper.toWindow(use));
 	}
 
-	/** A language sent as null is a language with nothing written. */
 	private static Membership toDomain(MembershipRequest membership) {
-		Map<String, String> role = new HashMap<>();
-		Optional.ofNullable(membership.role()).orElseGet(Map::of).forEach((language, value) -> {
-			if (value != null) {
-				role.put(language, value);
-			}
-		});
-		return new Membership(membership.affiliation(), role, membership.marineRank(), membership.isFormer());
+		return new Membership(membership.affiliation(),
+				entries(membership.periods(), CharacterRequestMapper::toDomain));
+	}
+
+	private static MembershipPeriod toDomain(MembershipPeriodRequest period) {
+		return new MembershipPeriod(FirstAppearanceMapper.toWindow(period), written(period.role()),
+				period.marineRank());
 	}
 
 	/** A language sent with nothing in it is a language with nothing written. */
@@ -124,15 +126,19 @@ public class CharacterRequestMapper {
 				: new CharacterTranslation(translation.name(), translation.description());
 	}
 
-	/** A language sent as null is a language with nothing written. */
 	private static Epithet toDomain(EpithetRequest epithet) {
-		Map<String, String> text = new HashMap<>();
-		Optional.ofNullable(epithet.text()).orElseGet(Map::of).forEach((language, value) -> {
+		return new Epithet(written(epithet.text()), FirstAppearanceMapper.toWindow(epithet));
+	}
+
+	/** A language sent as null is a language with nothing written. */
+	private static Map<String, String> written(Map<String, String> values) {
+		Map<String, String> written = new HashMap<>();
+		Optional.ofNullable(values).orElseGet(Map::of).forEach((language, value) -> {
 			if (value != null) {
-				text.put(language, value);
+				written.put(language, value);
 			}
 		});
-		return new Epithet(text);
+		return written;
 	}
 
 }

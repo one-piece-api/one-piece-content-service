@@ -2,6 +2,7 @@ package dev.onepieceapi.contentservice.persistence.entity;
 
 import dev.onepieceapi.contentservice.domain.character.RelativeKind;
 import jakarta.persistence.Embeddable;
+import jakarta.persistence.Embedded;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import lombok.AllArgsConstructor;
@@ -27,5 +28,9 @@ public class CharacterRelativeEmbeddable {
 
 	@Enumerated(EnumType.STRING)
 	private RelativeKind kind;
+
+	/** Null when none of its points is chosen. */
+	@Embedded
+	private StoryWindowEmbeddable window;
 
 }

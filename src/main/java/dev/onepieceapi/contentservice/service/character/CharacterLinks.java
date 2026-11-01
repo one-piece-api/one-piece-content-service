@@ -69,7 +69,7 @@ public class CharacterLinks {
 				links.stream().map(RelativeLink::holderContentId).toList());
 		return links.stream()
 			.filter(link -> holders.containsKey(link.holderContentId()))
-			.map(link -> new RelativeOf(holders.get(link.holderContentId()), link.kind().inverse()))
+			.map(link -> new RelativeOf(holders.get(link.holderContentId()), link.kind().inverse(), link.window()))
 			.sorted(Comparator.comparing(RelativeOf::romaji))
 			.toList();
 	}

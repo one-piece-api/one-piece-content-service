@@ -1,24 +1,26 @@
 package dev.onepieceapi.contentservice.service.validation;
 
 import dev.onepieceapi.contentservice.domain.affiliation.AffiliationKind;
+import dev.onepieceapi.contentservice.domain.character.Alias;
 import dev.onepieceapi.contentservice.domain.character.Character;
 import dev.onepieceapi.contentservice.domain.character.Epithet;
 import dev.onepieceapi.contentservice.domain.character.FruitUse;
 import dev.onepieceapi.contentservice.domain.character.Membership;
+import dev.onepieceapi.contentservice.domain.character.MembershipPeriod;
 import dev.onepieceapi.contentservice.domain.character.Relative;
+import dev.onepieceapi.contentservice.domain.character.SpeciesEntry;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.entity.AffiliationVersionEntity;
 import dev.onepieceapi.contentservice.persistence.mapper.AffiliationVersionMapper;
 import dev.onepieceapi.contentservice.persistence.repository.AffiliationVersionRepository;
 import dev.onepieceapi.contentservice.persistence.entity.CharacterVersionEntity;
 import dev.onepieceapi.contentservice.persistence.mapper.CharacterVersionMapper;
-import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.CharacterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.DevilFruitVersionRepository;
-import dev.onepieceapi.contentservice.persistence.repository.EpisodeVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
 import dev.onepieceapi.contentservice.persistence.repository.SpeciesVersionRepository;
 import dev.onepieceapi.contentservice.service.character.CharacterRelations;
+import dev.onepieceapi.contentservice.service.content.ReaderAxisRules;
 import dev.onepieceapi.contentservice.service.content.RelationRules;
 import dev.onepieceapi.contentservice.service.exception.ValueInvalidException;
 import dev.onepieceapi.exception.web.FieldViolation;
@@ -34,23 +36,26 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.IntStream;
 
 /**
  * The rules a Character must meet (docs/user-flows/content-editorial-workflow.md 3.3,
  * 3.1.11): those of every content - see {@link ContentValidator} - and those of its lists
  * (implementation plan of the Character, D6, D8): at most {@value Character#MAX_EPITHETS}
- * epithets and {@value Character#MAX_ALIASES} aliases, none blank; within the character,
- * an epithet unique per language and an alias unique, whatever the case; a species named
- * once, each one it may be linked to; an affiliation named once in its memberships, each
- * one it may be linked to, a rank only in an affiliation that, as last approved, is a
- * Navy one (D10); a Devil Fruit named once, one it may be linked to (D12) - that it has
- * one current user is for publishing to say, never a save; a relative named once, never
- * the character itself, one it may be linked to and not naming this character in a
- * version that is online or still open (D13). Its first appearance, when chosen, is in a
- * chapter and an episode it may be linked to (3.4.3). Each entry at fault is reported,
- * the later of two equal ones. Its portrait is checked against the {@code character}
- * image profile when uploaded, as every image. A birthday is always a real date: a
- * {@code MonthDay} cannot be anything else.
+ * epithets and {@value Character#MAX_ALIASES} aliases, none blank, and at most
+ * {@value Character#MAX_PERIODS} periods per membership; within the character, an epithet
+ * unique per language and an alias unique, whatever the case; a species named once, each
+ * one it may be linked to; an affiliation named once in its memberships, each one it may
+ * be linked to, a rank - period by period - only in an affiliation that, as last
+ * approved, is a Navy one (D10); a Devil Fruit named once, one it may be linked to (D12)
+ * - that it has one current user is for publishing to say, never a save; a relative named
+ * once, never the character itself, one it may be linked to and not naming this character
+ * in a version that is online or still open (D13). Its first appearance, when chosen, is
+ * in a chapter and an episode it may be linked to (3.4.3), and every point of its windows
+ * follows the rules of the reader axis ({@link ReaderAxisRules}, 3.7.4). Each entry at
+ * fault is reported, the later of two equal ones. Its portrait is checked against the
+ * {@code character} image profile when uploaded, as every image. A birthday is always a
+ * real date: a {@code MonthDay} cannot be anything else.
  */
 @Component
 public class CharacterValidator extends ContentValidator<Character, CharacterVersionEntity> {
@@ -106,9 +111,9 @@ public class CharacterValidator extends ContentValidator<Character, CharacterVer
 
 	private static final String MARINE_RANK_PART = "marineRank";
 
-	private final ChapterVersionRepository chapterRepository;
+	private static final String PERIODS_FIELD = "%s[%d].periods";
 
-	private final EpisodeVersionRepository episodeRepository;
+	private static final String PERIOD_PREFIX = PERIODS_FIELD + "[%d].";
 
 	private final SpeciesVersionRepository speciesRepository;
 
@@ -118,18 +123,18 @@ public class CharacterValidator extends ContentValidator<Character, CharacterVer
 
 	private final CharacterVersionRepository characterRepository;
 
+	private final ReaderAxisRules readerAxisRules;
+
 	@Autowired
 	public CharacterValidator(CharacterVersionRepository versionRepository, LanguageRepository languageRepository,
-			ChapterVersionRepository chapterRepository, EpisodeVersionRepository episodeRepository,
 			SpeciesVersionRepository speciesRepository, AffiliationVersionRepository affiliationRepository,
-			DevilFruitVersionRepository devilFruitRepository) {
+			DevilFruitVersionRepository devilFruitRepository, ReaderAxisRules readerAxisRules) {
 		super(versionRepository, languageRepository, CharacterVersionMapper::toDomain);
-		this.chapterRepository = chapterRepository;
-		this.episodeRepository = episodeRepository;
 		this.speciesRepository = speciesRepository;
 		this.affiliationRepository = affiliationRepository;
 		this.devilFruitRepository = devilFruitRepository;
 		this.characterRepository = versionRepository;
+		this.readerAxisRules = readerAxisRules;
 	}
 
 	@Override
@@ -137,9 +142,10 @@ public class CharacterValidator extends ContentValidator<Character, CharacterVer
 		List<FieldViolation> violations = new ArrayList<>();
 		requireAtMost(EPITHETS, body.epithets(), Character.MAX_EPITHETS, violations);
 		requireAtMost(ALIASES, body.aliases(), Character.MAX_ALIASES, violations);
+		requireAtMostPeriods(body.affiliations(), violations);
 		requireValidEpithets(body.epithets(), violations);
 		requireValidAliases(body.aliases(), violations);
-		requireDistinctSpecies(body.speciesIds(), violations);
+		requireDistinctSpecies(body.species(), violations);
 		requireDistinctAffiliations(body.affiliations(), violations);
 		requireDistinctDevilFruits(body.devilFruits(), violations);
 		requireDistinctRelatives(body.relatives(), violations);
@@ -148,19 +154,17 @@ public class CharacterValidator extends ContentValidator<Character, CharacterVer
 		}
 	}
 
-	/** Every first appearance and every species at fault is reported. */
+	/** Every relation and every point at fault is reported. */
 	@Override
 	protected void requireValidRelations(UUID contentId, Character body) {
 		List<FieldViolation> violations = new ArrayList<>();
-		RelationRules.notLinkable(CharacterRelations.FIRST_APPEARANCE_CHAPTER, body, "", this.chapterRepository)
-			.ifPresent(violations::add);
-		RelationRules.notLinkable(CharacterRelations.FIRST_APPEARANCE_EPISODE, body, "", this.episodeRepository)
-			.ifPresent(violations::add);
-		violations.addAll(RelationRules.notLinkable(CharacterRelations.SPECIES, body.speciesIds(),
+		violations.addAll(this.readerAxisRules.firstAppearanceViolations(body));
+		violations.addAll(RelationRules.notLinkable(CharacterRelations.SPECIES, body.species(),
 				CharacterRelations.SPECIES_FIELD, this.speciesRepository));
 		violations.addAll(membershipViolations(body.affiliations()));
 		violations.addAll(devilFruitViolations(body.devilFruits()));
 		violations.addAll(relativeViolations(contentId, body.relatives()));
+		violations.addAll(this.readerAxisRules.violationsOnSave(body));
 		if (!violations.isEmpty()) {
 			throw new ValueInvalidException(violations);
 		}
@@ -169,6 +173,13 @@ public class CharacterValidator extends ContentValidator<Character, CharacterVer
 	private static void requireAtMost(String listField, List<?> entries, int max, List<FieldViolation> violations) {
 		if (entries.size() > max) {
 			violations.add(new FieldViolation(listField, TOO_MANY.formatted(max)));
+		}
+	}
+
+	private static void requireAtMostPeriods(List<Membership> memberships, List<FieldViolation> violations) {
+		for (int index = 0; index < memberships.size(); index++) {
+			requireAtMost(PERIODS_FIELD.formatted(CharacterRelations.AFFILIATIONS_FIELD, index),
+					memberships.get(index).periods(), Character.MAX_PERIODS, violations);
 		}
 	}
 
@@ -192,10 +203,10 @@ public class CharacterValidator extends ContentValidator<Character, CharacterVer
 		}
 	}
 
-	private static void requireValidAliases(List<String> aliases, List<FieldViolation> violations) {
+	private static void requireValidAliases(List<Alias> aliases, List<FieldViolation> violations) {
 		Set<String> seen = new HashSet<>();
 		for (int index = 0; index < aliases.size(); index++) {
-			String alias = aliases.get(index);
+			String alias = aliases.get(index).name();
 			if (alias.isBlank()) {
 				violations.add(new FieldViolation(entryField(ALIASES, index), BLANK));
 			}
@@ -205,10 +216,10 @@ public class CharacterValidator extends ContentValidator<Character, CharacterVer
 		}
 	}
 
-	private static void requireDistinctSpecies(List<UUID> speciesIds, List<FieldViolation> violations) {
+	private static void requireDistinctSpecies(List<SpeciesEntry> species, List<FieldViolation> violations) {
 		Set<UUID> seen = new HashSet<>();
-		for (int index = 0; index < speciesIds.size(); index++) {
-			if (!seen.add(speciesIds.get(index))) {
+		for (int index = 0; index < species.size(); index++) {
+			if (!seen.add(species.get(index).speciesContentId())) {
 				violations
 					.add(new FieldViolation(entryField(CharacterRelations.SPECIES_FIELD, index), REPEATED_SPECIES));
 			}
@@ -286,8 +297,8 @@ public class CharacterValidator extends ContentValidator<Character, CharacterVer
 	}
 
 	/**
-	 * Each membership whose affiliation may not be linked, and each rank held in an
-	 * affiliation that is not a Navy one - by its latest approved version, which an
+	 * Each membership whose affiliation may not be linked, and each period holding a rank
+	 * in an affiliation that is not a Navy one - by its latest approved version, which an
 	 * affiliation may leave by going online as another kind: publishing checks it again.
 	 */
 	private List<FieldViolation> membershipViolations(List<Membership> memberships) {
@@ -299,12 +310,21 @@ public class CharacterValidator extends ContentValidator<Character, CharacterVer
 			var notLinkable = RelationRules.notLinkable(CharacterRelations.AFFILIATION, membership, prefix,
 					this.affiliationRepository);
 			notLinkable.ifPresent(violations::add);
-			if (notLinkable.isEmpty() && membership.marineRank() != null
-					&& kinds.get(membership.affiliationContentId()) != AffiliationKind.NAVY) {
-				violations.add(new FieldViolation(prefix + MARINE_RANK_PART, RANK_NOT_ALLOWED));
+			if (notLinkable.isEmpty() && kinds.get(membership.affiliationContentId()) != AffiliationKind.NAVY) {
+				violations.addAll(rankViolations(index, membership.periods()));
 			}
 		}
 		return violations;
+	}
+
+	private static List<FieldViolation> rankViolations(int membershipIndex, List<MembershipPeriod> periods) {
+		return IntStream.range(0, periods.size())
+			.filter(index -> periods.get(index).marineRank() != null)
+			.mapToObj(index -> new FieldViolation(
+					PERIOD_PREFIX.formatted(CharacterRelations.AFFILIATIONS_FIELD, membershipIndex, index)
+							+ MARINE_RANK_PART,
+					RANK_NOT_ALLOWED))
+			.toList();
 	}
 
 	/**
@@ -313,7 +333,7 @@ public class CharacterValidator extends ContentValidator<Character, CharacterVer
 	 */
 	private Map<UUID, AffiliationKind> approvedKindsOf(List<Membership> memberships) {
 		List<UUID> ranked = memberships.stream()
-			.filter(membership -> membership.marineRank() != null)
+			.filter(Membership::hasRank)
 			.map(Membership::affiliationContentId)
 			.toList();
 		Map<UUID, AffiliationKind> kinds = new HashMap<>();

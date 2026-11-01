@@ -179,10 +179,10 @@ class PublishedCharacterViewIntegrationTest {
 			.update();
 		UUID koby = content(CHARACTER);
 		UUID online = character(koby, 1, PUBLISHED, "Koby", "it");
-		membership(online, 2, mugiwara, null, true);
-		membership(online, 0, kaigun, "CAPTAIN", false, "it", "Capitano", "en", "Captain");
-		membership(online, 1, retired, null, false, "it", "Ex");
-		membership(character(koby, 2, "DRAFT", "Koby", "it"), 0, kaigun, "ENSIGN", false);
+		period(membership(online, 2, mugiwara), 0, null, content("CHAPTER"));
+		period(membership(online, 0, kaigun), 0, "CAPTAIN", null, "it", "Capitano", "en", "Captain");
+		period(membership(online, 1, retired), 0, null, null, "it", "Ex");
+		period(membership(character(koby, 2, "DRAFT", "Koby", "it"), 0, kaigun), 0, "ENSIGN", null);
 
 		var rows = this.jdbc.sql(
 				"select character_id, position, affiliation_id, marine_rank, former from published.character_affiliation"
@@ -203,6 +203,39 @@ class PublishedCharacterViewIntegrationTest {
 	}
 
 	@Test
+	void aMembershipIsFormerWhenNoPeriodIsOpenAndShowsTheRoleAndRankOfItsLastPeriod() {
+		UUID mugiwara = affiliationOnline("Mugiwara no Ichimi");
+		UUID kaigun = affiliationOnline("Kaigun");
+		UUID baroque = affiliationOnline("Baroque Works");
+		UUID enies = content("CHAPTER");
+		UUID usopp = content(CHARACTER);
+		UUID online = character(usopp, 1, PUBLISHED, "Usopp", "it");
+		// Usopp leaves the crew and comes back: current again, with the role of his
+		// return.
+		UUID crew = membership(online, 0, mugiwara);
+		period(crew, 0, null, enies, "it", "Cecchino");
+		period(crew, 1, null, null, "it", "Re dei cecchini");
+		// Every period over: former, with the rank of the last one.
+		UUID navy = membership(online, 1, kaigun);
+		period(navy, 0, "CHORE_BOY", enies);
+		period(navy, 1, "ENSIGN", enies);
+		// No period yet: nothing open, so former.
+		membership(online, 2, baroque);
+
+		var rows = this.jdbc
+			.sql("select position, marine_rank, former from published.character_affiliation order by position")
+			.query((rs, n) -> tuple(rs.getInt("position"), rs.getString("marine_rank"), rs.getBoolean("former")))
+			.list();
+		var roles = this.jdbc
+			.sql("select position, language, role from published.character_affiliation_role order by position")
+			.query((rs, n) -> tuple(rs.getInt("position"), rs.getString("language"), rs.getString("role")))
+			.list();
+
+		assertThat(rows).containsExactly(tuple(0, null, false), tuple(1, "ENSIGN", true), tuple(2, null, true));
+		assertThat(roles).containsExactly(tuple(0, "it", "Re dei cecchini"));
+	}
+
+	@Test
 	void theDevilFruitsOfTheVersionOnlineAreShownInTheirOrderAndOnlyThoseOnline() {
 		UUID meraMera = fruitOnline("Mera Mera no Mi");
 		UUID smile = fruitOnline("SMILE Zoan");
@@ -212,10 +245,10 @@ class PublishedCharacterViewIntegrationTest {
 			.update();
 		UUID sabo = content(CHARACTER);
 		UUID online = character(sabo, 1, PUBLISHED, "Sabo", "it");
-		devilFruit(online, 2, smile, true);
-		devilFruit(online, 0, meraMera, false);
-		devilFruit(online, 1, retired, false);
-		devilFruit(character(sabo, 2, "DRAFT", "Sabo", "it"), 0, smile, false);
+		devilFruit(online, 2, smile, "ended_episode_id", content("EPISODE"));
+		devilFruit(online, 0, meraMera, null, null);
+		devilFruit(online, 1, retired, null, null);
+		devilFruit(character(sabo, 2, "DRAFT", "Sabo", "it"), 0, smile, null, null);
 
 		var rows = this.jdbc
 			.sql("select character_id, position, devil_fruit_id, former from published.character_devil_fruit"
@@ -337,31 +370,46 @@ class PublishedCharacterViewIntegrationTest {
 			.update();
 	}
 
-	/** Seeds a membership at a position, with its role as language and text pairs. */
-	private void membership(UUID versionId, int position, UUID affiliationId, String rank, boolean former,
-			String... languageAndRole) {
+	/** Seeds a membership at a position, with no period; its id. */
+	private UUID membership(UUID versionId, int position, UUID affiliationId) {
 		UUID id = UUID.randomUUID();
 		this.jdbc
-			.sql("""
-					insert into character_version_affiliation (id, version_id, position, affiliation_content_id, marine_rank,
-					                                           former)
-					values (?, ?, ?, ?, ?, ?)""")
-			.params(id, versionId, position, affiliationId, rank, former)
+			.sql("insert into character_version_affiliation (id, version_id, position, affiliation_content_id)"
+					+ " values (?, ?, ?, ?)")
+			.params(id, versionId, position, affiliationId)
 			.update();
+		return id;
+	}
+
+	/**
+	 * Seeds a period of a membership, ended at this chapter or open for null, with its
+	 * role as language and text pairs. The window's discovered part is left out: the
+	 * views do not read it.
+	 */
+	private void period(UUID membershipId, int position, String rank, UUID endedChapterId, String... languageAndRole) {
+		UUID id = UUID.randomUUID();
+		this.jdbc.sql("""
+				insert into character_version_affiliation_period (id, membership_id, position, marine_rank,
+				                                                  ended_chapter_id)
+				values (?, ?, ?, ?, ?)""").params(id, membershipId, position, rank, endedChapterId).update();
 		for (int i = 0; i < languageAndRole.length; i += 2) {
 			this.jdbc
-				.sql("insert into character_version_affiliation_translation (membership_id, language_code, role)"
+				.sql("insert into character_version_affiliation_period_translation (period_id, language_code, role)"
 						+ " values (?, ?, ?)")
 				.params(id, languageAndRole[i], languageAndRole[i + 1])
 				.update();
 		}
 	}
 
-	private void devilFruit(UUID versionId, int position, UUID devilFruitId, boolean former) {
+	/**
+	 * Seeds a fruit use; with an end column (this test's constant) and its chapter or
+	 * episode, or none for null.
+	 */
+	private void devilFruit(UUID versionId, int position, UUID devilFruitId, String endedColumn, UUID endedId) {
 		this.jdbc
-			.sql("insert into character_version_devil_fruit (version_id, position, devil_fruit_content_id, former)"
-					+ " values (?, ?, ?, ?)")
-			.params(versionId, position, devilFruitId, former)
+			.sql("insert into character_version_devil_fruit (version_id, position, devil_fruit_content_id, "
+					+ (endedColumn == null ? "ended_chapter_id" : endedColumn) + ") values (?, ?, ?, ?)")
+			.params(versionId, position, devilFruitId, endedId)
 			.update();
 	}
 

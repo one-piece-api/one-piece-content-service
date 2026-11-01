@@ -14,6 +14,7 @@ import java.util.Map;
  *
  * @param translations name and description per language code
  * @param birthday day and month, ISO 8601 {@code --MM-DD}; null for none
+ * @param aliases each alias, in order
  * @param species each species as of today, in order
  * @param affiliations each membership, in order
  * @param devilFruits each Devil Fruit, in order
@@ -28,7 +29,7 @@ import java.util.Map;
 public record CharacterResponse(String romaji, String japaneseName,
 		Map<String, CharacterTranslationResponse> translations, CharacterStatus status, Gender gender,
 		@Schema(type = "string", example = "--05-05") MonthDay birthday, List<EpithetResponse> epithets,
-		List<String> aliases, List<SpeciesReferenceResponse> species, List<MembershipResponse> affiliations,
+		List<AliasResponse> aliases, List<SpeciesEntryResponse> species, List<MembershipResponse> affiliations,
 		List<FruitUseResponse> devilFruits, List<RelativeResponse> relatives, List<RelativeResponse> relativesOf,
 		ImageResponse image, FirstAppearanceResponse firstAppearance) {
 

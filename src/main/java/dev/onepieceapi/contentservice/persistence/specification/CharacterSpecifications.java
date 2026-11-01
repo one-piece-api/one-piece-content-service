@@ -6,10 +6,14 @@ import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.entity.AffiliationVersionEntity;
 import dev.onepieceapi.contentservice.persistence.entity.CharacterFruitUseEmbeddable;
 import dev.onepieceapi.contentservice.persistence.entity.CharacterMembershipEntity;
+import dev.onepieceapi.contentservice.persistence.entity.CharacterMembershipPeriodEntity;
+import dev.onepieceapi.contentservice.persistence.entity.CharacterSpeciesEmbeddable;
 import dev.onepieceapi.contentservice.persistence.entity.CharacterVersionEntity;
 import dev.onepieceapi.contentservice.persistence.entity.ContentVersionEntity;
+import dev.onepieceapi.contentservice.persistence.entity.StoryWindowEmbeddable;
 import dev.onepieceapi.contentservice.persistence.entity.VersionBodyEntity;
 import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.From;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
@@ -17,13 +21,14 @@ import jakarta.persistence.criteria.Subquery;
 import lombok.experimental.UtilityClass;
 import org.springframework.data.jpa.domain.Specification;
 
-import java.util.Collection;
 import java.util.UUID;
 
 /**
  * The filters of the list of characters that are its own (implementation plan of the
  * Character, D16): the status, a species and an affiliation its version names, the kind
- * of an affiliation it currently belongs to, and a Devil Fruit it currently has.
+ * of an affiliation it currently belongs to, and a Devil Fruit it currently has. Current,
+ * without a filter on the reader axis, is a window without an end (workflow 3.7.2): a
+ * membership is current while one of its periods is (3.4.7).
  */
 @UtilityClass
 public class CharacterSpecifications {
@@ -34,13 +39,19 @@ public class CharacterSpecifications {
 
 	/** The characters whose version names this species (its content id) in its list. */
 	public Specification<CharacterVersionEntity> withSpecies(UUID speciesContentId) {
-		return (root, query, cb) -> cb.isMember(speciesContentId,
-				root.<Collection<UUID>>get(CharacterVersionEntity.Fields.speciesIds));
+		return (root, query, cb) -> {
+			Subquery<Integer> named = query.subquery(Integer.class);
+			Join<CharacterVersionEntity, CharacterSpeciesEmbeddable> species = named.correlate(root)
+				.join(CharacterVersionEntity.Fields.species);
+			named.select(cb.literal(1))
+				.where(cb.equal(species.get(CharacterSpeciesEmbeddable.Fields.speciesContentId), speciesContentId));
+			return cb.exists(named);
+		};
 	}
 
 	/**
 	 * The characters whose version lists this affiliation (its content id) as one they
-	 * belong to: a membership marked {@code former} does not count.
+	 * currently belong to.
 	 */
 	public Specification<CharacterVersionEntity> withAffiliation(UUID affiliationContentId) {
 		return (root, query, cb) -> {
@@ -54,9 +65,9 @@ public class CharacterSpecifications {
 	}
 
 	/**
-	 * The characters whose version lists an affiliation of this kind as one they belong
-	 * to, the kind being that of the affiliation's latest approved version - the one a
-	 * save checks a rank against. A former membership does not count.
+	 * The characters whose version lists an affiliation of this kind as one they
+	 * currently belong to, the kind being that of the affiliation's latest approved
+	 * version - the one a save checks a rank against.
 	 */
 	public Specification<CharacterVersionEntity> withAffiliationKind(AffiliationKind kind) {
 		return (root, query, cb) -> {
@@ -77,7 +88,7 @@ public class CharacterSpecifications {
 
 	/**
 	 * The characters whose version lists this Devil Fruit (its content id) as one they
-	 * have: an entry marked {@code former} does not count, as for the affiliation.
+	 * currently have.
 	 */
 	public Specification<CharacterVersionEntity> withDevilFruit(UUID devilFruitContentId) {
 		return (root, query, cb) -> {
@@ -86,7 +97,7 @@ public class CharacterSpecifications {
 				.join(CharacterVersionEntity.Fields.devilFruits);
 			user.select(cb.literal(1))
 				.where(cb.equal(use.get(CharacterFruitUseEmbeddable.Fields.devilFruitContentId), devilFruitContentId),
-						cb.isFalse(use.get(CharacterFruitUseEmbeddable.Fields.former)));
+						open(use, CharacterFruitUseEmbeddable.Fields.window, cb));
 			return cb.exists(user);
 		};
 	}
@@ -97,9 +108,19 @@ public class CharacterSpecifications {
 		return subquery.correlate(root).join(CharacterVersionEntity.Fields.affiliations);
 	}
 
+	/** A membership with a period without an end. */
 	private static Predicate currentOnly(Join<CharacterVersionEntity, CharacterMembershipEntity> membership,
 			CriteriaBuilder cb) {
-		return cb.isFalse(membership.get(CharacterMembershipEntity.Fields.former));
+		Join<CharacterMembershipEntity, CharacterMembershipPeriodEntity> period = membership
+			.join(CharacterMembershipEntity.Fields.periods);
+		return open(period, CharacterMembershipPeriodEntity.Fields.window, cb);
+	}
+
+	/** The window held by this attribute has no end on any axis. */
+	private static Predicate open(From<?, ?> holder, String windowAttribute, CriteriaBuilder cb) {
+		var window = holder.get(windowAttribute);
+		return cb.and(cb.isNull(window.get(StoryWindowEmbeddable.Fields.endedChapterId)),
+				cb.isNull(window.get(StoryWindowEmbeddable.Fields.endedEpisodeId)));
 	}
 
 }

@@ -1,8 +1,10 @@
 package dev.onepieceapi.contentservice.web.mapper;
 
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
+import dev.onepieceapi.contentservice.domain.readertime.StoryWindow;
 import dev.onepieceapi.contentservice.domain.story.NumberedReference;
 import dev.onepieceapi.contentservice.web.dto.request.FirstAppearanceRequest;
+import dev.onepieceapi.contentservice.web.dto.request.WindowedRequest;
 import dev.onepieceapi.contentservice.web.dto.response.FirstAppearanceResponse;
 import dev.onepieceapi.contentservice.web.dto.response.NumberedReferenceResponse;
 import lombok.experimental.UtilityClass;
@@ -11,9 +13,9 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Between a first appearance (ADR-0008) and the wire, for whatever entity has one. The
- * chapter and the episode it points to are given already looked up, so the mapper reads
- * no database.
+ * Between a point of the reader axis - a first appearance (ADR-0008), the points of a
+ * window - and the wire, for whatever entity has one. The chapter and the episode it
+ * points to are given already looked up, so the mapper reads no database.
  */
 @UtilityClass
 public class FirstAppearanceMapper {
@@ -21,6 +23,11 @@ public class FirstAppearanceMapper {
 	/** What the request says; left out is none. */
 	public StoryPoint toDomain(FirstAppearanceRequest request) {
 		return request == null ? StoryPoint.NONE : new StoryPoint(request.chapter(), request.episode());
+	}
+
+	/** The window of an entry, its points as the request says them. */
+	public StoryWindow toWindow(WindowedRequest entry) {
+		return new StoryWindow(toDomain(entry.discovered()), toDomain(entry.ended()));
 	}
 
 	/**

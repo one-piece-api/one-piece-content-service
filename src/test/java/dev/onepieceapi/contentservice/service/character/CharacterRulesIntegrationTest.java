@@ -114,7 +114,7 @@ class CharacterRulesIntegrationTest {
 	void aCharacterGoesOnlineWhileItsChapterAndEverySpeciesAreAndTheSlugOfItsRomajiIsKept() {
 		UUID ningen = this.fixtures.species(PUBLISHED, "Ningen");
 		UUID nami = this.fixtures.character(READY_TO_PUBLISH,
-				this.fixtures.complete("Nami").toBuilder().speciesIds(List.of(ningen)).build());
+				this.fixtures.complete("Nami").toBuilder().species(this.fixtures.speciesEntries(ningen)).build());
 		stored();
 
 		assertThat(this.service.publish(PUBLISHER, CHOPPER, nami, 1).version().status()).isEqualTo(PUBLISHED);
@@ -154,7 +154,10 @@ class CharacterRulesIntegrationTest {
 		UUID ningen = this.fixtures.species(PUBLISHED, "Ningen");
 		UUID mink = this.fixtures.species(ARCHIVED, "Mink");
 		UUID carrot = this.fixtures.character(READY_TO_PUBLISH,
-				this.fixtures.complete("Carrot").toBuilder().speciesIds(List.of(ningen, mink)).build());
+				this.fixtures.complete("Carrot")
+					.toBuilder()
+					.species(this.fixtures.speciesEntries(ningen, mink))
+					.build());
 		stored();
 
 		var refused = catchThrowableOfType(VersionActionBlockedException.class,
@@ -169,9 +172,9 @@ class CharacterRulesIntegrationTest {
 	void aSpeciesIsNotRetiredWhileOnlineCharactersNameItEvenForAnAdministrator() {
 		UUID ningen = this.fixtures.species(PUBLISHED, "Ningen");
 		UUID nami = this.fixtures.character(PUBLISHED,
-				this.fixtures.complete("Nami").toBuilder().speciesIds(List.of(ningen)).build());
+				this.fixtures.complete("Nami").toBuilder().species(this.fixtures.speciesEntries(ningen)).build());
 		this.fixtures.character(READY_TO_PUBLISH,
-				this.fixtures.complete("Robin").toBuilder().speciesIds(List.of(ningen)).build());
+				this.fixtures.complete("Robin").toBuilder().species(this.fixtures.speciesEntries(ningen)).build());
 		stored();
 
 		var refused = catchThrowableOfType(VersionActionBlockedException.class,
@@ -186,7 +189,7 @@ class CharacterRulesIntegrationTest {
 	void aSpeciesNoOnlineCharacterNamesIsRetired() {
 		UUID gyojin = this.fixtures.species(PUBLISHED, "Gyojin");
 		this.fixtures.character(READY_TO_PUBLISH,
-				this.fixtures.complete("Arlong").toBuilder().speciesIds(List.of(gyojin)).build());
+				this.fixtures.complete("Arlong").toBuilder().species(this.fixtures.speciesEntries(gyojin)).build());
 		stored();
 
 		assertThat(this.fixtures.speciesService().retire(RETIRER, CHOPPER, gyojin, 1).version().status())

@@ -9,6 +9,7 @@ import dev.onepieceapi.contentservice.domain.workflow.Version;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAction;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.mapper.DevilFruitTypeVersionMapper;
+import dev.onepieceapi.contentservice.persistence.projection.FruitUseWindow;
 import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.CharacterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
@@ -18,10 +19,10 @@ import dev.onepieceapi.contentservice.service.content.ContentRules;
 import dev.onepieceapi.contentservice.service.character.CharacterRelations;
 import dev.onepieceapi.contentservice.service.content.FirstAppearanceRules;
 import dev.onepieceapi.contentservice.service.content.LinkedItems;
+import dev.onepieceapi.contentservice.service.content.ReaderAxisRules;
 import dev.onepieceapi.contentservice.service.content.RelationRules;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
 import java.util.Collection;
@@ -31,6 +32,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.IntStream;
 
 /**
  * What a Devil Fruit needs of its type (implementation plan of the Devil Fruit, D2): the
@@ -50,9 +52,9 @@ import java.util.UUID;
  * <p>
  * What it owes its characters (implementation plan of the Character, D12): it cannot be
  * retired while online characters name it, nor go online with one user at a time while
- * several online have it as a current one. Going online holds its own content
- * exclusively, as a character going online with it as a current one does
- * ({@code CharacterRules}): the two never check the users together.
+ * the windows of characters online using it overlap on an axis (workflow 3.4.8). Going
+ * online holds its own content exclusively, as a character going online with it does
+ * ({@code CharacterRules}): the two never compare the users together.
  */
 @Component
 @RequiredArgsConstructor(onConstructor_ = { @Autowired })
@@ -67,6 +69,8 @@ public class DevilFruitRules implements ContentRules<DevilFruit> {
 	private final EpisodeVersionRepository episodeRepository;
 
 	private final CharacterVersionRepository characterRepository;
+
+	private final ReaderAxisRules readerAxisRules;
 
 	private final RulesProperties properties;
 
@@ -99,24 +103,33 @@ public class DevilFruitRules implements ContentRules<DevilFruit> {
 	}
 
 	/**
-	 * Going online with one user at a time, while several characters online have it as a
-	 * current one: how many, and the first few by romaji.
+	 * Going online with one user at a time, while the windows of characters online using
+	 * it overlap, on the numbers online: how many of them, and the first few by romaji.
 	 */
 	private Optional<ActionBlock> severalUsers(VersionAction action, UUID contentId, DevilFruit fruit) {
 		if (!RelationRules.GOING_ONLINE.contains(action) || fruit.multipleUsers()) {
 			return Optional.empty();
 		}
-		long count = this.characterRepository.countOnlineCurrentUsersOf(contentId);
-		if (count < 2) {
+		List<FruitUseWindow> overlapping = overlappingUsers(this.characterRepository.findOnlineUsesOf(contentId));
+		if (overlapping.isEmpty()) {
 			return Optional.empty();
 		}
-		List<Map<String, Object>> named = this.characterRepository
-			.findOnlineCurrentUsersOf(contentId, PageRequest.ofSize(this.properties.blockingPreviewSize()))
-			.stream()
-			.map(RelationRules::named)
+		List<Map<String, Object>> named = overlapping.stream()
+			.limit(this.properties.blockingPreviewSize())
+			.map(FruitUseWindow::named)
 			.toList();
 		return Optional.of(new ActionBlock(BlockReason.DEVIL_FRUIT_IN_USE,
-				Map.of("count", count, CharacterRelations.ITEMS_NAME, named)));
+				Map.of("count", (long) overlapping.size(), CharacterRelations.ITEMS_NAME, named)));
+	}
+
+	/** The users whose window overlaps that of another user, in their order. */
+	private List<FruitUseWindow> overlappingUsers(List<FruitUseWindow> users) {
+		var windows = this.readerAxisRules.onlineWindows(users.stream().map(FruitUseWindow::window).toList());
+		return IntStream.range(0, users.size())
+			.filter(index -> IntStream.range(0, users.size())
+				.anyMatch(other -> other != index && !windows.get(index).overlapsOn(windows.get(other)).isEmpty()))
+			.mapToObj(users::get)
+			.toList();
 	}
 
 	/** The queries of the characters for the fruit they name. */

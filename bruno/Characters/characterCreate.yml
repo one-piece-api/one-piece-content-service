@@ -15,21 +15,59 @@ http:
         "affiliations": [
           {
             "affiliation": "",
-            "former": false,
-            "marineRank": "FLEET_ADMIRAL",
-            "role": {}
+            "periods": [
+              {
+                "discovered": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "ended": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "marineRank": "FLEET_ADMIRAL",
+                "role": {}
+              }
+            ]
           }
         ],
-        "aliases": [],
+        "aliases": [
+          {
+            "alias": "",
+            "discovered": {
+              "chapter": "",
+              "episode": ""
+            },
+            "ended": {
+              "chapter": "",
+              "episode": ""
+            }
+          }
+        ],
         "birthday": "--05-05",
         "devilFruits": [
           {
             "devilFruit": "",
-            "former": false
+            "discovered": {
+              "chapter": "",
+              "episode": ""
+            },
+            "ended": {
+              "chapter": "",
+              "episode": ""
+            }
           }
         ],
         "epithets": [
           {
+            "discovered": {
+              "chapter": "",
+              "episode": ""
+            },
+            "ended": {
+              "chapter": "",
+              "episode": ""
+            },
             "text": {}
           }
         ],
@@ -41,13 +79,33 @@ http:
         "japaneseName": "",
         "relatives": [
           {
+            "discovered": {
+              "chapter": "",
+              "episode": ""
+            },
+            "ended": {
+              "chapter": "",
+              "episode": ""
+            },
             "kind": "PARENT",
             "relative": ""
           }
         ],
         "removeImage": false,
         "romaji": "",
-        "species": [],
+        "species": [
+          {
+            "discovered": {
+              "chapter": "",
+              "episode": ""
+            },
+            "ended": {
+              "chapter": "",
+              "episode": ""
+            },
+            "species": ""
+          }
+        ],
         "status": "ALIVE",
         "translations": {}
       }
@@ -73,21 +131,59 @@ examples:
             "affiliations": [
               {
                 "affiliation": "",
-                "former": false,
-                "marineRank": "FLEET_ADMIRAL",
-                "role": {}
+                "periods": [
+                  {
+                    "discovered": {
+                      "chapter": "",
+                      "episode": ""
+                    },
+                    "ended": {
+                      "chapter": "",
+                      "episode": ""
+                    },
+                    "marineRank": "FLEET_ADMIRAL",
+                    "role": {}
+                  }
+                ]
               }
             ],
-            "aliases": [],
+            "aliases": [
+              {
+                "alias": "",
+                "discovered": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "ended": {
+                  "chapter": "",
+                  "episode": ""
+                }
+              }
+            ],
             "birthday": "--05-05",
             "devilFruits": [
               {
                 "devilFruit": "",
-                "former": false
+                "discovered": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "ended": {
+                  "chapter": "",
+                  "episode": ""
+                }
               }
             ],
             "epithets": [
               {
+                "discovered": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "ended": {
+                  "chapter": "",
+                  "episode": ""
+                },
                 "text": {}
               }
             ],
@@ -99,13 +195,33 @@ examples:
             "japaneseName": "",
             "relatives": [
               {
+                "discovered": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "ended": {
+                  "chapter": "",
+                  "episode": ""
+                },
                 "kind": "PARENT",
                 "relative": ""
               }
             ],
             "removeImage": false,
             "romaji": "",
-            "species": [],
+            "species": [
+              {
+                "discovered": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "ended": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "species": ""
+              }
+            ],
             "status": "ALIVE",
             "translations": {}
           }
@@ -160,21 +276,59 @@ examples:
             "affiliations": [
               {
                 "affiliation": "",
-                "former": false,
-                "marineRank": "FLEET_ADMIRAL",
-                "role": {}
+                "periods": [
+                  {
+                    "discovered": {
+                      "chapter": "",
+                      "episode": ""
+                    },
+                    "ended": {
+                      "chapter": "",
+                      "episode": ""
+                    },
+                    "marineRank": "FLEET_ADMIRAL",
+                    "role": {}
+                  }
+                ]
               }
             ],
-            "aliases": [],
+            "aliases": [
+              {
+                "alias": "",
+                "discovered": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "ended": {
+                  "chapter": "",
+                  "episode": ""
+                }
+              }
+            ],
             "birthday": "--05-05",
             "devilFruits": [
               {
                 "devilFruit": "",
-                "former": false
+                "discovered": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "ended": {
+                  "chapter": "",
+                  "episode": ""
+                }
               }
             ],
             "epithets": [
               {
+                "discovered": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "ended": {
+                  "chapter": "",
+                  "episode": ""
+                },
                 "text": {}
               }
             ],
@@ -186,13 +340,33 @@ examples:
             "japaneseName": "",
             "relatives": [
               {
+                "discovered": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "ended": {
+                  "chapter": "",
+                  "episode": ""
+                },
                 "kind": "PARENT",
                 "relative": ""
               }
             ],
             "removeImage": false,
             "romaji": "",
-            "species": [],
+            "species": [
+              {
+                "discovered": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "ended": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "species": ""
+              }
+            ],
             "status": "ALIVE",
             "translations": {}
           }
@@ -231,21 +405,59 @@ examples:
             "affiliations": [
               {
                 "affiliation": "",
-                "former": false,
-                "marineRank": "FLEET_ADMIRAL",
-                "role": {}
+                "periods": [
+                  {
+                    "discovered": {
+                      "chapter": "",
+                      "episode": ""
+                    },
+                    "ended": {
+                      "chapter": "",
+                      "episode": ""
+                    },
+                    "marineRank": "FLEET_ADMIRAL",
+                    "role": {}
+                  }
+                ]
               }
             ],
-            "aliases": [],
+            "aliases": [
+              {
+                "alias": "",
+                "discovered": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "ended": {
+                  "chapter": "",
+                  "episode": ""
+                }
+              }
+            ],
             "birthday": "--05-05",
             "devilFruits": [
               {
                 "devilFruit": "",
-                "former": false
+                "discovered": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "ended": {
+                  "chapter": "",
+                  "episode": ""
+                }
               }
             ],
             "epithets": [
               {
+                "discovered": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "ended": {
+                  "chapter": "",
+                  "episode": ""
+                },
                 "text": {}
               }
             ],
@@ -257,13 +469,33 @@ examples:
             "japaneseName": "",
             "relatives": [
               {
+                "discovered": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "ended": {
+                  "chapter": "",
+                  "episode": ""
+                },
                 "kind": "PARENT",
                 "relative": ""
               }
             ],
             "removeImage": false,
             "romaji": "",
-            "species": [],
+            "species": [
+              {
+                "discovered": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "ended": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "species": ""
+              }
+            ],
             "status": "ALIVE",
             "translations": {}
           }

@@ -4,6 +4,9 @@ import dev.onepieceapi.contentservice.domain.affiliation.AffiliationKind;
 import dev.onepieceapi.contentservice.domain.character.Character;
 import dev.onepieceapi.contentservice.domain.character.MarineRank;
 import dev.onepieceapi.contentservice.domain.character.Membership;
+import dev.onepieceapi.contentservice.domain.character.MembershipPeriod;
+import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
+import dev.onepieceapi.contentservice.domain.readertime.StoryWindow;
 import dev.onepieceapi.contentservice.domain.workflow.BlockReason;
 import dev.onepieceapi.contentservice.domain.workflow.ContentFilter;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
@@ -63,9 +66,9 @@ import static org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTest
 
 /**
  * The memberships of a character (implementation plan of the Character, C8, D10), against
- * a real PostgreSQL (Testcontainers): kept in their order with their role, rank and
- * former flag; the save refusing what it should, entry by entry; what a character needs
- * to go online with them and what an affiliation owes its members; the list narrowed by
+ * a real PostgreSQL (Testcontainers): kept in their order with their periods, role and
+ * rank; the save refusing what it should, entry by entry; what a character needs to go
+ * online with them and what an affiliation owes its members; the list narrowed by
  * affiliation and kind. Whoever breaks a rule is refused with the reason, even an
  * administrator.
  */
@@ -123,6 +126,9 @@ class CharacterMembershipsIntegrationTest {
 
 	private UUID kaigun;
 
+	/** A chapter online after the first appearance: where a former membership ends. */
+	private StoryPoint later;
+
 	@BeforeEach
 	void setUp() {
 		this.fixtures = CharacterFixtures.builder()
@@ -141,29 +147,31 @@ class CharacterMembershipsIntegrationTest {
 		this.service = this.fixtures.service();
 		this.mugiwara = this.fixtures.affiliation(PUBLISHED, "Mugiwara no Ichimi", AffiliationKind.PIRATE_CREW);
 		this.kaigun = this.fixtures.affiliation(PUBLISHED, "Kaigun", AffiliationKind.NAVY);
+		this.later = StoryPoint
+			.ofChapter(OnlineChapters.chapter(this.contentRepository, this.chapterRepository, PUBLISHED, 10));
 		stored();
 	}
 
 	// ---- Saving
 
 	@Test
-	void aNewCharacterKeepsItsMembershipsInTheirOrderWithRoleRankAndFormerFlag() {
-		var captain = new Membership(this.mugiwara, Map.of("en", " Captain ", "it", "Capitano"), null, false);
-		var koby = new Membership(this.kaigun, Map.of(), MarineRank.CAPTAIN, true);
+	void aNewCharacterKeepsItsMembershipsInTheirOrderWithTheirPeriodRoleAndRank() {
+		var captain = current(this.mugiwara, Map.of("en", " Captain ", "it", "Capitano"), null);
+		var koby = former(this.kaigun, Map.of(), MarineRank.CAPTAIN);
 		var written = this.fixtures.complete("Koby").toBuilder().affiliations(List.of(captain, koby)).build();
 
 		var content = this.service.create(EDITOR, CHOPPER, written);
 		stored();
 
 		var body = this.service.getVersion(EDITOR, CHOPPER, content.id(), 1).version().body();
-		assertThat(body.affiliations()).containsExactly(
-				new Membership(this.mugiwara, Map.of("en", "Captain", "it", "Capitano"), null, false), koby);
+		assertThat(body.affiliations())
+			.containsExactly(current(this.mugiwara, Map.of("en", "Captain", "it", "Capitano"), null), koby);
 	}
 
 	@Test
 	void reorderingAndShorteningTheMembershipsOfADraftKeepsTheNewList() {
-		var first = new Membership(this.mugiwara, Map.of("en", "Navigator", "it", "Navigatrice"), null, false);
-		var second = new Membership(this.kaigun, Map.of(), MarineRank.ENSIGN, true);
+		var first = current(this.mugiwara, Map.of("en", "Navigator", "it", "Navigatrice"), null);
+		var second = former(this.kaigun, Map.of(), MarineRank.ENSIGN);
 		var written = this.fixtures.complete("Nami").toBuilder().affiliations(List.of(first, second)).build();
 		var content = this.service.create(EDITOR, CHOPPER, written);
 		stored();
@@ -188,8 +196,8 @@ class CharacterMembershipsIntegrationTest {
 	void aNewVersionStartsFromItsBaseWithEveryMembershipInItsOrder() {
 		var body = this.fixtures.complete("Koby")
 			.toBuilder()
-			.affiliations(List.of(new Membership(this.kaigun, Map.of("en", "Hero"), MarineRank.CAPTAIN, false),
-					new Membership(this.mugiwara, Map.of(), null, true)))
+			.affiliations(List.of(current(this.kaigun, Map.of("en", "Hero"), MarineRank.CAPTAIN),
+					former(this.mugiwara, Map.of(), null)))
 			.build();
 		UUID koby = this.fixtures.character(PUBLISHED, body);
 		stored();
@@ -204,9 +212,8 @@ class CharacterMembershipsIntegrationTest {
 	void anAffiliationNamedTwiceIsRefusedByTheIndexOfItsRepeat() {
 		var written = Character.builder()
 			.romaji("Shanks")
-			.affiliations(List.of(new Membership(this.mugiwara, Map.of(), null, false),
-					new Membership(this.kaigun, Map.of(), null, false),
-					new Membership(this.mugiwara, Map.of(), null, true)))
+			.affiliations(List.of(current(this.mugiwara, Map.of(), null), current(this.kaigun, Map.of(), null),
+					former(this.mugiwara, Map.of(), null)))
 			.build();
 
 		var refused = catchThrowableOfType(ValueInvalidException.class,
@@ -221,9 +228,9 @@ class CharacterMembershipsIntegrationTest {
 		stored();
 		var written = Character.builder()
 			.romaji("Shanks")
-			.affiliations(List.of(new Membership(this.mugiwara, Map.of(), null, false),
-					new Membership(draft, Map.of(), null, false),
-					new Membership(UUID.randomUUID(), Map.of(), null, false)))
+			.firstAppearance(this.fixtures.fromStart().discovered())
+			.affiliations(List.of(current(this.mugiwara, Map.of(), null), current(draft, Map.of(), null),
+					current(UUID.randomUUID(), Map.of(), null)))
 			.build();
 
 		var refused = catchThrowableOfType(ValueInvalidException.class,
@@ -238,15 +245,16 @@ class CharacterMembershipsIntegrationTest {
 		stored();
 		var written = Character.builder()
 			.romaji("Smoker")
-			.affiliations(List.of(new Membership(this.kaigun, Map.of(), MarineRank.VICE_ADMIRAL, false),
-					new Membership(this.mugiwara, Map.of(), MarineRank.ADMIRAL, false),
-					new Membership(unset, Map.of(), MarineRank.ENSIGN, false)))
+			.firstAppearance(this.fixtures.fromStart().discovered())
+			.affiliations(List.of(current(this.kaigun, Map.of(), MarineRank.VICE_ADMIRAL),
+					current(this.mugiwara, Map.of(), MarineRank.ADMIRAL), current(unset, Map.of(), MarineRank.ENSIGN)))
 			.build();
 
 		var refused = catchThrowableOfType(ValueInvalidException.class,
 				() -> this.service.create(EDITOR, CHOPPER, written));
 
-		assertThat(fieldsOf(refused)).containsExactly("affiliations[1].marineRank", "affiliations[2].marineRank");
+		assertThat(fieldsOf(refused)).containsExactly("affiliations[1].periods[0].marineRank",
+				"affiliations[2].periods[0].marineRank");
 	}
 
 	@Test
@@ -254,15 +262,15 @@ class CharacterMembershipsIntegrationTest {
 		var content = this.service.create(EDITOR, CHOPPER,
 				this.fixtures.complete("Nami")
 					.toBuilder()
-					.affiliations(List.of(new Membership(this.mugiwara, Map.of("en", "Navigator"), null, false),
-							new Membership(this.kaigun, Map.of(), null, false)))
+					.affiliations(List.of(current(this.mugiwara, Map.of("en", "Navigator"), null),
+							current(this.kaigun, Map.of(), null)))
 					.build());
 		stored();
 
 		var refused = catchThrowableOfType(VersionIncompleteException.class,
 				() -> this.service.submit(EDITOR, CHOPPER, content.id(), 1));
 
-		assertThat(fieldsOf(refused)).containsExactly("affiliations[0].role[it]");
+		assertThat(fieldsOf(refused)).containsExactly("affiliations[0].periods[0].role[it]");
 	}
 
 	@Test
@@ -271,7 +279,7 @@ class CharacterMembershipsIntegrationTest {
 		this.fixtures.character(DRAFT,
 				Character.builder()
 					.romaji("Nami")
-					.affiliations(List.of(new Membership(this.mugiwara, Map.of("fr", "Navigatrice"), null, false)))
+					.affiliations(List.of(current(this.mugiwara, Map.of("fr", "Navigatrice"), null)))
 					.build());
 		stored();
 
@@ -284,7 +292,7 @@ class CharacterMembershipsIntegrationTest {
 		this.fixtures.character(DRAFT,
 				this.fixtures.complete("Nami")
 					.toBuilder()
-					.affiliations(List.of(new Membership(ningen, Map.of(), null, false)))
+					.affiliations(List.of(current(ningen, Map.of(), null)))
 					.build());
 
 		assertThatThrownBy(this::stored).isInstanceOf(ConstraintViolationException.class)
@@ -296,8 +304,8 @@ class CharacterMembershipsIntegrationTest {
 		this.fixtures.character(DRAFT,
 				this.fixtures.complete("Nami")
 					.toBuilder()
-					.affiliations(List.of(new Membership(this.mugiwara, Map.of(), null, false),
-							new Membership(this.mugiwara, Map.of(), null, true)))
+					.affiliations(
+							List.of(current(this.mugiwara, Map.of(), null), former(this.mugiwara, Map.of(), null)))
 					.build());
 		stored();
 
@@ -309,12 +317,11 @@ class CharacterMembershipsIntegrationTest {
 
 	@Test
 	void aCharacterGoesOnlineWithItsMembershipsWhileEveryAffiliationIsAndARankIsInANavyOne() {
-		UUID koby = this.fixtures.character(READY_TO_PUBLISH,
-				this.fixtures.complete("Koby")
-					.toBuilder()
-					.affiliations(List.of(new Membership(this.kaigun, Map.of(), MarineRank.CAPTAIN, false),
-							new Membership(this.mugiwara, Map.of(), null, true)))
-					.build());
+		UUID koby = this.fixtures.character(READY_TO_PUBLISH, this.fixtures.complete("Koby")
+			.toBuilder()
+			.affiliations(
+					List.of(current(this.kaigun, Map.of(), MarineRank.CAPTAIN), former(this.mugiwara, Map.of(), null)))
+			.build());
 		stored();
 
 		assertThat(this.service.publish(PUBLISHER, CHOPPER, koby, 1).version().status()).isEqualTo(PUBLISHED);
@@ -326,8 +333,7 @@ class CharacterMembershipsIntegrationTest {
 		UUID shanks = this.fixtures.character(READY_TO_PUBLISH,
 				this.fixtures.complete("Shanks")
 					.toBuilder()
-					.affiliations(List.of(new Membership(this.mugiwara, Map.of(), null, false),
-							new Membership(akagami, Map.of(), null, false)))
+					.affiliations(List.of(current(this.mugiwara, Map.of(), null), current(akagami, Map.of(), null)))
 					.build());
 		stored();
 
@@ -345,7 +351,7 @@ class CharacterMembershipsIntegrationTest {
 		UUID koby = this.fixtures.character(READY_TO_PUBLISH,
 				this.fixtures.complete("Koby")
 					.toBuilder()
-					.affiliations(List.of(new Membership(this.mugiwara, Map.of(), MarineRank.CAPTAIN, false)))
+					.affiliations(List.of(current(this.mugiwara, Map.of(), MarineRank.CAPTAIN)))
 					.build());
 		stored();
 
@@ -353,8 +359,8 @@ class CharacterMembershipsIntegrationTest {
 				() -> this.service.publish(ADMIN, CHOPPER, koby, 1));
 
 		assertThat(refused.getDetails()).containsEntry("reason", BlockReason.MARINE_RANK_NOT_ALLOWED);
-		assertThat(refused.getDetails().get("detail")).isEqualTo(Map.of("affiliationsIndex", 0, "affiliationId",
-				this.mugiwara, "affiliationRomaji", "Mugiwara no Ichimi"));
+		assertThat(refused.getDetails().get("detail")).isEqualTo(Map.of("affiliationsIndex", 0, "periodsIndex", 0,
+				"affiliationId", this.mugiwara, "affiliationRomaji", "Mugiwara no Ichimi"));
 	}
 
 	@Test
@@ -362,12 +368,12 @@ class CharacterMembershipsIntegrationTest {
 		UUID luffy = this.fixtures.character(PUBLISHED,
 				this.fixtures.complete("Luffy")
 					.toBuilder()
-					.affiliations(List.of(new Membership(this.mugiwara, Map.of(), null, true)))
+					.affiliations(List.of(former(this.mugiwara, Map.of(), null)))
 					.build());
 		this.fixtures.character(READY_TO_PUBLISH,
 				this.fixtures.complete("Zoro")
 					.toBuilder()
-					.affiliations(List.of(new Membership(this.mugiwara, Map.of(), null, false)))
+					.affiliations(List.of(current(this.mugiwara, Map.of(), null)))
 					.build());
 		stored();
 
@@ -384,7 +390,7 @@ class CharacterMembershipsIntegrationTest {
 		this.fixtures.character(READY_TO_PUBLISH,
 				this.fixtures.complete("Zoro")
 					.toBuilder()
-					.affiliations(List.of(new Membership(this.mugiwara, Map.of(), null, false)))
+					.affiliations(List.of(current(this.mugiwara, Map.of(), null)))
 					.build());
 		stored();
 
@@ -397,7 +403,7 @@ class CharacterMembershipsIntegrationTest {
 		UUID koby = this.fixtures.character(PUBLISHED,
 				this.fixtures.complete("Koby")
 					.toBuilder()
-					.affiliations(List.of(new Membership(this.kaigun, Map.of(), MarineRank.CAPTAIN, false)))
+					.affiliations(List.of(current(this.kaigun, Map.of(), MarineRank.CAPTAIN)))
 					.build());
 		this.fixtures.affiliationVersion(this.kaigun, 2, READY_TO_PUBLISH, "Kaigun", AffiliationKind.OTHER);
 		stored();
@@ -415,12 +421,12 @@ class CharacterMembershipsIntegrationTest {
 		this.fixtures.character(PUBLISHED,
 				this.fixtures.complete("Koby")
 					.toBuilder()
-					.affiliations(List.of(new Membership(this.kaigun, Map.of(), null, false)))
+					.affiliations(List.of(current(this.kaigun, Map.of(), null)))
 					.build());
 		this.fixtures.character(READY_TO_PUBLISH,
 				this.fixtures.complete("Helmeppo")
 					.toBuilder()
-					.affiliations(List.of(new Membership(this.kaigun, Map.of(), MarineRank.ENSIGN, false)))
+					.affiliations(List.of(current(this.kaigun, Map.of(), MarineRank.ENSIGN)))
 					.build());
 		this.fixtures.affiliationVersion(this.kaigun, 2, READY_TO_PUBLISH, "Kaigun", AffiliationKind.OTHER);
 		stored();
@@ -434,11 +440,10 @@ class CharacterMembershipsIntegrationTest {
 	@Test
 	void theListIsNarrowedByAffiliationAndByKindOfTheAffiliationsTheCharacterCurrentlyBelongsTo() {
 		UUID luffy = this.fixtures.character(PUBLISHED,
-				withMemberships("Luffy", new Membership(this.mugiwara, Map.of(), null, false)));
-		this.fixtures.character(PUBLISHED,
-				withMemberships("Zoro", new Membership(this.mugiwara, Map.of(), null, true)));
+				withMemberships("Luffy", current(this.mugiwara, Map.of(), null)));
+		this.fixtures.character(PUBLISHED, withMemberships("Zoro", former(this.mugiwara, Map.of(), null)));
 		UUID koby = this.fixtures.character(PUBLISHED,
-				withMemberships("Koby", new Membership(this.kaigun, Map.of(), MarineRank.CAPTAIN, false)));
+				withMemberships("Koby", current(this.kaigun, Map.of(), MarineRank.CAPTAIN)));
 		this.fixtures.character(PUBLISHED, this.fixtures.complete("Nami"));
 		stored();
 
@@ -458,8 +463,7 @@ class CharacterMembershipsIntegrationTest {
 
 	@Test
 	void theKindFilterReadsTheLatestApprovedVersionOfTheAffiliation() {
-		UUID koby = this.fixtures.character(PUBLISHED,
-				withMemberships("Koby", new Membership(this.kaigun, Map.of(), null, false)));
+		UUID koby = this.fixtures.character(PUBLISHED, withMemberships("Koby", current(this.kaigun, Map.of(), null)));
 		this.fixtures.affiliationVersion(this.kaigun, 2, READY_TO_PUBLISH, "Kaigun", AffiliationKind.OTHER);
 		stored();
 
@@ -473,13 +477,10 @@ class CharacterMembershipsIntegrationTest {
 
 	@Test
 	void anAffiliationCountsItsCurrentMembersOnlineAndTheLinkableOnesCarryTheirKind() {
-		this.fixtures.character(PUBLISHED,
-				withMemberships("Luffy", new Membership(this.mugiwara, Map.of(), null, false)));
-		this.fixtures.character(PUBLISHED,
-				withMemberships("Zoro", new Membership(this.mugiwara, Map.of(), null, true)));
-		this.fixtures.character(PUBLISHED,
-				withMemberships("Nami", new Membership(this.mugiwara, Map.of(), null, false)));
-		this.fixtures.character(DRAFT, withMemberships("Usopp", new Membership(this.mugiwara, Map.of(), null, false)));
+		this.fixtures.character(PUBLISHED, withMemberships("Luffy", current(this.mugiwara, Map.of(), null)));
+		this.fixtures.character(PUBLISHED, withMemberships("Zoro", former(this.mugiwara, Map.of(), null)));
+		this.fixtures.character(PUBLISHED, withMemberships("Nami", current(this.mugiwara, Map.of(), null)));
+		this.fixtures.character(DRAFT, withMemberships("Usopp", current(this.mugiwara, Map.of(), null)));
 		stored();
 		var links = new AffiliationLinks(this.affiliationRepository, this.characterRepository,
 				Clock.fixed(CharacterFixtures.NOW, ZoneOffset.UTC));
@@ -491,6 +492,17 @@ class CharacterMembershipsIntegrationTest {
 			.containsExactly("Kaigun:NAVY", "Mugiwara no Ichimi:PIRATE_CREW");
 		assertThat(links.referencesOf(List.of(this.kaigun)).get(this.kaigun).names())
 			.containsOnly(entry("en", "Kaigun (en)"), entry("it", "Kaigun (it)"));
+	}
+
+	/** A membership of a single period, current. */
+	private Membership current(UUID affiliation, Map<String, String> role, MarineRank rank) {
+		return this.fixtures.membership(affiliation, role, rank);
+	}
+
+	/** A membership of a single period, ended at {@link #later}. */
+	private Membership former(UUID affiliation, Map<String, String> role, MarineRank rank) {
+		var window = new StoryWindow(this.fixtures.fromStart().discovered(), this.later);
+		return new Membership(affiliation, List.of(new MembershipPeriod(window, role, rank)));
 	}
 
 	private Character withMemberships(String romaji, Membership... memberships) {

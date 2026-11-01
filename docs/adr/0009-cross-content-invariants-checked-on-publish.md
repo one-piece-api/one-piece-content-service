@@ -1,5 +1,7 @@
 # ADR-0009: Invariants between contents, checked on publish and kept true by locks
 
+> Partly superseded by ADR-0011: the fruit invariant now compares the windows of the online users (no overlap), not a `former` flag.
+
 ## Context
 
 Two rules of the Character plan (`docs/implementation-plan-character/`, D12 and D13 in `one-piece-api`) are about

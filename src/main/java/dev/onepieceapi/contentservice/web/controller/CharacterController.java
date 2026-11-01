@@ -1,6 +1,8 @@
 package dev.onepieceapi.contentservice.web.controller;
 
 import dev.onepieceapi.contentservice.domain.character.Character;
+import dev.onepieceapi.contentservice.domain.character.CharacterLookups;
+import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.domain.image.ImageChange;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSortField;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
@@ -50,6 +52,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 /**
  * The Character section: every endpoint of {@link ContentController}, plus creating a
@@ -107,8 +110,13 @@ class CharacterController extends ContentController<Character, CharacterResponse
 	protected VersionResponse<CharacterResponse> versionResponse(UUID contentId, VersionAccess<Character> access,
 			AuthenticatedCaller caller) {
 		Character character = access.body();
-		return CharacterResponseMapper.toVersionResponse(access, this.references.lookupsOf(contentId, character),
-				this.firstAppearances.referencesFor(List.of(character)), this.images);
+		CharacterLookups lookups = this.references.lookupsOf(contentId, character);
+		List<StoryPoint> points = Stream
+			.concat(character.points().stream(),
+					lookups.relativesOf().stream().flatMap(relative -> relative.window().points()))
+			.toList();
+		return CharacterResponseMapper.toVersionResponse(access, lookups,
+				this.firstAppearances.referencesOfPoints(points), this.images);
 	}
 
 	/**

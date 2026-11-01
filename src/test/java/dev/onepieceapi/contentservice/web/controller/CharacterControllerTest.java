@@ -6,6 +6,9 @@ import dev.onepieceapi.contentservice.domain.affiliation.AffiliationReference;
 import dev.onepieceapi.contentservice.domain.character.CharacterStatus;
 import dev.onepieceapi.contentservice.domain.character.MarineRank;
 import dev.onepieceapi.contentservice.domain.character.Membership;
+import dev.onepieceapi.contentservice.domain.character.MembershipPeriod;
+import dev.onepieceapi.contentservice.domain.character.SpeciesEntry;
+import dev.onepieceapi.contentservice.domain.character.Alias;
 import dev.onepieceapi.contentservice.domain.character.Relative;
 import dev.onepieceapi.contentservice.domain.character.RelativeKind;
 import dev.onepieceapi.contentservice.domain.character.RelativeOf;
@@ -16,6 +19,7 @@ import dev.onepieceapi.contentservice.domain.character.Gender;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitReference;
 import dev.onepieceapi.contentservice.domain.image.ImageChange;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
+import dev.onepieceapi.contentservice.domain.readertime.StoryWindow;
 import dev.onepieceapi.contentservice.domain.security.Permission;
 import dev.onepieceapi.contentservice.domain.security.User;
 import dev.onepieceapi.contentservice.domain.character.CharacterReference;
@@ -97,6 +101,17 @@ class CharacterControllerTest {
 
 	private static final UUID CHAPTER_ID = UUID.fromString("0f6c3e5a-4b7d-4c1e-9a58-3d2b1c0e7f11");
 
+	private static final UUID LATER_CHAPTER_ID = UUID.fromString("0f6c3e5a-4b7d-4c1e-9a58-3d2b1c0e7f12");
+
+	private static final UUID EPISODE_ID = UUID.fromString("0f6c3e5a-4b7d-4c1e-9a58-3d2b1c0e7f13");
+
+	/** Discovered at the first appearance, with no end. */
+	private static final StoryWindow OPEN = StoryWindow.from(StoryPoint.ofChapter(CHAPTER_ID));
+
+	/** Discovered at the first appearance, over at a later chapter. */
+	private static final StoryWindow CLOSED = new StoryWindow(StoryPoint.ofChapter(CHAPTER_ID),
+			StoryPoint.ofChapter(LATER_CHAPTER_ID));
+
 	private static final UUID NINGEN = UUID.fromString("7a1d3c2b-5e4f-4a6b-8c9d-0e1f2a3b4c5d");
 
 	private static final UUID KAIGUN = UUID.fromString("a1b2c3d4-0000-4000-8000-00000000a001");
@@ -148,12 +163,12 @@ class CharacterControllerTest {
 	private ImageResponseMapper images;
 
 	@Test
-	void aVersionSaysEverythingItsListsInTheirOrderAndEachSpeciesByItsNames() throws Exception {
+	void aVersionSaysEverythingItsListsInTheirOrderWithTheirWindowAndEachSpeciesByItsNames() throws Exception {
 		when(this.service.getVersion(any(), any(), eq(CONTENT_ID), eq(1)))
 			.thenReturn(new VersionAccess<>(version(VersionStatus.PUBLISHED, "abc"), Set.of()));
 		when(this.species.referencesOf(List.of(GYOJIN, NINGEN)))
 			.thenReturn(Map.of(NINGEN, new SpeciesReference(NINGEN, "Ningen", Map.of("it", "Umano"))));
-		when(this.firstAppearances.referencesFor(anyCollection())).thenReturn(Map.of());
+		when(this.firstAppearances.referencesOfPoints(anyCollection())).thenReturn(Map.of());
 		when(this.images.toResponse("abc")).thenReturn(new ImageResponse("abc", "/api/content/images/abc"));
 
 		this.mockMvc.perform(get("/characters/" + CONTENT_ID + "/versions/1").with(callerWith(Permission.CONTENT_READ)))
@@ -165,12 +180,18 @@ class CharacterControllerTest {
 			.andExpect(jsonPath("$.body.gender").value("FEMALE"))
 			.andExpect(jsonPath("$.body.birthday").value("--07-03"))
 			.andExpect(jsonPath("$.body.epithets[0].text.en").value("Cat Burglar"))
+			.andExpect(jsonPath("$.body.epithets[0].discovered.chapter.id").value(CHAPTER_ID.toString()))
+			.andExpect(jsonPath("$.body.epithets[0].discovered.episode").doesNotExist())
+			.andExpect(jsonPath("$.body.epithets[0].ended").doesNotExist())
 			.andExpect(jsonPath("$.body.epithets[1].text.it").value("Strega del tempo"))
-			.andExpect(jsonPath("$.body.aliases[0]").value("Miss Nami"))
-			.andExpect(jsonPath("$.body.species[0].id").value(GYOJIN.toString()))
-			.andExpect(jsonPath("$.body.species[0].romaji").doesNotExist())
-			.andExpect(jsonPath("$.body.species[1].romaji").value("Ningen"))
-			.andExpect(jsonPath("$.body.species[1].names.it").value("Umano"))
+			.andExpect(jsonPath("$.body.epithets[1].ended.chapter.id").value(LATER_CHAPTER_ID.toString()))
+			.andExpect(jsonPath("$.body.aliases[0].alias").value("Miss Nami"))
+			.andExpect(jsonPath("$.body.aliases[0].discovered.chapter.id").value(CHAPTER_ID.toString()))
+			.andExpect(jsonPath("$.body.species[0].species.id").value(GYOJIN.toString()))
+			.andExpect(jsonPath("$.body.species[0].species.romaji").doesNotExist())
+			.andExpect(jsonPath("$.body.species[0].discovered.chapter.id").value(CHAPTER_ID.toString()))
+			.andExpect(jsonPath("$.body.species[1].species.romaji").value("Ningen"))
+			.andExpect(jsonPath("$.body.species[1].species.names.it").value("Umano"))
 			.andExpect(jsonPath("$.body.image.url").value("/api/content/images/abc"));
 	}
 
@@ -232,14 +253,17 @@ class CharacterControllerTest {
 	}
 
 	@Test
-	void aVersionShowsEachMembershipInOrderWithItsAffiliationAsOfTodayItsRoleAndRank() throws Exception {
-		var memberships = List.of(new Membership(KAIGUN, Map.of("en", "Hero"), MarineRank.CAPTAIN, false),
-				new Membership(MUGIWARA, Map.of(), null, true));
+	void aVersionShowsEachMembershipInOrderWithItsAffiliationAsOfTodayAndItsPeriodsWithRoleAndRank() throws Exception {
+		var memberships = List.of(
+				new Membership(KAIGUN,
+						List.of(new MembershipPeriod(CLOSED, Map.of(), MarineRank.CHORE_BOY),
+								new MembershipPeriod(StoryWindow.from(StoryPoint.ofChapter(LATER_CHAPTER_ID)),
+										Map.of("en", "Hero"), MarineRank.CAPTAIN))),
+				new Membership(MUGIWARA, List.of()));
 		when(this.service.getVersion(any(), any(), eq(CONTENT_ID), eq(1)))
 			.thenReturn(new VersionAccess<>(version(VersionStatus.PUBLISHED, null, memberships), Set.of()));
 		when(this.affiliations.referencesOf(List.of(KAIGUN, MUGIWARA))).thenReturn(Map.of(KAIGUN,
 				new AffiliationReference(KAIGUN, "Kaigun", Map.of("it", "Marina"), AffiliationKind.NAVY)));
-		when(this.firstAppearances.referencesFor(anyCollection())).thenReturn(Map.of());
 
 		this.mockMvc.perform(get("/characters/" + CONTENT_ID + "/versions/1").with(callerWith(Permission.CONTENT_READ)))
 			.andExpect(status().isOk())
@@ -247,18 +271,22 @@ class CharacterControllerTest {
 			.andExpect(jsonPath("$.body.affiliations[0].affiliation.romaji").value("Kaigun"))
 			.andExpect(jsonPath("$.body.affiliations[0].affiliation.names.it").value("Marina"))
 			.andExpect(jsonPath("$.body.affiliations[0].affiliation.kind").value("NAVY"))
-			.andExpect(jsonPath("$.body.affiliations[0].role.en").value("Hero"))
-			.andExpect(jsonPath("$.body.affiliations[0].marineRank").value("CAPTAIN"))
-			.andExpect(jsonPath("$.body.affiliations[0].former").value(false))
+			.andExpect(jsonPath("$.body.affiliations[0].periods[0].marineRank").value("CHORE_BOY"))
+			.andExpect(
+					jsonPath("$.body.affiliations[0].periods[0].ended.chapter.id").value(LATER_CHAPTER_ID.toString()))
+			.andExpect(jsonPath("$.body.affiliations[0].periods[1].discovered.chapter.id")
+				.value(LATER_CHAPTER_ID.toString()))
+			.andExpect(jsonPath("$.body.affiliations[0].periods[1].ended").doesNotExist())
+			.andExpect(jsonPath("$.body.affiliations[0].periods[1].role.en").value("Hero"))
+			.andExpect(jsonPath("$.body.affiliations[0].periods[1].marineRank").value("CAPTAIN"))
+			.andExpect(jsonPath("$.body.affiliations[0].former").doesNotExist())
 			.andExpect(jsonPath("$.body.affiliations[1].affiliation.id").value(MUGIWARA.toString()))
 			.andExpect(jsonPath("$.body.affiliations[1].affiliation.romaji").doesNotExist())
-			.andExpect(jsonPath("$.body.affiliations[1].marineRank").doesNotExist())
-			.andExpect(jsonPath("$.body.affiliations[1].former").value(true));
+			.andExpect(jsonPath("$.body.affiliations[1].periods").isEmpty());
 	}
 
 	@Test
-	void creatingPassesOnTheMembershipsAndAMembershipWithoutAnAffiliationOrTooLongARoleIsABadRequest()
-			throws Exception {
+	void creatingPassesOnTheMembershipsAndTheirPeriodsAndAMalformedMembershipOrPeriodIsABadRequest() throws Exception {
 		var draft = new VersionAccess<>(version(VersionStatus.DRAFT, null), EnumSet.of(VersionAction.EDIT));
 		when(this.service.create(any(), any(), any(), any())).thenReturn(new Content<>(CONTENT_ID, List.of(draft)));
 
@@ -267,13 +295,17 @@ class CharacterControllerTest {
 				.contentType("application/json")
 				.content("""
 						{"romaji":"Koby","affiliations":[
-						{"affiliation":"%s","role":{"en":"Hero","it":null},"marineRank":"CAPTAIN"},
-						{"affiliation":"%s","former":true}]}""".formatted(KAIGUN, MUGIWARA)))
+						{"affiliation":"%s","periods":[
+						{"discovered":{"chapter":"%s"},"ended":{"chapter":"%s"},"marineRank":"CHORE_BOY"},
+						{"discovered":{"chapter":"%s"},"role":{"en":"Hero","it":null},"marineRank":"CAPTAIN"}]},
+						{"affiliation":"%s"}]}""".formatted(KAIGUN, CHAPTER_ID, LATER_CHAPTER_ID, LATER_CHAPTER_ID,
+						MUGIWARA)))
 			.andExpect(status().isCreated());
-		for (String body : List.of("{\"affiliations\":[{}]}", "{\"affiliations\":[null]}",
-				"{\"affiliations\":[{\"affiliation\":\"" + KAIGUN + "\",\"role\":{\"en\":\"" + "x".repeat(101)
-						+ "\"}}]}",
-				"{\"affiliations\":[{\"affiliation\":\"" + KAIGUN + "\",\"marineRank\":\"GENERAL\"}]}")) {
+		String kaigun = "{\"affiliations\":[{\"affiliation\":\"" + KAIGUN + "\",\"periods\":";
+		String tooManyPeriods = "[" + "{},".repeat(Character.MAX_PERIODS) + "{}]";
+		for (String body : List.of("{\"affiliations\":[{}]}", "{\"affiliations\":[null]}", kaigun + "[null]}]}",
+				kaigun + "[{\"role\":{\"en\":\"" + "x".repeat(101) + "\"}}]}]}",
+				kaigun + "[{\"marineRank\":\"GENERAL\"}]}]}", kaigun + tooManyPeriods + "}]}")) {
 			this.mockMvc
 				.perform(post("/characters").with(callerWith(Permission.CONTENT_WRITE))
 					.contentType("application/json")
@@ -284,21 +316,23 @@ class CharacterControllerTest {
 		var written = ArgumentCaptor.forClass(Character.class);
 		verify(this.service).create(any(), any(), written.capture(), any());
 		assertThat(written.getValue().affiliations()).containsExactly(
-				new Membership(KAIGUN, Map.of("en", "Hero"), MarineRank.CAPTAIN, false),
-				new Membership(MUGIWARA, Map.of(), null, true));
+				new Membership(KAIGUN,
+						List.of(new MembershipPeriod(CLOSED, Map.of(), MarineRank.CHORE_BOY),
+								new MembershipPeriod(StoryWindow.from(StoryPoint.ofChapter(LATER_CHAPTER_ID)),
+										Map.of("en", "Hero"), MarineRank.CAPTAIN))),
+				new Membership(MUGIWARA, List.of()));
 	}
 
 	@Test
-	void aVersionShowsEachDevilFruitInOrderAsItIsTodayWithTheFormerFlag() throws Exception {
+	void aVersionShowsEachDevilFruitInOrderAsItIsTodayWithItsWindow() throws Exception {
 		var body = version(VersionStatus.PUBLISHED, null).body()
 			.toBuilder()
-			.devilFruits(List.of(new FruitUse(MERA_MERA, true), new FruitUse(HANA_HANA, false)))
+			.devilFruits(List.of(new FruitUse(MERA_MERA, CLOSED), new FruitUse(HANA_HANA, OPEN)))
 			.build();
 		when(this.service.getVersion(any(), any(), eq(CONTENT_ID), eq(1)))
 			.thenReturn(new VersionAccess<>(withBody(body), Set.of()));
 		when(this.devilFruits.referencesOf(List.of(MERA_MERA, HANA_HANA))).thenReturn(
 				Map.of(MERA_MERA, new DevilFruitReference(MERA_MERA, "Mera Mera no Mi", Map.of("it", "Fuoco"), false)));
-		when(this.firstAppearances.referencesFor(anyCollection())).thenReturn(Map.of());
 
 		this.mockMvc.perform(get("/characters/" + CONTENT_ID + "/versions/1").with(callerWith(Permission.CONTENT_READ)))
 			.andExpect(status().isOk())
@@ -306,10 +340,11 @@ class CharacterControllerTest {
 			.andExpect(jsonPath("$.body.devilFruits[0].devilFruit.romaji").value("Mera Mera no Mi"))
 			.andExpect(jsonPath("$.body.devilFruits[0].devilFruit.names.it").value("Fuoco"))
 			.andExpect(jsonPath("$.body.devilFruits[0].devilFruit.multipleUsers").value(false))
-			.andExpect(jsonPath("$.body.devilFruits[0].former").value(true))
+			.andExpect(jsonPath("$.body.devilFruits[0].discovered.chapter.id").value(CHAPTER_ID.toString()))
+			.andExpect(jsonPath("$.body.devilFruits[0].ended.chapter.id").value(LATER_CHAPTER_ID.toString()))
 			.andExpect(jsonPath("$.body.devilFruits[1].devilFruit.id").value(HANA_HANA.toString()))
 			.andExpect(jsonPath("$.body.devilFruits[1].devilFruit.romaji").doesNotExist())
-			.andExpect(jsonPath("$.body.devilFruits[1].former").value(false));
+			.andExpect(jsonPath("$.body.devilFruits[1].ended").doesNotExist());
 	}
 
 	@Test
@@ -321,8 +356,10 @@ class CharacterControllerTest {
 			.perform(post("/characters").with(callerWith(Permission.CONTENT_WRITE))
 				.contentType("application/json")
 				.content("""
-						{"romaji":"Sabo","devilFruits":[{"devilFruit":"%s","former":true},{"devilFruit":"%s"}]}"""
-					.formatted(MERA_MERA, HANA_HANA)))
+						{"romaji":"Sabo","devilFruits":[
+						{"devilFruit":"%s","discovered":{"chapter":"%s"},"ended":{"chapter":"%s"}},
+						{"devilFruit":"%s","discovered":{"chapter":"%s","episode":"%s"}}]}""".formatted(MERA_MERA,
+						CHAPTER_ID, LATER_CHAPTER_ID, HANA_HANA, CHAPTER_ID, EPISODE_ID)))
 			.andExpect(status().isCreated());
 		for (String body : List.of("{\"devilFruits\":[{}]}", "{\"devilFruits\":[null]}")) {
 			this.mockMvc
@@ -334,15 +371,18 @@ class CharacterControllerTest {
 
 		var written = ArgumentCaptor.forClass(Character.class);
 		verify(this.service).create(any(), any(), written.capture(), any());
-		assertThat(written.getValue().devilFruits()).containsExactly(new FruitUse(MERA_MERA, true),
-				new FruitUse(HANA_HANA, false));
+		assertThat(written.getValue().devilFruits()).containsExactly(new FruitUse(MERA_MERA, CLOSED),
+				new FruitUse(HANA_HANA, StoryWindow.from(new StoryPoint(CHAPTER_ID, EPISODE_ID))));
 	}
 
 	@Test
-	void aVersionShowsEachRelativeInOrderAsItIsTodayAndTheCharactersNamingItThroughTheInverseKind() throws Exception {
+	void aVersionShowsEachRelativeInOrderAsItIsTodayAndTheCharactersNamingItThroughTheInverseKindWithTheirWindow()
+			throws Exception {
 		var body = version(VersionStatus.PUBLISHED, null).body()
 			.toBuilder()
-			.relatives(List.of(new Relative(GARP, RelativeKind.GRANDPARENT), new Relative(DRAGON, RelativeKind.PARENT)))
+			.relatives(List.of(new Relative(GARP, RelativeKind.GRANDPARENT, OPEN),
+					new Relative(DRAGON, RelativeKind.PARENT,
+							StoryWindow.from(StoryPoint.ofChapter(LATER_CHAPTER_ID)))))
 			.build();
 		when(this.service.getVersion(any(), any(), eq(CONTENT_ID), eq(1)))
 			.thenReturn(new VersionAccess<>(withBody(body), Set.of()));
@@ -350,8 +390,7 @@ class CharacterControllerTest {
 				Map.of(GARP, new CharacterReference(GARP, "Monkey D. Garp", Map.of("it", "Garp"), Gender.MALE)));
 		when(this.links.relativesOf(CONTENT_ID)).thenReturn(
 				List.of(new RelativeOf(new CharacterReference(ACE, "Portgas D. Ace", Map.of("it", "Ace"), Gender.MALE),
-						RelativeKind.SIBLING)));
-		when(this.firstAppearances.referencesFor(anyCollection())).thenReturn(Map.of());
+						RelativeKind.SIBLING, OPEN)));
 
 		this.mockMvc.perform(get("/characters/" + CONTENT_ID + "/versions/1").with(callerWith(Permission.CONTENT_READ)))
 			.andExpect(status().isOk())
@@ -362,8 +401,10 @@ class CharacterControllerTest {
 			.andExpect(jsonPath("$.body.relatives[1].relative.id").value(DRAGON.toString()))
 			.andExpect(jsonPath("$.body.relatives[1].relative.romaji").doesNotExist())
 			.andExpect(jsonPath("$.body.relatives[1].kind").value("PARENT"))
+			.andExpect(jsonPath("$.body.relatives[1].discovered.chapter.id").value(LATER_CHAPTER_ID.toString()))
 			.andExpect(jsonPath("$.body.relativesOf[0].relative.id").value(ACE.toString()))
-			.andExpect(jsonPath("$.body.relativesOf[0].kind").value("SIBLING"));
+			.andExpect(jsonPath("$.body.relativesOf[0].kind").value("SIBLING"))
+			.andExpect(jsonPath("$.body.relativesOf[0].discovered.chapter.id").value(CHAPTER_ID.toString()));
 	}
 
 	@Test
@@ -371,13 +412,11 @@ class CharacterControllerTest {
 		var draft = new VersionAccess<>(version(VersionStatus.DRAFT, null), EnumSet.of(VersionAction.EDIT));
 		when(this.service.create(any(), any(), any(), any())).thenReturn(new Content<>(CONTENT_ID, List.of(draft)));
 
-		this.mockMvc
-			.perform(post("/characters").with(callerWith(Permission.CONTENT_WRITE))
-				.contentType("application/json")
-				.content(
-						"""
-								{"romaji":"Luffy","relatives":[{"relative":"%s","kind":"GRANDPARENT"},{"relative":"%s","kind":"PARENT"}]}"""
-							.formatted(GARP, DRAGON)))
+		this.mockMvc.perform(post("/characters").with(callerWith(Permission.CONTENT_WRITE))
+			.contentType("application/json")
+			.content("""
+					{"romaji":"Luffy","relatives":[{"relative":"%s","kind":"GRANDPARENT","discovered":{"chapter":"%s"}},
+					{"relative":"%s","kind":"PARENT"}]}""".formatted(GARP, CHAPTER_ID, DRAGON)))
 			.andExpect(status().isCreated());
 		for (String body : List.of("{\"relatives\":[{}]}", "{\"relatives\":[null]}",
 				"{\"relatives\":[{\"relative\":\"%s\"}]}".formatted(GARP),
@@ -391,8 +430,8 @@ class CharacterControllerTest {
 
 		var written = ArgumentCaptor.forClass(Character.class);
 		verify(this.service).create(any(), any(), written.capture(), any());
-		assertThat(written.getValue().relatives()).containsExactly(new Relative(GARP, RelativeKind.GRANDPARENT),
-				new Relative(DRAGON, RelativeKind.PARENT));
+		assertThat(written.getValue().relatives()).containsExactly(new Relative(GARP, RelativeKind.GRANDPARENT, OPEN),
+				new Relative(DRAGON, RelativeKind.PARENT, StoryWindow.NONE));
 	}
 
 	@Test
@@ -414,16 +453,17 @@ class CharacterControllerTest {
 		var draft = new VersionAccess<>(version(VersionStatus.DRAFT, null), EnumSet.of(VersionAction.EDIT));
 		when(this.service.create(any(), any(), any(), any())).thenReturn(new Content<>(CONTENT_ID, List.of(draft)));
 
-		this.mockMvc
-			.perform(post("/characters").with(callerWith(Permission.CONTENT_WRITE))
-				.contentType("application/json")
-				.content(
-						"""
-								{"romaji":"Nami","japaneseName":"ナミ","translations":{"en":{"name":"Nami","description":"Navigator"}},
-								"status":"ALIVE","gender":"FEMALE","birthday":"--07-03",
-								"epithets":[{"text":{"it":"Gatta ladra","en":"Cat Burglar"}}],"aliases":["Miss Nami"],
-								"species":["%s","%s"],"firstAppearance":{"chapter":"%s"}}"""
-							.formatted(GYOJIN, NINGEN, CHAPTER_ID)))
+		this.mockMvc.perform(post("/characters").with(callerWith(Permission.CONTENT_WRITE))
+			.contentType("application/json")
+			.content(
+					"""
+							{"romaji":"Nami","japaneseName":"ナミ","translations":{"en":{"name":"Nami","description":"Navigator"}},
+							"status":"ALIVE","gender":"FEMALE","birthday":"--07-03",
+							"epithets":[{"text":{"it":"Gatta ladra","en":"Cat Burglar"},"discovered":{"chapter":"%s"}}],
+							"aliases":[{"alias":"Miss Nami","discovered":{"chapter":"%s"},"ended":{"chapter":"%s"}}],
+							"species":[{"species":"%s","discovered":{"chapter":"%s"}},{"species":"%s"}],
+							"firstAppearance":{"chapter":"%s"}}"""
+						.formatted(CHAPTER_ID, CHAPTER_ID, LATER_CHAPTER_ID, GYOJIN, CHAPTER_ID, NINGEN, CHAPTER_ID)))
 			.andExpect(status().isCreated())
 			.andExpect(jsonPath("$.id").value(CONTENT_ID.toString()));
 
@@ -437,9 +477,11 @@ class CharacterControllerTest {
 		assertThat(body.status()).isEqualTo(CharacterStatus.ALIVE);
 		assertThat(body.gender()).isEqualTo(Gender.FEMALE);
 		assertThat(body.birthday()).isEqualTo(MonthDay.of(7, 3));
-		assertThat(body.epithets()).containsExactly(new Epithet(Map.of("it", "Gatta ladra", "en", "Cat Burglar")));
-		assertThat(body.aliases()).containsExactly("Miss Nami");
-		assertThat(body.speciesIds()).containsExactly(GYOJIN, NINGEN);
+		assertThat(body.epithets())
+			.containsExactly(new Epithet(Map.of("it", "Gatta ladra", "en", "Cat Burglar"), OPEN));
+		assertThat(body.aliases()).containsExactly(new Alias("Miss Nami", CLOSED));
+		assertThat(body.species()).containsExactly(new SpeciesEntry(GYOJIN, OPEN),
+				new SpeciesEntry(NINGEN, StoryWindow.NONE));
 		assertThat(body.firstAppearance()).isEqualTo(StoryPoint.ofChapter(CHAPTER_ID));
 	}
 
@@ -462,13 +504,14 @@ class CharacterControllerTest {
 
 	@Test
 	void aTextOrAListLongerThanItsLimitIsABadRequest() throws Exception {
-		String aliases = "[" + "\"a\",".repeat(Character.MAX_ALIASES) + "\"a\"]";
+		String aliases = "[" + "{\"alias\":\"a\"},".repeat(Character.MAX_ALIASES) + "{\"alias\":\"a\"}]";
 		for (String body : List.of("{\"romaji\":\"" + "x".repeat(101) + "\"}",
 				"{\"japaneseName\":\"" + "x".repeat(101) + "\"}",
 				"{\"translations\":{\"it\":{\"description\":\"" + "x".repeat(2001) + "\"}}}",
 				"{\"epithets\":[{\"text\":{\"it\":\"" + "x".repeat(101) + "\"}}]}",
-				"{\"aliases\":[\"" + "x".repeat(101) + "\"]}", "{\"aliases\":" + aliases + "}", "{\"aliases\":[null]}",
-				"{\"species\":[null]}", "{\"status\":\"MISSING\"}")) {
+				"{\"aliases\":[{\"alias\":\"" + "x".repeat(101) + "\"}]}", "{\"aliases\":" + aliases + "}",
+				"{\"aliases\":[null]}", "{\"aliases\":[{}]}", "{\"species\":[null]}", "{\"species\":[{}]}",
+				"{\"status\":\"MISSING\"}")) {
 			this.mockMvc
 				.perform(post("/characters").with(callerWith(Permission.CONTENT_WRITE))
 					.contentType("application/json")
@@ -583,9 +626,10 @@ class CharacterControllerTest {
 			.status(CharacterStatus.ALIVE)
 			.gender(Gender.FEMALE)
 			.birthday(MonthDay.of(7, 3))
-			.epithets(List.of(new Epithet(Map.of("en", "Cat Burglar")), new Epithet(Map.of("it", "Strega del tempo"))))
-			.aliases(List.of("Miss Nami"))
-			.speciesIds(List.of(GYOJIN, NINGEN))
+			.epithets(List.of(new Epithet(Map.of("en", "Cat Burglar"), OPEN),
+					new Epithet(Map.of("it", "Strega del tempo"), CLOSED)))
+			.aliases(List.of(new Alias("Miss Nami", OPEN)))
+			.species(List.of(new SpeciesEntry(GYOJIN, OPEN), new SpeciesEntry(NINGEN, OPEN)))
 			.imageId(imageId)
 			.firstAppearance(StoryPoint.ofChapter(CHAPTER_ID))
 			.build();
