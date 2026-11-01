@@ -55,6 +55,7 @@ public class CharacterRequestMapper {
 			.devilFruits(entries(request.devilFruits(), CharacterRequestMapper::toDomain))
 			.relatives(entries(request.relatives(), CharacterRequestMapper::toDomain))
 			.firstAppearance(FirstAppearanceMapper.toDomain(request.firstAppearance()))
+			.description(ParagraphRequestMapper.toDomain(request.description()))
 			.build();
 	}
 
@@ -122,8 +123,7 @@ public class CharacterRequestMapper {
 
 	/** A language sent with nothing in it is a language with nothing written. */
 	private static CharacterTranslation toDomain(CharacterTranslationRequest translation) {
-		return translation == null ? new CharacterTranslation(null, null)
-				: new CharacterTranslation(translation.name(), translation.description());
+		return translation == null ? new CharacterTranslation(null) : new CharacterTranslation(translation.name());
 	}
 
 	private static Epithet toDomain(EpithetRequest epithet) {

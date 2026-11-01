@@ -44,7 +44,8 @@ public class SpeciesResponseMapper {
 		Map<String, SpeciesTranslationResponse> translations = new TreeMap<>();
 		species.translations().forEach((language, translation) -> translations.put(language, toResponse(translation)));
 		return new SpeciesResponse(species.romaji(), translations, images.toResponse(species.imageId()),
-				FirstAppearanceMapper.toResponse(species.firstAppearance(), storyItems));
+				FirstAppearanceMapper.toResponse(species.firstAppearance(), storyItems),
+				ParagraphResponseMapper.toResponse(species.description(), storyItems));
 	}
 
 	/** A species a character may point to. */
@@ -53,7 +54,7 @@ public class SpeciesResponseMapper {
 	}
 
 	private static SpeciesTranslationResponse toResponse(SpeciesTranslation translation) {
-		return new SpeciesTranslationResponse(translation.name(), translation.description());
+		return new SpeciesTranslationResponse(translation.name());
 	}
 
 }

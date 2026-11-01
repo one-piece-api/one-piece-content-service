@@ -177,13 +177,7 @@ class PublishedBountyViewIntegrationTest {
 					+ " values (?, ?, ?, 'DEAD_OR_ALIVE')")
 			.params(id, posterName, amount)
 			.update();
-		for (String language : languages) {
-			this.jdbc
-				.sql("insert into bounty_version_translation (version_id, language_code, description)"
-						+ " values (?, ?, ?)")
-				.params(id, language, "Description " + language.toUpperCase())
-				.update();
-		}
+		ParagraphRows.description(this.jdbc, "bounty", id, languages);
 		return id;
 	}
 

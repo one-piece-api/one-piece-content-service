@@ -66,24 +66,38 @@ public interface AffiliationVersionRepository extends VersionBodyRepository<Affi
 	boolean usesImage(String imageId, Collection<VersionStatus> statuses);
 
 	/**
-	 * How many affiliations are online first appearing in this chapter or episode
-	 * (ADR-0008).
+	 * How many affiliations are online naming this chapter or episode, as first
+	 * appearance or in a paragraph (ADR-0008).
 	 */
 	@Query("""
 			select count(d) from AffiliationVersionEntity d join d.version v
-			where (d.firstAppearanceChapterId = :storyContentId or d.firstAppearanceEpisodeId = :storyContentId)
+			where (d.firstAppearanceChapterId = :storyContentId or d.firstAppearanceEpisodeId = :storyContentId
+					or exists (select 1 from AffiliationParagraphEntity p where p member of d.paragraphs
+						and (p.window.discoveredChapterId = :storyContentId or p.window.discoveredEpisodeId = :storyContentId
+							or p.window.endedChapterId = :storyContentId or p.window.endedEpisodeId = :storyContentId)))
 				and v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED""")
-	long countOnlineFirstAppearingIn(UUID storyContentId);
+	long countOnlineWithPointIn(UUID storyContentId);
 
 	/**
-	 * The affiliations online first appearing in this chapter or episode, by romaji: as
-	 * many as the page asks for.
+	 * The affiliations online naming this chapter or episode, as first appearance or in a
+	 * paragraph, by romaji: as many as the page asks for.
 	 */
 	@Query("""
 			select d from AffiliationVersionEntity d join fetch d.version v
-			where (d.firstAppearanceChapterId = :storyContentId or d.firstAppearanceEpisodeId = :storyContentId)
+			where (d.firstAppearanceChapterId = :storyContentId or d.firstAppearanceEpisodeId = :storyContentId
+					or exists (select 1 from AffiliationParagraphEntity p where p member of d.paragraphs
+						and (p.window.discoveredChapterId = :storyContentId or p.window.discoveredEpisodeId = :storyContentId
+							or p.window.endedChapterId = :storyContentId or p.window.endedEpisodeId = :storyContentId)))
 				and v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED
 			order by d.romaji""")
-	List<AffiliationVersionEntity> findOnlineFirstAppearingIn(UUID storyContentId, Pageable pageable);
+	List<AffiliationVersionEntity> findOnlineWithPointIn(UUID storyContentId, Pageable pageable);
+
+	/** The paragraphs count too: a language they are written in is in use. */
+	@Override
+	@Query(value = """
+			select exists (select 1 from affiliation_version_translation where language_code = :languageCode)
+			    or exists (select 1 from affiliation_version_paragraph_translation
+			               where language_code = :languageCode)""", nativeQuery = true)
+	boolean existsByLanguage(String languageCode);
 
 }

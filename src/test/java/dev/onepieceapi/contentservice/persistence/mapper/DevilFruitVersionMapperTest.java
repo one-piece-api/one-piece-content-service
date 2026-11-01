@@ -1,5 +1,9 @@
 package dev.onepieceapi.contentservice.persistence.mapper;
 
+import java.util.List;
+import dev.onepieceapi.contentservice.domain.readertime.StoryWindow;
+import dev.onepieceapi.contentservice.domain.readertime.Paragraph;
+import static dev.onepieceapi.contentservice.domain.readertime.ParagraphFixtures.paragraph;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitTranslation;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
@@ -28,10 +32,20 @@ class DevilFruitVersionMapperTest {
 	private static final User CHOPPER = new User(UUID.randomUUID(), "chopper", "chopper@onepiece.local");
 
 	@Test
-	void aVersionTakesItsWorkflowFromTheSharedRowAndWhatItSaysFromItsOwn() {
+	void aVersionTakesItsWorkflowFromTheSharedRowAndWhatItSaysFromItsOwnEverySectionInItsOrder() {
 		var entity = draft();
-		var body = new DevilFruit("Gomu Gomu", TYPE_ID,
-				Map.of("it", new DevilFruitTranslation("Gom Gom", "Elastico", "Pro", "Contro")));
+		var chapter = StoryPoint.ofChapter(UUID.randomUUID());
+		var body = DevilFruit.builder()
+			.romaji("Gomu Gomu")
+			.typeContentId(TYPE_ID)
+			.translations(Map.of("it", new DevilFruitTranslation("Gom Gom")))
+			.firstAppearance(chapter)
+			.description(List.of(new Paragraph(Map.of("it", "Elastico"), StoryWindow.from(chapter)),
+					new Paragraph(Map.of("it", "Nika"), new StoryWindow(chapter, StoryPoint.ofEpisode(TYPE_ID)))))
+			.advantages(paragraph("it", "Pro"))
+			.disadvantages(List.of(new Paragraph(Map.of("it", "Contro"), StoryWindow.NONE),
+					new Paragraph(Map.of("en", "Sea"), StoryWindow.NONE)))
+			.build();
 
 		DevilFruitVersionMapper.rewrite(entity, body, UPDATED);
 		var version = DevilFruitVersionMapper.toDomain(entity);
@@ -46,33 +60,40 @@ class DevilFruitVersionMapperTest {
 	@Test
 	void rewritingReplacesWhatTheVersionSaidIncludingItsType() {
 		var entity = draft();
-		DevilFruitVersionMapper.rewrite(entity,
-				new DevilFruit("Gomu", TYPE_ID, Map.of("it", new DevilFruitTranslation("Gom", null, null, null), "en",
-						new DevilFruitTranslation("Rubber", null, null, null))),
-				CREATED);
+		DevilFruitVersionMapper.rewrite(entity, DevilFruit.builder()
+			.romaji("Gomu")
+			.typeContentId(TYPE_ID)
+			.translations(Map.of("it", new DevilFruitTranslation("Gom"), "en", new DevilFruitTranslation("Rubber")))
+			.advantages(paragraph("it", "Pro"))
+			.build(), CREATED);
 
 		DevilFruitVersionMapper.rewrite(entity,
-				new DevilFruit("Mera", null, Map.of("en", new DevilFruitTranslation("Fire", null, null, null))),
+				DevilFruit.builder()
+					.romaji("Mera")
+					.translations(Map.of("en", new DevilFruitTranslation("Fire")))
+					.build(),
 				UPDATED);
 
 		assertThat(entity.getRomaji()).isEqualTo("Mera");
 		assertThat(entity.getTypeContentId()).isNull();
 		assertThat(entity.getTranslations()).containsOnlyKeys("en");
 		assertThat(DevilFruitVersionMapper.toDomain(entity).body().translations())
-			.containsExactly(entry("en", new DevilFruitTranslation("Fire", null, null, null)));
+			.containsExactly(entry("en", new DevilFruitTranslation("Fire")));
+		assertThat(entity.getParagraphs()).isEmpty();
 	}
 
 	@Test
 	void theFirstAppearanceIsWrittenAndReadBackAndRewritingWithoutOneClearsIt() {
 		var entity = draft();
 		var chapter = StoryPoint.ofChapter(UUID.randomUUID());
-		DevilFruitVersionMapper.rewrite(entity, new DevilFruit("Gomu", TYPE_ID, null, Map.of(), null, chapter),
-				CREATED);
+		DevilFruitVersionMapper.rewrite(entity,
+				DevilFruit.builder().romaji("Gomu").typeContentId(TYPE_ID).firstAppearance(chapter).build(), CREATED);
 
 		assertThat(entity.getFirstAppearanceChapterId()).isEqualTo(chapter.chapterContentId());
 		assertThat(DevilFruitVersionMapper.toDomain(entity).body().firstAppearance()).isEqualTo(chapter);
 
-		DevilFruitVersionMapper.rewrite(entity, new DevilFruit("Gomu", TYPE_ID, Map.of()), UPDATED);
+		DevilFruitVersionMapper.rewrite(entity, DevilFruit.builder().romaji("Gomu").typeContentId(TYPE_ID).build(),
+				UPDATED);
 
 		assertThat(DevilFruitVersionMapper.toDomain(entity).body().firstAppearance()).isEqualTo(StoryPoint.NONE);
 	}

@@ -1,5 +1,9 @@
 package dev.onepieceapi.contentservice.persistence.mapper;
 
+import java.util.List;
+import dev.onepieceapi.contentservice.domain.readertime.StoryWindow;
+import dev.onepieceapi.contentservice.domain.readertime.Paragraph;
+import static dev.onepieceapi.contentservice.domain.readertime.ParagraphFixtures.paragraph;
 import dev.onepieceapi.contentservice.domain.species.Species;
 import dev.onepieceapi.contentservice.domain.species.SpeciesTranslation;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
@@ -31,8 +35,15 @@ class SpeciesVersionMapperTest {
 	@Test
 	void aVersionTakesItsWorkflowFromTheSharedRowAndWhatItSaysFromItsOwn() {
 		var entity = draft();
-		var body = new Species("Gyojin", Map.of("it", new SpeciesTranslation("Uomo-pesce", "Razza"), "en",
-				new SpeciesTranslation("Fish-Man", "Race")), "abc", new StoryPoint(CHAPTER_ID, EPISODE_ID));
+		var firstAppearance = new StoryPoint(CHAPTER_ID, EPISODE_ID);
+		var body = Species.builder()
+			.romaji("Gyojin")
+			.translations(Map.of("it", new SpeciesTranslation("Uomo-pesce"), "en", new SpeciesTranslation("Fish-Man")))
+			.imageId("abc")
+			.firstAppearance(firstAppearance)
+			.description(List.of(new Paragraph(Map.of("it", "Razza", "en", "Race"), StoryWindow.from(firstAppearance)),
+					new Paragraph(Map.of("en", "Later"), StoryWindow.from(StoryPoint.ofChapter(CHAPTER_ID)))))
+			.build();
 
 		SpeciesVersionMapper.rewrite(entity, body, UPDATED);
 		var version = SpeciesVersionMapper.toDomain(entity);
@@ -48,17 +59,24 @@ class SpeciesVersionMapperTest {
 	@Test
 	void rewritingReplacesWhatTheVersionSaid() {
 		var entity = draft();
-		SpeciesVersionMapper.rewrite(entity, new Species("Kaigun",
-				Map.of("it", new SpeciesTranslation("Marina", "Forze")), "abc", StoryPoint.ofChapter(CHAPTER_ID)),
+		SpeciesVersionMapper.rewrite(entity,
+				Species.builder()
+					.romaji("Gyojin")
+					.translations(Map.of("it", new SpeciesTranslation("Uomo-pesce")))
+					.imageId("abc")
+					.firstAppearance(StoryPoint.ofChapter(CHAPTER_ID))
+					.description(paragraph("it", "Razza"))
+					.build(),
 				CREATED);
 
 		SpeciesVersionMapper.rewrite(entity,
-				new Species(null, Map.of("en", new SpeciesTranslation("Human", null)), null, null), UPDATED);
+				Species.builder().translations(Map.of("en", new SpeciesTranslation("Human"))).build(), UPDATED);
 
 		assertThat(entity.getRomaji()).isNull();
 		assertThat(entity.getImageId()).isNull();
 		assertThat(entity.getFirstAppearanceChapterId()).isNull();
 		assertThat(entity.getTranslations()).containsOnlyKeys("en");
+		assertThat(entity.getParagraphs()).isEmpty();
 	}
 
 	private static SpeciesVersionEntity draft() {

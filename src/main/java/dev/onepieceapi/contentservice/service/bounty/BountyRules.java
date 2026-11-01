@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.service.bounty;
 
+import dev.onepieceapi.contentservice.service.content.ReaderAxisRules;
 import dev.onepieceapi.contentservice.config.RulesProperties;
 import dev.onepieceapi.contentservice.domain.bounty.Bounty;
 import dev.onepieceapi.contentservice.domain.workflow.ActionBlock;
@@ -59,6 +60,8 @@ public class BountyRules implements ContentRules<Bounty> {
 
 	private final BountyChains chains;
 
+	private final ReaderAxisRules readerAxisRules;
+
 	private final RulesProperties properties;
 
 	@Override
@@ -73,6 +76,7 @@ public class BountyRules implements ContentRules<Bounty> {
 		RelationRules.lockTargetBefore(action, BountyRelations.FIRST_APPEARANCE_EPISODE, version.body(),
 				this.contentRepository);
 		RelationRules.lockLinkedBefore(action, contentId, this.contentRepository);
+		this.readerAxisRules.lockBefore(action, version.body());
 	}
 
 	@Override
@@ -85,6 +89,7 @@ public class BountyRules implements ContentRules<Bounty> {
 					this.chapterRepository))
 			.or(() -> RelationRules.targetNotOnline(action, BountyRelations.FIRST_APPEARANCE_EPISODE, bounty,
 					this.episodeRepository))
+			.or(() -> this.readerAxisRules.blockOf(action, version.body()))
 			.or(() -> alreadyReplaced(action, contentId, bounty))
 			.or(() -> closesCycle(action, contentId, bounty))
 			.or(() -> replacedBy(action, contentId));

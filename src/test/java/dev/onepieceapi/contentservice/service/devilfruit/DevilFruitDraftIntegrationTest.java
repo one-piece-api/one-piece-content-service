@@ -1,5 +1,7 @@
 package dev.onepieceapi.contentservice.service.devilfruit;
 
+import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitFixtures;
+import dev.onepieceapi.contentservice.service.validation.ParagraphRules;
 import dev.onepieceapi.contentservice.config.RulesProperties;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.service.audit.AuditLogService;
@@ -151,7 +153,8 @@ class DevilFruitDraftIntegrationTest {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
 		var auditLogService = new AuditLogService(this.auditLogRepository, clock);
 		var validator = new DevilFruitValidator(this.versionRepository, this.languageRepository, this.typeRepository,
-				this.chapterRepository, this.episodeRepository);
+				this.chapterRepository, this.episodeRepository, new ParagraphRules(
+						new ReaderAxisRules(this.contentRepository, this.chapterRepository, this.episodeRepository)));
 		this.service = new DevilFruitService(
 				new DevilFruitDefinition(this.versionRepository, validator,
 						new DevilFruitRules(this.contentRepository, this.typeRepository, this.chapterRepository,
@@ -173,8 +176,11 @@ class DevilFruitDraftIntegrationTest {
 
 	@Test
 	void aNewFruitIsBornWithADraftSayingWhatWasWrittenItsTypeIncluded() {
-		var written = new DevilFruit("  Mera Mera ", this.paramecia,
-				Map.of("it", new DevilFruitTranslation(" Fuoco ", "  ", null, null)));
+		var written = DevilFruit.builder()
+			.romaji("  Mera Mera ")
+			.typeContentId(this.paramecia)
+			.translations(Map.of("it", new DevilFruitTranslation(" Fuoco ")))
+			.build();
 
 		var content = this.service.create(EDITOR, this.nami, written);
 		stored();
@@ -182,13 +188,17 @@ class DevilFruitDraftIntegrationTest {
 		var version = this.service.getVersion(EDITOR, this.nami, content.id(), 1).version();
 		assertThat(version.status()).isEqualTo(DRAFT);
 		assertThat(version.author()).isEqualTo(this.nami);
-		assertThat(version.body()).isEqualTo(new DevilFruit("Mera Mera", this.paramecia,
-				Map.of("it", new DevilFruitTranslation("Fuoco", null, null, null))));
+		assertThat(version.body()).isEqualTo(DevilFruit.builder()
+			.romaji("Mera Mera")
+			.typeContentId(this.paramecia)
+			.translations(Map.of("it", new DevilFruitTranslation("Fuoco")))
+			.build());
 	}
 
 	@Test
 	void aDraftMayHaveNoTypeYet() {
-		var content = this.service.create(EDITOR, this.nami, new DevilFruit("Mera Mera", null, Map.of()));
+		var content = this.service.create(EDITOR, this.nami,
+				DevilFruit.builder().romaji("Mera Mera").typeContentId(null).build());
 		stored();
 
 		assertThat(this.service.getVersion(EDITOR, this.nami, content.id(), 1).version().body().typeContentId())
@@ -201,7 +211,8 @@ class DevilFruitDraftIntegrationTest {
 		UUID type = typeContent("Kodai", status);
 		stored();
 
-		var content = this.service.create(EDITOR, this.nami, new DevilFruit("Mera Mera", type, Map.of()));
+		var content = this.service.create(EDITOR, this.nami,
+				DevilFruit.builder().romaji("Mera Mera").typeContentId(type).build());
 
 		assertThat(content.versions()).hasSize(1);
 	}
@@ -212,8 +223,8 @@ class DevilFruitDraftIntegrationTest {
 		UUID type = typeContent("Kodai", status);
 		stored();
 
-		var refused = catchThrowableOfType(ValueInvalidException.class,
-				() -> this.service.create(EDITOR, this.nami, new DevilFruit("Mera Mera", type, Map.of())));
+		var refused = catchThrowableOfType(ValueInvalidException.class, () -> this.service.create(EDITOR, this.nami,
+				DevilFruit.builder().romaji("Mera Mera").typeContentId(type).build()));
 
 		assertThat(fieldsOf(refused)).containsExactly("type");
 	}
@@ -222,8 +233,8 @@ class DevilFruitDraftIntegrationTest {
 	void anIdThatIsNoTypeIsRefusedLikeATypeNotToBeLinked() {
 		// Nothing there, and a content that exists but is a fruit: told alike.
 		for (UUID notAType : List.of(UUID.randomUUID(), this.gomuGomu)) {
-			var refused = catchThrowableOfType(ValueInvalidException.class,
-					() -> this.service.create(EDITOR, this.nami, new DevilFruit("Mera Mera", notAType, Map.of())));
+			var refused = catchThrowableOfType(ValueInvalidException.class, () -> this.service.create(EDITOR, this.nami,
+					DevilFruit.builder().romaji("Mera Mera").typeContentId(notAType).build()));
 
 			assertThat(fieldsOf(refused)).containsExactly("type");
 		}
@@ -231,11 +242,12 @@ class DevilFruitDraftIntegrationTest {
 
 	@Test
 	void theTypeIsCheckedAgainWhenTheDraftIsEdited() {
-		var draft = this.service.create(EDITOR, this.nami, new DevilFruit("Mera Mera", this.paramecia, Map.of()));
+		var draft = this.service.create(EDITOR, this.nami,
+				DevilFruit.builder().romaji("Mera Mera").typeContentId(this.paramecia).build());
 		stored();
 
 		var refused = catchThrowableOfType(ValueInvalidException.class, () -> this.service.edit(EDITOR, this.nami,
-				draft.id(), 1, new DevilFruit("Mera Mera", this.logia, Map.of())));
+				draft.id(), 1, DevilFruit.builder().romaji("Mera Mera").typeContentId(this.logia).build()));
 
 		assertThat(fieldsOf(refused)).containsExactly("type");
 	}
@@ -266,18 +278,22 @@ class DevilFruitDraftIntegrationTest {
 	@Test
 	void aRomajiAFruitHasIsRefusedButTheOneOfATypeIsFree() {
 		// Each entity has its own values and its own addresses: "Paramecia" is a type.
-		this.service.create(EDITOR, this.nami, new DevilFruit("Paramecia", this.paramecia, Map.of()));
+		this.service.create(EDITOR, this.nami,
+				DevilFruit.builder().romaji("Paramecia").typeContentId(this.paramecia).build());
 
-		var refused = catchThrowableOfType(ValueAlreadyUsedException.class,
-				() -> this.service.create(EDITOR, this.nami, new DevilFruit(" gomu gomu ", this.zoan, Map.of())));
+		var refused = catchThrowableOfType(ValueAlreadyUsedException.class, () -> this.service.create(EDITOR, this.nami,
+				DevilFruit.builder().romaji(" gomu gomu ").typeContentId(this.zoan).build()));
 
 		assertThat(fieldsOf(refused)).containsExactly("romaji");
 	}
 
 	@Test
 	void aNameAFruitHasInALanguageIsRefused() {
-		var written = new DevilFruit("Mera Mera", this.paramecia,
-				Map.of("en", new DevilFruitTranslation("GOMU GOMU NO MI", null, null, null)));
+		var written = DevilFruit.builder()
+			.romaji("Mera Mera")
+			.typeContentId(this.paramecia)
+			.translations(Map.of("en", new DevilFruitTranslation("GOMU GOMU NO MI")))
+			.build();
 
 		var refused = catchThrowableOfType(ValueAlreadyUsedException.class,
 				() -> this.service.create(EDITOR, this.nami, written));
@@ -330,10 +346,7 @@ class DevilFruitDraftIntegrationTest {
 
 	/** Complete in both languages of the catalog, so only the type can be missing. */
 	private DevilFruit complete(String romaji, UUID type) {
-		return new DevilFruit(romaji, type, null,
-				Map.of("it", new DevilFruitTranslation(romaji + " it", "Descrizione", "Pro", "Contro"), "en",
-						new DevilFruitTranslation(romaji + " no Mi", "Description", "Pros", "Cons")),
-				null, this.firstAppearance);
+		return DevilFruitFixtures.complete(romaji, type, null, this.firstAppearance);
 	}
 
 	/** What was done so far is written and read again from the database. */
@@ -351,7 +364,7 @@ class DevilFruitDraftIntegrationTest {
 		UUID contentId = content(EntityType.DEVIL_FRUIT_TYPE);
 		var version = new DevilFruitTypeVersionEntity(workflow(contentId, 1, status));
 		version.setRomaji(romaji);
-		version.getTranslations().put("it", new TranslationEmbeddable(romaji, "Descrizione", "Pro", "Contro"));
+		version.getTranslations().put("it", new TranslationEmbeddable(romaji));
 		this.typeRepository.save(version);
 		return contentId;
 	}

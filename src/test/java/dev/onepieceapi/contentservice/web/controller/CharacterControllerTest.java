@@ -453,17 +453,18 @@ class CharacterControllerTest {
 		var draft = new VersionAccess<>(version(VersionStatus.DRAFT, null), EnumSet.of(VersionAction.EDIT));
 		when(this.service.create(any(), any(), any(), any())).thenReturn(new Content<>(CONTENT_ID, List.of(draft)));
 
-		this.mockMvc.perform(post("/characters").with(callerWith(Permission.CONTENT_WRITE))
-			.contentType("application/json")
-			.content(
-					"""
-							{"romaji":"Nami","japaneseName":"ナミ","translations":{"en":{"name":"Nami","description":"Navigator"}},
-							"status":"ALIVE","gender":"FEMALE","birthday":"--07-03",
-							"epithets":[{"text":{"it":"Gatta ladra","en":"Cat Burglar"},"discovered":{"chapter":"%s"}}],
-							"aliases":[{"alias":"Miss Nami","discovered":{"chapter":"%s"},"ended":{"chapter":"%s"}}],
-							"species":[{"species":"%s","discovered":{"chapter":"%s"}},{"species":"%s"}],
-							"firstAppearance":{"chapter":"%s"}}"""
-						.formatted(CHAPTER_ID, CHAPTER_ID, LATER_CHAPTER_ID, GYOJIN, CHAPTER_ID, NINGEN, CHAPTER_ID)))
+		this.mockMvc
+			.perform(post("/characters").with(callerWith(Permission.CONTENT_WRITE))
+				.contentType("application/json")
+				.content("""
+						{"romaji":"Nami","japaneseName":"ナミ","translations":{"en":{"name":"Nami"}},
+						"description":[{"text":{"en":"Navigator"}}],
+						"status":"ALIVE","gender":"FEMALE","birthday":"--07-03",
+						"epithets":[{"text":{"it":"Gatta ladra","en":"Cat Burglar"},"discovered":{"chapter":"%s"}}],
+						"aliases":[{"alias":"Miss Nami","discovered":{"chapter":"%s"},"ended":{"chapter":"%s"}}],
+						"species":[{"species":"%s","discovered":{"chapter":"%s"}},{"species":"%s"}],
+						"firstAppearance":{"chapter":"%s"}}""".formatted(CHAPTER_ID, CHAPTER_ID, LATER_CHAPTER_ID,
+						GYOJIN, CHAPTER_ID, NINGEN, CHAPTER_ID)))
 			.andExpect(status().isCreated())
 			.andExpect(jsonPath("$.id").value(CONTENT_ID.toString()));
 
@@ -473,7 +474,7 @@ class CharacterControllerTest {
 		var body = written.getValue();
 		assertThat(body.romaji()).isEqualTo("Nami");
 		assertThat(body.japaneseName()).isEqualTo("ナミ");
-		assertThat(body.translations().get("en")).isEqualTo(new CharacterTranslation("Nami", "Navigator"));
+		assertThat(body.translations().get("en")).isEqualTo(new CharacterTranslation("Nami"));
 		assertThat(body.status()).isEqualTo(CharacterStatus.ALIVE);
 		assertThat(body.gender()).isEqualTo(Gender.FEMALE);
 		assertThat(body.birthday()).isEqualTo(MonthDay.of(7, 3));
@@ -507,7 +508,7 @@ class CharacterControllerTest {
 		String aliases = "[" + "{\"alias\":\"a\"},".repeat(Character.MAX_ALIASES) + "{\"alias\":\"a\"}]";
 		for (String body : List.of("{\"romaji\":\"" + "x".repeat(101) + "\"}",
 				"{\"japaneseName\":\"" + "x".repeat(101) + "\"}",
-				"{\"translations\":{\"it\":{\"description\":\"" + "x".repeat(2001) + "\"}}}",
+				"{\"description\":[{\"text\":{\"it\":\"" + "x".repeat(2001) + "\"}}]}",
 				"{\"epithets\":[{\"text\":{\"it\":\"" + "x".repeat(101) + "\"}}]}",
 				"{\"aliases\":[{\"alias\":\"" + "x".repeat(101) + "\"}]}", "{\"aliases\":" + aliases + "}",
 				"{\"aliases\":[null]}", "{\"aliases\":[{}]}", "{\"species\":[null]}", "{\"species\":[{}]}",
@@ -622,7 +623,7 @@ class CharacterControllerTest {
 			.affiliations(affiliations)
 			.romaji("Nami")
 			.japaneseName("ナミ")
-			.translations(Map.of("it", new CharacterTranslation("Nami", "La navigatrice")))
+			.translations(Map.of("it", new CharacterTranslation("Nami")))
 			.status(CharacterStatus.ALIVE)
 			.gender(Gender.FEMALE)
 			.birthday(MonthDay.of(7, 3))

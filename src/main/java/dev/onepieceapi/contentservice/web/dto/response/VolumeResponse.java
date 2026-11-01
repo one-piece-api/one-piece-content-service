@@ -11,6 +11,6 @@ import java.util.Map;
  * @param translations the title per language code
  */
 public record VolumeResponse(Integer number, String japaneseTitle, List<ReleaseResponse> releases, ImageResponse cover,
-		Map<String, VolumeTranslationResponse> translations) {
+		Map<String, TitleTranslationResponse> translations) {
 
 }

@@ -1,5 +1,7 @@
 package dev.onepieceapi.contentservice.service.devilfruittype;
 
+import dev.onepieceapi.contentservice.service.validation.ParagraphRules;
+import dev.onepieceapi.contentservice.service.content.ReaderAxisRules;
 import dev.onepieceapi.contentservice.service.audit.AuditLogService;
 
 import dev.onepieceapi.contentservice.config.RulesProperties;
@@ -300,15 +302,19 @@ class DevilFruitTypeRaceIntegrationTest {
 
 	private DevilFruitTypeService service(DevilFruitTypeVersionRepository versions,
 			ContentVersionRepository contentVersions) {
-		return service(versions, contentVersions, new DevilFruitTypeRules(this.contentRepository, this.fruitRepository,
-				this.chapterRepository, this.episodeRepository, new RulesProperties(5)));
+		return service(versions, contentVersions,
+				new DevilFruitTypeRules(this.contentRepository, this.fruitRepository, this.chapterRepository,
+						this.episodeRepository,
+						new ReaderAxisRules(this.contentRepository, this.chapterRepository, this.episodeRepository),
+						new RulesProperties(5)));
 	}
 
 	private DevilFruitTypeService service(DevilFruitTypeVersionRepository versions,
 			ContentVersionRepository contentVersions, DevilFruitTypeRules rules) {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
 		var validator = new DevilFruitTypeValidator(this.versionRepository, this.languageRepository,
-				this.chapterRepository, this.episodeRepository);
+				this.chapterRepository, this.episodeRepository, new ParagraphRules(
+						new ReaderAxisRules(this.contentRepository, this.chapterRepository, this.episodeRepository)));
 		return new DevilFruitTypeService(versions, contentVersions, this.contentRepository, validator, rules,
 				new AuditLogService(this.auditLogRepository, clock), clock);
 	}
@@ -342,10 +348,11 @@ class DevilFruitTypeRaceIntegrationTest {
 				.build();
 			var version = new DevilFruitTypeVersionEntity(workflow);
 			DevilFruitTypeVersionMapper.rewrite(version,
-					new DevilFruitType("Logia " + contentId + " v" + (index + 1),
-							Map.of("it",
-									new DevilFruitTypeTranslation("Rogia", "Trasforma in un elemento", null, null)),
-							List.of(), firstAppearance),
+					DevilFruitType.builder()
+						.romaji("Logia " + contentId + " v" + (index + 1))
+						.translations(Map.of("it", new DevilFruitTypeTranslation("Rogia")))
+						.firstAppearance(firstAppearance)
+						.build(),
 					NOW);
 			this.versionRepository.save(version);
 		}

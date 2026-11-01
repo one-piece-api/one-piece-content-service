@@ -1,5 +1,8 @@
 package dev.onepieceapi.contentservice.service.devilfruittype;
 
+import static dev.onepieceapi.contentservice.domain.readertime.ParagraphFixtures.discoveredAt;
+import dev.onepieceapi.contentservice.service.validation.ParagraphRules;
+import dev.onepieceapi.contentservice.service.content.ReaderAxisRules;
 import dev.onepieceapi.contentservice.persistence.mapper.DevilFruitTypeVersionMapper;
 import dev.onepieceapi.contentservice.service.content.OnlineChapters;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
@@ -149,10 +152,14 @@ class DevilFruitTypeSubmissionIntegrationTest {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
 		var auditLogService = new AuditLogService(this.auditLogRepository, clock);
 		var validator = new DevilFruitTypeValidator(this.versionRepository, this.languageRepository,
-				this.chapterRepository, this.episodeRepository);
+				this.chapterRepository, this.episodeRepository, new ParagraphRules(
+						new ReaderAxisRules(this.contentRepository, this.chapterRepository, this.episodeRepository)));
 		this.service = new DevilFruitTypeService(this.versionRepository, this.contentVersionRepository,
-				this.contentRepository, validator, new DevilFruitTypeRules(this.contentRepository, this.fruitRepository,
-						this.chapterRepository, this.episodeRepository, new RulesProperties(5)),
+				this.contentRepository, validator,
+				new DevilFruitTypeRules(this.contentRepository, this.fruitRepository, this.chapterRepository,
+						this.episodeRepository,
+						new ReaderAxisRules(this.contentRepository, this.chapterRepository, this.episodeRepository),
+						new RulesProperties(5)),
 				auditLogService, clock);
 
 		this.firstAppearance = OnlineChapters.onlineChapter(this.contentRepository, this.chapterRepository);
@@ -191,48 +198,55 @@ class DevilFruitTypeSubmissionIntegrationTest {
 	@Test
 	void anIncompleteDraftIsRefusedNamingEveryMissingFieldInEveryLanguage() {
 		UUID empty = content();
-		version(empty, 1, DRAFT, this.nami, new DevilFruitType(null, Map.of()));
+		version(empty, 1, DRAFT, this.nami, DevilFruitType.builder().build());
 		stored();
 
 		var refused = catchThrowableOfType(VersionIncompleteException.class,
 				() -> this.service.submit(EDITOR, this.nami, empty, 1));
 
 		assertThat(fieldsOf(refused)).containsExactly("romaji", "firstAppearance", "translations[en].name",
-				"translations[en].description", "translations[en].advantages", "translations[en].disadvantages",
-				"translations[it].name", "translations[it].description", "translations[it].advantages",
-				"translations[it].disadvantages");
+				"translations[it].name", "description", "advantages", "disadvantages");
 	}
 
 	@Test
 	void aLanguageOfTheCatalogLeftOutMakesTheDraftIncomplete() {
 		UUID italianOnly = content();
-		var body = new DevilFruitType("Kodai", Map.of("it", translation("Antico", "Antico description")), List.of(),
-				this.firstAppearance);
+		var body = DevilFruitType.builder()
+			.romaji("Kodai")
+			.translations(Map.of("it", new DevilFruitTypeTranslation("Antico")))
+			.firstAppearance(this.firstAppearance)
+			.description(discoveredAt(this.firstAppearance, Map.of("it", "Descrizione")))
+			.advantages(discoveredAt(this.firstAppearance, Map.of("it", "Vantaggi")))
+			.disadvantages(discoveredAt(this.firstAppearance, Map.of("it", "Svantaggi")))
+			.build();
 		version(italianOnly, 1, DRAFT, this.nami, body);
 		stored();
 
 		var refused = catchThrowableOfType(VersionIncompleteException.class,
 				() -> this.service.submit(EDITOR, this.nami, italianOnly, 1));
 
-		assertThat(fieldsOf(refused)).containsExactly("translations[en].name", "translations[en].description",
-				"translations[en].advantages", "translations[en].disadvantages");
+		assertThat(fieldsOf(refused)).containsExactly("translations[en].name", "description[0].text[en]",
+				"advantages[0].text[en]", "disadvantages[0].text[en]");
 		assertStillADraft(italianOnly);
 	}
 
 	@Test
-	void advantagesAndDisadvantagesAreRequiredForReviewInEveryLanguage() {
+	void advantagesAndDisadvantagesAreRequiredForReviewLikeTheDescription() {
 		UUID withoutTradeOffs = content();
-		var body = new DevilFruitType("Kodai",
-				Map.of("it", translation("Antico", "Antico descrizione"), "en",
-						new DevilFruitTypeTranslation("Ancient", "Ancient description", null, null)),
-				List.of(), this.firstAppearance);
+		var body = DevilFruitType.builder()
+			.romaji("Kodai")
+			.translations(Map.of("it", new DevilFruitTypeTranslation("Antico"), "en",
+					new DevilFruitTypeTranslation("Ancient")))
+			.firstAppearance(this.firstAppearance)
+			.description(discoveredAt(this.firstAppearance, Map.of("it", "Antico", "en", "Ancient")))
+			.build();
 		version(withoutTradeOffs, 1, DRAFT, this.nami, body);
 		stored();
 
 		var refused = catchThrowableOfType(VersionIncompleteException.class,
 				() -> this.service.submit(EDITOR, this.nami, withoutTradeOffs, 1));
 
-		assertThat(fieldsOf(refused)).containsExactly("translations[en].advantages", "translations[en].disadvantages");
+		assertThat(fieldsOf(refused)).containsExactly("advantages", "disadvantages");
 		assertStillADraft(withoutTradeOffs);
 	}
 
@@ -266,7 +280,7 @@ class DevilFruitTypeSubmissionIntegrationTest {
 	@Test
 	void completenessIsCheckedFirst() {
 		UUID twin = content();
-		version(twin, 1, DRAFT, this.nami, new DevilFruitType("Zoan", Map.of()));
+		version(twin, 1, DRAFT, this.nami, DevilFruitType.builder().romaji("Zoan").build());
 		stored();
 
 		assertThatThrownBy(() -> this.service.submit(EDITOR, this.nami, twin, 1))
@@ -394,13 +408,16 @@ class DevilFruitTypeSubmissionIntegrationTest {
 	}
 
 	private DevilFruitType complete(String romaji, String name) {
-		return new DevilFruitType(romaji, Map.of("it", translation(name + " IT", name + " descrizione"), "en",
-				translation(name + " EN", name + " description")), List.of(), this.firstAppearance);
-	}
-
-	/** Advantages and disadvantages filled: a test names only the fields it is about. */
-	private static DevilFruitTypeTranslation translation(String name, String description) {
-		return new DevilFruitTypeTranslation(name, description, "Pro", "Contro");
+		return DevilFruitType.builder()
+			.romaji(romaji)
+			.translations(Map.of("it", new DevilFruitTypeTranslation(name + " IT"), "en",
+					new DevilFruitTypeTranslation(name + " EN")))
+			.firstAppearance(this.firstAppearance)
+			.description(discoveredAt(this.firstAppearance,
+					Map.of("it", name + " descrizione", "en", name + " description")))
+			.advantages(discoveredAt(this.firstAppearance, Map.of("it", "Vantaggi", "en", "Advantages")))
+			.disadvantages(discoveredAt(this.firstAppearance, Map.of("it", "Svantaggi", "en", "Disadvantages")))
+			.build();
 	}
 
 	/** What was done so far is written and read again from the database. */

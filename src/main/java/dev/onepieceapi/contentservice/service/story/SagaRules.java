@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.service.story;
 
+import dev.onepieceapi.contentservice.service.content.ReaderAxisRules;
 import dev.onepieceapi.contentservice.config.RulesProperties;
 import dev.onepieceapi.contentservice.domain.story.Saga;
 import dev.onepieceapi.contentservice.domain.workflow.ActionBlock;
@@ -30,19 +31,24 @@ public class SagaRules implements ContentRules<Saga> {
 
 	private final ArcVersionRepository arcRepository;
 
+	private final ReaderAxisRules readerAxisRules;
+
 	private final RulesProperties properties;
 
 	@Override
 	public void lockBefore(VersionAction action, UUID contentId, Version<Saga> version) {
 		RelationRules.lockLinkedBefore(action, contentId, this.contentRepository);
+		this.readerAxisRules.lockBefore(action, version.body());
 	}
 
 	@Override
 	public Optional<ActionBlock> blockOf(VersionAction action, UUID contentId, Version<Saga> version) {
 		var linkedArcs = new LinkedItems(this.arcRepository::countOnlineLinkedTo,
 				this.arcRepository::findOnlineLinkedTo);
-		return RelationRules.onlineItemsLinked(action, StoryRelations.ARC_SAGA, contentId, linkedArcs,
-				this.properties.blockingPreviewSize());
+		return RelationRules
+			.onlineItemsLinked(action, StoryRelations.ARC_SAGA, contentId, linkedArcs,
+					this.properties.blockingPreviewSize())
+			.or(() -> this.readerAxisRules.blockOf(action, version.body()));
 	}
 
 }

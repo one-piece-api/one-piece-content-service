@@ -1,5 +1,7 @@
 package dev.onepieceapi.contentservice.service.story;
 
+import dev.onepieceapi.contentservice.service.validation.ParagraphRules;
+import dev.onepieceapi.contentservice.service.content.ReaderAxisRules;
 import dev.onepieceapi.contentservice.config.RulesProperties;
 import dev.onepieceapi.contentservice.domain.security.Permission;
 import dev.onepieceapi.contentservice.domain.security.User;
@@ -175,9 +177,13 @@ class StoryItemsRulesIntegrationTest {
 		var images = new ContentImages(new ImageValidator(), new ImageNormalizer(TestImages.ENCODER),
 				new JpaImageStore(this.imageRepository, clock), StoryFixtures.VOLUME_IMAGES);
 		this.arcs = new ArcService(this.arcRepository, this.contentVersionRepository, this.contentRepository,
-				new ArcValidator(this.arcRepository, this.languageRepository, this.sagaRepository),
+				new ArcValidator(this.arcRepository, this.languageRepository, this.sagaRepository,
+						new ParagraphRules(new ReaderAxisRules(this.contentRepository, this.chapterRepository,
+								this.episodeRepository))),
 				new ArcRules(this.contentRepository, this.sagaRepository, this.chapterRepository,
-						this.episodeRepository, properties),
+						this.episodeRepository,
+						new ReaderAxisRules(this.contentRepository, this.chapterRepository, this.episodeRepository),
+						properties),
 				auditLogService, clock);
 		this.volumes = new VolumeService(this.contentVersionRepository, this.contentRepository, auditLogService, clock,
 				images,
@@ -190,14 +196,14 @@ class StoryItemsRulesIntegrationTest {
 						this.volumeRepository),
 				new ChapterRules(this.contentRepository, this.arcRepository, this.volumeRepository,
 						this.fruitRepository, this.typeRepository, this.bountyRepository, this.affiliationRepository,
-						this.speciesRepository, this.characterRepository, new RulesProperties(5)),
+						this.speciesRepository, this.characterRepository, this.sagaRepository, new RulesProperties(5)),
 				auditLogService, clock);
 		this.episodes = new EpisodeService(this.episodeRepository, this.contentVersionRepository,
 				this.contentRepository,
 				new EpisodeValidator(this.episodeRepository, this.languageRepository, this.arcRepository),
 				new EpisodeRules(this.contentRepository, this.arcRepository, this.fruitRepository, this.typeRepository,
 						this.bountyRepository, this.affiliationRepository, this.speciesRepository,
-						this.characterRepository, new RulesProperties(5)),
+						this.characterRepository, this.sagaRepository, new RulesProperties(5)),
 				auditLogService, clock);
 
 		this.fixtures = new StoryFixtures(this.entityManager, this.sagaRepository, this.arcRepository,
@@ -449,8 +455,8 @@ class StoryItemsRulesIntegrationTest {
 	@Test
 	void aNewOnlineVersionOfTheArcChangesNothingForItsChapters() {
 		UUID arc = this.fixtures.arc(this.saga, PUBLISHED);
-		this.fixtures.arcVersion(arc, 2, READY_TO_PUBLISH,
-				new Arc(this.fixtures.lastNumber() + 100, this.saga, StoryFixtures.translations("Arc")));
+		this.fixtures.arcVersion(arc, 2, READY_TO_PUBLISH, new Arc(this.fixtures.lastNumber() + 100, this.saga,
+				StoryFixtures.titles("Arc"), StoryFixtures.description()));
 		UUID chapter = this.fixtures.chapter(arc, null, PUBLISHED);
 		this.fixtures.stored();
 

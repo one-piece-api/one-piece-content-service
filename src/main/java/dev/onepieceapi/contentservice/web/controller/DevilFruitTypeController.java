@@ -63,8 +63,8 @@ class DevilFruitTypeController
 	@Autowired
 	DevilFruitTypeController(DevilFruitTypeService service, DevilFruitTypeLinks links,
 			FirstAppearanceLinks firstAppearances) {
-		super(service, access -> DevilFruitTypeResponseMapper.toVersionResponse(access, firstAppearances
-			.referencesOf(access.body().firstAppearanceChapterIds(), access.body().firstAppearanceEpisodeIds())));
+		super(service, access -> DevilFruitTypeResponseMapper.toVersionResponse(access,
+				firstAppearances.referencesOfPoints(access.body().shownPoints())));
 		this.service = service;
 		this.links = links;
 	}

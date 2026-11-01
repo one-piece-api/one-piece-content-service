@@ -23,7 +23,7 @@ import java.util.Map;
  */
 public record VolumeRequest(@PositiveOrZero Integer number,
 		@Size(max = StoryTranslation.JAPANESE_TITLE_MAX_LENGTH) String japaneseTitle,
-		List<@Valid ReleaseRequest> releases, Map<String, @Valid VolumeTranslationRequest> translations,
+		List<@Valid ReleaseRequest> releases, Map<String, @Valid TitleTranslationRequest> translations,
 		Boolean removeImage) {
 
 	/** Whether the cover is to be removed; not saying so keeps it. */

@@ -1,11 +1,17 @@
 package dev.onepieceapi.contentservice.service.story;
 
+import dev.onepieceapi.contentservice.service.content.OnlineChapters;
+import dev.onepieceapi.contentservice.domain.story.TitleTranslation;
+import dev.onepieceapi.contentservice.service.validation.ParagraphRules;
+import dev.onepieceapi.contentservice.service.content.ReaderAxisRules;
 import dev.onepieceapi.contentservice.config.RulesProperties;
 import dev.onepieceapi.contentservice.domain.security.Permission;
 import dev.onepieceapi.contentservice.domain.security.User;
 import dev.onepieceapi.contentservice.domain.story.Arc;
+import dev.onepieceapi.contentservice.domain.readertime.Paragraph;
+import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
+import dev.onepieceapi.contentservice.domain.readertime.StoryWindow;
 import dev.onepieceapi.contentservice.domain.story.Saga;
-import dev.onepieceapi.contentservice.domain.story.StoryTranslation;
 import dev.onepieceapi.contentservice.domain.workflow.BlockReason;
 import dev.onepieceapi.contentservice.domain.workflow.BlockedAction;
 import dev.onepieceapi.contentservice.domain.workflow.EntityType;
@@ -144,20 +150,32 @@ class StoryRulesIntegrationTest {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
 		var auditLogService = new AuditLogService(this.auditLogRepository, clock);
 		this.sagas = new SagaService(this.sagaRepository, this.contentVersionRepository, this.contentRepository,
-				new SagaValidator(this.sagaRepository, this.languageRepository),
-				new SagaRules(this.contentRepository, this.arcRepository, new RulesProperties(5)), auditLogService,
-				clock);
+				new SagaValidator(this.sagaRepository, this.languageRepository,
+						new ParagraphRules(new ReaderAxisRules(this.contentRepository, this.chapterRepository,
+								this.episodeRepository))),
+				new SagaRules(this.contentRepository, this.arcRepository,
+						new ReaderAxisRules(this.contentRepository, this.chapterRepository, this.episodeRepository),
+						new RulesProperties(5)),
+				auditLogService, clock);
 		this.arcs = new ArcService(this.arcRepository, this.contentVersionRepository, this.contentRepository,
-				new ArcValidator(this.arcRepository, this.languageRepository, this.sagaRepository),
+				new ArcValidator(this.arcRepository, this.languageRepository, this.sagaRepository,
+						new ParagraphRules(new ReaderAxisRules(this.contentRepository, this.chapterRepository,
+								this.episodeRepository))),
 				new ArcRules(this.contentRepository, this.sagaRepository, this.chapterRepository,
-						this.episodeRepository, new RulesProperties(5)),
+						this.episodeRepository,
+						new ReaderAxisRules(this.contentRepository, this.chapterRepository, this.episodeRepository),
+						new RulesProperties(5)),
 				auditLogService, clock);
 	}
 
 	@Test
 	void anArcOfASagaNoLongerOnlineCanStillBeSubmittedReviewedAndSetAside() {
 		UUID saga = sagaContent(RETIRED);
-		UUID arc = arcContent(saga, DRAFT);
+		UUID arc = content(EntityType.ARC);
+		var discovered = OnlineChapters.onlineChapter(this.contentRepository, this.chapterRepository);
+		var body = complete(1000 + ++this.numbers, saga);
+		arcVersion(arc, 1, DRAFT, new Arc(body.number(), body.sagaContentId(), body.translations(),
+				StoryFixtures.description(discovered)));
 		stored();
 
 		assertThat(this.arcs.submit(EDITOR, this.chopper, arc, 1).version().status())
@@ -166,6 +184,22 @@ class StoryRulesIntegrationTest {
 		assertThat(this.arcs.approve(REVIEWER, this.zoro, arc, 1).version().status()).isEqualTo(READY_TO_PUBLISH);
 		assertThat(this.arcs.archive(PUBLISHER, this.vivi, arc, 1).version().status()).isEqualTo(ARCHIVED);
 		assertThat(this.arcs.recover(PUBLISHER, this.vivi, arc, 1).version().status()).isEqualTo(READY_TO_PUBLISH);
+	}
+
+	@Test
+	void aSagaGoesOnlineWithParagraphPointsOnlyApprovedButNotEndedBeforeDiscoveredOnTheApprovedNumbers() {
+		var discovered = StoryPoint
+			.ofChapter(OnlineChapters.chapter(this.contentRepository, this.chapterRepository, READY_TO_PUBLISH, 9001));
+		var ended = StoryPoint
+			.ofChapter(OnlineChapters.chapter(this.contentRepository, this.chapterRepository, READY_TO_PUBLISH, 9002));
+		UUID inOrder = sagaWithDescription(new StoryWindow(discovered, ended));
+		UUID reversed = sagaWithDescription(new StoryWindow(ended, discovered));
+		stored();
+
+		assertThat(this.sagas.publish(PUBLISHER, this.vivi, inOrder, 1).version().status()).isEqualTo(PUBLISHED);
+		var refused = catchThrowableOfType(VersionActionBlockedException.class,
+				() -> this.sagas.publish(ADMIN, this.vivi, reversed, 1));
+		assertThat(refused.getDetails()).containsEntry("reason", BlockReason.STORY_POINT_OUT_OF_RANGE);
 	}
 
 	@Test
@@ -339,13 +373,15 @@ class StoryRulesIntegrationTest {
 
 	/** Complete in both languages of the catalog; the number is its own title. */
 	private static Saga complete(int number) {
-		return new Saga(number, Map.of("it", new StoryTranslation("Saga it " + number, "Descrizione"), "en",
-				new StoryTranslation("Saga " + number, "Description")));
+		return new Saga(number,
+				Map.of("it", new TitleTranslation("Saga it " + number), "en", new TitleTranslation("Saga " + number)),
+				StoryFixtures.description());
 	}
 
 	private static Arc complete(int number, UUID saga) {
-		return new Arc(number, saga, Map.of("it", new StoryTranslation("Arco it " + number, "Descrizione"), "en",
-				new StoryTranslation("Arc " + number, "Description")));
+		return new Arc(number, saga,
+				Map.of("it", new TitleTranslation("Arco it " + number), "en", new TitleTranslation("Arc " + number)),
+				StoryFixtures.description());
 	}
 
 	/** What was done so far is written and read again from the database. */
@@ -362,6 +398,18 @@ class StoryRulesIntegrationTest {
 	private UUID sagaContent(VersionStatus status) {
 		UUID contentId = content(EntityType.SAGA);
 		sagaVersion(contentId, 1, status, complete(++this.numbers));
+		return contentId;
+	}
+
+	/**
+	 * A saga with the next free number, ready to publish, its one paragraph in this
+	 * window.
+	 */
+	private UUID sagaWithDescription(StoryWindow window) {
+		UUID contentId = content(EntityType.SAGA);
+		var body = complete(++this.numbers);
+		sagaVersion(contentId, 1, READY_TO_PUBLISH, new Saga(body.number(), body.translations(),
+				List.of(new Paragraph(Map.of("it", "Il mare", "en", "The sea"), window))));
 		return contentId;
 	}
 

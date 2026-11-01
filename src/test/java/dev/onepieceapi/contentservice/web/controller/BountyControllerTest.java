@@ -1,15 +1,15 @@
 package dev.onepieceapi.contentservice.web.controller;
 
+import static dev.onepieceapi.contentservice.domain.readertime.ParagraphFixtures.paragraph;
+import dev.onepieceapi.contentservice.domain.readertime.Paragraph;
 import dev.onepieceapi.contentservice.domain.bounty.Bounty;
 import dev.onepieceapi.contentservice.domain.bounty.BountyChain;
 import dev.onepieceapi.contentservice.domain.bounty.BountyCondition;
 import dev.onepieceapi.contentservice.domain.bounty.BountyReference;
-import dev.onepieceapi.contentservice.domain.bounty.BountyTranslation;
 import dev.onepieceapi.contentservice.domain.character.CharacterReference;
 import dev.onepieceapi.contentservice.domain.character.Gender;
 import dev.onepieceapi.contentservice.domain.bounty.BountyValidity;
 import dev.onepieceapi.contentservice.domain.image.ImageChange;
-import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.domain.security.Permission;
 import dev.onepieceapi.contentservice.domain.security.User;
 import dev.onepieceapi.contentservice.domain.workflow.ActionBlock;
@@ -135,7 +135,8 @@ class BountyControllerTest {
 			.andExpect(jsonPath("$.body.chain[0].id").value(NEXT_ID.toString()))
 			.andExpect(jsonPath("$.body.chain[1].id").value(CONTENT_ID.toString()))
 			.andExpect(jsonPath("$.body.chain[2].id").value(PREVIOUS_ID.toString()))
-			.andExpect(jsonPath("$.body.translations.it.description").value("Taglia"));
+			.andExpect(jsonPath("$.body.description[0].text.it").value("Taglia"))
+			.andExpect(jsonPath("$.body.translations").doesNotExist());
 	}
 
 	@Test
@@ -257,7 +258,7 @@ class BountyControllerTest {
 			.contentType("application/json")
 			.content("{\"posterName\":\"Monkey D. Luffy\",\"amount\":3000000000,\"condition\":\"DEAD_OR_ALIVE\","
 					+ "\"inactive\":true,\"previous\":\"" + PREVIOUS_ID + "\",\"holder\":\"" + HOLDER_ID
-					+ "\",\"translations\":{\"it\":{\"description\":\"Taglia\"}}}");
+					+ "\",\"description\":[{\"text\":{\"it\":\"Taglia\"}},{\"text\":{\"it\":\"Poi\"}}]}");
 		this.mockMvc.perform(request)
 			.andExpect(status().isCreated())
 			.andExpect(jsonPath("$.id").value(CONTENT_ID.toString()));
@@ -270,13 +271,15 @@ class BountyControllerTest {
 		assertThat(written.getValue().inactive()).isTrue();
 		assertThat(written.getValue().previousContentId()).isEqualTo(PREVIOUS_ID);
 		assertThat(written.getValue().holderContentId()).isEqualTo(HOLDER_ID);
-		assertThat(written.getValue().translations().get("it")).isEqualTo(new BountyTranslation("Taglia"));
+		assertThat(written.getValue().description()).extracting(Paragraph::text)
+			.containsExactly(Map.of("it", "Taglia"), Map.of("it", "Poi"));
 	}
 
 	@Test
 	void aNegativeAmountOrALongPosterNameOrDescriptionIsABadRequest() throws Exception {
 		for (String body : List.of("{\"amount\":-1}", "{\"posterName\":\"" + "x".repeat(101) + "\"}",
-				"{\"translations\":{\"it\":{\"description\":\"" + "x".repeat(2001) + "\"}}}")) {
+				"{\"description\":[{\"text\":{\"it\":\"" + "x".repeat(2001) + "\"}}]}", "{\"description\":[null]}",
+				"{\"description\":[" + "{},".repeat(50) + "{}]}")) {
 			this.mockMvc
 				.perform(post("/bounties").with(callerWith(Permission.CONTENT_WRITE))
 					.contentType("application/json")
@@ -383,13 +386,19 @@ class BountyControllerTest {
 	}
 
 	private static Version<Bounty> version(VersionStatus status, boolean inactive, UUID previous, UUID holder) {
-		var translations = Map.of("it", new BountyTranslation("Taglia"));
 		return Version.<Bounty>builder()
 			.number(1)
 			.status(status)
 			.author(NAMI)
-			.body(new Bounty("Monkey D. Luffy", 3_000_000_000L, BountyCondition.DEAD_OR_ALIVE, inactive, previous,
-					holder, translations, null, StoryPoint.NONE))
+			.body(Bounty.builder()
+				.posterName("Monkey D. Luffy")
+				.amount(3_000_000_000L)
+				.condition(BountyCondition.DEAD_OR_ALIVE)
+				.inactive(inactive)
+				.previousContentId(previous)
+				.holderContentId(holder)
+				.description(paragraph("it", "Taglia"))
+				.build())
 			.createdAt(CREATED)
 			.updatedAt(CREATED)
 			.build();

@@ -6,9 +6,9 @@ import java.util.Objects;
 import java.util.stream.Stream;
 
 /**
- * The localized fields of a story entity in one language - a saga, an arc (implementation
- * plan of the story structure, section 3). Either may still be missing while the version
- * is a draft.
+ * The localized fields of a chapter or an episode in one language (implementation plan of
+ * the story structure, section 3). Either may still be missing while the version is a
+ * draft.
  */
 public record StoryTranslation(String title, String description) {
 

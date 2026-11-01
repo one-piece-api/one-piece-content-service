@@ -1,5 +1,10 @@
 package dev.onepieceapi.contentservice.persistence.entity;
 
+import java.util.List;
+import java.util.ArrayList;
+import jakarta.persistence.OrderColumn;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.CascadeType;
 import dev.onepieceapi.contentservice.domain.workflow.NaturalKey;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.ElementCollection;
@@ -17,7 +22,7 @@ import java.util.Map;
 
 /**
  * What one version of a saga says (implementation plan of the story structure, S2): its
- * number (its natural key) and, per language, its title and description.
+ * number (its natural key) and, per language, its title, and its paragraphs.
  */
 @Entity
 @Table(name = "saga_version")
@@ -35,7 +40,16 @@ public class SagaVersionEntity extends VersionBodyEntity {
 	@ElementCollection
 	@CollectionTable(name = "saga_version_translation", joinColumns = @JoinColumn(name = "version_id"))
 	@MapKeyColumn(name = "language_code")
-	private Map<String, StoryTranslationEmbeddable> translations = new HashMap<>();
+	private Map<String, TitleTranslationEmbeddable> translations = new HashMap<>();
+
+	/**
+	 * Its paragraphs, every section in one list (workflow 3.7.3): a section is in the
+	 * order of its rows; the position is the index in the list.
+	 */
+	@OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+	@JoinColumn(name = "version_id", nullable = false)
+	@OrderColumn(name = "position")
+	private List<SagaParagraphEntity> paragraphs = new ArrayList<>();
 
 	public SagaVersionEntity(ContentVersionEntity version) {
 		super(version);
@@ -47,10 +61,12 @@ public class SagaVersionEntity extends VersionBodyEntity {
 	}
 
 	/** Replaces everything the version says, and notes when. */
-	public void rewrite(Integer newNumber, Map<String, StoryTranslationEmbeddable> newTranslations, Instant now) {
+	public void rewrite(Integer newNumber, Map<String, TitleTranslationEmbeddable> newTranslations,
+			List<ParagraphFields> newParagraphs, Instant now) {
 		this.number = newNumber;
 		this.translations.clear();
 		this.translations.putAll(newTranslations);
+		PositionalRows.rewrite(this.paragraphs, newParagraphs, SagaParagraphEntity::new, ParagraphEntity::rewrite);
 		touch(now);
 	}
 

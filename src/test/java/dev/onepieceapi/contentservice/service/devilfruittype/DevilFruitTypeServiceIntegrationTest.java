@@ -1,5 +1,7 @@
 package dev.onepieceapi.contentservice.service.devilfruittype;
 
+import dev.onepieceapi.contentservice.service.validation.ParagraphRules;
+import dev.onepieceapi.contentservice.service.content.ReaderAxisRules;
 import dev.onepieceapi.contentservice.service.audit.AuditLogService;
 
 import dev.onepieceapi.contentservice.config.RulesProperties;
@@ -154,10 +156,14 @@ class DevilFruitTypeServiceIntegrationTest {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
 		var auditLogService = new AuditLogService(this.auditLogRepository, clock);
 		var validator = new DevilFruitTypeValidator(this.versionRepository, this.languageRepository,
-				this.chapterRepository, this.episodeRepository);
+				this.chapterRepository, this.episodeRepository, new ParagraphRules(
+						new ReaderAxisRules(this.contentRepository, this.chapterRepository, this.episodeRepository)));
 		this.service = new DevilFruitTypeService(this.versionRepository, this.contentVersionRepository,
-				this.contentRepository, validator, new DevilFruitTypeRules(this.contentRepository, this.fruitRepository,
-						this.chapterRepository, this.episodeRepository, new RulesProperties(5)),
+				this.contentRepository, validator,
+				new DevilFruitTypeRules(this.contentRepository, this.fruitRepository, this.chapterRepository,
+						this.episodeRepository,
+						new ReaderAxisRules(this.contentRepository, this.chapterRepository, this.episodeRepository),
+						new RulesProperties(5)),
 				auditLogService, clock);
 
 		this.paramecia = content();
@@ -218,11 +224,8 @@ class DevilFruitTypeServiceIntegrationTest {
 		assertThat(row.version().author()).isEqualTo(this.chopper);
 		assertThat(row.version().body().romaji()).isEqualTo("Kodai Zoan");
 		assertThat(row.version().body().translations()).containsExactly(
-				entry("en",
-						new DevilFruitTypeTranslation("100%", "100% description", "100% advantages",
-								"100% disadvantages")),
-				entry("it", new DevilFruitTypeTranslation("Zoo Zoo antico", "Zoo Zoo antico description",
-						"Zoo Zoo antico advantages", "Zoo Zoo antico disadvantages")));
+				entry("en", new DevilFruitTypeTranslation("100%")),
+				entry("it", new DevilFruitTypeTranslation("Zoo Zoo antico")));
 		assertThat(row.version().updatedAt()).isEqualTo(NOW.minus(Duration.ofDays(40)));
 	}
 
@@ -683,7 +686,7 @@ class DevilFruitTypeServiceIntegrationTest {
 	}
 
 	private static TranslationEmbeddable translation(String name) {
-		return new TranslationEmbeddable(name, name + " description", name + " advantages", name + " disadvantages");
+		return new TranslationEmbeddable(name);
 	}
 
 	private void audit(String action, User actor, UUID contentId, int versionNumber, String detail, Instant when) {

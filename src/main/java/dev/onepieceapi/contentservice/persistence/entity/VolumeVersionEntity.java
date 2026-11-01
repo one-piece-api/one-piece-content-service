@@ -50,7 +50,7 @@ public class VolumeVersionEntity extends VersionBodyEntity {
 	@ElementCollection
 	@CollectionTable(name = "volume_version_translation", joinColumns = @JoinColumn(name = "version_id"))
 	@MapKeyColumn(name = "language_code")
-	private Map<String, VolumeTranslationEmbeddable> translations = new HashMap<>();
+	private Map<String, TitleTranslationEmbeddable> translations = new HashMap<>();
 
 	public VolumeVersionEntity(ContentVersionEntity version) {
 		super(version);
@@ -63,7 +63,7 @@ public class VolumeVersionEntity extends VersionBodyEntity {
 
 	/** Replaces everything the version says, and notes when. */
 	public void rewrite(Integer newNumber, String newJapaneseTitle, String newCoverImageId,
-			Map<String, LocalDate> newReleases, Map<String, VolumeTranslationEmbeddable> newTranslations, Instant now) {
+			Map<String, LocalDate> newReleases, Map<String, TitleTranslationEmbeddable> newTranslations, Instant now) {
 		this.number = newNumber;
 		this.japaneseTitle = newJapaneseTitle;
 		this.coverImageId = newCoverImageId;

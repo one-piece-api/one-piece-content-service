@@ -19,7 +19,7 @@ class VolumeTest {
 			.number(1)
 			.coverImageId("abc")
 			.japaneseTitle(" ROMANCE DAWN ")
-			.translations(Map.of("it", new VolumeTranslation(" L'alba ")))
+			.translations(Map.of("it", new TitleTranslation(" L'alba ")))
 			.build();
 
 		var normalized = typed.normalized();
@@ -27,14 +27,14 @@ class VolumeTest {
 		assertThat(normalized.number()).isEqualTo(1);
 		assertThat(normalized.coverImageId()).isEqualTo("abc");
 		assertThat(normalized.japaneseTitle()).isEqualTo("ROMANCE DAWN");
-		assertThat(normalized.translations()).containsExactly(entry("it", new VolumeTranslation("L'alba")));
+		assertThat(normalized.translations()).containsExactly(entry("it", new TitleTranslation("L'alba")));
 	}
 
 	@Test
 	void aBlankTitleIsMissingAndALanguageNothingWasWrittenInIsLeftOut() {
-		Map<String, VolumeTranslation> translations = new HashMap<>();
-		translations.put("it", new VolumeTranslation("  "));
-		translations.put("en", new VolumeTranslation("Dawn"));
+		Map<String, TitleTranslation> translations = new HashMap<>();
+		translations.put("it", new TitleTranslation("  "));
+		translations.put("en", new TitleTranslation("Dawn"));
 
 		var normalized = new Volume(null, null, null, null, translations).normalized();
 
@@ -56,7 +56,7 @@ class VolumeTest {
 	void theNumberIsTheNaturalKeyAndTheTitlesAreTheNamesButTwoVolumesMayShareOne() {
 		var volume = Volume.builder()
 			.number(0)
-			.translations(Map.of("it", new VolumeTranslation("L'alba"), "en", new VolumeTranslation(null)))
+			.translations(Map.of("it", new TitleTranslation("L'alba"), "en", new TitleTranslation(null)))
 			.build();
 
 		assertThat(volume.names()).containsExactly(entry("it", "L'alba"));
@@ -86,8 +86,8 @@ class VolumeTest {
 
 	@Test
 	void aVolumeWithoutAnyExtraIsCompleteAndATitleLeftOutIsMissing() {
-		var bare = Volume.builder().number(1).translations(Map.of("it", new VolumeTranslation("L'alba"))).build();
-		var withoutTitle = bare.toBuilder().translations(Map.of("it", new VolumeTranslation(null))).build();
+		var bare = Volume.builder().number(1).translations(Map.of("it", new TitleTranslation("L'alba"))).build();
+		var withoutTitle = bare.toBuilder().translations(Map.of("it", new TitleTranslation(null))).build();
 
 		assertThat(bare.missingFields(List.of("it"))).isEmpty();
 		assertThat(withoutTitle.missingFields(List.of("it"))).containsExactly("translations[it].title");

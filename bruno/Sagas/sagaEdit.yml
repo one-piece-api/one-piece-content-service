@@ -19,6 +19,19 @@ http:
     type: json
     data: |-
       {
+        "description": [
+          {
+            "discovered": {
+              "chapter": "",
+              "episode": ""
+            },
+            "ended": {
+              "chapter": "",
+              "episode": ""
+            },
+            "text": {}
+          }
+        ],
         "number": 0,
         "translations": {}
       }
@@ -48,6 +61,19 @@ examples:
         type: json
         data: |-
           {
+            "description": [
+              {
+                "discovered": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "ended": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "text": {}
+              }
+            ],
             "number": 0,
             "translations": {}
           }
@@ -78,6 +104,35 @@ examples:
               }
             ],
             "body": {
+              "description": [
+                {
+                  "discovered": {
+                    "chapter": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    },
+                    "episode": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    }
+                  },
+                  "ended": {
+                    "chapter": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    },
+                    "episode": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    }
+                  },
+                  "text": {}
+                }
+              ],
               "number": 0,
               "translations": {}
             },
@@ -112,6 +167,19 @@ examples:
         type: json
         data: |-
           {
+            "description": [
+              {
+                "discovered": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "ended": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "text": {}
+              }
+            ],
             "number": 0,
             "translations": {}
           }
@@ -154,6 +222,19 @@ examples:
         type: json
         data: |-
           {
+            "description": [
+              {
+                "discovered": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "ended": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "text": {}
+              }
+            ],
             "number": 0,
             "translations": {}
           }

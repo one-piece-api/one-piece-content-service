@@ -1,5 +1,8 @@
 package dev.onepieceapi.contentservice.service.content;
 
+import static dev.onepieceapi.contentservice.domain.readertime.ParagraphFixtures.paragraph;
+import dev.onepieceapi.contentservice.persistence.repository.SagaVersionRepository;
+import dev.onepieceapi.contentservice.service.validation.ParagraphRules;
 import dev.onepieceapi.contentservice.config.RulesProperties;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitTranslation;
@@ -19,6 +22,7 @@ import dev.onepieceapi.contentservice.domain.affiliation.Affiliation;
 import dev.onepieceapi.contentservice.domain.bounty.Bounty;
 import dev.onepieceapi.contentservice.domain.character.Alias;
 import dev.onepieceapi.contentservice.domain.character.Character;
+import dev.onepieceapi.contentservice.domain.readertime.Paragraph;
 import dev.onepieceapi.contentservice.domain.readertime.StoryWindow;
 import dev.onepieceapi.contentservice.domain.bounty.BountyCondition;
 import dev.onepieceapi.contentservice.persistence.entity.AffiliationVersionEntity;
@@ -141,6 +145,9 @@ class FirstAppearanceIntegrationTest {
 	private ChapterVersionRepository chapterRepository;
 
 	@Autowired
+	private SagaVersionRepository sagaRepository;
+
+	@Autowired
 	private EpisodeVersionRepository episodeRepository;
 
 	@Autowired
@@ -206,7 +213,9 @@ class FirstAppearanceIntegrationTest {
 		this.fruits = new DevilFruitService(
 				new DevilFruitDefinition(this.fruitRepository,
 						new DevilFruitValidator(this.fruitRepository, this.languageRepository, this.typeRepository,
-								this.chapterRepository, this.episodeRepository),
+								this.chapterRepository, this.episodeRepository,
+								new ParagraphRules(new ReaderAxisRules(this.contentRepository, this.chapterRepository,
+										this.episodeRepository))),
 						new DevilFruitRules(this.contentRepository, this.typeRepository, this.chapterRepository,
 								this.episodeRepository, this.characterRepository,
 								new ReaderAxisRules(this.contentRepository, this.chapterRepository,
@@ -217,9 +226,13 @@ class FirstAppearanceIntegrationTest {
 		this.types = new DevilFruitTypeService(this.typeRepository, this.contentVersionRepository,
 				this.contentRepository,
 				new DevilFruitTypeValidator(this.typeRepository, this.languageRepository, this.chapterRepository,
-						this.episodeRepository),
+						this.episodeRepository,
+						new ParagraphRules(new ReaderAxisRules(this.contentRepository, this.chapterRepository,
+								this.episodeRepository))),
 				new DevilFruitTypeRules(this.contentRepository, this.fruitRepository, this.chapterRepository,
-						this.episodeRepository, properties),
+						this.episodeRepository,
+						new ReaderAxisRules(this.contentRepository, this.chapterRepository, this.episodeRepository),
+						properties),
 				auditLogService, clock);
 		this.chapters = new ChapterService(this.chapterRepository, this.contentVersionRepository,
 				this.contentRepository,
@@ -227,14 +240,14 @@ class FirstAppearanceIntegrationTest {
 						this.volumeRepository),
 				new ChapterRules(this.contentRepository, this.arcRepository, this.volumeRepository,
 						this.fruitRepository, this.typeRepository, this.bountyRepository, this.affiliationRepository,
-						this.speciesRepository, this.characterRepository, properties),
+						this.speciesRepository, this.characterRepository, this.sagaRepository, properties),
 				auditLogService, clock);
 		this.episodes = new EpisodeService(this.episodeRepository, this.contentVersionRepository,
 				this.contentRepository,
 				new EpisodeValidator(this.episodeRepository, this.languageRepository, this.arcRepository),
 				new EpisodeRules(this.contentRepository, this.arcRepository, this.fruitRepository, this.typeRepository,
 						this.bountyRepository, this.affiliationRepository, this.speciesRepository,
-						this.characterRepository, properties),
+						this.characterRepository, this.sagaRepository, properties),
 				auditLogService, clock);
 		this.paramecia = typeContent(PUBLISHED, type("Paramecia", onlineChapter()));
 	}
@@ -243,8 +256,7 @@ class FirstAppearanceIntegrationTest {
 	void aSaveNamingAChapterNothingApprovedOfIsRefusedForTheTypeAndEachSubcategory() {
 		var draft = StoryPoint.ofChapter(chapter(DRAFT));
 		var unknown = StoryPoint.ofChapter(UUID.randomUUID());
-		var body = new DevilFruitType("Dobutsu", translations("Zoan"),
-				List.of(subcategory(null, StoryPoint.NONE), subcategory(null, unknown)), draft);
+		var body = dobutsu(List.of(subcategory(null, StoryPoint.NONE), subcategory(null, unknown)), draft);
 
 		var refused = catchThrowableOfType(ValueInvalidException.class,
 				() -> this.types.create(EDITOR, this.chopper, body));
@@ -287,8 +299,7 @@ class FirstAppearanceIntegrationTest {
 	@Test
 	void whatAFruitLacksItselfIsToldBeforeWhatItPointsTo() {
 		UUID offline = typeContent(ARCHIVED, type("Logia", onlineChapter()));
-		UUID fruit = fruitContent(READY_TO_PUBLISH,
-				new DevilFruit("Mera Mera", offline, null, translations(), null, StoryPoint.NONE));
+		UUID fruit = fruitContent(READY_TO_PUBLISH, fruit("Mera Mera", offline, StoryPoint.NONE));
 		stored();
 
 		assertThat(this.fruits.getVersion(PUBLISHER, this.vivi, fruit, 1).blockedActions())
@@ -334,10 +345,8 @@ class FirstAppearanceIntegrationTest {
 		UUID subcategory = UUID.randomUUID();
 		UUID ownChapterOffline = typeContent(READY_TO_PUBLISH, type("Logia", StoryPoint.ofChapter(retired)));
 		UUID subcategoryChapterOffline = typeContent(READY_TO_PUBLISH,
-				new DevilFruitType("Dobutsu", translations("Zoan"),
-						List.of(subcategory(UUID.randomUUID(), StoryPoint.NONE),
-								subcategory(subcategory, StoryPoint.ofChapter(retired))),
-						onlineChapter()));
+				dobutsu(List.of(subcategory(UUID.randomUUID(), StoryPoint.NONE),
+						subcategory(subcategory, StoryPoint.ofChapter(retired))), onlineChapter()));
 		stored();
 
 		var own = catchThrowableOfType(VersionActionBlockedException.class,
@@ -373,8 +382,8 @@ class FirstAppearanceIntegrationTest {
 		UUID ofType = chapter(PUBLISHED);
 		UUID ofSubcategory = chapter(PUBLISHED);
 		UUID logia = typeContent(PUBLISHED, type("Logia", StoryPoint.ofChapter(ofType)));
-		UUID zoan = typeContent(PUBLISHED, new DevilFruitType("Dobutsu", translations("Zoan"),
-				List.of(subcategory(UUID.randomUUID(), StoryPoint.ofChapter(ofSubcategory))), onlineChapter()));
+		UUID zoan = typeContent(PUBLISHED,
+				dobutsu(List.of(subcategory(UUID.randomUUID(), StoryPoint.ofChapter(ofSubcategory))), onlineChapter()));
 		stored();
 
 		var byType = catchThrowableOfType(VersionActionBlockedException.class,
@@ -386,6 +395,24 @@ class FirstAppearanceIntegrationTest {
 			.isEqualTo(Map.of("count", 1L, "types", List.of(Map.of("id", logia, "romaji", "Logia"))));
 		assertThat(bySubcategory.getDetails().get("detail"))
 			.isEqualTo(Map.of("count", 1L, "types", List.of(Map.of("id", zoan, "romaji", "Dobutsu"))));
+	}
+
+	@Test
+	void aChapterIsNotRetiredWhileAParagraphOfATypeOnlineEndsInIt() {
+		UUID ended = chapter(PUBLISHED);
+		StoryPoint firstAppearance = onlineChapter();
+		var advantage = new Paragraph(Map.of("it", "Pro", "en", "Pros"),
+				new StoryWindow(firstAppearance, StoryPoint.ofChapter(ended)));
+		UUID logia = typeContent(PUBLISHED,
+				type("Logia", firstAppearance).toBuilder().advantages(List.of(advantage)).build());
+		stored();
+
+		var refused = catchThrowableOfType(VersionActionBlockedException.class,
+				() -> this.chapters.retire(RETIRER, this.vivi, ended, 1));
+
+		assertThat(refused.getDetails()).containsEntry("reason", BlockReason.ONLINE_ITEMS_LINKED);
+		assertThat(refused.getDetails().get("detail"))
+			.isEqualTo(Map.of("count", 1L, "types", List.of(Map.of("id", logia, "romaji", "Logia"))));
 	}
 
 	@Test
@@ -401,7 +428,7 @@ class FirstAppearanceIntegrationTest {
 	@Test
 	void aSaveNamingAnEpisodeNothingApprovedOfIsRefusedForTheFruitTheTypeAndEachSubcategory() {
 		var draft = StoryPoint.ofEpisode(episode(DRAFT));
-		var type = new DevilFruitType("Dobutsu", translations("Zoan"), List.of(subcategory(null, draft)), draft);
+		var type = dobutsu(List.of(subcategory(null, draft)), draft);
 
 		var refusedFruit = catchThrowableOfType(ValueInvalidException.class,
 				() -> this.fruits.create(EDITOR, this.chopper, fruit("Gomu Gomu", draft)));
@@ -449,8 +476,8 @@ class FirstAppearanceIntegrationTest {
 	void aTypeGoesOnlineOnlyWhileTheEpisodesOfItsSubcategoriesAre() {
 		UUID retired = episode(RETIRED);
 		UUID subcategory = UUID.randomUUID();
-		UUID type = typeContent(READY_TO_PUBLISH, new DevilFruitType("Dobutsu", translations("Zoan"),
-				List.of(subcategory(subcategory, StoryPoint.ofEpisode(retired))), onlineEpisode()));
+		UUID type = typeContent(READY_TO_PUBLISH,
+				dobutsu(List.of(subcategory(subcategory, StoryPoint.ofEpisode(retired))), onlineEpisode()));
 		stored();
 
 		var refused = catchThrowableOfType(VersionActionBlockedException.class,
@@ -556,8 +583,8 @@ class FirstAppearanceIntegrationTest {
 		UUID ofSubcategory = episode(PUBLISHED);
 		UUID unused = episode(PUBLISHED);
 		UUID gomu = fruitContent(PUBLISHED, fruit("Gomu Gomu", StoryPoint.ofEpisode(ofFruit)));
-		UUID zoan = typeContent(PUBLISHED, new DevilFruitType("Dobutsu", translations("Zoan"),
-				List.of(subcategory(UUID.randomUUID(), StoryPoint.ofEpisode(ofSubcategory))), onlineChapter()));
+		UUID zoan = typeContent(PUBLISHED,
+				dobutsu(List.of(subcategory(UUID.randomUUID(), StoryPoint.ofEpisode(ofSubcategory))), onlineChapter()));
 		fruitContent(SUPERSEDED, fruit("Mera Mera", StoryPoint.ofEpisode(unused)));
 		stored();
 
@@ -589,14 +616,25 @@ class FirstAppearanceIntegrationTest {
 		return OnlineChapters.chapter(this.contentRepository, this.chapterRepository, status);
 	}
 
-	/** Complete in both languages of the catalog. */
+	/**
+	 * Complete in both languages of the catalog; its paragraphs have no window, so only
+	 * the first appearance is checked.
+	 */
 	private static DevilFruitType type(String romaji, StoryPoint firstAppearance) {
-		return new DevilFruitType(romaji, translations(romaji), List.of(), firstAppearance);
+		return DevilFruitType.builder()
+			.romaji(romaji)
+			.translations(Map.of("it", new DevilFruitTypeTranslation(romaji + " it"), "en",
+					new DevilFruitTypeTranslation(romaji)))
+			.firstAppearance(firstAppearance)
+			.description(paragraph(Map.of("it", "Descrizione", "en", "Description")))
+			.advantages(paragraph(Map.of("it", "Pro", "en", "Pros")))
+			.disadvantages(paragraph(Map.of("it", "Contro", "en", "Cons")))
+			.build();
 	}
 
-	private static Map<String, DevilFruitTypeTranslation> translations(String name) {
-		return Map.of("it", new DevilFruitTypeTranslation(name + " it", "Descrizione", "Pro", "Contro"), "en",
-				new DevilFruitTypeTranslation(name, "Description", "Pros", "Cons"));
+	/** A Zoan, complete, with these subcategories. */
+	private static DevilFruitType dobutsu(List<DevilFruitTypeSubcategory> subcategories, StoryPoint firstAppearance) {
+		return type("Dobutsu", firstAppearance).toBuilder().subcategories(subcategories).build();
 	}
 
 	/** Complete in both languages, with a name of its own. */
@@ -610,12 +648,20 @@ class FirstAppearanceIntegrationTest {
 
 	/** Complete in both languages of the catalog, of the type online. */
 	private DevilFruit fruit(String romaji, StoryPoint firstAppearance) {
-		return new DevilFruit(romaji, this.paramecia, null, translations(), null, firstAppearance);
+		return fruit(romaji, this.paramecia, firstAppearance);
 	}
 
-	private static Map<String, DevilFruitTranslation> translations() {
-		return Map.of("it", new DevilFruitTranslation("Frutto", "Descrizione", "Pro", "Contro"), "en",
-				new DevilFruitTranslation("Fruit", "Description", "Pros", "Cons"));
+	/** Complete in both languages of the catalog; its paragraphs have no window. */
+	private static DevilFruit fruit(String romaji, UUID type, StoryPoint firstAppearance) {
+		return DevilFruit.builder()
+			.romaji(romaji)
+			.typeContentId(type)
+			.translations(Map.of("it", new DevilFruitTranslation("Frutto"), "en", new DevilFruitTranslation("Fruit")))
+			.firstAppearance(firstAppearance)
+			.description(paragraph(Map.of("it", "Descrizione", "en", "Description")))
+			.advantages(paragraph(Map.of("it", "Pro", "en", "Pros")))
+			.disadvantages(paragraph(Map.of("it", "Contro", "en", "Cons")))
+			.build();
 	}
 
 	private static List<FieldViolation> violationsOf(DomainException refused) {
@@ -662,13 +708,17 @@ class FirstAppearanceIntegrationTest {
 
 	/** Complete, but for what a test of the first appearance does not care about. */
 	private static Bounty bounty(String posterName, StoryPoint firstAppearance) {
-		return new Bounty(posterName, 1_500_000_000L, BountyCondition.DEAD_OR_ALIVE, false, null, null, Map.of(), null,
-				firstAppearance);
+		return Bounty.builder()
+			.posterName(posterName)
+			.amount(1_500_000_000L)
+			.condition(BountyCondition.DEAD_OR_ALIVE)
+			.firstAppearance(firstAppearance)
+			.build();
 	}
 
 	/** Complete, but for what a test of the first appearance does not care about. */
 	private static Affiliation affiliation(String romaji, StoryPoint firstAppearance) {
-		return new Affiliation(romaji, Map.of(), null, firstAppearance, null);
+		return Affiliation.builder().romaji(romaji).firstAppearance(firstAppearance).build();
 	}
 
 	private UUID affiliationContent(VersionStatus status, Affiliation body) {

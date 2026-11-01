@@ -1,6 +1,5 @@
 package dev.onepieceapi.contentservice.web.dto.response;
 
-public record DevilFruitTypeTranslationResponse(String name, String description, String advantages,
-		String disadvantages) {
+public record DevilFruitTypeTranslationResponse(String name) {
 
 }

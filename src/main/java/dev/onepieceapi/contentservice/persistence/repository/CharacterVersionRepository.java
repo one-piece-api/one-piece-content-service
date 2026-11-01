@@ -95,6 +95,9 @@ public interface CharacterVersionRepository extends VersionBodyRepository<Charac
 			    select version_id from character_version
 			    where first_appearance_chapter_id = :storyContentId
 			        or first_appearance_episode_id = :storyContentId
+			    union select version_id from character_version_paragraph
+			    where discovered_chapter_id = :storyContentId or discovered_episode_id = :storyContentId
+			        or ended_chapter_id = :storyContentId or ended_episode_id = :storyContentId
 			    union select version_id from character_version_epithet
 			    where discovered_chapter_id = :storyContentId or discovered_episode_id = :storyContentId
 			        or ended_chapter_id = :storyContentId or ended_episode_id = :storyContentId
@@ -297,13 +300,18 @@ public interface CharacterVersionRepository extends VersionBodyRepository<Charac
 				and v.status in :statuses""")
 	boolean namesAsRelative(UUID holderContentId, UUID namedContentId, Collection<VersionStatus> statuses);
 
-	/** The epithets and the roles count too: a language they are written in is in use. */
+	/**
+	 * The epithets, the roles and the paragraphs count too: a language they are written
+	 * in is in use.
+	 */
 	@Override
 	@Query(value = """
 			select exists (select 1 from character_version_translation where language_code = :languageCode)
 			    or exists (select 1 from character_version_epithet_translation
 			               where language_code = :languageCode)
 			    or exists (select 1 from character_version_affiliation_period_translation
+			               where language_code = :languageCode)
+			    or exists (select 1 from character_version_paragraph_translation
 			               where language_code = :languageCode)""", nativeQuery = true)
 	boolean existsByLanguage(String languageCode);
 

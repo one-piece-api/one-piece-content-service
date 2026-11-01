@@ -32,7 +32,7 @@ class FirstAppearanceMapperTest {
 		var request = new DevilFruitTypeRequest("Zoan", null,
 				List.of(new DevilFruitTypeSubcategoryRequest(null, null,
 						new FirstAppearanceRequest(ROMANCE_DAWN, null))),
-				new FirstAppearanceRequest(ROMANCE_DAWN, null));
+				new FirstAppearanceRequest(ROMANCE_DAWN, null), null, null, null);
 
 		var type = DevilFruitTypeRequestMapper.toDomain(request);
 

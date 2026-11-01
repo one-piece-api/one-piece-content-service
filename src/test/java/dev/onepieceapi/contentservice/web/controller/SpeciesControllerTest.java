@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.web.controller;
 
+import static dev.onepieceapi.contentservice.domain.readertime.ParagraphFixtures.paragraph;
 import dev.onepieceapi.contentservice.domain.species.Species;
 import dev.onepieceapi.contentservice.domain.species.SpeciesReference;
 import dev.onepieceapi.contentservice.domain.species.SpeciesTranslation;
@@ -103,7 +104,7 @@ class SpeciesControllerTest {
 	void aVersionSaysEverythingWithItsPictureAndItsFirstAppearance() throws Exception {
 		when(this.service.getVersion(any(), any(), eq(CONTENT_ID), eq(1)))
 			.thenReturn(new VersionAccess<>(version(VersionStatus.PUBLISHED, "abc"), Set.of()));
-		when(this.firstAppearances.referencesFor(anyCollection()))
+		when(this.firstAppearances.referencesOfPoints(anyCollection()))
 			.thenReturn(Map.of(CHAPTER_ID, new NumberedReference(CHAPTER_ID, 1, Map.of("it", "Romance Dawn"))));
 		when(this.images.toResponse("abc")).thenReturn(new ImageResponse("abc", "/api/content/images/abc"));
 
@@ -111,7 +112,7 @@ class SpeciesControllerTest {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.body.romaji").value("Gyojin"))
 			.andExpect(jsonPath("$.body.translations.it.name").value("Uomo-pesce"))
-			.andExpect(jsonPath("$.body.translations.it.description").value("Una razza marina"))
+			.andExpect(jsonPath("$.body.description[0].text.it").value("Una razza marina"))
 			.andExpect(jsonPath("$.body.image.url").value("/api/content/images/abc"))
 			.andExpect(jsonPath("$.body.firstAppearance.chapter.number").value(1))
 			.andExpect(jsonPath("$.body.firstAppearance.chapter.names.it").value("Romance Dawn"));
@@ -143,8 +144,9 @@ class SpeciesControllerTest {
 		this.mockMvc
 			.perform(post("/species").with(callerWith(Permission.CONTENT_WRITE))
 				.contentType("application/json")
-				.content("{\"romaji\":\"Gyojin\",\"translations\":{\"en\":{\"name\":\"Fish-Man\","
-						+ "\"description\":\"Fish-Man\"}},\"firstAppearance\":{\"chapter\":\"" + CHAPTER_ID + "\"}}"))
+				.content("{\"romaji\":\"Gyojin\",\"translations\":{\"en\":{\"name\":\"Fish-Man\""
+						+ "}},\"description\":[{\"text\":{\"en\":\"Fish-Man\"}}],\"firstAppearance\":{\"chapter\":\""
+						+ CHAPTER_ID + "\"}}"))
 			.andExpect(status().isCreated())
 			.andExpect(jsonPath("$.id").value(CONTENT_ID.toString()));
 
@@ -152,8 +154,7 @@ class SpeciesControllerTest {
 		verify(this.service).create(eq(Set.of(Permission.CONTENT_WRITE)), any(), written.capture(),
 				eq(ImageChange.KEEP));
 		assertThat(written.getValue().romaji()).isEqualTo("Gyojin");
-		assertThat(written.getValue().translations().get("en"))
-			.isEqualTo(new SpeciesTranslation("Fish-Man", "Fish-Man"));
+		assertThat(written.getValue().translations().get("en")).isEqualTo(new SpeciesTranslation("Fish-Man"));
 		assertThat(written.getValue().firstAppearance()).isEqualTo(StoryPoint.ofChapter(CHAPTER_ID));
 	}
 
@@ -199,7 +200,7 @@ class SpeciesControllerTest {
 	void aTextLongerThanItsLimitIsABadRequestAndOneAsLongIsAccepted() throws Exception {
 		for (String body : List.of("{\"romaji\":\"" + "x".repeat(101) + "\"}",
 				"{\"translations\":{\"it\":{\"name\":\"" + "x".repeat(101) + "\"}}}",
-				"{\"translations\":{\"it\":{\"description\":\"" + "x".repeat(2001) + "\"}}}")) {
+				"{\"description\":[{\"text\":{\"it\":\"" + "x".repeat(2001) + "\"}}]}")) {
 			this.mockMvc
 				.perform(post("/species").with(callerWith(Permission.CONTENT_WRITE))
 					.contentType("application/json")
@@ -212,7 +213,7 @@ class SpeciesControllerTest {
 			.perform(post("/species").with(callerWith(Permission.CONTENT_WRITE))
 				.contentType("application/json")
 				.content("{\"romaji\":\"" + "x".repeat(100) + "\",\"translations\":{\"it\":{\"name\":\""
-						+ "x".repeat(100) + "\",\"description\":\"" + "x".repeat(2000) + "\"}}}"))
+						+ "x".repeat(100) + "\"}},\"description\":[{\"text\":{\"it\":\"" + "x".repeat(2000) + "\"}}]}"))
 			.andExpect(status().isCreated());
 	}
 
@@ -288,12 +289,18 @@ class SpeciesControllerTest {
 	}
 
 	private static Version<Species> version(VersionStatus status, String imageId) {
-		var translations = Map.of("it", new SpeciesTranslation("Uomo-pesce", "Una razza marina"));
+		var translations = Map.of("it", new SpeciesTranslation("Uomo-pesce"));
 		return Version.<Species>builder()
 			.number(1)
 			.status(status)
 			.author(NAMI)
-			.body(new Species("Gyojin", translations, imageId, StoryPoint.ofChapter(CHAPTER_ID)))
+			.body(Species.builder()
+				.romaji("Gyojin")
+				.translations(translations)
+				.imageId(imageId)
+				.firstAppearance(StoryPoint.ofChapter(CHAPTER_ID))
+				.description(paragraph("it", "Una razza marina"))
+				.build())
 			.createdAt(CREATED)
 			.updatedAt(CREATED)
 			.build();

@@ -1,10 +1,13 @@
 package dev.onepieceapi.contentservice.domain.character;
 
+import dev.onepieceapi.contentservice.domain.readertime.FirstAppearing;
 import dev.onepieceapi.contentservice.domain.readertime.NamedWindow;
+import dev.onepieceapi.contentservice.domain.readertime.Paragraph;
+import dev.onepieceapi.contentservice.domain.readertime.ParagraphSection;
+import dev.onepieceapi.contentservice.domain.readertime.Paragraphed;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.domain.readertime.WindowSequence;
 import dev.onepieceapi.contentservice.domain.readertime.Windowed;
-import dev.onepieceapi.contentservice.domain.readertime.WindowedItem;
 import dev.onepieceapi.contentservice.domain.workflow.ContentBody;
 import dev.onepieceapi.contentservice.domain.workflow.NaturalKey;
 import dev.onepieceapi.contentservice.domain.workflow.Text;
@@ -15,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -25,10 +29,11 @@ import java.util.stream.Stream;
 /**
  * What one version of a Character says (docs/user-flows/content-editorial-workflow.md
  * 3.1.11): a person of the story as of today (implementation plan of the Character, D1).
- * One romaji - the official Latin-script name - shared by every language, a name and a
- * description per language code, and its lists in the order they are shown, each entry
- * with its window on the reader axis (workflow revision 17, 3.7.2). Plugged into the
- * generic {@code Content} and {@code Version}, which carry the workflow around it.
+ * One romaji - the official Latin-script name - shared by every language, a name per
+ * language code, its description as paragraphs (3.7.3), and its lists in the order they
+ * are shown, each entry with its window on the reader axis (workflow revision 17, 3.7.2).
+ * Plugged into the generic {@code Content} and {@code Version}, which carry the workflow
+ * around it.
  *
  * @param japaneseName as published, not localized; never missing
  * @param status required to submit (D4)
@@ -43,20 +48,20 @@ import java.util.stream.Stream;
  * @param imageId its portrait (D7), optional and not localized
  * @param firstAppearance where it is first shown or named (D9); {@link StoryPoint#NONE}
  * for none, which a draft may keep - it is required to submit and to go online
+ * @param description its biography, one paragraph per arc (3.7.3); none is never null
  */
 @Builder(toBuilder = true)
 public record Character(String romaji, String japaneseName, Map<String, CharacterTranslation> translations,
 		CharacterStatus status, Gender gender, MonthDay birthday, List<Epithet> epithets, List<Alias> aliases,
 		List<SpeciesEntry> species, List<Membership> affiliations, List<FruitUse> devilFruits, List<Relative> relatives,
-		String imageId, StoryPoint firstAppearance) implements ContentBody<Character>, WindowedItem {
+		String imageId, StoryPoint firstAppearance,
+		List<Paragraph> description) implements ContentBody<Character>, FirstAppearing, Paragraphed {
 
 	public static final int ROMAJI_MAX_LENGTH = 100;
 
 	public static final int NAME_MAX_LENGTH = 100;
 
 	public static final int JAPANESE_NAME_MAX_LENGTH = 100;
-
-	public static final int DESCRIPTION_MAX_LENGTH = 2000;
 
 	public static final int EPITHET_MAX_LENGTH = 100;
 
@@ -93,8 +98,6 @@ public record Character(String romaji, String japaneseName, Map<String, Characte
 
 	private static final String NAME_FIELD = "translations[%s].name";
 
-	private static final String DESCRIPTION_FIELD = "translations[%s].description";
-
 	private static final String EPITHET_FIELD = "epithets[%d].text[%s]";
 
 	private static final String ROLE_FIELD = "affiliations[%d].periods[%d].role[%s]";
@@ -113,6 +116,7 @@ public record Character(String romaji, String japaneseName, Map<String, Characte
 		devilFruits = devilFruits == null ? List.of() : List.copyOf(devilFruits);
 		relatives = relatives == null ? List.of() : List.copyOf(relatives);
 		firstAppearance = StoryPoint.orNone(firstAppearance);
+		description = description == null ? List.of() : List.copyOf(description);
 	}
 
 	/** The same character with another portrait, or none. */
@@ -139,16 +143,18 @@ public record Character(String romaji, String japaneseName, Map<String, Characte
 			.epithets(this.epithets.stream().map(Epithet::normalized).toList())
 			.aliases(this.aliases.stream().map(Alias::normalized).toList())
 			.affiliations(this.affiliations.stream().map(Membership::normalized).toList())
+			.description(Paragraph.normalized(this.description))
 			.build();
 	}
 
 	/**
-	 * The languages of the character, of its epithets and of the roles of the periods of
-	 * its memberships.
+	 * The languages of the character, of its paragraphs, of its epithets and of the roles
+	 * of the periods of its memberships.
 	 */
 	@Override
 	public Set<String> languages() {
 		Set<String> languages = new TreeSet<>(this.translations.keySet());
+		languages.addAll(paragraphLanguages());
 		this.epithets.forEach(epithet -> languages.addAll(epithet.text().keySet()));
 		this.affiliations
 			.forEach(membership -> membership.periods().forEach(period -> languages.addAll(period.role().keySet())));
@@ -172,10 +178,10 @@ public record Character(String romaji, String japaneseName, Map<String, Characte
 	}
 
 	/**
-	 * The romaji, the status, the gender and the first appearance, then a name and a
-	 * description per language, then the text of each epithet per language, then each
-	 * membership without a period and the role of each period that has one in some
-	 * language, in the others, then the {@code discovered} point of every window
+	 * The romaji, the status, the gender and the first appearance, then a name per
+	 * language, then the text of each epithet per language, then each membership without
+	 * a period and the role of each period that has one in some language, in the others,
+	 * then the paragraphs (3.7.3), then the {@code discovered} point of every window
 	 * (workflow 3.7.2) - every one missing. The Japanese name, the birthday, the rank,
 	 * the {@code ended} points and the image are never missing.
 	 */
@@ -195,12 +201,8 @@ public record Character(String romaji, String japaneseName, Map<String, Characte
 			missing.add(FIELD);
 		}
 		for (String language : languages) {
-			CharacterTranslation translation = translationIn(language);
-			if (translation.name() == null) {
+			if (translationIn(language).name() == null) {
 				missing.add(NAME_FIELD.formatted(language));
-			}
-			if (translation.description() == null) {
-				missing.add(DESCRIPTION_FIELD.formatted(language));
 			}
 		}
 		for (int index = 0; index < this.epithets.size(); index++) {
@@ -214,8 +216,19 @@ public record Character(String romaji, String japaneseName, Map<String, Characte
 		for (int index = 0; index < this.affiliations.size(); index++) {
 			missing.addAll(missingOfMembership(index, languages));
 		}
+		missing.addAll(missingParagraphs(languages));
 		missing.addAll(missingDiscovered());
 		return missing;
+	}
+
+	@Override
+	public Optional<StoryPoint> origin() {
+		return Optional.of(this.firstAppearance);
+	}
+
+	@Override
+	public Map<ParagraphSection, List<Paragraph>> paragraphs() {
+		return Map.of(ParagraphSection.DESCRIPTION, this.description);
 	}
 
 	/** No period at all, then the role of each period missing in a language. */
@@ -238,7 +251,7 @@ public record Character(String romaji, String japaneseName, Map<String, Characte
 
 	/**
 	 * Every window, list by list in the order of the request: epithets, aliases, species,
-	 * the periods of each membership, devil fruits, relatives.
+	 * the periods of each membership, devil fruits, relatives, paragraphs.
 	 */
 	@Override
 	public List<NamedWindow> windows() {
@@ -247,7 +260,8 @@ public record Character(String romaji, String japaneseName, Map<String, Characte
 			.flatMap(index -> named(PERIODS_FIELD.formatted(index), this.affiliations.get(index).periods()));
 		return Stream
 			.of(named("epithets", this.epithets), named("aliases", this.aliases), named("species", this.species),
-					periods, named("devilFruits", this.devilFruits), named("relatives", this.relatives))
+					periods, named("devilFruits", this.devilFruits), named("relatives", this.relatives),
+					paragraphWindows().stream())
 			.flatMap(Function.identity())
 			.toList();
 	}

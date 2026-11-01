@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.service.affiliation;
 
+import dev.onepieceapi.contentservice.service.content.ReaderAxisRules;
 import dev.onepieceapi.contentservice.config.RulesProperties;
 import dev.onepieceapi.contentservice.domain.affiliation.Affiliation;
 import dev.onepieceapi.contentservice.domain.affiliation.AffiliationKind;
@@ -51,6 +52,8 @@ public class AffiliationRules implements ContentRules<Affiliation> {
 
 	private final CharacterVersionRepository characterRepository;
 
+	private final ReaderAxisRules readerAxisRules;
+
 	private final RulesProperties properties;
 
 	@Override
@@ -63,6 +66,7 @@ public class AffiliationRules implements ContentRules<Affiliation> {
 				this.contentRepository);
 		RelationRules.lockTargetBefore(action, AffiliationRelations.FIRST_APPEARANCE_EPISODE, version.body(),
 				this.contentRepository);
+		this.readerAxisRules.lockBefore(action, version.body());
 	}
 
 	@Override
@@ -73,6 +77,7 @@ public class AffiliationRules implements ContentRules<Affiliation> {
 					this.chapterRepository))
 			.or(() -> RelationRules.targetNotOnline(action, AffiliationRelations.FIRST_APPEARANCE_EPISODE, affiliation,
 					this.episodeRepository))
+			.or(() -> this.readerAxisRules.blockOf(action, version.body()))
 			.or(() -> rankInUse(action, contentId, affiliation))
 			.or(() -> RelationRules.onlineItemsLinked(action, CharacterRelations.AFFILIATION, contentId,
 					linkedCharacters(), this.properties.blockingPreviewSize()));

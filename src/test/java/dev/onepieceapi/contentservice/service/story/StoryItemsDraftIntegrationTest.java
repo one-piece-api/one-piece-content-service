@@ -1,5 +1,7 @@
 package dev.onepieceapi.contentservice.service.story;
 
+import dev.onepieceapi.contentservice.service.validation.ParagraphRules;
+import dev.onepieceapi.contentservice.service.content.ReaderAxisRules;
 import dev.onepieceapi.contentservice.config.RulesProperties;
 import dev.onepieceapi.contentservice.domain.security.Permission;
 import dev.onepieceapi.contentservice.domain.security.User;
@@ -7,9 +9,9 @@ import dev.onepieceapi.contentservice.domain.story.Arc;
 import dev.onepieceapi.contentservice.domain.story.Chapter;
 import dev.onepieceapi.contentservice.domain.story.Episode;
 import dev.onepieceapi.contentservice.domain.story.Release;
-import dev.onepieceapi.contentservice.domain.story.StoryTranslation;
+import dev.onepieceapi.contentservice.domain.story.TitleTranslation;
 import dev.onepieceapi.contentservice.domain.story.Volume;
-import dev.onepieceapi.contentservice.domain.story.VolumeTranslation;
+import dev.onepieceapi.contentservice.domain.story.StoryTranslation;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.repository.ArcVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
@@ -195,14 +197,14 @@ class StoryItemsDraftIntegrationTest {
 						this.volumeRepository),
 				new ChapterRules(this.contentRepository, this.arcRepository, this.volumeRepository,
 						this.fruitRepository, this.typeRepository, this.bountyRepository, this.affiliationRepository,
-						this.speciesRepository, this.characterRepository, new RulesProperties(5)),
+						this.speciesRepository, this.characterRepository, this.sagaRepository, new RulesProperties(5)),
 				auditLogService, clock);
 		this.episodes = new EpisodeService(this.episodeRepository, this.contentVersionRepository,
 				this.contentRepository,
 				new EpisodeValidator(this.episodeRepository, this.languageRepository, this.arcRepository),
 				new EpisodeRules(this.contentRepository, this.arcRepository, this.fruitRepository, this.typeRepository,
 						this.bountyRepository, this.affiliationRepository, this.speciesRepository,
-						this.characterRepository, new RulesProperties(5)),
+						this.characterRepository, this.sagaRepository, new RulesProperties(5)),
 				auditLogService, clock);
 
 		this.fixtures = new StoryFixtures(this.entityManager, this.sagaRepository, this.arcRepository,
@@ -270,7 +272,7 @@ class StoryItemsDraftIntegrationTest {
 				Volume.builder()
 					.number(900)
 					.releases(List.of(new Release("jp", DAY)))
-					.translations(Map.of("it", new VolumeTranslation(" L'alba ")))
+					.translations(Map.of("it", new TitleTranslation(" L'alba ")))
 					.build());
 		this.fixtures.stored();
 
@@ -280,7 +282,7 @@ class StoryItemsDraftIntegrationTest {
 		assertThat(episodeBody.japaneseTitle()).isEqualTo("Ore wa Luffy!");
 		assertThat(episodeBody.arcContentId()).isNull();
 		assertThat(volumeBody.releases()).containsExactly(new Release("JP", DAY));
-		assertThat(volumeBody.translations()).containsEntry("it", new VolumeTranslation("L'alba"));
+		assertThat(volumeBody.translations()).containsEntry("it", new TitleTranslation("L'alba"));
 	}
 
 	@Test
@@ -331,7 +333,7 @@ class StoryItemsDraftIntegrationTest {
 		var episode = this.episodes.create(EDITOR, this.nami,
 				Episode.builder().number(600).translations(titles).build());
 		var volume = this.volumes.create(EDITOR, this.nami,
-				Volume.builder().number(600).translations(Map.of("en", new VolumeTranslation("Volume 1"))).build());
+				Volume.builder().number(600).translations(Map.of("en", new TitleTranslation("Volume 1"))).build());
 
 		assertThat(chapter.versions()).hasSize(1);
 		assertThat(episode.versions()).hasSize(1);
@@ -340,12 +342,12 @@ class StoryItemsDraftIntegrationTest {
 
 	@Test
 	void aTitleIsStillUniqueForAnArc() {
-		var arcTitle = Map.of("en", new StoryTranslation("Arc", "d"));
+		var arcTitle = Map.of("en", new TitleTranslation("Arc"));
 		this.fixtures.stored();
 		var arcs = arcService();
 
 		var refused = catchThrowableOfType(ValueAlreadyUsedException.class,
-				() -> arcs.create(EDITOR, this.nami, new Arc(700, null, arcTitle)));
+				() -> arcs.create(EDITOR, this.nami, new Arc(700, null, arcTitle, null)));
 
 		assertThat(fieldsOf(refused)).containsExactly("translations[en].title");
 	}
@@ -505,9 +507,13 @@ class StoryItemsDraftIntegrationTest {
 	private ArcService arcService() {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
 		return new ArcService(this.arcRepository, this.contentVersionRepository, this.contentRepository,
-				new ArcValidator(this.arcRepository, this.languageRepository, this.sagaRepository),
+				new ArcValidator(this.arcRepository, this.languageRepository, this.sagaRepository,
+						new ParagraphRules(new ReaderAxisRules(this.contentRepository, this.chapterRepository,
+								this.episodeRepository))),
 				new ArcRules(this.contentRepository, this.sagaRepository, this.chapterRepository,
-						this.episodeRepository, new RulesProperties(5)),
+						this.episodeRepository,
+						new ReaderAxisRules(this.contentRepository, this.chapterRepository, this.episodeRepository),
+						new RulesProperties(5)),
 				new AuditLogService(this.auditLogRepository, clock), clock);
 	}
 

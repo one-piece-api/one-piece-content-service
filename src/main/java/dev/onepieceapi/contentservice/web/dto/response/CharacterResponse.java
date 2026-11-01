@@ -12,7 +12,7 @@ import java.util.Map;
 /**
  * What a version of a Character says - the body of its {@link VersionResponse}.
  *
- * @param translations name and description per language code
+ * @param translations the name per language code
  * @param birthday day and month, ISO 8601 {@code --MM-DD}; null for none
  * @param aliases each alias, in order
  * @param species each species as of today, in order
@@ -31,6 +31,6 @@ public record CharacterResponse(String romaji, String japaneseName,
 		@Schema(type = "string", example = "--05-05") MonthDay birthday, List<EpithetResponse> epithets,
 		List<AliasResponse> aliases, List<SpeciesEntryResponse> species, List<MembershipResponse> affiliations,
 		List<FruitUseResponse> devilFruits, List<RelativeResponse> relatives, List<RelativeResponse> relativesOf,
-		ImageResponse image, FirstAppearanceResponse firstAppearance) {
+		ImageResponse image, FirstAppearanceResponse firstAppearance, List<ParagraphResponse> description) {
 
 }

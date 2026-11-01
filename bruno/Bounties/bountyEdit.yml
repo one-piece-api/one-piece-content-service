@@ -21,6 +21,19 @@ http:
       {
         "amount": 0,
         "condition": "DEAD_OR_ALIVE",
+        "description": [
+          {
+            "discovered": {
+              "chapter": "",
+              "episode": ""
+            },
+            "ended": {
+              "chapter": "",
+              "episode": ""
+            },
+            "text": {}
+          }
+        ],
         "firstAppearance": {
           "chapter": "",
           "episode": ""
@@ -29,8 +42,7 @@ http:
         "inactive": false,
         "posterName": "",
         "previous": "",
-        "removeImage": false,
-        "translations": {}
+        "removeImage": false
       }
   auth: inherit
 
@@ -60,6 +72,19 @@ examples:
           {
             "amount": 0,
             "condition": "DEAD_OR_ALIVE",
+            "description": [
+              {
+                "discovered": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "ended": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "text": {}
+              }
+            ],
             "firstAppearance": {
               "chapter": "",
               "episode": ""
@@ -68,8 +93,7 @@ examples:
             "inactive": false,
             "posterName": "",
             "previous": "",
-            "removeImage": false,
-            "translations": {}
+            "removeImage": false
           }
     response:
       status: 200
@@ -108,6 +132,35 @@ examples:
                 }
               ],
               "condition": "DEAD_OR_ALIVE",
+              "description": [
+                {
+                  "discovered": {
+                    "chapter": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    },
+                    "episode": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    }
+                  },
+                  "ended": {
+                    "chapter": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    },
+                    "episode": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    }
+                  },
+                  "text": {}
+                }
+              ],
               "firstAppearance": {
                 "chapter": {
                   "id": "",
@@ -144,7 +197,6 @@ examples:
                 "key": "",
                 "posterName": ""
               },
-              "translations": {},
               "validity": "ACTIVE"
             },
             "claimant": {
@@ -180,6 +232,19 @@ examples:
           {
             "amount": 0,
             "condition": "DEAD_OR_ALIVE",
+            "description": [
+              {
+                "discovered": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "ended": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "text": {}
+              }
+            ],
             "firstAppearance": {
               "chapter": "",
               "episode": ""
@@ -188,8 +253,7 @@ examples:
             "inactive": false,
             "posterName": "",
             "previous": "",
-            "removeImage": false,
-            "translations": {}
+            "removeImage": false
           }
     response:
       headers:
@@ -232,6 +296,19 @@ examples:
           {
             "amount": 0,
             "condition": "DEAD_OR_ALIVE",
+            "description": [
+              {
+                "discovered": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "ended": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "text": {}
+              }
+            ],
             "firstAppearance": {
               "chapter": "",
               "episode": ""
@@ -240,8 +317,7 @@ examples:
             "inactive": false,
             "posterName": "",
             "previous": "",
-            "removeImage": false,
-            "translations": {}
+            "removeImage": false
           }
     response:
       headers:

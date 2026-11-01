@@ -52,13 +52,16 @@ public class DevilFruitTypeValidator extends ContentValidator<DevilFruitType, De
 
 	private final EpisodeVersionRepository episodeRepository;
 
+	private final ParagraphRules paragraphRules;
+
 	@Autowired
 	public DevilFruitTypeValidator(DevilFruitTypeVersionRepository versionRepository,
 			LanguageRepository languageRepository, ChapterVersionRepository chapterRepository,
-			EpisodeVersionRepository episodeRepository) {
+			EpisodeVersionRepository episodeRepository, ParagraphRules paragraphRules) {
 		super(versionRepository, languageRepository, DevilFruitTypeVersionMapper::toDomain);
 		this.chapterRepository = chapterRepository;
 		this.episodeRepository = episodeRepository;
+		this.paragraphRules = paragraphRules;
 	}
 
 	/** Every first appearance at fault is reported, the type's and its subcategories'. */
@@ -81,6 +84,7 @@ public class DevilFruitTypeValidator extends ContentValidator<DevilFruitType, De
 						this.episodeRepository)
 				.ifPresent(violations::add);
 		}
+		violations.addAll(this.paragraphRules.violationsOnSave(body));
 		if (!violations.isEmpty()) {
 			throw new ValueInvalidException(violations);
 		}

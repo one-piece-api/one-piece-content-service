@@ -1,11 +1,14 @@
 package dev.onepieceapi.contentservice.service.story;
 
+import dev.onepieceapi.contentservice.service.content.OnlineChapters;
+import dev.onepieceapi.contentservice.domain.story.TitleTranslation;
+import dev.onepieceapi.contentservice.service.validation.ParagraphRules;
+import dev.onepieceapi.contentservice.service.content.ReaderAxisRules;
 import dev.onepieceapi.contentservice.config.RulesProperties;
 import dev.onepieceapi.contentservice.domain.security.Permission;
 import dev.onepieceapi.contentservice.domain.security.User;
 import dev.onepieceapi.contentservice.domain.story.Arc;
 import dev.onepieceapi.contentservice.domain.story.Saga;
-import dev.onepieceapi.contentservice.domain.story.StoryTranslation;
 import dev.onepieceapi.contentservice.domain.workflow.EntityType;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.entity.ArcVersionEntity;
@@ -142,13 +145,21 @@ class StoryDraftIntegrationTest {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
 		var auditLogService = new AuditLogService(this.auditLogRepository, clock);
 		this.sagas = new SagaService(this.sagaRepository, this.contentVersionRepository, this.contentRepository,
-				new SagaValidator(this.sagaRepository, this.languageRepository),
-				new SagaRules(this.contentRepository, this.arcRepository, new RulesProperties(5)), auditLogService,
-				clock);
+				new SagaValidator(this.sagaRepository, this.languageRepository,
+						new ParagraphRules(new ReaderAxisRules(this.contentRepository, this.chapterRepository,
+								this.episodeRepository))),
+				new SagaRules(this.contentRepository, this.arcRepository,
+						new ReaderAxisRules(this.contentRepository, this.chapterRepository, this.episodeRepository),
+						new RulesProperties(5)),
+				auditLogService, clock);
 		this.arcs = new ArcService(this.arcRepository, this.contentVersionRepository, this.contentRepository,
-				new ArcValidator(this.arcRepository, this.languageRepository, this.sagaRepository),
+				new ArcValidator(this.arcRepository, this.languageRepository, this.sagaRepository,
+						new ParagraphRules(new ReaderAxisRules(this.contentRepository, this.chapterRepository,
+								this.episodeRepository))),
 				new ArcRules(this.contentRepository, this.sagaRepository, this.chapterRepository,
-						this.episodeRepository, new RulesProperties(5)),
+						this.episodeRepository,
+						new ReaderAxisRules(this.contentRepository, this.chapterRepository, this.episodeRepository),
+						new RulesProperties(5)),
 				auditLogService, clock);
 
 		this.eastBlue = sagaContent(1, "East Blue", PUBLISHED);
@@ -162,7 +173,7 @@ class StoryDraftIntegrationTest {
 
 	@Test
 	void aNewSagaIsBornWithADraftSayingWhatWasWrittenAndANumberWithGapsIsFine() {
-		var written = new Saga(5, Map.of("it", new StoryTranslation(" Mare Blu ", "  ")));
+		var written = new Saga(5, Map.of("it", new TitleTranslation(" Mare Blu ")), null);
 
 		var content = this.sagas.create(EDITOR, this.nami, written);
 		stored();
@@ -170,12 +181,12 @@ class StoryDraftIntegrationTest {
 		var version = this.sagas.getVersion(EDITOR, this.nami, content.id(), 1).version();
 		assertThat(version.status()).isEqualTo(DRAFT);
 		assertThat(version.author()).isEqualTo(this.nami);
-		assertThat(version.body()).isEqualTo(new Saga(5, Map.of("it", new StoryTranslation("Mare Blu", null))));
+		assertThat(version.body()).isEqualTo(new Saga(5, Map.of("it", new TitleTranslation("Mare Blu")), null));
 	}
 
 	@Test
 	void theNumberZeroIsAValidNumber() {
-		var content = this.sagas.create(EDITOR, this.nami, new Saga(0, Map.of()));
+		var content = this.sagas.create(EDITOR, this.nami, new Saga(0, Map.of(), null));
 		stored();
 
 		assertThat(this.sagas.getVersion(EDITOR, this.nami, content.id(), 1).version().body().number()).isZero();
@@ -186,7 +197,7 @@ class StoryDraftIntegrationTest {
 		// 1 is East Blue's online version; 7 is an old version of Alabasta; 9 is a draft.
 		for (int taken : List.of(1, 7, 8, 9)) {
 			var refused = catchThrowableOfType(ValueAlreadyUsedException.class,
-					() -> this.sagas.create(EDITOR, this.nami, new Saga(taken, Map.of())));
+					() -> this.sagas.create(EDITOR, this.nami, new Saga(taken, Map.of(), null)));
 
 			assertThat(fieldsOf(refused)).as("number %s", taken).containsExactly("number");
 		}
@@ -204,7 +215,7 @@ class StoryDraftIntegrationTest {
 
 	@Test
 	void aTitleAnotherSagaHasInALanguageIsRefused() {
-		var written = new Saga(2, Map.of("en", new StoryTranslation(" EAST BLUE ", null)));
+		var written = new Saga(2, Map.of("en", new TitleTranslation(" EAST BLUE ")), null);
 
 		var refused = catchThrowableOfType(ValueAlreadyUsedException.class,
 				() -> this.sagas.create(EDITOR, this.nami, written));
@@ -215,7 +226,7 @@ class StoryDraftIntegrationTest {
 	@Test
 	void theSameTitleInAnotherLanguageIsFree() {
 		// East Blue is the English title of another saga; in Italian it is free.
-		var written = new Saga(2, Map.of("it", new StoryTranslation("East Blue", null)));
+		var written = new Saga(2, Map.of("it", new TitleTranslation("East Blue")), null);
 
 		var content = this.sagas.create(EDITOR, this.nami, written);
 
@@ -224,7 +235,7 @@ class StoryDraftIntegrationTest {
 
 	@Test
 	void aNumberAndATitleAreReportedTogether() {
-		var written = new Saga(1, Map.of("en", new StoryTranslation("East Blue", null)));
+		var written = new Saga(1, Map.of("en", new TitleTranslation("East Blue")), null);
 
 		var refused = catchThrowableOfType(ValueAlreadyUsedException.class,
 				() -> this.sagas.create(EDITOR, this.nami, written));
@@ -235,23 +246,23 @@ class StoryDraftIntegrationTest {
 	@Test
 	void anArcMayHaveTheNumberOfASagaButNotOfAnotherArc() {
 		// Each entity has its own values: number 7 is Alabasta's, not an arc's.
-		var content = this.arcs.create(EDITOR, this.nami, new Arc(7, this.eastBlue, Map.of()));
+		var content = this.arcs.create(EDITOR, this.nami, new Arc(7, this.eastBlue, Map.of(), null));
 		stored();
 		assertThat(content.versions()).hasSize(1);
 
 		var refused = catchThrowableOfType(ValueAlreadyUsedException.class,
-				() -> this.arcs.create(EDITOR, this.nami, new Arc(1, this.eastBlue, Map.of())));
+				() -> this.arcs.create(EDITOR, this.nami, new Arc(1, this.eastBlue, Map.of(), null)));
 
 		assertThat(fieldsOf(refused)).containsExactly("number");
 	}
 
 	@Test
 	void aTitleAnotherArcHasInALanguageIsRefusedButASagaTitleIsFree() {
-		var sagaTitle = new Arc(2, this.eastBlue, Map.of("en", new StoryTranslation("East Blue", null)));
+		var sagaTitle = new Arc(2, this.eastBlue, Map.of("en", new TitleTranslation("East Blue")), null);
 		this.arcs.create(EDITOR, this.nami, sagaTitle);
 
 		var refused = catchThrowableOfType(ValueAlreadyUsedException.class, () -> this.arcs.create(EDITOR, this.nami,
-				new Arc(3, this.eastBlue, Map.of("en", new StoryTranslation("romance dawn", null)))));
+				new Arc(3, this.eastBlue, Map.of("en", new TitleTranslation("romance dawn")), null)));
 
 		assertThat(fieldsOf(refused)).containsExactly("translations[en].title");
 	}
@@ -262,7 +273,7 @@ class StoryDraftIntegrationTest {
 		UUID saga = sagaContent(20, "Kodai", status);
 		stored();
 
-		var content = this.arcs.create(EDITOR, this.nami, new Arc(2, saga, Map.of()));
+		var content = this.arcs.create(EDITOR, this.nami, new Arc(2, saga, Map.of(), null));
 
 		assertThat(content.versions()).hasSize(1);
 	}
@@ -274,7 +285,7 @@ class StoryDraftIntegrationTest {
 		stored();
 
 		var refused = catchThrowableOfType(ValueInvalidException.class,
-				() -> this.arcs.create(EDITOR, this.nami, new Arc(2, saga, Map.of())));
+				() -> this.arcs.create(EDITOR, this.nami, new Arc(2, saga, Map.of(), null)));
 
 		assertThat(fieldsOf(refused)).containsExactly("saga");
 	}
@@ -284,7 +295,7 @@ class StoryDraftIntegrationTest {
 		// Nothing there, and a content that exists but is an arc: told alike.
 		for (UUID notASaga : List.of(UUID.randomUUID(), this.romanceDawn)) {
 			var refused = catchThrowableOfType(ValueInvalidException.class,
-					() -> this.arcs.create(EDITOR, this.nami, new Arc(2, notASaga, Map.of())));
+					() -> this.arcs.create(EDITOR, this.nami, new Arc(2, notASaga, Map.of(), null)));
 
 			assertThat(fieldsOf(refused)).containsExactly("saga");
 		}
@@ -292,18 +303,18 @@ class StoryDraftIntegrationTest {
 
 	@Test
 	void theSagaIsCheckedAgainWhenTheDraftIsEdited() {
-		var draft = this.arcs.create(EDITOR, this.nami, new Arc(2, this.eastBlue, Map.of()));
+		var draft = this.arcs.create(EDITOR, this.nami, new Arc(2, this.eastBlue, Map.of(), null));
 		stored();
 
 		var refused = catchThrowableOfType(ValueInvalidException.class,
-				() -> this.arcs.edit(EDITOR, this.nami, draft.id(), 1, new Arc(2, this.grandLine, Map.of())));
+				() -> this.arcs.edit(EDITOR, this.nami, draft.id(), 1, new Arc(2, this.grandLine, Map.of(), null)));
 
 		assertThat(fieldsOf(refused)).containsExactly("saga");
 	}
 
 	@Test
 	void anArcDraftMayHaveNoSagaYet() {
-		var content = this.arcs.create(EDITOR, this.nami, new Arc(2, null, Map.of()));
+		var content = this.arcs.create(EDITOR, this.nami, new Arc(2, null, Map.of(), null));
 		stored();
 
 		assertThat(this.arcs.getVersion(EDITOR, this.nami, content.id(), 1).version().body().sagaContentId()).isNull();
@@ -312,33 +323,37 @@ class StoryDraftIntegrationTest {
 	@Test
 	void anIncompleteArcNamesItsSagaAndItsTitlesWhenSubmitted() {
 		UUID draft = content(EntityType.ARC);
-		arcVersion(draft, 1, DRAFT, new Arc(2, null, Map.of("it", new StoryTranslation(null, "Descrizione"), "en",
-				new StoryTranslation("Orange Town", "d"))));
+		arcVersion(draft, 1, DRAFT,
+				new Arc(2, null, Map.of("it", new TitleTranslation(null), "en", new TitleTranslation("Orange Town")),
+						StoryFixtures.description()));
 		stored();
 
 		var refused = catchThrowableOfType(VersionIncompleteException.class,
 				() -> this.arcs.submit(EDITOR, this.chopper, draft, 1));
 
-		assertThat(fieldsOf(refused)).containsExactly("saga", "translations[it].title");
+		assertThat(fieldsOf(refused)).containsExactly("saga", "translations[it].title", "description[0].discovered");
 	}
 
 	@Test
 	void anIncompleteSagaNamesItsNumberAndItsTitlesWhenSubmitted() {
 		UUID draft = content(EntityType.SAGA);
-		sagaVersion(draft, 1, DRAFT, new Saga(null, Map.of("en", new StoryTranslation("Skypiea", "d"))));
+		sagaVersion(draft, 1, DRAFT,
+				new Saga(null, Map.of("en", new TitleTranslation("Skypiea")), StoryFixtures.description()));
 		stored();
 
 		var refused = catchThrowableOfType(VersionIncompleteException.class,
 				() -> this.sagas.submit(EDITOR, this.chopper, draft, 1));
 
-		assertThat(fieldsOf(refused)).containsExactly("number", "translations[it].title",
-				"translations[it].description");
+		assertThat(fieldsOf(refused)).containsExactly("number", "translations[it].title", "description[0].discovered");
 	}
 
 	@Test
 	void aCompleteArcIsSentToReview() {
 		UUID draft = content(EntityType.ARC);
-		arcVersion(draft, 1, DRAFT, complete(2, this.eastBlue, "Orange Town"));
+		var discovered = OnlineChapters.onlineChapter(this.contentRepository, this.chapterRepository);
+		var arc = complete(2, this.eastBlue, "Orange Town");
+		arcVersion(draft, 1, DRAFT,
+				new Arc(arc.number(), arc.sagaContentId(), arc.translations(), StoryFixtures.description(discovered)));
 		stored();
 
 		assertThat(this.arcs.submit(EDITOR, this.chopper, draft, 1).version().status())
@@ -368,8 +383,8 @@ class StoryDraftIntegrationTest {
 
 	/** Complete in both languages of the catalog. */
 	private static Saga complete(int number, String title) {
-		return new Saga(number, Map.of("it", new StoryTranslation(title + " it", "Descrizione"), "en",
-				new StoryTranslation(title, "Description")));
+		return new Saga(number, Map.of("it", new TitleTranslation(title + " it"), "en", new TitleTranslation(title)),
+				StoryFixtures.description());
 	}
 
 	/**
@@ -377,8 +392,9 @@ class StoryDraftIntegrationTest {
 	 * missing.
 	 */
 	private static Arc complete(int number, UUID saga, String title) {
-		return new Arc(number, saga, Map.of("it", new StoryTranslation(title + " it", "Descrizione"), "en",
-				new StoryTranslation(title, "Description")));
+		return new Arc(number, saga,
+				Map.of("it", new TitleTranslation(title + " it"), "en", new TitleTranslation(title)),
+				StoryFixtures.description());
 	}
 
 	/** What was done so far is written and read again from the database. */

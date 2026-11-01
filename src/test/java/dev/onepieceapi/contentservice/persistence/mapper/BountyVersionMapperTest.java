@@ -2,14 +2,16 @@ package dev.onepieceapi.contentservice.persistence.mapper;
 
 import dev.onepieceapi.contentservice.domain.bounty.Bounty;
 import dev.onepieceapi.contentservice.domain.bounty.BountyCondition;
-import dev.onepieceapi.contentservice.domain.bounty.BountyTranslation;
+import dev.onepieceapi.contentservice.domain.readertime.Paragraph;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
+import dev.onepieceapi.contentservice.domain.readertime.StoryWindow;
 import dev.onepieceapi.contentservice.domain.security.User;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.entity.BountyVersionEntity;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -36,9 +38,21 @@ class BountyVersionMapperTest {
 	@Test
 	void aVersionTakesItsWorkflowFromTheSharedRowAndWhatItSaysFromItsOwn() {
 		var entity = draft();
-		var body = new Bounty("Monkey D. Luffy", 3_000_000_000L, BountyCondition.DEAD_OR_ALIVE, true, PREVIOUS_ID,
-				HOLDER_ID, Map.of("it", new BountyTranslation("Taglia"), "en", new BountyTranslation("Bounty")), "abc",
-				new StoryPoint(CHAPTER_ID, EPISODE_ID));
+		var firstAppearance = new StoryPoint(CHAPTER_ID, EPISODE_ID);
+		var body = Bounty.builder()
+			.posterName("Monkey D. Luffy")
+			.amount(3_000_000_000L)
+			.condition(BountyCondition.DEAD_OR_ALIVE)
+			.inactive(true)
+			.previousContentId(PREVIOUS_ID)
+			.holderContentId(HOLDER_ID)
+			.imageId("abc")
+			.firstAppearance(firstAppearance)
+			.description(List.of(
+					new Paragraph(Map.of("it", "Taglia", "en", "Bounty"),
+							new StoryWindow(firstAppearance, StoryPoint.ofEpisode(EPISODE_ID))),
+					new Paragraph(Map.of("it", "Dopo"), StoryWindow.from(StoryPoint.ofChapter(CHAPTER_ID)))))
+			.build();
 
 		BountyVersionMapper.rewrite(entity, body, UPDATED);
 		var version = BountyVersionMapper.toDomain(entity);
@@ -55,7 +69,7 @@ class BountyVersionMapperTest {
 		var entity = draft();
 
 		BountyVersionMapper.rewrite(entity,
-				new Bounty("Zoro", 320_000_000L, BountyCondition.ONLY_ALIVE, false, null, null, Map.of(), null, null),
+				Bounty.builder().posterName("Zoro").amount(320_000_000L).condition(BountyCondition.ONLY_ALIVE).build(),
 				UPDATED);
 
 		assertThat(entity.getNaturalKey()).isNull();
@@ -66,11 +80,26 @@ class BountyVersionMapperTest {
 	@Test
 	void rewritingReplacesWhatTheVersionSaid() {
 		var entity = draft();
-		BountyVersionMapper.rewrite(entity, new Bounty("Luffy", 1L, BountyCondition.DEAD_OR_ALIVE, true, PREVIOUS_ID,
-				null, Map.of("it", new BountyTranslation("Uno")), "abc", StoryPoint.ofChapter(CHAPTER_ID)), CREATED);
+		BountyVersionMapper.rewrite(entity,
+				Bounty.builder()
+					.posterName("Luffy")
+					.amount(1L)
+					.condition(BountyCondition.DEAD_OR_ALIVE)
+					.inactive(true)
+					.previousContentId(PREVIOUS_ID)
+					.imageId("abc")
+					.firstAppearance(StoryPoint.ofChapter(CHAPTER_ID))
+					.description(List.of(new Paragraph(Map.of("it", "Uno"), StoryWindow.NONE),
+							new Paragraph(Map.of("it", "Due"), StoryWindow.NONE)))
+					.build(),
+				CREATED);
 
-		BountyVersionMapper.rewrite(entity, new Bounty("Luffy", 2L, null, false, null, null,
-				Map.of("en", new BountyTranslation("Two")), null, null), UPDATED);
+		var rewritten = Bounty.builder()
+			.posterName("Luffy")
+			.amount(2L)
+			.description(List.of(new Paragraph(Map.of("en", "Two"), StoryWindow.NONE)))
+			.build();
+		BountyVersionMapper.rewrite(entity, rewritten, UPDATED);
 
 		assertThat(entity.getAmount()).isEqualTo(2L);
 		assertThat(entity.getCondition()).isNull();
@@ -78,7 +107,8 @@ class BountyVersionMapperTest {
 		assertThat(entity.getPreviousContentId()).isNull();
 		assertThat(entity.getImageId()).isNull();
 		assertThat(entity.getFirstAppearanceChapterId()).isNull();
-		assertThat(entity.getTranslations()).containsOnlyKeys("en");
+		assertThat(entity.getParagraphs()).hasSize(1);
+		assertThat(BountyVersionMapper.toDomain(entity).body().description()).isEqualTo(rewritten.description());
 	}
 
 	private static BountyVersionEntity draft() {

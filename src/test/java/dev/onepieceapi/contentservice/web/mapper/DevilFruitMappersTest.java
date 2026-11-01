@@ -41,14 +41,13 @@ class DevilFruitMappersTest {
 	@Test
 	void aRequestBecomesWhatItSaysAsTypedWithItsType() {
 		var request = new DevilFruitRequest(" Gomu Gomu ", TYPE_ID, null, null,
-				Map.of("it", new DevilFruitTranslationRequest(" Gomu ", null, "Pro", null)), null, null);
+				Map.of("it", new DevilFruitTranslationRequest(" Gomu ")), null, null, null, null, null);
 
 		var fruit = DevilFruitRequestMapper.toDomain(request);
 
 		assertThat(fruit.romaji()).isEqualTo(" Gomu Gomu ");
 		assertThat(fruit.typeContentId()).isEqualTo(TYPE_ID);
-		assertThat(fruit.translations())
-			.containsExactly(entry("it", new DevilFruitTranslation(" Gomu ", null, "Pro", null)));
+		assertThat(fruit.translations()).containsExactly(entry("it", new DevilFruitTranslation(" Gomu ")));
 	}
 
 	@Test
@@ -57,12 +56,12 @@ class DevilFruitMappersTest {
 		translations.put("it", null);
 
 		var fruit = DevilFruitRequestMapper
-			.toDomain(new DevilFruitRequest(null, null, null, null, translations, null, null));
-		var bare = DevilFruitRequestMapper.toDomain(new DevilFruitRequest(null, null, null, null, null, null, null));
+			.toDomain(new DevilFruitRequest(null, null, null, null, translations, null, null, null, null, null));
+		var bare = DevilFruitRequestMapper
+			.toDomain(new DevilFruitRequest(null, null, null, null, null, null, null, null, null, null));
 
 		assertThat(fruit.typeContentId()).isNull();
-		assertThat(fruit.translations())
-			.containsExactly(entry("it", new DevilFruitTranslation(null, null, null, null)));
+		assertThat(fruit.translations()).containsExactly(entry("it", new DevilFruitTranslation(null)));
 		assertThat(bare.translations()).isEmpty();
 	}
 
@@ -115,8 +114,12 @@ class DevilFruitMappersTest {
 		var zoan = new TypeReference(TYPE_ID, "Dobutsu", Map.of("it", "Zoo Zoo"),
 				List.of(new SubcategoryReference(mythical, Map.of("it", "Mitologico"))));
 		var types = Map.of(TYPE_ID, zoan);
-		var named = new DevilFruit("Uo Uo", TYPE_ID, mythical, Map.of(), null);
-		var unknown = new DevilFruit("Uo Uo", TYPE_ID, UUID.randomUUID(), Map.of(), null);
+		var named = DevilFruit.builder().romaji("Uo Uo").typeContentId(TYPE_ID).subcategoryId(mythical).build();
+		var unknown = DevilFruit.builder()
+			.romaji("Uo Uo")
+			.typeContentId(TYPE_ID)
+			.subcategoryId(UUID.randomUUID())
+			.build();
 
 		assertThat(DevilFruitResponseMapper.toSubcategoryResponse(named, types))
 			.isEqualTo(new SubcategoryReferenceResponse(mythical, Map.of("it", "Mitologico")));
@@ -131,13 +134,17 @@ class DevilFruitMappersTest {
 		UUID mythical = UUID.randomUUID();
 
 		var fruit = DevilFruitRequestMapper
-			.toDomain(new DevilFruitRequest("Uo Uo", TYPE_ID, mythical, null, null, null, null));
+			.toDomain(new DevilFruitRequest("Uo Uo", TYPE_ID, mythical, null, null, null, null, null, null, null));
 
 		assertThat(fruit.subcategoryId()).isEqualTo(mythical);
 	}
 
 	private static DevilFruit fruit(UUID type) {
-		return new DevilFruit("Gomu Gomu", type, Map.of("it", new DevilFruitTranslation("Gomu", null, null, null)));
+		return DevilFruit.builder()
+			.romaji("Gomu Gomu")
+			.typeContentId(type)
+			.translations(Map.of("it", new DevilFruitTranslation("Gomu")))
+			.build();
 	}
 
 	private static Version<DevilFruit> version(UUID type) {

@@ -57,6 +57,15 @@ public class DevilFruitTypeVersionEntity extends VersionBodyEntity {
 	@OrderColumn(name = "position")
 	private List<DevilFruitTypeSubcategoryEntity> subcategories = new ArrayList<>();
 
+	/**
+	 * Its paragraphs, every section in one list (workflow 3.7.3): a section is in the
+	 * order of its rows; the position is the index in the list.
+	 */
+	@OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+	@JoinColumn(name = "version_id", nullable = false)
+	@OrderColumn(name = "position")
+	private List<DevilFruitTypeParagraphEntity> paragraphs = new ArrayList<>();
+
 	/** The content of the chapter it first appears in (ADR-0008); null for none. */
 	private UUID firstAppearanceChapterId;
 
@@ -80,7 +89,7 @@ public class DevilFruitTypeVersionEntity extends VersionBodyEntity {
 	 */
 	public void rewrite(String newRomaji, Map<String, TranslationEmbeddable> newTranslations,
 			Map<UUID, DevilFruitTypeSubcategoryEntity.Written> newSubcategories, FirstAppearanceIds newFirstAppearance,
-			Instant now) {
+			List<ParagraphFields> newParagraphs, Instant now) {
 		setRomaji(newRomaji);
 		this.firstAppearanceChapterId = newFirstAppearance.chapterId();
 		this.firstAppearanceEpisodeId = newFirstAppearance.episodeId();
@@ -101,6 +110,8 @@ public class DevilFruitTypeVersionEntity extends VersionBodyEntity {
 		});
 		this.subcategories.clear();
 		this.subcategories.addAll(ordered);
+		PositionalRows.rewrite(this.paragraphs, newParagraphs, DevilFruitTypeParagraphEntity::new,
+				ParagraphEntity::rewrite);
 		touch(now);
 	}
 

@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.web.mapper;
 
+import dev.onepieceapi.contentservice.web.dto.request.TitleTranslationRequest;
 import dev.onepieceapi.contentservice.domain.story.Arc;
 import dev.onepieceapi.contentservice.domain.story.Chapter;
 import dev.onepieceapi.contentservice.domain.story.Episode;
@@ -7,7 +8,7 @@ import dev.onepieceapi.contentservice.domain.story.Release;
 import dev.onepieceapi.contentservice.domain.story.Saga;
 import dev.onepieceapi.contentservice.domain.story.StoryTranslation;
 import dev.onepieceapi.contentservice.domain.story.Volume;
-import dev.onepieceapi.contentservice.domain.story.VolumeTranslation;
+import dev.onepieceapi.contentservice.domain.story.TitleTranslation;
 import dev.onepieceapi.contentservice.domain.workflow.ContentFilter;
 import dev.onepieceapi.contentservice.service.story.StoryRelations;
 import dev.onepieceapi.contentservice.web.dto.request.ArcListRequest;
@@ -35,20 +36,18 @@ import java.util.TreeMap;
 public class StoryRequestMapper {
 
 	public Saga toDomain(SagaRequest request) {
-		return new Saga(request.number(), toDomain(request.translations()));
+		return new Saga(request.number(), titlesOf(request.translations()),
+				ParagraphRequestMapper.toDomain(request.description()));
 	}
 
 	public Arc toDomain(ArcRequest request) {
-		return new Arc(request.number(), request.saga(), toDomain(request.translations()));
+		return new Arc(request.number(), request.saga(), titlesOf(request.translations()),
+				ParagraphRequestMapper.toDomain(request.description()));
 	}
 
 	public Volume toDomain(VolumeRequest request) {
-		Map<String, VolumeTranslation> translations = new TreeMap<>();
-		Optional.ofNullable(request.translations())
-			.orElseGet(Map::of)
-			.forEach((language, translation) -> translations.put(language,
-					new VolumeTranslation(translation == null ? null : translation.title())));
-		return new Volume(request.number(), request.japaneseTitle(), toDomain(request.releases()), null, translations);
+		return new Volume(request.number(), request.japaneseTitle(), toDomain(request.releases()), null,
+				titlesOf(request.translations()));
 	}
 
 	public Chapter toDomain(ChapterRequest request) {
@@ -83,6 +82,16 @@ public class StoryRequestMapper {
 	public ContentFilter toFilter(ArcListRequest request) {
 		var filter = new ContentFilter(request.status(), request.q(), request.author(), request.updatedWithinDays());
 		return request.saga() == null ? filter : filter.relatedTo(StoryRelations.ARC_SAGA.name(), request.saga());
+	}
+
+	/** A language sent with nothing in it is a language with no title. */
+	private static Map<String, TitleTranslation> titlesOf(Map<String, TitleTranslationRequest> requested) {
+		Map<String, TitleTranslation> translations = new TreeMap<>();
+		Optional.ofNullable(requested)
+			.orElseGet(Map::of)
+			.forEach((language, translation) -> translations.put(language,
+					new TitleTranslation(translation == null ? null : translation.title())));
+		return translations;
 	}
 
 	private static List<Release> toDomain(List<ReleaseRequest> requested) {

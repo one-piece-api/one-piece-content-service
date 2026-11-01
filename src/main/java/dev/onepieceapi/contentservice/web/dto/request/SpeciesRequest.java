@@ -1,5 +1,8 @@
 package dev.onepieceapi.contentservice.web.dto.request;
 
+import java.util.List;
+import jakarta.validation.constraints.NotNull;
+import dev.onepieceapi.contentservice.domain.readertime.Paragraph;
 import dev.onepieceapi.contentservice.domain.species.Species;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
@@ -12,16 +15,18 @@ import java.util.Map;
  * limit checked here; whether a value is free to use, and whether the first appearance
  * may be linked, is for the service to say.
  *
- * @param translations name and description per language code; a language left out, or
- * with nothing written in it, has no translation
+ * @param translations the name per language code; a language left out, or with nothing
+ * written in it, has no translation
  * @param firstAppearance the chapter and/or the episode a member is first shown in; left
  * out for none, which a draft may be - it is required to submit
+ * @param description its paragraphs, in order; left out for none
  * @param removeImage true to remove the draft's picture; not together with an uploaded
  * one. Left out, the picture is kept - or replaced, when one is uploaded with the request
  */
 public record SpeciesRequest(@Size(max = Species.ROMAJI_MAX_LENGTH) String romaji,
 		Map<String, @Valid SpeciesTranslationRequest> translations, Boolean removeImage,
-		FirstAppearanceRequest firstAppearance) {
+		FirstAppearanceRequest firstAppearance,
+		@Size(max = Paragraph.MAX_PER_SECTION) List<@NotNull @Valid ParagraphRequest> description) {
 
 	/** Whether the picture is to be removed; not saying so keeps it. */
 	public boolean removesImage() {

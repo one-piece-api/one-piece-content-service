@@ -1,5 +1,8 @@
 package dev.onepieceapi.contentservice.service.species;
 
+import static dev.onepieceapi.contentservice.domain.readertime.ParagraphFixtures.discoveredAt;
+import dev.onepieceapi.contentservice.service.validation.ParagraphRules;
+import dev.onepieceapi.contentservice.service.content.ReaderAxisRules;
 import dev.onepieceapi.contentservice.config.RulesProperties;
 import dev.onepieceapi.contentservice.domain.species.Species;
 import dev.onepieceapi.contentservice.domain.species.SpeciesTranslation;
@@ -92,17 +95,22 @@ final class SpeciesFixtures {
 		this.firstAppearance = OnlineChapters.onlineChapter(contents, chapters);
 	}
 
+	ReaderAxisRules readerAxisRules() {
+		return new ReaderAxisRules(this.contents, this.chapters, this.episodes);
+	}
+
 	SpeciesService service() {
 		return service(mock(ContentImages.class));
 	}
 
 	SpeciesService service(ContentImages images) {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
-		var validator = new SpeciesValidator(this.species, this.languages, this.chapters, this.episodes);
+		var validator = new SpeciesValidator(this.species, this.languages, this.chapters, this.episodes,
+				new ParagraphRules(readerAxisRules()));
 		// No character in these tests: the characters naming a species are covered with
 		// them.
 		var rules = new SpeciesRules(this.contents, this.chapters, this.episodes,
-				mock(CharacterVersionRepository.class), new RulesProperties(5));
+				mock(CharacterVersionRepository.class), readerAxisRules(), new RulesProperties(5));
 		return new SpeciesService(new SpeciesDefinition(this.species, validator, rules), this.contentVersions,
 				this.contents, new AuditLogService(this.auditLog, clock), clock, images);
 	}
@@ -111,16 +119,19 @@ final class SpeciesFixtures {
 	 * Complete in both languages of the catalog, so only what a test changes is missing.
 	 */
 	Species complete(String romaji) {
-		return new Species(romaji,
-				Map.of("it", new SpeciesTranslation(romaji + " (it)", "Descrizione di " + romaji), "en",
-						new SpeciesTranslation(romaji + " (en)", "Description of " + romaji)),
-				null, this.firstAppearance);
+		return complete(romaji, this.firstAppearance);
 	}
 
 	/** The same, first appearing elsewhere. */
 	Species complete(String romaji, StoryPoint firstAppearanceElsewhere) {
-		var body = complete(romaji);
-		return new Species(body.romaji(), body.translations(), null, firstAppearanceElsewhere);
+		return Species.builder()
+			.romaji(romaji)
+			.translations(Map.of("it", new SpeciesTranslation(romaji + " (it)"), "en",
+					new SpeciesTranslation(romaji + " (en)")))
+			.firstAppearance(firstAppearanceElsewhere)
+			.description(discoveredAt(firstAppearanceElsewhere,
+					Map.of("it", "Descrizione di " + romaji, "en", "Description of " + romaji)))
+			.build();
 	}
 
 	/** A new content with its first version in this status. */

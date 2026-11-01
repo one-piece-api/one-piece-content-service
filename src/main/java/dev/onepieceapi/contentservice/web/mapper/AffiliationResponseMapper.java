@@ -55,11 +55,12 @@ public class AffiliationResponseMapper {
 		affiliation.translations()
 			.forEach((language, translation) -> translations.put(language, toResponse(translation)));
 		return new AffiliationResponse(affiliation.romaji(), translations, images.toResponse(affiliation.imageId()),
-				FirstAppearanceMapper.toResponse(affiliation.firstAppearance(), storyItems), affiliation.kind());
+				FirstAppearanceMapper.toResponse(affiliation.firstAppearance(), storyItems), affiliation.kind(),
+				ParagraphResponseMapper.toResponse(affiliation.description(), storyItems));
 	}
 
 	private static AffiliationTranslationResponse toResponse(AffiliationTranslation translation) {
-		return new AffiliationTranslationResponse(translation.name(), translation.description());
+		return new AffiliationTranslationResponse(translation.name());
 	}
 
 }

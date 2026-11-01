@@ -1,8 +1,9 @@
 package dev.onepieceapi.contentservice.service.bounty;
 
+import static dev.onepieceapi.contentservice.domain.readertime.ParagraphFixtures.paragraph;
+import dev.onepieceapi.contentservice.domain.readertime.Paragraph;
 import dev.onepieceapi.contentservice.domain.bounty.Bounty;
 import dev.onepieceapi.contentservice.domain.bounty.BountyCondition;
-import dev.onepieceapi.contentservice.domain.bounty.BountyTranslation;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.domain.workflow.EntityType;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
@@ -133,8 +134,14 @@ class BountyDraftIntegrationTest {
 	void aNewBountyIsBornWithADraftSayingWhatWasWrittenTheSpaceAroundItIgnored() {
 		UUID earlier = this.fixtures.bounty(PUBLISHED, this.fixtures.complete("Roronoa Zoro", 120_000_000L, null));
 		stored();
-		var written = new Bounty("  Roronoa Zoro ", 320_000_000L, BountyCondition.ONLY_ALIVE, true, earlier, null,
-				Map.of("it", new BountyTranslation(" Pirata  ")), null, StoryPoint.NONE);
+		var written = Bounty.builder()
+			.posterName("  Roronoa Zoro ")
+			.amount(320_000_000L)
+			.condition(BountyCondition.ONLY_ALIVE)
+			.inactive(true)
+			.previousContentId(earlier)
+			.description(paragraph(Map.of("it", " Pirata  ", "en", " ")))
+			.build();
 
 		var content = this.service.create(EDITOR, CHOPPER, written);
 		stored();
@@ -145,7 +152,7 @@ class BountyDraftIntegrationTest {
 		assertThat(version.body().amount()).isEqualTo(320_000_000L);
 		assertThat(version.body().inactive()).isTrue();
 		assertThat(version.body().previousContentId()).isEqualTo(earlier);
-		assertThat(version.body().translations()).containsOnlyKeys("it");
+		assertThat(version.body().description()).extracting(Paragraph::text).containsExactly(Map.of("it", "Pirata"));
 	}
 
 	@Test
@@ -159,8 +166,7 @@ class BountyDraftIntegrationTest {
 
 	@Test
 	void aDraftWithoutAnAmountHasNoKeyYet() {
-		var content = this.service.create(EDITOR, CHOPPER,
-				new Bounty("Zoro", null, null, false, null, null, Map.of(), null, StoryPoint.NONE));
+		var content = this.service.create(EDITOR, CHOPPER, Bounty.builder().posterName("Zoro").build());
 		stored();
 
 		assertThat(this.jdbc.queryForObject("select natural_key from bounty_version where poster_name = 'Zoro'",
@@ -323,8 +329,13 @@ class BountyDraftIntegrationTest {
 		UUID draftChapter = OnlineChapters.chapter(this.contentRepository, this.chapterRepository, DRAFT);
 		UUID draftPrevious = this.fixtures.bounty(DRAFT, this.fixtures.complete("Nami", 16_000_000L, null));
 		stored();
-		var written = new Bounty("Nami", 66_000_000L, BountyCondition.DEAD_OR_ALIVE, false, draftPrevious, null,
-				Map.of(), null, StoryPoint.ofChapter(draftChapter));
+		var written = Bounty.builder()
+			.posterName("Nami")
+			.amount(66_000_000L)
+			.condition(BountyCondition.DEAD_OR_ALIVE)
+			.previousContentId(draftPrevious)
+			.firstAppearance(StoryPoint.ofChapter(draftChapter))
+			.build();
 
 		var refused = catchThrowableOfType(ValueInvalidException.class,
 				() -> this.service.create(EDITOR, CHOPPER, written));
@@ -335,14 +346,13 @@ class BountyDraftIntegrationTest {
 	@Test
 	void aDraftMayBeSavedIncompleteButNotSentToReview() {
 		var content = this.service.create(EDITOR, CHOPPER,
-				new Bounty("Nami", 66_000_000L, null, false, null, null, Map.of(), null, StoryPoint.NONE));
+				Bounty.builder().posterName("Nami").amount(66_000_000L).build());
 		stored();
 
 		var refused = catchThrowableOfType(VersionIncompleteException.class,
 				() -> this.service.submit(EDITOR, CHOPPER, content.id(), 1));
 
-		assertThat(fieldsOf(refused)).containsExactly("condition", "firstAppearance", "translations[en].description",
-				"translations[it].description");
+		assertThat(fieldsOf(refused)).containsExactly("condition", "firstAppearance", "description");
 	}
 
 	@Test

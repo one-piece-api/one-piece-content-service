@@ -1,10 +1,12 @@
 package dev.onepieceapi.contentservice.web.controller;
 
+import static dev.onepieceapi.contentservice.domain.readertime.ParagraphFixtures.paragraph;
+import dev.onepieceapi.contentservice.service.story.FirstAppearanceLinks;
 import dev.onepieceapi.contentservice.domain.security.Permission;
 import dev.onepieceapi.contentservice.domain.security.User;
 import dev.onepieceapi.contentservice.domain.story.NumberedReference;
 import dev.onepieceapi.contentservice.domain.story.Saga;
-import dev.onepieceapi.contentservice.domain.story.StoryTranslation;
+import dev.onepieceapi.contentservice.domain.story.TitleTranslation;
 import dev.onepieceapi.contentservice.domain.workflow.ActionBlock;
 import dev.onepieceapi.contentservice.domain.workflow.BlockReason;
 import dev.onepieceapi.contentservice.domain.workflow.Content;
@@ -83,6 +85,9 @@ class SagaControllerTest {
 	@MockitoBean
 	private SagaLinks links;
 
+	@MockitoBean
+	private FirstAppearanceLinks firstAppearances;
+
 	@Test
 	void theListReturnsOnePageOfRowsWithTheNumberAndTheTitles() throws Exception {
 		var row = new ContentSummary<>(CONTENT_ID, version(VersionStatus.PUBLISHED), 1, Set.of());
@@ -122,9 +127,9 @@ class SagaControllerTest {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.body.number").value(1))
 			.andExpect(jsonPath("$.body.translations.it.title").value("East Blue"))
-			.andExpect(jsonPath("$.body.translations.it.description").value("Il mare"))
 			.andExpect(jsonPath("$.body.translations.en.title").doesNotExist())
-			.andExpect(jsonPath("$.body.translations.en.description").value("The sea"))
+			.andExpect(jsonPath("$.body.description[0].text.it").value("Il mare"))
+			.andExpect(jsonPath("$.body.description[0].text.en").value("The sea"))
 			.andExpect(jsonPath("$.allowedActions[0]").value("EDIT"));
 	}
 
@@ -163,7 +168,7 @@ class SagaControllerTest {
 		var written = ArgumentCaptor.forClass(Saga.class);
 		verify(this.service).create(eq(Set.of(Permission.CONTENT_WRITE)), any(), written.capture());
 		assertThat(written.getValue().number()).isZero();
-		assertThat(written.getValue().translations().get("it")).isEqualTo(new StoryTranslation(" East Blue ", null));
+		assertThat(written.getValue().translations().get("it")).isEqualTo(new TitleTranslation(" East Blue "));
 	}
 
 	@Test
@@ -233,7 +238,7 @@ class SagaControllerTest {
 	@ParameterizedTest
 	@CsvSource({ "{\"number\":-1}, number",
 			"{\"translations\":{\"it\":{\"title\":\"TOO_LONG_TITLE\"}}}, translations[it].title",
-			"{\"translations\":{\"it\":{\"description\":\"TOO_LONG_DESCRIPTION\"}}}, translations[it].description" })
+			"{\"description\":[{\"text\":{\"it\":\"TOO_LONG_DESCRIPTION\"}}]}, description[0].text[it]" })
 	void aValueBeyondItsLimitIsABadRequestNamingItsField(String template, String field) throws Exception {
 		var body = template.replace("TOO_LONG_TITLE", "x".repeat(201))
 			.replace("TOO_LONG_DESCRIPTION", "x".repeat(2001));
@@ -251,7 +256,7 @@ class SagaControllerTest {
 	void aTextAsLongAsItsLimitIsAccepted() throws Exception {
 		var draft = new VersionAccess<>(version(VersionStatus.DRAFT), EnumSet.of(VersionAction.EDIT));
 		when(this.service.edit(any(), any(), any(), eq(1), any())).thenReturn(draft);
-		var body = "{\"number\":0,\"translations\":{\"it\":{\"title\":\"%s\",\"description\":\"%s\"}}}"
+		var body = "{\"number\":0,\"translations\":{\"it\":{\"title\":\"%s\"}},\"description\":[{\"text\":{\"it\":\"%s\"}}]}"
 			.formatted("x".repeat(200), "x".repeat(2000));
 
 		this.mockMvc.perform(edit(body).with(callerWith(Permission.CONTENT_WRITE))).andExpect(status().isOk());
@@ -313,13 +318,12 @@ class SagaControllerTest {
 	}
 
 	private static Version<Saga> version(VersionStatus status) {
-		var translations = Map.of("it", new StoryTranslation("East Blue", "Il mare"), "en",
-				new StoryTranslation(null, "The sea"));
+		var translations = Map.of("it", new TitleTranslation("East Blue"), "en", new TitleTranslation(null));
 		return Version.<Saga>builder()
 			.number(1)
 			.status(status)
 			.author(NAMI)
-			.body(new Saga(1, translations))
+			.body(new Saga(1, translations, paragraph(Map.of("it", "Il mare", "en", "The sea"))))
 			.createdAt(CREATED)
 			.updatedAt(CREATED)
 			.build();

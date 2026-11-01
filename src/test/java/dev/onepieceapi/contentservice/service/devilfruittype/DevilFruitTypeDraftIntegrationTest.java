@@ -1,5 +1,7 @@
 package dev.onepieceapi.contentservice.service.devilfruittype;
 
+import dev.onepieceapi.contentservice.service.validation.ParagraphRules;
+import dev.onepieceapi.contentservice.service.content.ReaderAxisRules;
 import dev.onepieceapi.contentservice.service.audit.AuditLogService;
 
 import dev.onepieceapi.contentservice.config.RulesProperties;
@@ -153,10 +155,14 @@ class DevilFruitTypeDraftIntegrationTest {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
 		var auditLogService = new AuditLogService(this.auditLogRepository, clock);
 		var validator = new DevilFruitTypeValidator(this.versionRepository, this.languageRepository,
-				this.chapterRepository, this.episodeRepository);
+				this.chapterRepository, this.episodeRepository, new ParagraphRules(
+						new ReaderAxisRules(this.contentRepository, this.chapterRepository, this.episodeRepository)));
 		this.service = new DevilFruitTypeService(this.versionRepository, this.contentVersionRepository,
-				this.contentRepository, validator, new DevilFruitTypeRules(this.contentRepository, this.fruitRepository,
-						this.chapterRepository, this.episodeRepository, new RulesProperties(5)),
+				this.contentRepository, validator,
+				new DevilFruitTypeRules(this.contentRepository, this.fruitRepository, this.chapterRepository,
+						this.episodeRepository,
+						new ReaderAxisRules(this.contentRepository, this.chapterRepository, this.episodeRepository),
+						new RulesProperties(5)),
 				auditLogService, clock);
 
 		this.zoan = content();
@@ -169,9 +175,11 @@ class DevilFruitTypeDraftIntegrationTest {
 
 	@Test
 	void aNewContentIsBornWithADraftOfItsAuthorSayingWhatWasWritten() {
-		var written = new DevilFruitType("  Chojin-kei ",
-				Map.of("it", new DevilFruitTypeTranslation(" Paramisia ", "  ", " Forza ", "	"), "en",
-						new DevilFruitTypeTranslation("", null, " ", null)));
+		var written = DevilFruitType.builder()
+			.romaji("  Chojin-kei ")
+			.translations(
+					Map.of("it", new DevilFruitTypeTranslation(" Paramisia "), "en", new DevilFruitTypeTranslation("")))
+			.build();
 
 		var content = this.service.create(EDITOR, this.nami, written);
 		stored();
@@ -184,7 +192,7 @@ class DevilFruitTypeDraftIntegrationTest {
 		assertThat(version.updatedAt()).isEqualTo(NOW);
 		assertThat(version.body().romaji()).isEqualTo("Chojin-kei");
 		assertThat(version.body().translations())
-			.containsExactly(entry("it", new DevilFruitTypeTranslation("Paramisia", null, "Forza", null)));
+			.containsExactly(entry("it", new DevilFruitTypeTranslation("Paramisia")));
 	}
 
 	@Test
@@ -200,7 +208,7 @@ class DevilFruitTypeDraftIntegrationTest {
 
 	@Test
 	void aDraftMayBeBornWithNothingInIt() {
-		var content = this.service.create(EDITOR, this.nami, new DevilFruitType(null, Map.of()));
+		var content = this.service.create(EDITOR, this.nami, DevilFruitType.builder().build());
 		stored();
 
 		var body = this.service.getVersion(EDITOR, this.nami, content.id(), 1).version().body();
@@ -220,7 +228,10 @@ class DevilFruitTypeDraftIntegrationTest {
 
 	@Test
 	void editingReplacesEverythingTheDraftSays() {
-		var written = new DevilFruitType("Shizen-kei", Map.of("en", translation("Logia", "Elemental")));
+		var written = DevilFruitType.builder()
+			.romaji("Shizen-kei")
+			.translations(Map.of("en", translation("Logia", "Elemental")))
+			.build();
 
 		var answer = this.service.edit(EDITOR, this.chopper, this.logia, 1, written);
 		stored();
@@ -266,7 +277,10 @@ class DevilFruitTypeDraftIntegrationTest {
 	@Test
 	void aRomajiOrANameAnotherContentHasIsRefusedNamingEachField() {
 		// Against a draft and against the online version; another case, space around.
-		var written = new DevilFruitType(" logia ", Map.of("it", translation("ZOO ZOO", null)));
+		var written = DevilFruitType.builder()
+			.romaji(" logia ")
+			.translations(Map.of("it", translation("ZOO ZOO", null)))
+			.build();
 
 		var refused = catchThrowableOfType(ValueAlreadyUsedException.class,
 				() -> this.service.create(EDITOR, this.nami, written));
@@ -327,7 +341,10 @@ class DevilFruitTypeDraftIntegrationTest {
 
 	@Test
 	void aNameIsUniqueWithinItsLanguageOnly() {
-		var written = new DevilFruitType("Chojin-kei", Map.of("en", translation("Zoo Zoo", null)));
+		var written = DevilFruitType.builder()
+			.romaji("Chojin-kei")
+			.translations(Map.of("en", translation("Zoo Zoo", null)))
+			.build();
 
 		var content = this.service.create(EDITOR, this.nami, written);
 
@@ -339,7 +356,10 @@ class DevilFruitTypeDraftIntegrationTest {
 		version(this.zoan, 3, DRAFT, this.nami, "Dobutsu-kei", "Animale");
 		stored();
 		// The romaji of v2 and the Italian name of v1 and v2, on v3 of the same content.
-		var written = new DevilFruitType("Zoan", Map.of("it", translation("Zoo Zoo", null)));
+		var written = DevilFruitType.builder()
+			.romaji("Zoan")
+			.translations(Map.of("it", translation("Zoo Zoo", null)))
+			.build();
 
 		var answer = this.service.edit(EDITOR, this.nami, this.zoan, 3, written);
 
@@ -348,7 +368,10 @@ class DevilFruitTypeDraftIntegrationTest {
 
 	@Test
 	void aDraftSavedAgainAsItIsDoesNotCollideWithItself() {
-		var same = new DevilFruitType("Logia", Map.of("it", translation("Rogia", "Rogia description")));
+		var same = DevilFruitType.builder()
+			.romaji("Logia")
+			.translations(Map.of("it", translation("Rogia", "Rogia description")))
+			.build();
 
 		var answer = this.service.edit(EDITOR, this.chopper, this.logia, 1, same);
 
@@ -357,7 +380,10 @@ class DevilFruitTypeDraftIntegrationTest {
 
 	@Test
 	void aLanguageOutsideTheCatalogIsRefused() {
-		var written = new DevilFruitType("Chojin-kei", Map.of("fr", translation("Paramecia", null)));
+		var written = DevilFruitType.builder()
+			.romaji("Chojin-kei")
+			.translations(Map.of("fr", translation("Paramecia", null)))
+			.build();
 
 		assertThatThrownBy(() -> this.service.create(EDITOR, this.nami, written))
 			.isInstanceOf(TranslationLanguageUnknownException.class);
@@ -514,11 +540,11 @@ class DevilFruitTypeDraftIntegrationTest {
 	}
 
 	private static DevilFruitType romajiOnly(String romaji) {
-		return new DevilFruitType(romaji, Map.of());
+		return DevilFruitType.builder().romaji(romaji).build();
 	}
 
 	private static DevilFruitTypeTranslation translation(String name, String description) {
-		return new DevilFruitTypeTranslation(name, description, null, null);
+		return new DevilFruitTypeTranslation(name);
 	}
 
 	/** What was done so far is written and read again from the database. */
@@ -557,8 +583,7 @@ class DevilFruitTypeDraftIntegrationTest {
 			.build();
 		var version = new DevilFruitTypeVersionEntity(workflow);
 		version.setRomaji(romaji);
-		version.getTranslations()
-			.put("it", new TranslationEmbeddable(italianName, italianName + " description", "Pro", "Contro"));
+		version.getTranslations().put("it", new TranslationEmbeddable(italianName));
 		this.versionRepository.save(version);
 	}
 

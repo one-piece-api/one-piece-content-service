@@ -1,10 +1,12 @@
 package dev.onepieceapi.contentservice.web.controller;
 
+import static dev.onepieceapi.contentservice.domain.readertime.ParagraphFixtures.paragraph;
+import dev.onepieceapi.contentservice.service.story.FirstAppearanceLinks;
 import dev.onepieceapi.contentservice.domain.security.Permission;
 import dev.onepieceapi.contentservice.domain.security.User;
 import dev.onepieceapi.contentservice.domain.story.Arc;
 import dev.onepieceapi.contentservice.domain.story.NumberedReference;
-import dev.onepieceapi.contentservice.domain.story.StoryTranslation;
+import dev.onepieceapi.contentservice.domain.story.TitleTranslation;
 import dev.onepieceapi.contentservice.domain.workflow.ActionBlock;
 import dev.onepieceapi.contentservice.domain.workflow.BlockReason;
 import dev.onepieceapi.contentservice.domain.workflow.BlockedAction;
@@ -98,6 +100,9 @@ class ArcControllerTest {
 	@MockitoBean
 	private ArcLinks arcs;
 
+	@MockitoBean
+	private FirstAppearanceLinks firstAppearances;
+
 	@Test
 	void aVersionSaysItsSagaAsItIsTodayAndWhichActionsAreBlocked() throws Exception {
 		var blocked = new BlockedAction(VersionAction.PUBLISH, BlockReason.RELATED_NOT_ONLINE,
@@ -114,7 +119,7 @@ class ArcControllerTest {
 			.andExpect(jsonPath("$.body.saga.number").value(1))
 			.andExpect(jsonPath("$.body.saga.names.it").value("East Blue"))
 			.andExpect(jsonPath("$.body.translations.it.title").value("Orange Town"))
-			.andExpect(jsonPath("$.body.translations.it.description").value("Il villaggio"))
+			.andExpect(jsonPath("$.body.description[0].text.it").value("Il villaggio"))
 			.andExpect(jsonPath("$.allowedActions[0]").value("PUBLISH"))
 			.andExpect(jsonPath("$.blockedActions[0].reason").value("RELATED_NOT_ONLINE"))
 			.andExpect(jsonPath("$.blockedActions[0].detail.sagaId").value(SAGA_ID.toString()))
@@ -224,7 +229,7 @@ class ArcControllerTest {
 		verify(this.service).create(eq(Set.of(Permission.CONTENT_WRITE)), any(), written.capture());
 		assertThat(written.getValue().number()).isEqualTo(3);
 		assertThat(written.getValue().sagaContentId()).isEqualTo(SAGA_ID);
-		assertThat(written.getValue().translations().get("it")).isEqualTo(new StoryTranslation("Orange Town", null));
+		assertThat(written.getValue().translations().get("it")).isEqualTo(new TitleTranslation("Orange Town"));
 	}
 
 	@Test
@@ -295,7 +300,7 @@ class ArcControllerTest {
 	@ParameterizedTest
 	@CsvSource({ "{\"number\":-1}, number",
 			"{\"translations\":{\"en\":{\"title\":\"TOO_LONG_TITLE\"}}}, translations[en].title",
-			"{\"translations\":{\"en\":{\"description\":\"TOO_LONG_DESCRIPTION\"}}}, translations[en].description" })
+			"{\"description\":[{\"text\":{\"en\":\"TOO_LONG_DESCRIPTION\"}}]}, description[0].text[en]" })
 	void aValueBeyondItsLimitIsABadRequestNamingItsField(String template, String field) throws Exception {
 		var body = template.replace("TOO_LONG_TITLE", "x".repeat(201))
 			.replace("TOO_LONG_DESCRIPTION", "x".repeat(2001));
@@ -313,7 +318,7 @@ class ArcControllerTest {
 	void aTextAsLongAsItsLimitIsAccepted() throws Exception {
 		var draft = new VersionAccess<>(version(VersionStatus.DRAFT, SAGA_ID), EnumSet.of(VersionAction.EDIT));
 		when(this.service.edit(any(), any(), any(), eq(1), any())).thenReturn(draft);
-		var body = "{\"number\":0,\"translations\":{\"en\":{\"title\":\"%s\",\"description\":\"%s\"}}}"
+		var body = "{\"number\":0,\"translations\":{\"en\":{\"title\":\"%s\"}},\"description\":[{\"text\":{\"en\":\"%s\"}}]}"
 			.formatted("x".repeat(200), "x".repeat(2000));
 
 		this.mockMvc.perform(edit(body).with(callerWith(Permission.CONTENT_WRITE))).andExpect(status().isOk());
@@ -361,12 +366,12 @@ class ArcControllerTest {
 	}
 
 	private static Version<Arc> version(VersionStatus status, UUID saga) {
-		var translations = Map.of("it", new StoryTranslation("Orange Town", "Il villaggio"));
+		var translations = Map.of("it", new TitleTranslation("Orange Town"));
 		return Version.<Arc>builder()
 			.number(1)
 			.status(status)
 			.author(NAMI)
-			.body(new Arc(3, saga, translations))
+			.body(new Arc(3, saga, translations, paragraph("it", "Il villaggio")))
 			.createdAt(CREATED)
 			.updatedAt(CREATED)
 			.build();

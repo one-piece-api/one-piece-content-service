@@ -7,8 +7,8 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.FieldNameConstants;
 
 /**
- * The name and description of a Character in one language - a value owned by its version
- * (see {@link CharacterVersionEntity#getTranslations()}).
+ * The name of a Character in one language - a value owned by its version (see
+ * {@link CharacterVersionEntity#getTranslations()}).
  */
 @Embeddable
 @Getter
@@ -18,7 +18,5 @@ import lombok.experimental.FieldNameConstants;
 public class CharacterTranslationEmbeddable {
 
 	private String name;
-
-	private String description;
 
 }

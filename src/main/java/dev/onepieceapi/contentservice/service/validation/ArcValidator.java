@@ -1,5 +1,8 @@
 package dev.onepieceapi.contentservice.service.validation;
 
+import java.util.List;
+import dev.onepieceapi.exception.web.FieldViolation;
+import dev.onepieceapi.contentservice.service.exception.ValueInvalidException;
 import dev.onepieceapi.contentservice.domain.story.Arc;
 import dev.onepieceapi.contentservice.persistence.entity.ArcVersionEntity;
 import dev.onepieceapi.contentservice.persistence.mapper.StoryVersionMapper;
@@ -21,16 +24,23 @@ public class ArcValidator extends ContentValidator<Arc, ArcVersionEntity> {
 
 	private final SagaVersionRepository sagaRepository;
 
+	private final ParagraphRules paragraphRules;
+
 	@Autowired
 	public ArcValidator(ArcVersionRepository versionRepository, LanguageRepository languageRepository,
-			SagaVersionRepository sagaRepository) {
+			SagaVersionRepository sagaRepository, ParagraphRules paragraphRules) {
 		super(versionRepository, languageRepository, StoryVersionMapper::toDomain);
 		this.sagaRepository = sagaRepository;
+		this.paragraphRules = paragraphRules;
 	}
 
 	@Override
 	protected void requireValidRelations(Arc body) {
 		RelationRules.requireLinkable(StoryRelations.ARC_SAGA, body, this.sagaRepository);
+		List<FieldViolation> violations = this.paragraphRules.violationsOnSave(body);
+		if (!violations.isEmpty()) {
+			throw new ValueInvalidException(violations);
+		}
 	}
 
 }

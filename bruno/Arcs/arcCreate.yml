@@ -12,6 +12,19 @@ http:
     type: json
     data: |-
       {
+        "description": [
+          {
+            "discovered": {
+              "chapter": "",
+              "episode": ""
+            },
+            "ended": {
+              "chapter": "",
+              "episode": ""
+            },
+            "text": {}
+          }
+        ],
         "number": 0,
         "saga": "",
         "translations": {}
@@ -35,6 +48,19 @@ examples:
         type: json
         data: |-
           {
+            "description": [
+              {
+                "discovered": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "ended": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "text": {}
+              }
+            ],
             "number": 0,
             "saga": "",
             "translations": {}
@@ -87,6 +113,19 @@ examples:
         type: json
         data: |-
           {
+            "description": [
+              {
+                "discovered": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "ended": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "text": {}
+              }
+            ],
             "number": 0,
             "saga": "",
             "translations": {}
@@ -123,6 +162,19 @@ examples:
         type: json
         data: |-
           {
+            "description": [
+              {
+                "discovered": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "ended": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "text": {}
+              }
+            ],
             "number": 0,
             "saga": "",
             "translations": {}

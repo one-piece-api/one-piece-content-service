@@ -55,6 +55,7 @@ public class CharacterVersionMapper {
 			.relatives(entity.getRelatives().stream().map(CharacterVersionMapper::toDomain).toList())
 			.imageId(entity.getImageId())
 			.firstAppearance(new StoryPoint(entity.getFirstAppearanceChapterId(), entity.getFirstAppearanceEpisodeId()))
+			.description(ParagraphMapper.descriptionOf(entity.getParagraphs()))
 			.build();
 		return ContentVersionMapper.toDomain(entity.getVersion(), body);
 	}
@@ -78,6 +79,7 @@ public class CharacterVersionMapper {
 			.relatives(body.relatives().stream().map(CharacterVersionMapper::toEmbeddable).toList())
 			.imageId(body.imageId())
 			.firstAppearance(FirstAppearanceMapper.toIds(body.firstAppearance()))
+			.paragraphs(ParagraphMapper.toFields(body.paragraphs()))
 			.build(), now);
 	}
 
@@ -156,8 +158,8 @@ public class CharacterVersionMapper {
 	private static Map<String, CharacterTranslation> toDomain(
 			Map<String, CharacterTranslationEmbeddable> translations) {
 		Map<String, CharacterTranslation> byLanguage = new TreeMap<>();
-		translations.forEach((language, translation) -> byLanguage.put(language,
-				new CharacterTranslation(translation.getName(), translation.getDescription())));
+		translations.forEach(
+				(language, translation) -> byLanguage.put(language, new CharacterTranslation(translation.getName())));
 		return byLanguage;
 	}
 
@@ -165,7 +167,7 @@ public class CharacterVersionMapper {
 			Map<String, CharacterTranslation> translations) {
 		Map<String, CharacterTranslationEmbeddable> byLanguage = new HashMap<>();
 		translations.forEach((language, translation) -> byLanguage.put(language,
-				new CharacterTranslationEmbeddable(translation.name(), translation.description())));
+				new CharacterTranslationEmbeddable(translation.name())));
 		return byLanguage;
 	}
 

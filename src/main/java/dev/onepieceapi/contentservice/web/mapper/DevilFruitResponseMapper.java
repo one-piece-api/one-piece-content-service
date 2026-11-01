@@ -51,7 +51,10 @@ public class DevilFruitResponseMapper {
 		return new DevilFruitResponse(fruit.romaji(), toTypeResponse(fruit.typeContentId(), types),
 				toSubcategoryResponse(fruit, types), fruit.multipleUsers(), translations,
 				images.toResponse(fruit.imageId()),
-				FirstAppearanceMapper.toResponse(fruit.firstAppearance(), storyItems));
+				FirstAppearanceMapper.toResponse(fruit.firstAppearance(), storyItems),
+				ParagraphResponseMapper.toResponse(fruit.description(), storyItems),
+				ParagraphResponseMapper.toResponse(fruit.advantages(), storyItems),
+				ParagraphResponseMapper.toResponse(fruit.disadvantages(), storyItems));
 	}
 
 	/**
@@ -100,8 +103,7 @@ public class DevilFruitResponseMapper {
 	}
 
 	private static DevilFruitTranslationResponse toResponse(DevilFruitTranslation translation) {
-		return new DevilFruitTranslationResponse(translation.name(), translation.description(),
-				translation.advantages(), translation.disadvantages());
+		return new DevilFruitTranslationResponse(translation.name());
 	}
 
 }

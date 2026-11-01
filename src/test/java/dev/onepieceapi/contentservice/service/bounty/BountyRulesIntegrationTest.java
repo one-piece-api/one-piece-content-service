@@ -1,7 +1,5 @@
 package dev.onepieceapi.contentservice.service.bounty;
 
-import dev.onepieceapi.contentservice.domain.bounty.Bounty;
-import dev.onepieceapi.contentservice.domain.bounty.BountyCondition;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.domain.security.User;
 import dev.onepieceapi.contentservice.domain.workflow.BlockReason;
@@ -172,8 +170,10 @@ class BountyRulesIntegrationTest {
 
 	@Test
 	void aBountyWithoutAFirstAppearanceDoesNotGoOnlineEvenForAnAdministrator() {
-		var withoutOne = new Bounty("Nami", 16_000_000L, BountyCondition.DEAD_OR_ALIVE, false, null, null, Map.of(),
-				null, StoryPoint.NONE);
+		var withoutOne = this.fixtures.complete("Nami", 16_000_000L, null)
+			.toBuilder()
+			.firstAppearance(StoryPoint.NONE)
+			.build();
 		UUID bounty = this.fixtures.bounty(READY_TO_PUBLISH, withoutOne);
 		stored();
 
@@ -187,8 +187,8 @@ class BountyRulesIntegrationTest {
 	void aBountyDoesNotGoOnlineWhileItsChapterIsNot() {
 		UUID chapter = OnlineChapters.chapter(this.contentRepository, this.chapterRepository, ARCHIVED);
 		var body = this.fixtures.complete("Nami", 16_000_000L, null);
-		UUID bounty = this.fixtures.bounty(READY_TO_PUBLISH, new Bounty(body.posterName(), body.amount(),
-				body.condition(), false, null, null, body.translations(), null, StoryPoint.ofChapter(chapter)));
+		UUID bounty = this.fixtures.bounty(READY_TO_PUBLISH,
+				body.toBuilder().firstAppearance(StoryPoint.ofChapter(chapter)).build());
 		stored();
 
 		var refused = catchThrowableOfType(VersionActionBlockedException.class,

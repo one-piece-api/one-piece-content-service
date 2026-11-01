@@ -19,6 +19,19 @@ http:
     type: json
     data: |-
       {
+        "description": [
+          {
+            "discovered": {
+              "chapter": "",
+              "episode": ""
+            },
+            "ended": {
+              "chapter": "",
+              "episode": ""
+            },
+            "text": {}
+          }
+        ],
         "firstAppearance": {
           "chapter": "",
           "episode": ""
@@ -54,6 +67,19 @@ examples:
         type: json
         data: |-
           {
+            "description": [
+              {
+                "discovered": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "ended": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "text": {}
+              }
+            ],
             "firstAppearance": {
               "chapter": "",
               "episode": ""
@@ -90,6 +116,35 @@ examples:
               }
             ],
             "body": {
+              "description": [
+                {
+                  "discovered": {
+                    "chapter": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    },
+                    "episode": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    }
+                  },
+                  "ended": {
+                    "chapter": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    },
+                    "episode": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    }
+                  },
+                  "text": {}
+                }
+              ],
               "firstAppearance": {
                 "chapter": {
                   "id": "",
@@ -141,6 +196,19 @@ examples:
         type: json
         data: |-
           {
+            "description": [
+              {
+                "discovered": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "ended": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "text": {}
+              }
+            ],
             "firstAppearance": {
               "chapter": "",
               "episode": ""
@@ -189,6 +257,19 @@ examples:
         type: json
         data: |-
           {
+            "description": [
+              {
+                "discovered": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "ended": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "text": {}
+              }
+            ],
             "firstAppearance": {
               "chapter": "",
               "episode": ""

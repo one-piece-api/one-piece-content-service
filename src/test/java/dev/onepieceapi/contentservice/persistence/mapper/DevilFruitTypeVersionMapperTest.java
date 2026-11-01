@@ -1,5 +1,8 @@
 package dev.onepieceapi.contentservice.persistence.mapper;
 
+import dev.onepieceapi.contentservice.domain.readertime.StoryWindow;
+import dev.onepieceapi.contentservice.domain.readertime.Paragraph;
+import static dev.onepieceapi.contentservice.domain.readertime.ParagraphFixtures.paragraph;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitType;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitTypeSubcategory;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitTypeSubcategoryTranslation;
@@ -38,7 +41,7 @@ class DevilFruitTypeVersionMapperTest {
 		var entity = version(2, VersionStatus.REJECTED);
 		entity.getVersion().setRejectionReason("Too short");
 		entity.setRomaji("Zoan");
-		entity.getTranslations().put("it", new TranslationEmbeddable("Zoo Zoo", "Trasforma in animale", null, null));
+		entity.getTranslations().put("it", new TranslationEmbeddable("Zoo Zoo"));
 
 		var version = DevilFruitTypeVersionMapper.toDomain(entity);
 
@@ -51,7 +54,8 @@ class DevilFruitTypeVersionMapperTest {
 		assertThat(version.updatedAt()).isEqualTo(UPDATED);
 		assertThat(version.body().romaji()).isEqualTo("Zoan");
 		assertThat(version.body().translations())
-			.containsExactly(entry("it", new DevilFruitTypeTranslation("Zoo Zoo", "Trasforma in animale", null, null)));
+			.containsExactly(entry("it", new DevilFruitTypeTranslation("Zoo Zoo")));
+		assertThat(version.body().paragraphs().values()).allMatch(List::isEmpty);
 	}
 
 	@Test
@@ -67,19 +71,23 @@ class DevilFruitTypeVersionMapperTest {
 	@Test
 	void translationsAreReadInTheOrderOfTheirLanguageCode() {
 		var entity = version(1, VersionStatus.DRAFT);
-		entity.getTranslations().put("it", new TranslationEmbeddable("Zoo Zoo", null, null, null));
-		entity.getTranslations().put("en", new TranslationEmbeddable("Zoan", null, null, null));
-		entity.getTranslations().put("fr", new TranslationEmbeddable(null, null, null, null));
+		entity.getTranslations().put("it", new TranslationEmbeddable("Zoo Zoo"));
+		entity.getTranslations().put("en", new TranslationEmbeddable("Zoan"));
+		entity.getTranslations().put("fr", new TranslationEmbeddable(null));
 
 		var translations = DevilFruitTypeVersionMapper.toDomain(entity).body().translations();
 
 		assertThat(translations.keySet()).containsExactly("en", "fr", "it");
-		assertThat(translations.get("fr")).isEqualTo(new DevilFruitTypeTranslation(null, null, null, null));
+		assertThat(translations.get("fr")).isEqualTo(new DevilFruitTypeTranslation(null));
 	}
 
 	@Test
 	void theFirstDraftOfAContentIsVersionOneOfItsAuthorSayingWhatWasWritten() {
-		var body = new DevilFruitType("Zoan", Map.of("it", new DevilFruitTypeTranslation("Zoo Zoo", null, null, null)));
+		var body = DevilFruitType.builder()
+			.romaji("Zoan")
+			.translations(Map.of("it", new DevilFruitTypeTranslation("Zoo Zoo")))
+			.description(paragraph("it", "Animale"))
+			.build();
 
 		var entity = DevilFruitTypeVersionMapper.toFirstDraft(CONTENT_ID, CHOPPER, body, UPDATED);
 
@@ -98,8 +106,15 @@ class DevilFruitTypeVersionMapperTest {
 	@Test
 	void aLaterDraftIsOfItsOwnAuthorSayingWhatItsBaseSays() {
 		var base = version(1, VersionStatus.PUBLISHED);
-		base.setRomaji("Zoan");
-		base.getTranslations().put("it", new TranslationEmbeddable("Zoo Zoo", "Trasforma in animale", null, null));
+		DevilFruitTypeVersionMapper.rewrite(base,
+				DevilFruitType.builder()
+					.romaji("Zoan")
+					.translations(Map.of("it", new DevilFruitTypeTranslation("Zoo Zoo")))
+					.description(List.of(new Paragraph(Map.of("it", "Primo"), StoryWindow.NONE),
+							new Paragraph(Map.of("it", "Secondo"), StoryWindow.NONE)))
+					.disadvantages(paragraph("it", "Mare"))
+					.build(),
+				UPDATED);
 		var later = UPDATED.plusSeconds(60);
 
 		var entity = DevilFruitTypeVersionMapper.toDraftFrom(CONTENT_ID, 3, DevilFruitTypeVersionMapper.toDomain(base),
@@ -114,15 +129,21 @@ class DevilFruitTypeVersionMapperTest {
 		assertThat(version.createdAt()).isEqualTo(later);
 		assertThat(version.updatedAt()).isEqualTo(later);
 		assertThat(version.body()).isEqualTo(DevilFruitTypeVersionMapper.toDomain(base).body());
+		assertThat(version.body().description()).extracting(Paragraph::text)
+			.containsExactly(Map.of("it", "Primo"), Map.of("it", "Secondo"));
+		assertThat(entity.getParagraphs()).doesNotContainAnyElementsOf(base.getParagraphs());
 	}
 
 	@Test
 	void rewritingAVersionReplacesWhatItSaysAndNotesWhen() {
 		var entity = version(1, VersionStatus.DRAFT);
 		entity.setRomaji("Zoan");
-		entity.getTranslations().put("it", new TranslationEmbeddable("Zoo Zoo", "Trasforma in animale", null, null));
-		var body = new DevilFruitType("Dobutsu-kei",
-				Map.of("en", new DevilFruitTypeTranslation("Zoan", null, null, null)));
+		entity.getTranslations().put("it", new TranslationEmbeddable("Zoo Zoo"));
+		var body = DevilFruitType.builder()
+			.romaji("Dobutsu-kei")
+			.translations(Map.of("en", new DevilFruitTypeTranslation("Zoan")))
+			.advantages(paragraph("en", "Strength"))
+			.build();
 		var later = UPDATED.plusSeconds(60);
 
 		DevilFruitTypeVersionMapper.rewrite(entity, body, later);
@@ -154,7 +175,11 @@ class DevilFruitTypeVersionMapperTest {
 		var ancient = new DevilFruitTypeSubcategory(UUID.randomUUID(),
 				Map.of("it", new DevilFruitTypeSubcategoryTranslation("Antico", null)), ofSubcategory);
 		var plain = new DevilFruitTypeSubcategory(UUID.randomUUID(), Map.of());
-		var body = new DevilFruitType("Zoan", Map.of(), List.of(ancient, plain), ofType);
+		var body = DevilFruitType.builder()
+			.romaji("Zoan")
+			.subcategories(List.of(ancient, plain))
+			.firstAppearance(ofType)
+			.build();
 
 		var read = DevilFruitTypeVersionMapper
 			.toDomain(DevilFruitTypeVersionMapper.toFirstDraft(CONTENT_ID, CHOPPER, body, UPDATED))

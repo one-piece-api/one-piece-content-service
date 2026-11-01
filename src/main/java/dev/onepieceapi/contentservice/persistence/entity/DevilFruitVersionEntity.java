@@ -1,5 +1,10 @@
 package dev.onepieceapi.contentservice.persistence.entity;
 
+import java.util.List;
+import java.util.ArrayList;
+import jakarta.persistence.OrderColumn;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.CascadeType;
 import dev.onepieceapi.contentservice.domain.workflow.NaturalKey;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.ElementCollection;
@@ -63,6 +68,15 @@ public class DevilFruitVersionEntity extends VersionBodyEntity {
 	@MapKeyColumn(name = "language_code")
 	private Map<String, TranslationEmbeddable> translations = new HashMap<>();
 
+	/**
+	 * Its paragraphs, every section in one list (workflow 3.7.3): a section is in the
+	 * order of its rows; the position is the index in the list.
+	 */
+	@OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+	@JoinColumn(name = "version_id", nullable = false)
+	@OrderColumn(name = "position")
+	private List<DevilFruitParagraphEntity> paragraphs = new ArrayList<>();
+
 	public DevilFruitVersionEntity(ContentVersionEntity version) {
 		super(version);
 	}
@@ -83,6 +97,8 @@ public class DevilFruitVersionEntity extends VersionBodyEntity {
 		this.firstAppearanceEpisodeId = fields.firstAppearance().episodeId();
 		this.translations.clear();
 		this.translations.putAll(fields.translations());
+		PositionalRows.rewrite(this.paragraphs, fields.paragraphs(), DevilFruitParagraphEntity::new,
+				ParagraphEntity::rewrite);
 		touch(now);
 	}
 

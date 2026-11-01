@@ -1,10 +1,10 @@
 package dev.onepieceapi.contentservice.service.story;
 
+import dev.onepieceapi.contentservice.domain.story.TitleTranslation;
 import dev.onepieceapi.contentservice.domain.security.User;
 import dev.onepieceapi.contentservice.domain.story.Arc;
 import dev.onepieceapi.contentservice.domain.story.NumberedReference;
 import dev.onepieceapi.contentservice.domain.story.Saga;
-import dev.onepieceapi.contentservice.domain.story.StoryTranslation;
 import dev.onepieceapi.contentservice.domain.workflow.EntityType;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.entity.ContentEntity;
@@ -141,8 +141,8 @@ class SagaLinksIntegrationTest {
 	@Test
 	void theSagasOfSomeArcsAreLookedUpOnceAndNoSagaYetIsLeftOut() {
 		stored();
-		var arcs = List.of(new Arc(1, this.alabasta, Map.of()), new Arc(2, this.alabasta, Map.of()),
-				new Arc(3, null, Map.of()), new Arc(4, this.eastBlue, Map.of()));
+		var arcs = List.of(new Arc(1, this.alabasta, Map.of(), null), new Arc(2, this.alabasta, Map.of(), null),
+				new Arc(3, null, Map.of(), null), new Arc(4, this.eastBlue, Map.of(), null));
 
 		assertThat(this.links.referencesFor(arcs)).containsOnlyKeys(this.alabasta, this.eastBlue);
 		assertThat(this.links.referencesOf(List.of())).isEmpty();
@@ -166,8 +166,8 @@ class SagaLinksIntegrationTest {
 			.updatedAt(EARLIER)
 			.build();
 		var version = new SagaVersionEntity(workflow);
-		StoryVersionMapper.rewrite(version, new Saga(number, Map.of("it", new StoryTranslation(title, "Descrizione"))),
-				EARLIER);
+		StoryVersionMapper.rewrite(version,
+				new Saga(number, Map.of("it", new TitleTranslation(title)), StoryFixtures.description()), EARLIER);
 		this.sagaRepository.save(version);
 	}
 

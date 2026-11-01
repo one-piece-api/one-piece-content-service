@@ -1,5 +1,9 @@
 package dev.onepieceapi.contentservice.web.dto.request;
 
+import java.util.List;
+import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.NotNull;
+import dev.onepieceapi.contentservice.domain.readertime.Paragraph;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.PositiveOrZero;
 
@@ -11,9 +15,11 @@ import java.util.Map;
  * titles are free to use is for the service to say.
  *
  * @param number 0 or more, its public address
- * @param translations title and description per language code; a language left out, or
- * with nothing written in it, has no translation
+ * @param translations the title per language code; a language left out, or with nothing
+ * written in it, has no translation
+ * @param description its paragraphs, in order; left out for none
  */
-public record SagaRequest(@PositiveOrZero Integer number, Map<String, @Valid StoryTranslationRequest> translations) {
+public record SagaRequest(@PositiveOrZero Integer number, Map<String, @Valid TitleTranslationRequest> translations,
+		@Size(max = Paragraph.MAX_PER_SECTION) List<@NotNull @Valid ParagraphRequest> description) {
 
 }

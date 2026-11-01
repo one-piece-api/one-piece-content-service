@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.service.affiliation;
 
+import static dev.onepieceapi.contentservice.domain.readertime.ParagraphFixtures.paragraph;
 import dev.onepieceapi.contentservice.domain.affiliation.Affiliation;
 import dev.onepieceapi.contentservice.domain.affiliation.AffiliationKind;
 import dev.onepieceapi.contentservice.domain.workflow.ContentFilter;
@@ -122,8 +123,10 @@ class AffiliationDraftIntegrationTest {
 
 	@Test
 	void aNewAffiliationIsBornWithADraftSayingWhatWasWrittenTheSpaceAroundItIgnored() {
-		var written = new Affiliation("  Kaigun ", Map.of("it", new AffiliationTranslation(" Marina ", null)), null,
-				StoryPoint.NONE, null);
+		var written = Affiliation.builder()
+			.romaji("  Kaigun ")
+			.translations(Map.of("it", new AffiliationTranslation(" Marina ")))
+			.build();
 
 		var content = this.service.create(EDITOR, CHOPPER, written);
 		stored();
@@ -144,8 +147,10 @@ class AffiliationDraftIntegrationTest {
 
 	@Test
 	void aRomajiOrANameAnotherAffiliationHasIsRefusedNamingEachFieldWhateverTheCase() {
-		var written = new Affiliation(" mugiwara NO ichimi ",
-				Map.of("it", new AffiliationTranslation("MUGIWARA NO ICHIMI (IT)", null)), null, StoryPoint.NONE, null);
+		var written = Affiliation.builder()
+			.romaji(" mugiwara NO ichimi ")
+			.translations(Map.of("it", new AffiliationTranslation("MUGIWARA NO ICHIMI (IT)")))
+			.build();
 
 		var refused = catchThrowableOfType(ValueAlreadyUsedException.class,
 				() -> this.service.create(EDITOR, CHOPPER, written));
@@ -156,8 +161,10 @@ class AffiliationDraftIntegrationTest {
 	@Test
 	void theSameNameInAnotherLanguageIsNoClash() {
 		// "Mugiwara no Ichimi (it)" is taken in Italian, not in English.
-		var written = new Affiliation("Kaigun",
-				Map.of("en", new AffiliationTranslation("Mugiwara no Ichimi (it)", null)), null, StoryPoint.NONE, null);
+		var written = Affiliation.builder()
+			.romaji("Kaigun")
+			.translations(Map.of("en", new AffiliationTranslation("Mugiwara no Ichimi (it)")))
+			.build();
 
 		assertThat(this.service.create(EDITOR, CHOPPER, written).versions()).hasSize(1);
 	}
@@ -172,27 +179,31 @@ class AffiliationDraftIntegrationTest {
 	}
 
 	@Test
-	void aChapterNothingApprovedOfCannotBeTheFirstAppearance() {
+	void aChapterNothingApprovedOfCannotBeTheFirstAppearanceNorWhereAParagraphIsDiscovered() {
 		UUID draftChapter = OnlineChapters.chapter(this.contentRepository, this.chapterRepository, DRAFT);
 		stored();
 
 		var refused = catchThrowableOfType(ValueInvalidException.class, () -> this.service.create(EDITOR, CHOPPER,
 				this.fixtures.complete("Kaigun", StoryPoint.ofChapter(draftChapter))));
 
-		assertThat(fieldsOf(refused)).containsExactly("firstAppearance.chapter");
+		assertThat(fieldsOf(refused)).containsExactly("firstAppearance.chapter", "description[0].discovered.chapter");
 	}
 
 	@Test
 	void aDraftMayBeSavedIncompleteButNotSentToReview() {
-		var content = this.service.create(EDITOR, CHOPPER, new Affiliation("Kaigun",
-				Map.of("it", new AffiliationTranslation("Marina", null)), null, StoryPoint.NONE, null));
+		var content = this.service.create(EDITOR, CHOPPER,
+				Affiliation.builder()
+					.romaji("Kaigun")
+					.translations(Map.of("it", new AffiliationTranslation("Marina")))
+					.description(paragraph("it", "Forze"))
+					.build());
 		stored();
 
 		var refused = catchThrowableOfType(VersionIncompleteException.class,
 				() -> this.service.submit(EDITOR, CHOPPER, content.id(), 1));
 
 		assertThat(fieldsOf(refused)).containsExactly("kind", "firstAppearance", "translations[en].name",
-				"translations[en].description", "translations[it].description");
+				"description[0].text[en]", "description", "description[0].discovered");
 	}
 
 	@Test

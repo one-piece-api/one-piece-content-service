@@ -1,6 +1,7 @@
 package dev.onepieceapi.contentservice.domain.character;
 
 import dev.onepieceapi.contentservice.domain.readertime.NamedWindow;
+import dev.onepieceapi.contentservice.domain.readertime.Paragraph;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.domain.readertime.StoryWindow;
 import dev.onepieceapi.contentservice.domain.readertime.WindowSequence;
@@ -11,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import static dev.onepieceapi.contentservice.domain.readertime.ParagraphFixtures.paragraph;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
@@ -44,8 +46,8 @@ class CharacterTest {
 	void theKeyIsTheRomajiAndTheNamesAreUniquePerLanguage() {
 		var nami = Character.builder()
 			.romaji("Nami")
-			.translations(Map.of("it", new CharacterTranslation("Nami", null), "en",
-					new CharacterTranslation(null, "The navigator")))
+			.translations(Map.of("it", new CharacterTranslation("Nami")))
+			.description(paragraph("en", "The navigator"))
 			.epithets(List.of(new Epithet(Map.of("fr", "Chatte voleuse"), FROM_START)))
 			.build();
 
@@ -74,8 +76,8 @@ class CharacterTest {
 		var typed = Character.builder()
 			.romaji("  Nami ")
 			.japaneseName(" ナミ ")
-			.translations(Map.of("it", new CharacterTranslation(" Nami ", "\n Navigatrice "), "en",
-					new CharacterTranslation(" ", null)))
+			.translations(Map.of("it", new CharacterTranslation(" Nami "), "en", new CharacterTranslation(" ")))
+			.description(paragraph(Map.of("it", "\n Navigatrice ", "en", " ")))
 			.epithets(List.of(new Epithet(Map.of("it", " Gatta ladra ", "en", "  "), FROM_START)))
 			.aliases(List.of(new Alias(" Miss All Sunday ", FROM_START), new Alias("  ", null)))
 			.species(List.of(new SpeciesEntry(NINGEN, FROM_START)))
@@ -88,7 +90,9 @@ class CharacterTest {
 		assertThat(normalized.romaji()).isEqualTo("Nami");
 		assertThat(normalized.japaneseName()).isEqualTo("ナミ");
 		assertThat(normalized.translations()).containsOnlyKeys("it");
-		assertThat(normalized.translationIn("it")).isEqualTo(new CharacterTranslation("Nami", "Navigatrice"));
+		assertThat(normalized.translationIn("it")).isEqualTo(new CharacterTranslation("Nami"));
+		assertThat(normalized.description())
+			.containsExactly(new Paragraph(Map.of("it", "Navigatrice"), StoryWindow.NONE));
 		assertThat(normalized.epithets()).containsExactly(new Epithet(Map.of("it", "Gatta ladra"), FROM_START));
 		assertThat(normalized.aliases()).containsExactly(new Alias("Miss All Sunday", FROM_START), new Alias("", null));
 		assertThat(normalized.species()).containsExactly(new SpeciesEntry(NINGEN, FROM_START));
@@ -108,8 +112,8 @@ class CharacterTest {
 		var empty = Character.builder().epithets(List.of(new Epithet(Map.of("it", "Gatta ladra"), FROM_START))).build();
 
 		assertThat(empty.missingFields(List.of("en", "it"))).containsExactly("romaji", "status", "gender",
-				"firstAppearance", "translations[en].name", "translations[en].description", "translations[it].name",
-				"translations[it].description", "epithets[0].text[en]");
+				"firstAppearance", "translations[en].name", "translations[it].name", "epithets[0].text[en]",
+				"description");
 	}
 
 	@Test
@@ -153,7 +157,7 @@ class CharacterTest {
 
 		assertThat(usopp.windows()).extracting(NamedWindow::field)
 			.containsExactly("epithets[0]", "aliases[0]", "species[0]", "affiliations[0].periods[0]",
-					"affiliations[0].periods[1]", "devilFruits[0]", "relatives[0]");
+					"affiliations[0].periods[1]", "devilFruits[0]", "relatives[0]", "description[0]");
 		assertThat(usopp.windowSequences())
 			.containsExactly(new WindowSequence("affiliations[0].periods", List.of(ENDED, FROM_START)));
 	}
@@ -165,7 +169,7 @@ class CharacterTest {
 			.build();
 
 		assertThat(luffy.points()).containsExactly(new StoryPoint(CHAPTER, EPISODE), StoryPoint.ofChapter(CHAPTER),
-				StoryPoint.ofChapter(LATER_CHAPTER));
+				StoryPoint.ofChapter(LATER_CHAPTER), StoryPoint.ofChapter(CHAPTER));
 	}
 
 	@Test
@@ -190,8 +194,8 @@ class CharacterTest {
 	@Test
 	void aRoleWrittenInSomeLanguageIsRequiredInTheOthersButNoRoleIsNeverMissing() {
 		var withRoles = complete()
-			.translations(Map.of("it", new CharacterTranslation("Nami", "Navigatrice"), "en",
-					new CharacterTranslation("Nami", "Navigator")))
+			.translations(Map.of("it", new CharacterTranslation("Nami"), "en", new CharacterTranslation("Nami")))
+			.description(List.of(new Paragraph(Map.of("it", "Navigatrice", "en", "Navigator"), FROM_START)))
 			.affiliations(List.of(new Membership(KAIGUN, List.of(new MembershipPeriod(FROM_START, Map.of(), null))),
 					new Membership(KAIGUN2,
 							List.of(new MembershipPeriod(ENDED, null, null),
@@ -253,7 +257,8 @@ class CharacterTest {
 	private static Character.CharacterBuilder complete() {
 		return Character.builder()
 			.romaji("Nami")
-			.translations(Map.of("it", new CharacterTranslation("Nami", "Navigatrice")))
+			.translations(Map.of("it", new CharacterTranslation("Nami")))
+			.description(List.of(new Paragraph(Map.of("it", "Navigatrice"), FROM_START)))
 			.status(CharacterStatus.ALIVE)
 			.gender(Gender.FEMALE)
 			.firstAppearance(StoryPoint.ofChapter(CHAPTER));

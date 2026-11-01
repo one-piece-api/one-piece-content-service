@@ -23,7 +23,8 @@ public class SpeciesRequestMapper {
 			.orElseGet(Map::of)
 			.forEach((language, translation) -> translations.put(language, toDomain(translation)));
 		return new Species(request.romaji(), translations, null,
-				FirstAppearanceMapper.toDomain(request.firstAppearance()));
+				FirstAppearanceMapper.toDomain(request.firstAppearance()),
+				ParagraphRequestMapper.toDomain(request.description()));
 	}
 
 	/**
@@ -37,8 +38,7 @@ public class SpeciesRequestMapper {
 
 	/** A language sent with nothing in it is a language with nothing written. */
 	private static SpeciesTranslation toDomain(SpeciesTranslationRequest translation) {
-		return translation == null ? new SpeciesTranslation(null, null)
-				: new SpeciesTranslation(translation.name(), translation.description());
+		return translation == null ? new SpeciesTranslation(null) : new SpeciesTranslation(translation.name());
 	}
 
 }

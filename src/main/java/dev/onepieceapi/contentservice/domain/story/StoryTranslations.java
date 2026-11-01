@@ -57,4 +57,38 @@ class StoryTranslations {
 		}
 	}
 
+	/** Each title tidied up, a language left without one dropped. */
+	Map<String, TitleTranslation> normalizedTitles(Map<String, TitleTranslation> translations) {
+		Map<String, TitleTranslation> written = new TreeMap<>();
+		translations.forEach((language, translation) -> {
+			TitleTranslation normalized = translation.normalized();
+			if (!normalized.isEmpty()) {
+				written.put(language, normalized);
+			}
+		});
+		return written;
+	}
+
+	/** The title per language code, for the languages that have one. */
+	Map<String, String> titlesOf(Map<String, TitleTranslation> translations) {
+		Map<String, String> titles = new TreeMap<>();
+		translations.forEach((language, translation) -> {
+			if (translation.title() != null) {
+				titles.put(language, translation.title());
+			}
+		});
+		return titles;
+	}
+
+	/** A title per language, each one missing added to the list. */
+	void addMissingTitles(Map<String, TitleTranslation> translations, Collection<String> languages,
+			List<String> missing) {
+		for (String language : languages) {
+			TitleTranslation translation = translations.get(language);
+			if (translation == null || translation.title() == null) {
+				missing.add(TITLE_FIELD.formatted(language));
+			}
+		}
+	}
+
 }

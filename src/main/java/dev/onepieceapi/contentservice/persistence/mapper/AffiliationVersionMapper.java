@@ -23,22 +23,23 @@ public class AffiliationVersionMapper {
 	public Version<Affiliation> toDomain(AffiliationVersionEntity entity) {
 		var body = new Affiliation(entity.getRomaji(), toDomain(entity.getTranslations()), entity.getImageId(),
 				new StoryPoint(entity.getFirstAppearanceChapterId(), entity.getFirstAppearanceEpisodeId()),
-				entity.getKind());
+				entity.getKind(), ParagraphMapper.descriptionOf(entity.getParagraphs()));
 		return ContentVersionMapper.toDomain(entity.getVersion(), body);
 	}
 
 	/** Makes the version say what was given, in place of what it said. */
 	public void rewrite(AffiliationVersionEntity entity, Affiliation body, Instant now) {
 		entity.rewrite(body.romaji(), toEmbeddables(body.translations()), body.imageId(),
-				FirstAppearanceMapper.toIds(body.firstAppearance()), body.kind(), now);
+				FirstAppearanceMapper.toIds(body.firstAppearance()), body.kind(),
+				ParagraphMapper.toFields(body.paragraphs()), now);
 	}
 
 	/** Sorted by language code, so the same version always reads the same way. */
 	private static Map<String, AffiliationTranslation> toDomain(
 			Map<String, AffiliationTranslationEmbeddable> translations) {
 		Map<String, AffiliationTranslation> byLanguage = new TreeMap<>();
-		translations.forEach((language, translation) -> byLanguage.put(language,
-				new AffiliationTranslation(translation.getName(), translation.getDescription())));
+		translations.forEach(
+				(language, translation) -> byLanguage.put(language, new AffiliationTranslation(translation.getName())));
 		return byLanguage;
 	}
 
@@ -46,7 +47,7 @@ public class AffiliationVersionMapper {
 			Map<String, AffiliationTranslation> translations) {
 		Map<String, AffiliationTranslationEmbeddable> byLanguage = new HashMap<>();
 		translations.forEach((language, translation) -> byLanguage.put(language,
-				new AffiliationTranslationEmbeddable(translation.name(), translation.description())));
+				new AffiliationTranslationEmbeddable(translation.name())));
 		return byLanguage;
 	}
 

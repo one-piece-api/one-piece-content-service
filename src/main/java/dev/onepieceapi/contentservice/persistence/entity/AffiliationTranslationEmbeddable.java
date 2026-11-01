@@ -7,8 +7,8 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.FieldNameConstants;
 
 /**
- * The name and description of an Affiliation in one language - a value owned by its
- * version (see {@link AffiliationVersionEntity#getTranslations()}).
+ * The name of an Affiliation in one language - a value owned by its version (see
+ * {@link AffiliationVersionEntity#getTranslations()}).
  */
 @Embeddable
 @Getter
@@ -18,7 +18,5 @@ import lombok.experimental.FieldNameConstants;
 public class AffiliationTranslationEmbeddable {
 
 	private String name;
-
-	private String description;
 
 }

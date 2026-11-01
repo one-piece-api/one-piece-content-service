@@ -2,26 +2,23 @@ package dev.onepieceapi.contentservice.domain.character;
 
 import dev.onepieceapi.contentservice.domain.workflow.Text;
 
-import java.util.Objects;
-import java.util.stream.Stream;
-
 /**
- * The localized fields of a Character in one language
- * (docs/user-flows/content-editorial-workflow.md 3.1.11). Either may still be missing
- * while the version is a draft.
+ * The localized field of a Character in one language
+ * (docs/user-flows/content-editorial-workflow.md 3.1.11): its name, which may still be
+ * missing while the version is a draft. The description is a list of paragraphs (3.7.3).
  */
-public record CharacterTranslation(String name, String description) {
+public record CharacterTranslation(String name) {
 
 	/** A language nothing was written in. */
-	static final CharacterTranslation NONE = new CharacterTranslation(null, null);
+	static final CharacterTranslation NONE = new CharacterTranslation(null);
 
 	CharacterTranslation normalized() {
-		return new CharacterTranslation(Text.stripToNull(this.name), Text.stripToNull(this.description));
+		return new CharacterTranslation(Text.stripToNull(this.name));
 	}
 
 	/** Nothing written in this language. */
 	boolean isEmpty() {
-		return Stream.of(this.name, this.description).allMatch(Objects::isNull);
+		return this.name == null;
 	}
 
 }

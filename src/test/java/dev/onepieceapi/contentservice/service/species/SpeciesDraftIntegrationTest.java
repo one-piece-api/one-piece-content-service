@@ -2,7 +2,10 @@ package dev.onepieceapi.contentservice.service.species;
 
 import dev.onepieceapi.contentservice.domain.species.Species;
 import dev.onepieceapi.contentservice.domain.species.SpeciesTranslation;
+import dev.onepieceapi.contentservice.domain.readertime.Paragraph;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
+import dev.onepieceapi.contentservice.domain.readertime.StoryWindow;
+import dev.onepieceapi.exception.web.FieldViolation;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.repository.SpeciesVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
@@ -31,6 +34,8 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -42,6 +47,7 @@ import static dev.onepieceapi.contentservice.service.species.SpeciesFixtures.fie
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase.Replace;
 
 /**
@@ -106,8 +112,11 @@ class SpeciesDraftIntegrationTest {
 
 	@Test
 	void aNewSpeciesIsBornWithADraftSayingWhatWasWrittenTheSpaceAroundItIgnored() {
-		var written = new Species("  Kaigun ", Map.of("it", new SpeciesTranslation(" Marina ", null)), null,
-				StoryPoint.NONE);
+		var written = Species.builder()
+			.romaji("  Kaigun ")
+			.translations(Map.of("it", new SpeciesTranslation(" Marina ")))
+			.firstAppearance(StoryPoint.NONE)
+			.build();
 
 		var content = this.service.create(EDITOR, CHOPPER, written);
 		stored();
@@ -128,8 +137,11 @@ class SpeciesDraftIntegrationTest {
 
 	@Test
 	void aRomajiOrANameAnotherSpeciesHasIsRefusedNamingEachFieldWhateverTheCase() {
-		var written = new Species(" gyojin ", Map.of("it", new SpeciesTranslation("GYOJIN (IT)", null)), null,
-				StoryPoint.NONE);
+		var written = Species.builder()
+			.romaji(" gyojin ")
+			.translations(Map.of("it", new SpeciesTranslation("GYOJIN (IT)")))
+			.firstAppearance(StoryPoint.NONE)
+			.build();
 
 		var refused = catchThrowableOfType(ValueAlreadyUsedException.class,
 				() -> this.service.create(EDITOR, CHOPPER, written));
@@ -140,8 +152,11 @@ class SpeciesDraftIntegrationTest {
 	@Test
 	void theSameNameInAnotherLanguageIsNoClash() {
 		// "Gyojin (it)" is taken in Italian, not in English.
-		var written = new Species("Kaigun", Map.of("en", new SpeciesTranslation("Gyojin (it)", null)), null,
-				StoryPoint.NONE);
+		var written = Species.builder()
+			.romaji("Kaigun")
+			.translations(Map.of("en", new SpeciesTranslation("Gyojin (it)")))
+			.firstAppearance(StoryPoint.NONE)
+			.build();
 
 		assertThat(this.service.create(EDITOR, CHOPPER, written).versions()).hasSize(1);
 	}
@@ -156,27 +171,45 @@ class SpeciesDraftIntegrationTest {
 	}
 
 	@Test
-	void aChapterNothingApprovedOfCannotBeTheFirstAppearance() {
+	void aChapterNothingApprovedOfCannotBeTheFirstAppearanceNorWhereAParagraphIsDiscovered() {
 		UUID draftChapter = OnlineChapters.chapter(this.contentRepository, this.chapterRepository, DRAFT);
 		stored();
 
 		var refused = catchThrowableOfType(ValueInvalidException.class, () -> this.service.create(EDITOR, CHOPPER,
 				this.fixtures.complete("Kaigun", StoryPoint.ofChapter(draftChapter))));
 
-		assertThat(fieldsOf(refused)).containsExactly("firstAppearance.chapter");
+		assertThat(fieldsOf(refused)).containsExactly("firstAppearance.chapter", "description[0].discovered.chapter");
+	}
+
+	@Test
+	void aParagraphWithNothingWrittenIsRefusedOnSaveNamingItsPlace() {
+		var written = this.fixtures.complete("Kaigun");
+		var description = new ArrayList<>(written.description());
+		description.add(new Paragraph(Map.of("it", " ", "en", ""), StoryWindow.NONE));
+
+		var refused = catchThrowableOfType(ValueInvalidException.class,
+				() -> this.service.create(EDITOR, CHOPPER, written.toBuilder().description(description).build()));
+
+		@SuppressWarnings("unchecked")
+		var violations = (List<FieldViolation>) refused.getDetails().get("errors");
+		assertThat(violations).extracting(FieldViolation::field, FieldViolation::message)
+			.containsExactly(tuple("description[1]", "must not be blank"));
 	}
 
 	@Test
 	void aDraftMayBeSavedIncompleteButNotSentToReview() {
 		var content = this.service.create(EDITOR, CHOPPER,
-				new Species("Kaigun", Map.of("it", new SpeciesTranslation("Marina", null)), null, StoryPoint.NONE));
+				Species.builder()
+					.romaji("Kaigun")
+					.translations(Map.of("it", new SpeciesTranslation("Marina")))
+					.firstAppearance(StoryPoint.NONE)
+					.build());
 		stored();
 
 		var refused = catchThrowableOfType(VersionIncompleteException.class,
 				() -> this.service.submit(EDITOR, CHOPPER, content.id(), 1));
 
-		assertThat(fieldsOf(refused)).containsExactly("firstAppearance", "translations[en].name",
-				"translations[en].description", "translations[it].description");
+		assertThat(fieldsOf(refused)).containsExactly("firstAppearance", "translations[en].name", "description");
 	}
 
 	@Test

@@ -60,7 +60,11 @@ import java.util.stream.Stream;
  * <li>a chapter or episode is not retired while an online item uses it as a point: the
  * entity's own query, read by {@code ChapterRules} and {@code EpisodeRules}.</li>
  * </ul>
- * A window without {@code discovered} is a draft's business: submitting requires it
+ * The story structure (Saga, Arc) has no first appearance: its points are bounded only by
+ * the rules on {@code ended}, and going online they need only be linkable, read on the
+ * numbers last approved - a chapter goes online only with its arc online, so an arc could
+ * never go online pointing at its own chapter (3.7.4). A window without
+ * {@code discovered} is a draft's business: submitting requires it
  * ({@link WindowedItem#missingDiscovered()}). The first appearance itself is a relation
  * of the item ({@link FirstAppearanceRules}). The library {@code one-piece-reader-time}
  * compares the numbers. Not even {@code content:admin} lifts them.
@@ -150,20 +154,26 @@ public class ReaderAxisRules {
 
 	/**
 	 * Going online, the first chapter or episode of a window that is not online, then the
-	 * first point the numbers online put out of order.
+	 * first point the numbers online put out of order. For the story structure, only the
+	 * first point the numbers approved put out of order.
 	 */
 	public Optional<ActionBlock> blockOf(VersionAction action, WindowedItem item) {
 		if (!RelationRules.GOING_ONLINE.contains(action)) {
 			return Optional.empty();
+		}
+		if (item.origin().isEmpty()) {
+			return firstOutOfRange(item, VersionStatus.approved());
 		}
 		return parts(item)
 			.map(part -> RelationRules.targetNotOnline(action, part.relation(), part.target(),
 					Map.of(FIELD, part.field()), repositoryOf(part.relation())))
 			.flatMap(Optional::stream)
 			.findFirst()
-			.or(() -> orderViolations(item, Set.of(VersionStatus.PUBLISHED)).stream()
-				.findFirst()
-				.map(ReaderAxisRules::outOfRange));
+			.or(() -> firstOutOfRange(item, Set.of(VersionStatus.PUBLISHED)));
+	}
+
+	private Optional<ActionBlock> firstOutOfRange(WindowedItem item, Collection<VersionStatus> statuses) {
+		return orderViolations(item, statuses).stream().findFirst().map(ReaderAxisRules::outOfRange);
 	}
 
 	private static ActionBlock outOfRange(FieldViolation violation) {
@@ -176,11 +186,10 @@ public class ReaderAxisRules {
 	/** The rules on the order of the points, read on the numbers of these statuses. */
 	private List<FieldViolation> orderViolations(WindowedItem item, Collection<VersionStatus> statuses) {
 		return numbersOf(item, statuses).map(numbers -> {
-			Point firstAppearance = numbers.pointOf(item.firstAppearance());
+			Optional<Point> origin = item.origin().map(numbers::pointOf);
 			Stream<FieldViolation> points = item.windows()
 				.stream()
-				.flatMap(named -> PointRules.ofWindow(numbers.windowOf(named.window()), firstAppearance)
-					.stream()
+				.flatMap(named -> pointRules(numbers.windowOf(named.window()), origin).stream()
 					.filter(violation -> violation.rule() != PointRule.MISSING)
 					.map(violation -> pointViolation(named, violation)));
 			Stream<FieldViolation> periods = item.windowSequences()
@@ -190,6 +199,11 @@ public class ReaderAxisRules {
 					.map(violation -> periodViolation(sequence, violation)));
 			return Stream.concat(points, periods).distinct().toList();
 		}).orElse(List.of());
+	}
+
+	private static List<PointViolation> pointRules(RevealWindow window, Optional<Point> origin) {
+		return origin.map(firstAppearance -> PointRules.ofWindow(window, firstAppearance))
+			.orElseGet(() -> PointRules.ofWindow(window));
 	}
 
 	private static FieldViolation pointViolation(NamedWindow named, PointViolation violation) {

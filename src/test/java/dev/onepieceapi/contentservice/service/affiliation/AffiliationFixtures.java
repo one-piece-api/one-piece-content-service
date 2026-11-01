@@ -1,5 +1,8 @@
 package dev.onepieceapi.contentservice.service.affiliation;
 
+import static dev.onepieceapi.contentservice.domain.readertime.ParagraphFixtures.discoveredAt;
+import dev.onepieceapi.contentservice.service.validation.ParagraphRules;
+import dev.onepieceapi.contentservice.service.content.ReaderAxisRules;
 import dev.onepieceapi.contentservice.config.RulesProperties;
 import dev.onepieceapi.contentservice.domain.affiliation.Affiliation;
 import dev.onepieceapi.contentservice.domain.affiliation.AffiliationKind;
@@ -86,15 +89,20 @@ final class AffiliationFixtures {
 	 */
 	private final StoryPoint firstAppearance;
 
+	ReaderAxisRules readerAxisRules() {
+		return new ReaderAxisRules(this.contents, this.chapters, this.episodes);
+	}
+
 	AffiliationService service() {
 		return service(mock(ContentImages.class));
 	}
 
 	AffiliationService service(ContentImages images) {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
-		var validator = new AffiliationValidator(this.affiliations, this.languages, this.chapters, this.episodes);
+		var validator = new AffiliationValidator(this.affiliations, this.languages, this.chapters, this.episodes,
+				new ParagraphRules(readerAxisRules()));
 		var rules = new AffiliationRules(this.contents, this.chapters, this.episodes, this.characters,
-				new RulesProperties(5));
+				readerAxisRules(), new RulesProperties(5));
 		return new AffiliationService(new AffiliationDefinition(this.affiliations, validator, rules),
 				this.contentVersions, this.contents, new AuditLogService(this.auditLog, clock), clock, images);
 	}
@@ -103,22 +111,25 @@ final class AffiliationFixtures {
 	 * Complete in both languages of the catalog, so only what a test changes is missing.
 	 */
 	Affiliation complete(String romaji) {
-		return new Affiliation(romaji,
-				Map.of("it", new AffiliationTranslation(romaji + " (it)", "Descrizione di " + romaji), "en",
-						new AffiliationTranslation(romaji + " (en)", "Description of " + romaji)),
-				null, this.firstAppearance, AffiliationKind.PIRATE_CREW);
+		return complete(romaji, this.firstAppearance);
 	}
 
 	/** The same, of this kind - none for a version written before kinds existed. */
 	Affiliation complete(String romaji, AffiliationKind kind) {
-		var body = complete(romaji);
-		return new Affiliation(body.romaji(), body.translations(), null, body.firstAppearance(), kind);
+		return complete(romaji).toBuilder().kind(kind).build();
 	}
 
 	/** The same, first appearing elsewhere. */
 	Affiliation complete(String romaji, StoryPoint firstAppearanceElsewhere) {
-		var body = complete(romaji);
-		return new Affiliation(body.romaji(), body.translations(), null, firstAppearanceElsewhere, body.kind());
+		return Affiliation.builder()
+			.romaji(romaji)
+			.translations(Map.of("it", new AffiliationTranslation(romaji + " (it)"), "en",
+					new AffiliationTranslation(romaji + " (en)")))
+			.firstAppearance(firstAppearanceElsewhere)
+			.kind(AffiliationKind.PIRATE_CREW)
+			.description(discoveredAt(firstAppearanceElsewhere,
+					Map.of("it", "Descrizione di " + romaji, "en", "Description of " + romaji)))
+			.build();
 	}
 
 	/** A new content with its first version in this status. */

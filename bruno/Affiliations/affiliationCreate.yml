@@ -12,6 +12,19 @@ http:
     type: json
     data: |-
       {
+        "description": [
+          {
+            "discovered": {
+              "chapter": "",
+              "episode": ""
+            },
+            "ended": {
+              "chapter": "",
+              "episode": ""
+            },
+            "text": {}
+          }
+        ],
         "firstAppearance": {
           "chapter": "",
           "episode": ""
@@ -40,6 +53,19 @@ examples:
         type: json
         data: |-
           {
+            "description": [
+              {
+                "discovered": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "ended": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "text": {}
+              }
+            ],
             "firstAppearance": {
               "chapter": "",
               "episode": ""
@@ -97,6 +123,19 @@ examples:
         type: json
         data: |-
           {
+            "description": [
+              {
+                "discovered": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "ended": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "text": {}
+              }
+            ],
             "firstAppearance": {
               "chapter": "",
               "episode": ""
@@ -138,6 +177,19 @@ examples:
         type: json
         data: |-
           {
+            "description": [
+              {
+                "discovered": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "ended": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "text": {}
+              }
+            ],
             "firstAppearance": {
               "chapter": "",
               "episode": ""

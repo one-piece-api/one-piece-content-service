@@ -1,5 +1,7 @@
 package dev.onepieceapi.contentservice.web.controller;
 
+import static org.mockito.ArgumentMatchers.anyCollection;
+import static dev.onepieceapi.contentservice.domain.readertime.ParagraphFixtures.paragraph;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitType;
 import dev.onepieceapi.contentservice.domain.devilfruit.TypeReference;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitTypeSubcategory;
@@ -89,6 +91,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(DevilFruitTypeController.class)
 @Import({ SecurityConfig.class, ApplicationExceptionHandler.class, ConcurrentModificationExceptionHandler.class })
 class DevilFruitTypeControllerTest {
+
+	/** A romaji, an Italian name and one advantage in Italian. */
+	private static final String ADVANTAGE_BODY = "{\"romaji\":\"%s\",\"translations\":{\"it\":{\"name\":\"%s\"}},"
+			+ "\"advantages\":[{\"text\":{\"it\":\"%s\"}}]}";
 
 	private static final UUID CONTENT_ID = UUID.fromString("7b0e6c1a-3f52-4d0c-9a52-1f2f3d4e5a6b");
 
@@ -288,9 +294,9 @@ class DevilFruitTypeControllerTest {
 			.andExpect(jsonPath("$.allowedActions[0]").value("PULL_BACK"))
 			.andExpect(jsonPath("$.body.romaji").value("Zoan"))
 			.andExpect(jsonPath("$.body.translations.it.name").value("Zoo Zoo"))
-			.andExpect(jsonPath("$.body.translations.it.description").value("Trasforma in animale"))
 			.andExpect(jsonPath("$.body.translations.en.name").doesNotExist())
-			.andExpect(jsonPath("$.body.translations.en.description").value("Turns into an animal"));
+			.andExpect(jsonPath("$.body.description[0].text.it").value("Trasforma in animale"))
+			.andExpect(jsonPath("$.body.description[0].text.en").value("Turns into an animal"));
 	}
 
 	@Test
@@ -298,7 +304,11 @@ class DevilFruitTypeControllerTest {
 		var ofType = UUID.fromString("7d3b2a1c-0e9f-4a8b-8c7d-6e5f4a3b2c1d");
 		var ofSubcategory = UUID.fromString("8e4c3b2d-1f0a-4b9c-9d8e-7f6a5b4c3d2e");
 		var ancient = new DevilFruitTypeSubcategory(UUID.randomUUID(), Map.of(), StoryPoint.ofChapter(ofSubcategory));
-		var body = new DevilFruitType("Zoan", Map.of(), List.of(ancient), StoryPoint.ofChapter(ofType));
+		var body = DevilFruitType.builder()
+			.romaji("Zoan")
+			.subcategories(List.of(ancient))
+			.firstAppearance(StoryPoint.ofChapter(ofType))
+			.build();
 		var version = Version.<DevilFruitType>builder()
 			.number(1)
 			.status(VersionStatus.DRAFT)
@@ -308,7 +318,7 @@ class DevilFruitTypeControllerTest {
 			.updatedAt(CREATED)
 			.build();
 		when(this.service.getVersion(any(), any(), eq(CONTENT_ID), eq(1))).thenReturn(readOnly(version));
-		when(this.firstAppearances.referencesOf(Set.of(ofType, ofSubcategory), Set.of()))
+		when(this.firstAppearances.referencesOfPoints(anyCollection()))
 			.thenReturn(Map.of(ofType, new NumberedReference(ofType, 1, Map.of("it", "Romance Dawn")), ofSubcategory,
 					new NumberedReference(ofSubcategory, 2, Map.of())));
 
@@ -394,8 +404,7 @@ class DevilFruitTypeControllerTest {
 		var written = ArgumentCaptor.forClass(DevilFruitType.class);
 		verify(this.service).create(eq(Set.of(Permission.CONTENT_WRITE)), any(), written.capture());
 		assertThat(written.getValue().romaji()).isEqualTo(" Zoan ");
-		assertThat(written.getValue().translations().get("it"))
-			.isEqualTo(new DevilFruitTypeTranslation("Zoo Zoo", null, null, null));
+		assertThat(written.getValue().translations().get("it")).isEqualTo(new DevilFruitTypeTranslation("Zoo Zoo"));
 	}
 
 	@Test
@@ -520,8 +529,7 @@ class DevilFruitTypeControllerTest {
 	@Test
 	void aTextLongerThanItsLimitIsABadRequestNamingItsField() throws Exception {
 		var tooLong = "x".repeat(101);
-		var body = "{\"romaji\":\"%s\",\"translations\":{\"it\":{\"name\":\"%s\",\"description\":\"%s\"}}}"
-			.formatted(tooLong, tooLong, "x".repeat(2001));
+		var body = ADVANTAGE_BODY.formatted(tooLong, tooLong, "x".repeat(2001));
 
 		var result = this.mockMvc.perform(edit(body).with(callerWith(Permission.CONTENT_WRITE)))
 			.andExpect(status().isBadRequest())
@@ -529,7 +537,7 @@ class DevilFruitTypeControllerTest {
 			.andReturn();
 
 		assertThat(result.getResponse().getContentAsString()).contains("\"romaji\"", "translations[it].name",
-				"translations[it].description");
+				"advantages[0].text[it]");
 		verifyNoInteractions(this.service);
 	}
 
@@ -537,8 +545,7 @@ class DevilFruitTypeControllerTest {
 	void aTextAsLongAsItsLimitIsAccepted() throws Exception {
 		var draft = new VersionAccess<>(version(1, VersionStatus.DRAFT), EnumSet.of(VersionAction.EDIT));
 		when(this.service.edit(any(), any(), any(), eq(1), any())).thenReturn(draft);
-		var body = "{\"romaji\":\"%s\",\"translations\":{\"it\":{\"name\":\"%s\",\"description\":\"%s\"}}}"
-			.formatted("x".repeat(100), "x".repeat(100), "x".repeat(2000));
+		var body = ADVANTAGE_BODY.formatted("x".repeat(100), "x".repeat(100), "x".repeat(2000));
 
 		this.mockMvc.perform(edit(body).with(callerWith(Permission.CONTENT_WRITE))).andExpect(status().isOk());
 	}
@@ -1171,15 +1178,19 @@ class DevilFruitTypeControllerTest {
 	}
 
 	private static Version<DevilFruitType> version(int number, VersionStatus status) {
-		var translations = Map.of("it", new DevilFruitTypeTranslation("Zoo Zoo", "Trasforma in animale", null, null),
-				"en", new DevilFruitTypeTranslation(null, "Turns into an animal", null, null));
+		var translations = Map.of("it", new DevilFruitTypeTranslation("Zoo Zoo"), "en",
+				new DevilFruitTypeTranslation(null));
 		return Version.<DevilFruitType>builder()
 			.number(number)
 			.basedOn(number == 1 ? null : 1)
 			.status(status)
 			.author(NAMI)
 			.claimant(number == 1 ? null : ZORO)
-			.body(new DevilFruitType("Zoan", translations))
+			.body(DevilFruitType.builder()
+				.romaji("Zoan")
+				.translations(translations)
+				.description(paragraph(Map.of("it", "Trasforma in animale", "en", "Turns into an animal")))
+				.build())
 			.createdAt(CREATED)
 			.updatedAt(UPDATED)
 			.build();

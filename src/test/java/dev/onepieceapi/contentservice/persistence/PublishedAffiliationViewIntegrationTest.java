@@ -146,11 +146,11 @@ class PublishedAffiliationViewIntegrationTest {
 		this.jdbc.sql("insert into affiliation_version (version_id, romaji) values (?, ?)").params(id, romaji).update();
 		for (String language : languages) {
 			this.jdbc
-				.sql("insert into affiliation_version_translation (version_id, language_code, name, description)"
-						+ " values (?, ?, ?, ?)")
-				.params(id, language, "Name " + language.toUpperCase(), "Description " + language.toUpperCase())
+				.sql("insert into affiliation_version_translation (version_id, language_code, name) values (?, ?, ?)")
+				.params(id, language, "Name " + language.toUpperCase())
 				.update();
 		}
+		ParagraphRows.description(this.jdbc, "affiliation", id, languages);
 		return id;
 	}
 

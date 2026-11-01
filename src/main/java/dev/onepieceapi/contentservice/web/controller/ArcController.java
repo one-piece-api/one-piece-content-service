@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.web.controller;
 
+import dev.onepieceapi.contentservice.service.story.FirstAppearanceLinks;
 import dev.onepieceapi.contentservice.domain.story.Arc;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSortField;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
@@ -61,9 +62,9 @@ class ArcController extends ContentController<Arc, ArcResponse, ArcNamesResponse
 	private final ArcLinks links;
 
 	@Autowired
-	ArcController(ArcService service, SagaLinks sagas, ArcLinks links) {
-		super(service,
-				access -> StoryResponseMapper.toVersionResponse(access, sagas.referencesFor(List.of(access.body()))));
+	ArcController(ArcService service, SagaLinks sagas, ArcLinks links, FirstAppearanceLinks storyItems) {
+		super(service, access -> StoryResponseMapper.toArcVersionResponse(access,
+				sagas.referencesFor(List.of(access.body())), storyItems.referencesOfPoints(access.body().points())));
 		this.service = service;
 		this.sagas = sagas;
 		this.links = links;

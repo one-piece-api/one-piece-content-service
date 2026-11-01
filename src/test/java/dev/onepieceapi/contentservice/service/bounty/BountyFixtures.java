@@ -1,9 +1,11 @@
 package dev.onepieceapi.contentservice.service.bounty;
 
+import static dev.onepieceapi.contentservice.domain.readertime.ParagraphFixtures.discoveredAt;
+import dev.onepieceapi.contentservice.service.validation.ParagraphRules;
+import dev.onepieceapi.contentservice.service.content.ReaderAxisRules;
 import dev.onepieceapi.contentservice.config.RulesProperties;
 import dev.onepieceapi.contentservice.domain.bounty.Bounty;
 import dev.onepieceapi.contentservice.domain.bounty.BountyCondition;
-import dev.onepieceapi.contentservice.domain.bounty.BountyTranslation;
 import dev.onepieceapi.contentservice.domain.character.Character;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.domain.security.Permission;
@@ -102,6 +104,10 @@ final class BountyFixtures {
 		return new BountyChains(this.bounties);
 	}
 
+	ReaderAxisRules readerAxisRules() {
+		return new ReaderAxisRules(this.contents, this.chapters, this.episodes);
+	}
+
 	BountyService service() {
 		return service(this.bounties, mock(ContentImages.class));
 	}
@@ -117,9 +123,9 @@ final class BountyFixtures {
 	BountyService service(BountyVersionRepository rulesBounties, ContentImages images) {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
 		var validator = new BountyValidator(this.bounties, this.languages, this.chapters, this.characters,
-				this.episodes, chains());
+				this.episodes, chains(), new ParagraphRules(readerAxisRules()));
 		var rules = new BountyRules(this.contents, rulesBounties, this.chapters, this.characters, this.episodes,
-				chains(), new RulesProperties(5));
+				chains(), readerAxisRules(), new RulesProperties(5));
 		return new BountyService(new BountyDefinition(this.bounties, validator, rules), this.contentVersions,
 				this.contents, new AuditLogService(this.auditLog, clock), clock, images);
 	}
@@ -128,16 +134,20 @@ final class BountyFixtures {
 	 * Complete in both languages of the catalog, so only what a test changes is missing.
 	 */
 	Bounty complete(String posterName, long amount, UUID previous) {
-		return new Bounty(posterName, amount, BountyCondition.DEAD_OR_ALIVE, false, previous, null,
-				Map.of("it", new BountyTranslation("Taglia di " + posterName), "en",
-						new BountyTranslation("Bounty of " + posterName)),
-				null, firstAppearance());
+		return Bounty.builder()
+			.posterName(posterName)
+			.amount(amount)
+			.condition(BountyCondition.DEAD_OR_ALIVE)
+			.previousContentId(previous)
+			.firstAppearance(firstAppearance())
+			.description(discoveredAt(firstAppearance(),
+					Map.of("it", "Taglia di " + posterName, "en", "Bounty of " + posterName)))
+			.build();
 	}
 
 	/** The same bounty, about this character. */
 	static Bounty heldBy(Bounty bounty, UUID holder) {
-		return new Bounty(bounty.posterName(), bounty.amount(), bounty.condition(), bounty.inactive(),
-				bounty.previousContentId(), holder, bounty.translations(), bounty.imageId(), bounty.firstAppearance());
+		return bounty.toBuilder().holderContentId(holder).build();
 	}
 
 	/** A character, with a single version in this status, for a bounty to be about. */

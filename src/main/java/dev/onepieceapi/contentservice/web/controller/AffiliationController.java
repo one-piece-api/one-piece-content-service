@@ -73,7 +73,7 @@ class AffiliationController extends ContentController<Affiliation, AffiliationRe
 	AffiliationController(AffiliationService service, AffiliationLinks links, FirstAppearanceLinks firstAppearances,
 			ImageResponseMapper images) {
 		super(service, access -> AffiliationResponseMapper.toVersionResponse(access,
-				firstAppearances.referencesFor(List.of(access.body())), images));
+				firstAppearances.referencesOfPoints(access.body().points()), images));
 		this.service = service;
 		this.links = links;
 	}

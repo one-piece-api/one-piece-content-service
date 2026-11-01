@@ -61,3 +61,28 @@ answer "how is it at chapter N" and two users of a fruit at different times look
 - A draft with windows needs its first appearance first: without one, no axis exists and every part is refused
   (3.7.4).
 - Every windowed entity added later (R3-R5) implements `WindowedItem` and gets the rules without new code.
+
+## Addendum - paragraphs (V39, reveals plan R3)
+
+- **Long texts are paragraph lists.** Every description of Species, Affiliation, Bounty, Devil Fruit, Devil Fruit
+  Type, Character, Saga and Arc, plus advantages/disadvantages of the fruit and its type, is a list of
+  `{text: {lang}, discovered, ended}` (max 50 per section, 2000 chars per text). Translations keep only the name.
+  Domain: `Paragraph`, `ParagraphSection`, capability `Paragraphed` (a `WindowedItem`), so `ReaderAxisRules` checks
+  the paragraph points with no new rule code.
+- **Submitting** asks each paragraph in every language and, per section, one paragraph discovered at the first
+  appearance. Saga and Arc have no first appearance: one paragraph per section, discovered anywhere; their points
+  need only be linkable (approved), and `ended` is checked on the approved numbers.
+- **A blank paragraph** is refused on save (`description[i]` "must not be blank").
+- **Storage**: one `<entity>_version_paragraph` table per entity (section, position, the V38 point columns) and
+  `<entity>_version_paragraph_translation`. Persistence: `ParagraphEntity` (`@MappedSuperclass`) and one subclass
+  per entity that declares its own text `@ElementCollection`. Reason: JPA has no standard override for the
+  collection table of an element collection inherited from a mapped superclass (`@AssociationOverride` is ignored
+  there), and one shared table would lose the per-entity FK.
+- **Linked chapters/episodes**: a paragraph point keeps its chapter or episode from being retired
+  (`ONLINE_ITEMS_LINKED`), like a first appearance.
+- **Languages in use** include the paragraph texts (`existsByLanguage` native overrides).
+- **Published views keep their columns** until R6: a long text is its paragraphs joined, unfiltered.
+
+Alternatives: one generic paragraph table for all entities (no per-entity FK, no cascade from the version);
+paragraphs as JSON (no FK on the points, so retire checks cannot see them); one table per section (eight tables
+more, same shape).

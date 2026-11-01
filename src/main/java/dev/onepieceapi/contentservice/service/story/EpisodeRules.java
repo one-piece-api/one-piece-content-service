@@ -6,6 +6,7 @@ import dev.onepieceapi.contentservice.domain.workflow.ActionBlock;
 import dev.onepieceapi.contentservice.domain.workflow.Version;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAction;
 import dev.onepieceapi.contentservice.persistence.repository.ArcVersionRepository;
+import dev.onepieceapi.contentservice.persistence.repository.SagaVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.AffiliationVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.CharacterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.SpeciesVersionRepository;
@@ -58,6 +59,8 @@ public class EpisodeRules implements ContentRules<Episode> {
 
 	private final CharacterVersionRepository characterRepository;
 
+	private final SagaVersionRepository sagaRepository;
+
 	private final RulesProperties properties;
 
 	@Override
@@ -74,40 +77,42 @@ public class EpisodeRules implements ContentRules<Episode> {
 			.or(() -> bountiesLinked(action, contentId))
 			.or(() -> affiliationsLinked(action, contentId))
 			.or(() -> speciesLinked(action, contentId))
-			.or(() -> charactersLinked(action, contentId));
+			.or(() -> charactersLinked(action, contentId))
+			.or(() -> sagasLinked(action, contentId))
+			.or(() -> arcsLinked(action, contentId));
 	}
 
 	private Optional<ActionBlock> fruitsLinked(VersionAction action, UUID contentId) {
-		var fruits = new LinkedItems(this.fruitRepository::countOnlineFirstAppearingIn,
-				this.fruitRepository::findOnlineFirstAppearingIn);
+		var fruits = new LinkedItems(this.fruitRepository::countOnlineWithPointIn,
+				this.fruitRepository::findOnlineWithPointIn);
 		return RelationRules.onlineItemsLinked(action, DevilFruitRelations.FIRST_APPEARANCE_EPISODE, contentId, fruits,
 				this.properties.blockingPreviewSize());
 	}
 
 	private Optional<ActionBlock> typesLinked(VersionAction action, UUID contentId) {
-		var types = new LinkedItems(this.typeRepository::countOnlineFirstAppearingIn,
-				this.typeRepository::findOnlineFirstAppearingIn);
+		var types = new LinkedItems(this.typeRepository::countOnlineWithPointIn,
+				this.typeRepository::findOnlineWithPointIn);
 		return RelationRules.onlineItemsLinked(action, DevilFruitTypeRelations.FIRST_APPEARANCE_EPISODE, contentId,
 				types, this.properties.blockingPreviewSize());
 	}
 
 	private Optional<ActionBlock> bountiesLinked(VersionAction action, UUID contentId) {
-		var bounties = new LinkedItems(this.bountyRepository::countOnlineFirstAppearingIn,
-				this.bountyRepository::findOnlineFirstAppearingIn);
+		var bounties = new LinkedItems(this.bountyRepository::countOnlineWithPointIn,
+				this.bountyRepository::findOnlineWithPointIn);
 		return RelationRules.onlineItemsLinked(action, BountyRelations.FIRST_APPEARANCE_EPISODE, contentId, bounties,
 				this.properties.blockingPreviewSize());
 	}
 
 	private Optional<ActionBlock> affiliationsLinked(VersionAction action, UUID contentId) {
-		var affiliations = new LinkedItems(this.affiliationRepository::countOnlineFirstAppearingIn,
-				this.affiliationRepository::findOnlineFirstAppearingIn);
+		var affiliations = new LinkedItems(this.affiliationRepository::countOnlineWithPointIn,
+				this.affiliationRepository::findOnlineWithPointIn);
 		return RelationRules.onlineItemsLinked(action, AffiliationRelations.FIRST_APPEARANCE_EPISODE, contentId,
 				affiliations, this.properties.blockingPreviewSize());
 	}
 
 	private Optional<ActionBlock> speciesLinked(VersionAction action, UUID contentId) {
-		var species = new LinkedItems(this.speciesRepository::countOnlineFirstAppearingIn,
-				this.speciesRepository::findOnlineFirstAppearingIn);
+		var species = new LinkedItems(this.speciesRepository::countOnlineWithPointIn,
+				this.speciesRepository::findOnlineWithPointIn);
 		return RelationRules.onlineItemsLinked(action, SpeciesRelations.FIRST_APPEARANCE_EPISODE, contentId, species,
 				this.properties.blockingPreviewSize());
 	}
@@ -117,6 +122,20 @@ public class EpisodeRules implements ContentRules<Episode> {
 				this.characterRepository::findOnlineWithPointIn);
 		return RelationRules.onlineItemsLinked(action, CharacterRelations.FIRST_APPEARANCE_EPISODE, contentId,
 				characters, this.properties.blockingPreviewSize());
+	}
+
+	private Optional<ActionBlock> sagasLinked(VersionAction action, UUID contentId) {
+		var sagas = new LinkedItems(this.sagaRepository::countOnlineWithPointIn,
+				this.sagaRepository::findOnlineWithPointIn);
+		return RelationRules.onlineItemsLinked(action, StoryRelations.SAGA_PARAGRAPH_POINT, contentId, sagas,
+				this.properties.blockingPreviewSize());
+	}
+
+	private Optional<ActionBlock> arcsLinked(VersionAction action, UUID contentId) {
+		var arcs = new LinkedItems(this.arcRepository::countOnlineWithPointIn,
+				this.arcRepository::findOnlineWithPointIn);
+		return RelationRules.onlineItemsLinked(action, StoryRelations.ARC_PARAGRAPH_POINT, contentId, arcs,
+				this.properties.blockingPreviewSize());
 	}
 
 }

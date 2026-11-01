@@ -3,7 +3,6 @@ package dev.onepieceapi.contentservice.web.mapper;
 import dev.onepieceapi.contentservice.domain.bounty.Bounty;
 import dev.onepieceapi.contentservice.domain.bounty.BountyChain;
 import dev.onepieceapi.contentservice.domain.bounty.BountyReference;
-import dev.onepieceapi.contentservice.domain.bounty.BountyTranslation;
 import dev.onepieceapi.contentservice.domain.bounty.BountyValidity;
 import dev.onepieceapi.contentservice.domain.character.CharacterReference;
 import dev.onepieceapi.contentservice.domain.story.NumberedReference;
@@ -12,7 +11,6 @@ import dev.onepieceapi.contentservice.domain.workflow.VersionAccess;
 import dev.onepieceapi.contentservice.web.dto.response.BountyNamesResponse;
 import dev.onepieceapi.contentservice.web.dto.response.BountyReferenceResponse;
 import dev.onepieceapi.contentservice.web.dto.response.BountyResponse;
-import dev.onepieceapi.contentservice.web.dto.response.BountyTranslationResponse;
 import dev.onepieceapi.contentservice.web.dto.response.CharacterReferenceResponse;
 import dev.onepieceapi.contentservice.web.dto.response.ContentSummaryResponse;
 import dev.onepieceapi.contentservice.web.dto.response.VersionResponse;
@@ -21,7 +19,6 @@ import lombok.experimental.UtilityClass;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeMap;
 import java.util.UUID;
 
 /**
@@ -53,8 +50,6 @@ public class BountyResponseMapper {
 	public BountyResponse toResponse(Bounty bounty, BountyChain chain, Map<UUID, BountyReference> bounties,
 			Map<UUID, CharacterReference> holders, Map<UUID, NumberedReference> storyItems,
 			ImageResponseMapper images) {
-		Map<String, BountyTranslationResponse> translations = new TreeMap<>();
-		bounty.translations().forEach((language, translation) -> translations.put(language, toResponse(translation)));
 		List<BountyReferenceResponse> members = chain.contentIds()
 			.stream()
 			.map(id -> toResponse(id, bounties))
@@ -62,8 +57,9 @@ public class BountyResponseMapper {
 		return new BountyResponse(bounty.posterName(), bounty.amount(), bounty.condition(), bounty.inactive(),
 				BountyValidity.of(bounty.inactive(), chain.next() != null),
 				toResponse(bounty.previousContentId(), bounties), toHolderResponse(bounty.holderContentId(), holders),
-				toResponse(chain.next(), bounties), members, translations, images.toResponse(bounty.imageId()),
-				FirstAppearanceMapper.toResponse(bounty.firstAppearance(), storyItems));
+				toResponse(chain.next(), bounties), members, images.toResponse(bounty.imageId()),
+				FirstAppearanceMapper.toResponse(bounty.firstAppearance(), storyItems),
+				ParagraphResponseMapper.toResponse(bounty.description(), storyItems));
 	}
 
 	/**
@@ -104,10 +100,6 @@ public class BountyResponseMapper {
 
 	public BountyReferenceResponse toResponse(BountyReference bounty) {
 		return new BountyReferenceResponse(bounty.id(), bounty.key(), bounty.posterName(), bounty.amount());
-	}
-
-	private static BountyTranslationResponse toResponse(BountyTranslation translation) {
-		return new BountyTranslationResponse(translation.description());
 	}
 
 }

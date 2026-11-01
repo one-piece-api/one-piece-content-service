@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.persistence.mapper;
 
+import dev.onepieceapi.contentservice.domain.readertime.ParagraphSection;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitType;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitTypeSubcategory;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitTypeSubcategoryTranslation;
@@ -30,9 +31,12 @@ import java.util.UUID;
 public class DevilFruitTypeVersionMapper {
 
 	public Version<DevilFruitType> toDomain(DevilFruitTypeVersionEntity entity) {
+		var paragraphs = ParagraphMapper.toDomain(entity.getParagraphs());
 		var body = new DevilFruitType(entity.getRomaji(), toDomain(entity.getTranslations()),
 				entity.getSubcategories().stream().map(DevilFruitTypeVersionMapper::toDomain).toList(),
-				new StoryPoint(entity.getFirstAppearanceChapterId(), entity.getFirstAppearanceEpisodeId()));
+				new StoryPoint(entity.getFirstAppearanceChapterId(), entity.getFirstAppearanceEpisodeId()),
+				paragraphs.get(ParagraphSection.DESCRIPTION), paragraphs.get(ParagraphSection.ADVANTAGES),
+				paragraphs.get(ParagraphSection.DISADVANTAGES));
 		return ContentVersionMapper.toDomain(entity.getVersion(), body);
 	}
 
@@ -64,7 +68,7 @@ public class DevilFruitTypeVersionMapper {
 	/** Makes the version say what was given, in place of what it said. */
 	public void rewrite(DevilFruitTypeVersionEntity entity, DevilFruitType body, Instant now) {
 		entity.rewrite(body.romaji(), toEmbeddables(body.translations()), toSubcategoryRows(body.subcategories()),
-				FirstAppearanceMapper.toIds(body.firstAppearance()), now);
+				FirstAppearanceMapper.toIds(body.firstAppearance()), ParagraphMapper.toFields(body.paragraphs()), now);
 	}
 
 	private static DevilFruitTypeSubcategory toDomain(DevilFruitTypeSubcategoryEntity subcategory) {
@@ -103,8 +107,7 @@ public class DevilFruitTypeVersionMapper {
 	}
 
 	private static DevilFruitTypeTranslation toDomain(TranslationEmbeddable translation) {
-		return new DevilFruitTypeTranslation(translation.getName(), translation.getDescription(),
-				translation.getAdvantages(), translation.getDisadvantages());
+		return new DevilFruitTypeTranslation(translation.getName());
 	}
 
 	private static Map<String, TranslationEmbeddable> toEmbeddables(
@@ -115,8 +118,7 @@ public class DevilFruitTypeVersionMapper {
 	}
 
 	private static TranslationEmbeddable toEmbeddable(DevilFruitTypeTranslation translation) {
-		return new TranslationEmbeddable(translation.name(), translation.description(), translation.advantages(),
-				translation.disadvantages());
+		return new TranslationEmbeddable(translation.name());
 	}
 
 }

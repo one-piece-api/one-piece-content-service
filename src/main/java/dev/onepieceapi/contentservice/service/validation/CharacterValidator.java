@@ -149,6 +149,7 @@ public class CharacterValidator extends ContentValidator<Character, CharacterVer
 		requireDistinctAffiliations(body.affiliations(), violations);
 		requireDistinctDevilFruits(body.devilFruits(), violations);
 		requireDistinctRelatives(body.relatives(), violations);
+		violations.addAll(ParagraphRules.blankViolations(body));
 		if (!violations.isEmpty()) {
 			throw new ValueInvalidException(violations);
 		}

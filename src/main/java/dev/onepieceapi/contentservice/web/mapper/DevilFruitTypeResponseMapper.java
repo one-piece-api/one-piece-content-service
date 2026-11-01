@@ -54,7 +54,10 @@ public class DevilFruitTypeResponseMapper {
 					.stream()
 					.map(subcategory -> toSubcategoryResponse(subcategory, storyItems))
 					.toList(),
-				FirstAppearanceMapper.toResponse(devilFruitType.firstAppearance(), storyItems));
+				FirstAppearanceMapper.toResponse(devilFruitType.firstAppearance(), storyItems),
+				ParagraphResponseMapper.toResponse(devilFruitType.description(), storyItems),
+				ParagraphResponseMapper.toResponse(devilFruitType.advantages(), storyItems),
+				ParagraphResponseMapper.toResponse(devilFruitType.disadvantages(), storyItems));
 	}
 
 	/**
@@ -65,8 +68,7 @@ public class DevilFruitTypeResponseMapper {
 	}
 
 	private static DevilFruitTypeTranslationResponse toTranslationResponse(DevilFruitTypeTranslation translation) {
-		return new DevilFruitTypeTranslationResponse(translation.name(), translation.description(),
-				translation.advantages(), translation.disadvantages());
+		return new DevilFruitTypeTranslationResponse(translation.name());
 	}
 
 	private static DevilFruitTypeSubcategoryResponse toSubcategoryResponse(DevilFruitTypeSubcategory subcategory,

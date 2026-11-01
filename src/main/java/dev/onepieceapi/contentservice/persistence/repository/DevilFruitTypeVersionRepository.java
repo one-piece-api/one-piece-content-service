@@ -34,11 +34,16 @@ public interface DevilFruitTypeVersionRepository extends VersionBodyRepository<D
 			nativeQuery = true)
 	boolean slugIsTakenByAnother(String slug, UUID contentId);
 
-	/** The subcategories' texts count too: a language they are written in is in use. */
+	/**
+	 * The subcategories' texts and the paragraphs count too: a language they are written
+	 * in is in use.
+	 */
 	@Override
 	@Query(value = """
 			select exists (select 1 from devil_fruit_type_version_translation where language_code = :languageCode)
 			    or exists (select 1 from devil_fruit_type_version_subcategory_translation
+			               where language_code = :languageCode)
+			    or exists (select 1 from devil_fruit_type_version_paragraph_translation
 			               where language_code = :languageCode)""", nativeQuery = true)
 	boolean existsByLanguage(String languageCode);
 
@@ -69,8 +74,8 @@ public interface DevilFruitTypeVersionRepository extends VersionBodyRepository<D
 	}
 
 	/**
-	 * How many types are online first appearing in this chapter or episode, or having a
-	 * subcategory that does (ADR-0008).
+	 * How many types are online naming this chapter or episode, as first appearance, as a
+	 * subcategory's or in a paragraph (ADR-0008).
 	 */
 	@Query("""
 			select count(d) from DevilFruitTypeVersionEntity d join d.version v
@@ -80,8 +85,11 @@ public interface DevilFruitTypeVersionRepository extends VersionBodyRepository<D
 					or exists (select 1 from DevilFruitTypeSubcategoryEntity s
 						where s member of d.subcategories
 							and (s.firstAppearanceChapterId = :storyContentId
-								or s.firstAppearanceEpisodeId = :storyContentId)))""")
-	long countOnlineFirstAppearingIn(UUID storyContentId);
+								or s.firstAppearanceEpisodeId = :storyContentId))
+					or exists (select 1 from DevilFruitTypeParagraphEntity p where p member of d.paragraphs
+						and (p.window.discoveredChapterId = :storyContentId or p.window.discoveredEpisodeId = :storyContentId
+							or p.window.endedChapterId = :storyContentId or p.window.endedEpisodeId = :storyContentId)))""")
+	long countOnlineWithPointIn(UUID storyContentId);
 
 	/** The same types, by romaji: as many as the page asks for. */
 	@Query("""
@@ -92,8 +100,11 @@ public interface DevilFruitTypeVersionRepository extends VersionBodyRepository<D
 					or exists (select 1 from DevilFruitTypeSubcategoryEntity s
 						where s member of d.subcategories
 							and (s.firstAppearanceChapterId = :storyContentId
-								or s.firstAppearanceEpisodeId = :storyContentId)))
+								or s.firstAppearanceEpisodeId = :storyContentId))
+					or exists (select 1 from DevilFruitTypeParagraphEntity p where p member of d.paragraphs
+						and (p.window.discoveredChapterId = :storyContentId or p.window.discoveredEpisodeId = :storyContentId
+							or p.window.endedChapterId = :storyContentId or p.window.endedEpisodeId = :storyContentId)))
 			order by d.romaji""")
-	List<DevilFruitTypeVersionEntity> findOnlineFirstAppearingIn(UUID storyContentId, Pageable pageable);
+	List<DevilFruitTypeVersionEntity> findOnlineWithPointIn(UUID storyContentId, Pageable pageable);
 
 }

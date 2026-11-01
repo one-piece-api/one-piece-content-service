@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.service.species;
 
+import dev.onepieceapi.contentservice.service.content.ReaderAxisRules;
 import dev.onepieceapi.contentservice.config.RulesProperties;
 import dev.onepieceapi.contentservice.domain.species.Species;
 import dev.onepieceapi.contentservice.domain.workflow.ActionBlock;
@@ -45,6 +46,8 @@ public class SpeciesRules implements ContentRules<Species> {
 
 	private final CharacterVersionRepository characterRepository;
 
+	private final ReaderAxisRules readerAxisRules;
+
 	private final RulesProperties properties;
 
 	@Override
@@ -54,6 +57,7 @@ public class SpeciesRules implements ContentRules<Species> {
 				this.contentRepository);
 		RelationRules.lockTargetBefore(action, SpeciesRelations.FIRST_APPEARANCE_EPISODE, version.body(),
 				this.contentRepository);
+		this.readerAxisRules.lockBefore(action, version.body());
 	}
 
 	@Override
@@ -64,6 +68,7 @@ public class SpeciesRules implements ContentRules<Species> {
 					this.chapterRepository))
 			.or(() -> RelationRules.targetNotOnline(action, SpeciesRelations.FIRST_APPEARANCE_EPISODE, species,
 					this.episodeRepository))
+			.or(() -> this.readerAxisRules.blockOf(action, version.body()))
 			.or(() -> RelationRules.onlineItemsLinked(action, CharacterRelations.SPECIES, contentId, linkedCharacters(),
 					this.properties.blockingPreviewSize()));
 	}

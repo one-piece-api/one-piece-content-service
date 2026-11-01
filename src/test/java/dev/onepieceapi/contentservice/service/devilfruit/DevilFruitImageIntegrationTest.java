@@ -1,5 +1,7 @@
 package dev.onepieceapi.contentservice.service.devilfruit;
 
+import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitFixtures;
+import dev.onepieceapi.contentservice.service.validation.ParagraphRules;
 import dev.onepieceapi.contentservice.config.RulesProperties;
 import dev.onepieceapi.contentservice.service.content.OnlineChapters;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
@@ -8,7 +10,6 @@ import dev.onepieceapi.contentservice.service.image.ImageService;
 
 import dev.onepieceapi.contentservice.config.ImageProperties;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
-import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitTranslation;
 import dev.onepieceapi.contentservice.domain.image.ImageChange;
 import dev.onepieceapi.contentservice.domain.security.Permission;
 import dev.onepieceapi.contentservice.domain.security.User;
@@ -179,7 +180,8 @@ class DevilFruitImageIntegrationTest {
 	void setUp() {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
 		var validator = new DevilFruitValidator(this.versionRepository, this.languageRepository, this.typeRepository,
-				this.chapterRepository, this.episodeRepository);
+				this.chapterRepository, this.episodeRepository, new ParagraphRules(
+						new ReaderAxisRules(this.contentRepository, this.chapterRepository, this.episodeRepository)));
 		var store = new JpaImageStore(this.imageRepository, clock);
 		var images = new ContentImages(new ImageValidator(), new ImageNormalizer(ENCODER), store, PROPERTIES);
 		this.service = new DevilFruitService(
@@ -200,7 +202,7 @@ class DevilFruitImageIntegrationTest {
 			.getId();
 		var type = new DevilFruitTypeVersionEntity(workflow(this.paramecia, 1, PUBLISHED));
 		type.setRomaji("Paramecia");
-		type.getTranslations().put("it", new TranslationEmbeddable("Paramecia", "Descrizione", "Pro", "Contro"));
+		type.getTranslations().put("it", new TranslationEmbeddable("Paramecia"));
 		this.typeRepository.save(type);
 		stored();
 	}
@@ -375,14 +377,11 @@ class DevilFruitImageIntegrationTest {
 	}
 
 	private DevilFruit written(String romaji) {
-		return new DevilFruit(romaji, this.paramecia, Map.of());
+		return DevilFruit.builder().romaji(romaji).typeContentId(this.paramecia).build();
 	}
 
 	private DevilFruit complete(String romaji) {
-		return new DevilFruit(romaji, this.paramecia, null,
-				Map.of("it", new DevilFruitTranslation(romaji + " it", "Descrizione", "Pro", "Contro"), "en",
-						new DevilFruitTranslation(romaji + " no Mi", "Description", "Pros", "Cons")),
-				null, this.firstAppearance);
+		return DevilFruitFixtures.complete(romaji, this.paramecia, null, this.firstAppearance);
 	}
 
 	/** The usual disc with a blue corner: another image. */

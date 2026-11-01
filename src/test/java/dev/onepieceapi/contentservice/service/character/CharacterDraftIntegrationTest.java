@@ -161,7 +161,7 @@ class CharacterDraftIntegrationTest {
 	void aRomajiOrANameAnotherCharacterHasIsRefusedNamingEachFieldWhateverTheCase() {
 		var written = Character.builder()
 			.romaji(" nami ")
-			.translations(Map.of("it", new CharacterTranslation("NAMI (IT)", null)))
+			.translations(Map.of("it", new CharacterTranslation("NAMI (IT)")))
 			.build();
 
 		var refused = catchThrowableOfType(ValueAlreadyUsedException.class,
@@ -268,7 +268,7 @@ class CharacterDraftIntegrationTest {
 		var content = this.service.create(EDITOR, CHOPPER,
 				Character.builder()
 					.romaji("Robin")
-					.translations(Map.of("it", new CharacterTranslation("Robin", null)))
+					.translations(Map.of("it", new CharacterTranslation("Robin")))
 					.epithets(List.of(new Epithet(Map.of("it", "Figlia del demonio"), StoryWindow.NONE)))
 					.build());
 		stored();
@@ -277,8 +277,7 @@ class CharacterDraftIntegrationTest {
 				() -> this.service.submit(EDITOR, CHOPPER, content.id(), 1));
 
 		assertThat(fieldsOf(refused)).containsExactly("status", "gender", "firstAppearance", "translations[en].name",
-				"translations[en].description", "translations[it].description", "epithets[0].text[en]",
-				"epithets[0].discovered");
+				"epithets[0].text[en]", "description", "epithets[0].discovered");
 	}
 
 	@Test

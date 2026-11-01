@@ -91,6 +91,8 @@ public class CharacterResponseMapper {
 			.relativesOf(lookups.relativesOf().stream().map(entry -> toResponse(entry, storyItems)).toList())
 			.image(images.toResponse(character.imageId()))
 			.firstAppearance(FirstAppearanceMapper.toResponse(character.firstAppearance(), storyItems))
+			.description(ParagraphResponseMapper.toResponse(character.description(), storyItems))
+			.description(ParagraphResponseMapper.toResponse(character.description(), storyItems))
 			.build();
 	}
 
@@ -186,7 +188,7 @@ public class CharacterResponseMapper {
 	}
 
 	private static CharacterTranslationResponse toResponse(CharacterTranslation translation) {
-		return new CharacterTranslationResponse(translation.name(), translation.description());
+		return new CharacterTranslationResponse(translation.name());
 	}
 
 	/** Sorted by language code, so the same epithet always reads the same way. */

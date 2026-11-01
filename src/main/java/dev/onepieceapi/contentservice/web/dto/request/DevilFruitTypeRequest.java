@@ -1,5 +1,7 @@
 package dev.onepieceapi.contentservice.web.dto.request;
 
+import jakarta.validation.constraints.NotNull;
+import dev.onepieceapi.contentservice.domain.readertime.Paragraph;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitType;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
@@ -13,14 +15,20 @@ import java.util.Map;
  * are the only limit checked here; whether a value is free to use is for the service to
  * say.
  *
- * @param translations name, description, advantages and disadvantages per language code;
- * a language left out, or with nothing written in it, has no translation
+ * @param translations the name per language code; a language left out, or with nothing
+ * written in it, has no translation
  * @param subcategories every subcategory, in the order they are shown; left out for none
  * @param firstAppearance the chapter the reader first meets it in; left out for none,
  * which a draft may be - it is required to go online
+ * @param description its paragraphs, in order; left out for none
+ * @param advantages as {@code description}
+ * @param disadvantages as {@code description}
  */
 public record DevilFruitTypeRequest(@Size(max = DevilFruitType.ROMAJI_MAX_LENGTH) String romaji,
 		Map<String, @Valid DevilFruitTypeTranslationRequest> translations,
-		List<@Valid DevilFruitTypeSubcategoryRequest> subcategories, FirstAppearanceRequest firstAppearance) {
+		List<@Valid DevilFruitTypeSubcategoryRequest> subcategories, FirstAppearanceRequest firstAppearance,
+		@Size(max = Paragraph.MAX_PER_SECTION) List<@NotNull @Valid ParagraphRequest> description,
+		@Size(max = Paragraph.MAX_PER_SECTION) List<@NotNull @Valid ParagraphRequest> advantages,
+		@Size(max = Paragraph.MAX_PER_SECTION) List<@NotNull @Valid ParagraphRequest> disadvantages) {
 
 }

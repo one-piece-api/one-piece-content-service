@@ -1,5 +1,8 @@
 package dev.onepieceapi.contentservice.service.devilfruittype;
 
+import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
+import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitFixtures;
+import dev.onepieceapi.contentservice.service.validation.ParagraphRules;
 import dev.onepieceapi.contentservice.config.RulesProperties;
 import dev.onepieceapi.contentservice.service.audit.AuditLogService;
 import dev.onepieceapi.contentservice.service.devilfruit.DevilFruitDefinition;
@@ -7,7 +10,6 @@ import dev.onepieceapi.contentservice.service.devilfruit.DevilFruitService;
 import dev.onepieceapi.contentservice.service.devilfruit.DevilFruitRules;
 
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
-import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitTranslation;
 import dev.onepieceapi.contentservice.domain.devilfruit.TypeReference;
 import dev.onepieceapi.contentservice.domain.security.Permission;
 import dev.onepieceapi.contentservice.domain.security.User;
@@ -143,7 +145,9 @@ class DevilFruitTypeLinksIntegrationTest {
 		this.fruits = new DevilFruitService(
 				new DevilFruitDefinition(this.fruitRepository,
 						new DevilFruitValidator(this.fruitRepository, this.languageRepository, this.typeRepository,
-								this.chapterRepository, this.episodeRepository),
+								this.chapterRepository, this.episodeRepository,
+								new ParagraphRules(new ReaderAxisRules(this.contentRepository, this.chapterRepository,
+										this.episodeRepository))),
 						new DevilFruitRules(this.contentRepository, this.typeRepository, this.chapterRepository,
 								this.episodeRepository, this.characterRepository,
 								new ReaderAxisRules(this.contentRepository, this.chapterRepository,
@@ -259,9 +263,7 @@ class DevilFruitTypeLinksIntegrationTest {
 
 	/** Complete in both languages of the catalog. */
 	private static DevilFruit complete(String romaji, UUID type) {
-		return new DevilFruit(romaji, type,
-				Map.of("it", new DevilFruitTranslation(romaji + " it", "Descrizione", "Pro", "Contro"), "en",
-						new DevilFruitTranslation(romaji + " no Mi", "Description", "Pros", "Cons")));
+		return DevilFruitFixtures.complete(romaji, type, null, StoryPoint.NONE);
 	}
 
 	/** What was done so far is written and read again from the database. */
@@ -283,7 +285,7 @@ class DevilFruitTypeLinksIntegrationTest {
 	private void typeVersion(UUID contentId, int number, VersionStatus status, String romaji, String italianName) {
 		var version = new DevilFruitTypeVersionEntity(workflow(contentId, number, status));
 		version.setRomaji(romaji);
-		version.getTranslations().put("it", new TranslationEmbeddable(italianName, "Descrizione", "Pro", "Contro"));
+		version.getTranslations().put("it", new TranslationEmbeddable(italianName));
 		this.typeRepository.save(version);
 	}
 

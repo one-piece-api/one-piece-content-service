@@ -1,5 +1,8 @@
 package dev.onepieceapi.contentservice.service.story;
 
+import dev.onepieceapi.contentservice.domain.story.TitleTranslation;
+import dev.onepieceapi.contentservice.service.validation.ParagraphRules;
+import dev.onepieceapi.contentservice.service.content.ReaderAxisRules;
 import dev.onepieceapi.contentservice.config.RulesProperties;
 import dev.onepieceapi.contentservice.domain.security.Permission;
 import dev.onepieceapi.contentservice.domain.security.User;
@@ -254,15 +257,18 @@ class StoryItemsRulesRaceIntegrationTest {
 				new ChapterValidator(this.chapterRepository, this.languageRepository, arcs, this.volumeRepository),
 				new ChapterRules(this.contentRepository, arcs, this.volumeRepository, this.fruitRepository,
 						this.typeRepository, this.bountyRepository, this.affiliationRepository, this.speciesRepository,
-						this.characterRepository, new RulesProperties(5)),
+						this.characterRepository, this.sagaRepository, new RulesProperties(5)),
 				new AuditLogService(this.auditLogRepository, clock), clock);
 	}
 
 	private ArcService arcService(ChapterVersionRepository chapters) {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
 		return new ArcService(this.arcRepository, this.contentVersionRepository, this.contentRepository,
-				new ArcValidator(this.arcRepository, this.languageRepository, this.sagaRepository),
+				new ArcValidator(this.arcRepository, this.languageRepository, this.sagaRepository,
+						new ParagraphRules(new ReaderAxisRules(this.contentRepository, this.chapterRepository,
+								this.episodeRepository))),
 				new ArcRules(this.contentRepository, this.sagaRepository, chapters, this.episodeRepository,
+						new ReaderAxisRules(this.contentRepository, this.chapterRepository, this.episodeRepository),
 						new RulesProperties(5)),
 				new AuditLogService(this.auditLogRepository, clock), clock);
 	}
@@ -272,7 +278,8 @@ class StoryItemsRulesRaceIntegrationTest {
 		int number = NUMBERS.incrementAndGet();
 		var version = new SagaVersionEntity(workflow(contentId, PUBLISHED));
 		StoryVersionMapper.rewrite(version,
-				new Saga(number, Map.of("it", new StoryTranslation("Saga " + number, "Descrizione"))), NOW);
+				new Saga(number, Map.of("it", new TitleTranslation("Saga " + number)), StoryFixtures.description()),
+				NOW);
 		this.sagaRepository.save(version);
 		return contentId;
 	}
@@ -282,7 +289,8 @@ class StoryItemsRulesRaceIntegrationTest {
 		int number = NUMBERS.incrementAndGet();
 		var version = new ArcVersionEntity(workflow(contentId, status));
 		StoryVersionMapper.rewrite(version,
-				new Arc(number, saga, Map.of("it", new StoryTranslation("Arc " + number, "Descrizione"))), NOW);
+				new Arc(number, saga, Map.of("it", new TitleTranslation("Arc " + number)), StoryFixtures.description()),
+				NOW);
 		this.arcRepository.save(version);
 		return contentId;
 	}

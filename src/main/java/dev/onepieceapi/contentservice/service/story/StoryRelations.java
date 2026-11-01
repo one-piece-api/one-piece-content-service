@@ -6,6 +6,9 @@ import dev.onepieceapi.contentservice.domain.story.Episode;
 import dev.onepieceapi.contentservice.domain.workflow.BlockReason;
 import dev.onepieceapi.contentservice.service.content.RelationDescriptor;
 
+import java.util.UUID;
+import java.util.function.Function;
+
 /**
  * The relations between story entities (implementation plan of the story structure, S4,
  * S5), each with the generic reason codes: the detail names the relation ({@code sagaId},
@@ -55,7 +58,27 @@ public final class StoryRelations {
 		.itemsName("episodes")
 		.build();
 
+	/**
+	 * A chapter or an episode a paragraph of a saga names (workflow 3.7.4): read when it
+	 * is retired, refused while an online saga names it.
+	 */
+	public static final RelationDescriptor<UUID> SAGA_PARAGRAPH_POINT = paragraphPoint("sagas");
+
+	/** The same, for an arc. */
+	public static final RelationDescriptor<UUID> ARC_PARAGRAPH_POINT = paragraphPoint("arcs");
+
 	private StoryRelations() {
+	}
+
+	private static RelationDescriptor<UUID> paragraphPoint(String itemsName) {
+		return RelationDescriptor.<UUID>builder()
+			.name("point")
+			.target(Function.identity())
+			.notLinkable("must be a Chapter or an Episode with an approved version")
+			.targetNotOnline(BlockReason.RELATED_NOT_ONLINE)
+			.onlineItemsLinked(BlockReason.ONLINE_ITEMS_LINKED)
+			.itemsName(itemsName)
+			.build();
 	}
 
 }

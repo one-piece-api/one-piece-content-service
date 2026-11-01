@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.persistence.mapper;
 
+import dev.onepieceapi.contentservice.domain.readertime.Paragraph;
 import dev.onepieceapi.contentservice.domain.character.Alias;
 import dev.onepieceapi.contentservice.domain.character.Character;
 import dev.onepieceapi.contentservice.domain.character.CharacterStatus;
@@ -135,8 +136,9 @@ class CharacterVersionMapperTest {
 		return Character.builder()
 			.romaji("Nami")
 			.japaneseName("ナミ")
-			.translations(Map.of("it", new CharacterTranslation("Nami", "Navigatrice"), "en",
-					new CharacterTranslation("Nami", "Navigator")))
+			.translations(Map.of("it", new CharacterTranslation("Nami"), "en", new CharacterTranslation("Nami")))
+			.description(List.of(new Paragraph(Map.of("it", "Navigatrice", "en", "Navigator"), OPEN),
+					new Paragraph(Map.of("it", "Ladra"), CLOSED)))
 			.status(CharacterStatus.ALIVE)
 			.gender(Gender.FEMALE)
 			.birthday(MonthDay.of(7, 3))

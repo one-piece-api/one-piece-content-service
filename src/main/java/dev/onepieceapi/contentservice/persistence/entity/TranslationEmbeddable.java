@@ -7,9 +7,10 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.FieldNameConstants;
 
 /**
- * The name, description, advantages and disadvantages of a version in one language - a
- * value owned by its version, with no identity of its own (see
- * {@link DevilFruitTypeVersionEntity#getTranslations()}).
+ * The name of a Devil Fruit or Devil Fruit Type version in one language - a value owned
+ * by its version, with no identity of its own (see
+ * {@link DevilFruitTypeVersionEntity#getTranslations()}). Its paragraphs are rows of
+ * their own (workflow 3.7.3).
  */
 @Embeddable
 @Getter
@@ -19,11 +20,5 @@ import lombok.experimental.FieldNameConstants;
 public class TranslationEmbeddable {
 
 	private String name;
-
-	private String description;
-
-	private String advantages;
-
-	private String disadvantages;
 
 }

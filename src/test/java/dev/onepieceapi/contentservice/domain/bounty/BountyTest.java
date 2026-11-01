@@ -1,17 +1,19 @@
 package dev.onepieceapi.contentservice.domain.bounty;
 
+import dev.onepieceapi.contentservice.domain.readertime.Paragraph;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
+import dev.onepieceapi.contentservice.domain.readertime.StoryWindow;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import static dev.onepieceapi.contentservice.domain.readertime.ParagraphFixtures.discoveredAt;
+import static dev.onepieceapi.contentservice.domain.readertime.ParagraphFixtures.paragraph;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.entry;
 
 /**
  * How what an editor typed becomes what is stored and compared, and what a bounty needs.
@@ -24,8 +26,11 @@ class BountyTest {
 
 	@Test
 	void theKeyIsThePostersNameAndTheAmountInPlainDigitsNamingBothFields() {
-		var key = new Bounty("Monkey D. Luffy", 3_000_000_000L, BountyCondition.DEAD_OR_ALIVE, false, null, null,
-				Map.of(), null, StoryPoint.NONE)
+		var key = Bounty.builder()
+			.posterName("Monkey D. Luffy")
+			.amount(3_000_000_000L)
+			.condition(BountyCondition.DEAD_OR_ALIVE)
+			.build()
 			.naturalKey();
 
 		assertThat(key.text()).isEqualTo("Monkey D. Luffy 3000000000");
@@ -36,7 +41,7 @@ class BountyTest {
 	@ParameterizedTest
 	@CsvSource(value = { "NULL,100", "Luffy,NULL", "NULL,NULL" }, nullValues = "NULL")
 	void theKeyIsMissingWhileEitherPartIs(String posterName, Long amount) {
-		var bounty = new Bounty(posterName, amount, null, false, null, null, Map.of(), null, StoryPoint.NONE);
+		var bounty = Bounty.builder().posterName(posterName).amount(amount).build();
 
 		assertThat(bounty.naturalKey().isMissing()).isTrue();
 		assertThat(bounty.naturalKeyText()).isNull();
@@ -44,15 +49,14 @@ class BountyTest {
 
 	@Test
 	void anAmountOfZeroIsAnAmount() {
-		var bounty = new Bounty("Nobody", 0L, null, false, null, null, Map.of(), null, StoryPoint.NONE);
+		var bounty = Bounty.builder().posterName("Nobody").amount(0L).build();
 
 		assertThat(bounty.naturalKeyText()).isEqualTo("Nobody 0");
 	}
 
 	@Test
-	void aBountyHasNoNameAndItsPostersNameMayRepeat() {
-		var bounty = new Bounty("Luffy", 1L, null, false, null, null, Map.of("it", new BountyTranslation("Taglia")),
-				null, StoryPoint.NONE);
+	void aBountyHasNoNameAndItsLanguagesAreThoseOfItsParagraphs() {
+		var bounty = Bounty.builder().posterName("Luffy").amount(1L).description(paragraph("it", "Taglia")).build();
 
 		assertThat(bounty.names()).isEmpty();
 		assertThat(bounty.uniqueNames()).isFalse();
@@ -60,65 +64,65 @@ class BountyTest {
 	}
 
 	@Test
-	void theSpaceAroundTheNameDoesNotCountAndABlankOneIsMissing() {
-		var typed = new Bounty("  Roronoa Zoro ", 320_000_000L, BountyCondition.ONLY_ALIVE, true, PREVIOUS, HOLDER,
-				Map.of("it", new BountyTranslation("  Pirata\n")), "img", StoryPoint.ofChapter(PREVIOUS));
+	void theSpaceAroundATextDoesNotCountAndABlankOneIsMissing() {
+		var typed = Bounty.builder()
+			.posterName("  Roronoa Zoro ")
+			.amount(320_000_000L)
+			.condition(BountyCondition.ONLY_ALIVE)
+			.inactive(true)
+			.previousContentId(PREVIOUS)
+			.holderContentId(HOLDER)
+			.imageId("img")
+			.firstAppearance(StoryPoint.ofChapter(PREVIOUS))
+			.description(paragraph(Map.of("it", "  Pirata\n", "en", "  ")))
+			.build();
 
 		var normalized = typed.normalized();
 
 		assertThat(normalized.posterName()).isEqualTo("Roronoa Zoro");
-		assertThat(normalized.translations()).containsExactly(entry("it", new BountyTranslation("Pirata")));
+		assertThat(normalized.description()).containsExactly(new Paragraph(Map.of("it", "Pirata"), StoryWindow.NONE));
+		assertThat(normalized.languages()).containsExactly("it");
 		assertThat(normalized.inactive()).isTrue();
 		assertThat(normalized.previousContentId()).isEqualTo(PREVIOUS);
 		assertThat(normalized.holderContentId()).isEqualTo(HOLDER);
 		assertThat(normalized.imageId()).isEqualTo("img");
 		assertThat(normalized.firstAppearance()).isEqualTo(StoryPoint.ofChapter(PREVIOUS));
-		assertThat(new Bounty("   ", 1L, null, false, null, null, Map.of(), null, null).normalized().posterName())
-			.isNull();
+		assertThat(Bounty.builder().posterName("   ").amount(1L).build().normalized().posterName()).isNull();
 	}
 
 	@Test
-	void aLanguageNothingWasWrittenInIsLeftOut() {
-		Map<String, BountyTranslation> translations = new HashMap<>();
-		translations.put("it", new BountyTranslation("Taglia"));
-		translations.put("en", new BountyTranslation("  "));
-
-		var normalized = new Bounty("Luffy", 1L, null, false, null, null, translations, null, null).normalized();
-
-		assertThat(normalized.translations()).containsOnlyKeys("it");
-		assertThat(normalized.translationIn("en")).isEqualTo(BountyTranslation.NONE);
-	}
-
-	@Test
-	void whatIsRequiredForReviewIsNamedInOrderBeforeTheDescriptions() {
-		var empty = new Bounty(null, null, null, false, null, null, Map.of(), null, null);
+	void whatIsRequiredForReviewIsNamedInOrderBeforeTheDescription() {
+		var empty = Bounty.builder().build();
 
 		assertThat(empty.missingFields(List.of("en", "it"))).containsExactly("posterName", "amount", "condition",
-				"firstAppearance", "translations[en].description", "translations[it].description");
+				"firstAppearance", "description");
 	}
 
 	@Test
 	void thePreviousTheHolderTheFlagAndThePosterAreNeverMissing() {
-		var complete = new Bounty("Luffy", 1_500_000_000L, BountyCondition.DEAD_OR_ALIVE, false, null, null,
-				Map.of("it", new BountyTranslation("Taglia")), null, StoryPoint.ofChapter(PREVIOUS));
+		var chapter = StoryPoint.ofChapter(PREVIOUS);
+		var complete = Bounty.builder()
+			.posterName("Luffy")
+			.amount(1_500_000_000L)
+			.condition(BountyCondition.DEAD_OR_ALIVE)
+			.firstAppearance(chapter)
+			.description(discoveredAt(chapter, Map.of("it", "Taglia")))
+			.build();
 
 		assertThat(complete.missingFields(List.of("it"))).isEmpty();
+		assertThat(complete.missingFields(List.of("it", "en"))).containsExactly("description[0].text[en]");
 	}
 
 	@Test
 	void anotherPosterOrFlagOrPreviousOrHolderMakesAnotherVersion() {
-		var base = new Bounty("Luffy", 1L, BountyCondition.DEAD_OR_ALIVE, false, null, null, Map.of(), null, null);
+		var base = Bounty.builder().posterName("Luffy").amount(1L).condition(BountyCondition.DEAD_OR_ALIVE).build();
 
-		assertThat(base)
-			.isEqualTo(new Bounty("Luffy", 1L, BountyCondition.DEAD_OR_ALIVE, false, null, null, Map.of(), null,
-					StoryPoint.NONE))
+		assertThat(base).isEqualTo(base.toBuilder().firstAppearance(StoryPoint.NONE).build())
 			.isNotEqualTo(base.withImage("img"))
-			.isNotEqualTo(
-					new Bounty("Luffy", 1L, BountyCondition.DEAD_OR_ALIVE, true, null, null, Map.of(), null, null))
-			.isNotEqualTo(
-					new Bounty("Luffy", 1L, BountyCondition.DEAD_OR_ALIVE, false, PREVIOUS, null, Map.of(), null, null))
-			.isNotEqualTo(
-					new Bounty("Luffy", 1L, BountyCondition.DEAD_OR_ALIVE, false, null, HOLDER, Map.of(), null, null));
+			.isNotEqualTo(base.toBuilder().inactive(true).build())
+			.isNotEqualTo(base.toBuilder().previousContentId(PREVIOUS).build())
+			.isNotEqualTo(base.toBuilder().holderContentId(HOLDER).build())
+			.isNotEqualTo(base.toBuilder().description(paragraph("it", "Taglia")).build());
 	}
 
 }

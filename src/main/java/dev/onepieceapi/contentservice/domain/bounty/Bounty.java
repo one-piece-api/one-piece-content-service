@@ -1,24 +1,29 @@
 package dev.onepieceapi.contentservice.domain.bounty;
 
 import dev.onepieceapi.contentservice.domain.readertime.FirstAppearing;
+import dev.onepieceapi.contentservice.domain.readertime.Paragraph;
+import dev.onepieceapi.contentservice.domain.readertime.ParagraphSection;
+import dev.onepieceapi.contentservice.domain.readertime.Paragraphed;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.domain.workflow.ContentBody;
 import dev.onepieceapi.contentservice.domain.workflow.NaturalKey;
 import dev.onepieceapi.contentservice.domain.workflow.Text;
+import lombok.Builder;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
-import java.util.TreeMap;
 import java.util.UUID;
 
 /**
  * What one version of a bounty says (implementation plan of the Bounty, D1-D5): one
  * wanted poster, named by the poster's name and the amount together, with a description
- * per language and an optional link to the bounty it replaces. Plugged into the generic
- * {@code Content} and {@code Version}, which carry the workflow around it.
+ * as paragraphs (workflow 3.7.3) and an optional link to the bounty it replaces. Plugged
+ * into the generic {@code Content} and {@code Version}, which carry the workflow around
+ * it.
  *
  * @param posterName the name printed on the poster; may repeat across bounties
  * @param amount the Berry, 0 or more; beyond 32 bits for the highest ones
@@ -29,11 +34,13 @@ import java.util.UUID;
  * @param holderContentId the content of the character the poster is about; null for none
  * @param imageId the whole poster, optional and not localized; part of the version
  * @param firstAppearance where the poster is revealed; {@link StoryPoint#NONE} for none,
- * which is complete - it is required only to go online
+ * which a draft may keep
+ * @param description its paragraphs, in order; none is never null
  */
+@Builder(toBuilder = true)
 public record Bounty(String posterName, Long amount, BountyCondition condition, boolean inactive,
-		UUID previousContentId, UUID holderContentId, Map<String, BountyTranslation> translations, String imageId,
-		StoryPoint firstAppearance) implements ContentBody<Bounty>, FirstAppearing {
+		UUID previousContentId, UUID holderContentId, String imageId, StoryPoint firstAppearance,
+		List<Paragraph> description) implements ContentBody<Bounty>, FirstAppearing, Paragraphed {
 
 	public static final int POSTER_NAME_MAX_LENGTH = 100;
 
@@ -53,36 +60,28 @@ public record Bounty(String posterName, Long amount, BountyCondition condition, 
 
 	private static final String CONDITION_FIELD = "condition";
 
-	/** Named as request validation names them, so a client reads both the same way. */
-	private static final String DESCRIPTION_FIELD = "translations[%s].description";
-
-	/** Nothing chosen is {@link StoryPoint#NONE}, not null. */
+	/** Nothing chosen is {@link StoryPoint#NONE}, not null; no list is null. */
 	public Bounty {
 		firstAppearance = StoryPoint.orNone(firstAppearance);
+		description = description == null ? List.of() : List.copyOf(description);
 	}
 
 	/** The same bounty with another image, or none. */
 	public Bounty withImage(String newImageId) {
-		return new Bounty(this.posterName, this.amount, this.condition, this.inactive, this.previousContentId,
-				this.holderContentId, this.translations, newImageId, this.firstAppearance);
+		return toBuilder().imageId(newImageId).build();
 	}
 
 	@Override
 	public Bounty normalized() {
-		Map<String, BountyTranslation> written = new TreeMap<>();
-		this.translations.forEach((language, translation) -> {
-			BountyTranslation normalized = translation.normalized();
-			if (!normalized.isEmpty()) {
-				written.put(language, normalized);
-			}
-		});
-		return new Bounty(Text.stripToNull(this.posterName), this.amount, this.condition, this.inactive,
-				this.previousContentId, this.holderContentId, written, this.imageId, this.firstAppearance);
+		return toBuilder().posterName(Text.stripToNull(this.posterName))
+			.description(Paragraph.normalized(this.description))
+			.build();
 	}
 
+	/** Its only texts are its paragraphs. */
 	@Override
 	public Set<String> languages() {
-		return this.translations.keySet();
+		return paragraphLanguages();
 	}
 
 	/** A bounty has no localized name: the natural key alone names it. */
@@ -111,9 +110,9 @@ public record Bounty(String posterName, Long amount, BountyCondition condition, 
 	}
 
 	/**
-	 * The poster's name, the amount, the condition and the first appearance, then a
-	 * description per language - every one missing. The link, the flag and the image are
-	 * never missing.
+	 * The poster's name, the amount, the condition and the first appearance, then the
+	 * paragraphs and their points - every one missing. The link, the flag and the image
+	 * are never missing.
 	 */
 	@Override
 	public List<String> missingFields(Collection<String> languages) {
@@ -130,19 +129,19 @@ public record Bounty(String posterName, Long amount, BountyCondition condition, 
 		if (lacksFirstAppearance()) {
 			missing.add(FIELD);
 		}
-		for (String language : languages) {
-			if (translationIn(language).description() == null) {
-				missing.add(DESCRIPTION_FIELD.formatted(language));
-			}
-		}
+		missing.addAll(missingParagraphs(languages));
+		missing.addAll(missingDiscovered());
 		return missing;
 	}
 
-	/**
-	 * What it says in this language - nothing at all, when no translation was written.
-	 */
-	public BountyTranslation translationIn(String language) {
-		return this.translations.getOrDefault(language, BountyTranslation.NONE);
+	@Override
+	public Optional<StoryPoint> origin() {
+		return Optional.of(this.firstAppearance);
+	}
+
+	@Override
+	public Map<ParagraphSection, List<Paragraph>> paragraphs() {
+		return Map.of(ParagraphSection.DESCRIPTION, this.description);
 	}
 
 }

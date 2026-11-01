@@ -28,7 +28,10 @@ public class DevilFruitRequestMapper {
 			.orElseGet(Map::of)
 			.forEach((language, translation) -> translations.put(language, toDomain(translation)));
 		return new DevilFruit(request.romaji(), request.type(), request.subcategory(), translations, null,
-				FirstAppearanceMapper.toDomain(request.firstAppearance()), request.allowsMultipleUsers());
+				FirstAppearanceMapper.toDomain(request.firstAppearance()), request.allowsMultipleUsers(),
+				ParagraphRequestMapper.toDomain(request.description()),
+				ParagraphRequestMapper.toDomain(request.advantages()),
+				ParagraphRequestMapper.toDomain(request.disadvantages()));
 	}
 
 	/**
@@ -49,8 +52,7 @@ public class DevilFruitRequestMapper {
 
 	/** A language sent with nothing in it is a language with nothing written. */
 	private static DevilFruitTranslation toDomain(DevilFruitTranslationRequest translation) {
-		return translation == null ? new DevilFruitTranslation(null, null, null, null) : new DevilFruitTranslation(
-				translation.name(), translation.description(), translation.advantages(), translation.disadvantages());
+		return translation == null ? new DevilFruitTranslation(null) : new DevilFruitTranslation(translation.name());
 	}
 
 }

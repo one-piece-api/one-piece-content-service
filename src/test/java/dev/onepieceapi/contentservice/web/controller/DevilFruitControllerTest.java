@@ -260,8 +260,7 @@ class DevilFruitControllerTest {
 		verify(this.service).create(eq(Set.of(Permission.CONTENT_WRITE)), any(), written.capture(),
 				eq(ImageChange.KEEP));
 		assertThat(written.getValue().typeContentId()).isEqualTo(TYPE_ID);
-		assertThat(written.getValue().translations().get("it"))
-			.isEqualTo(new DevilFruitTranslation("Gomu", null, null, null));
+		assertThat(written.getValue().translations().get("it")).isEqualTo(new DevilFruitTranslation("Gomu"));
 	}
 
 	@Test
@@ -310,7 +309,11 @@ class DevilFruitControllerTest {
 	@Test
 	void aVersionSaysItsFirstAppearanceAsTheChapterAndTheEpisodeAreToday() throws Exception {
 		var episodeId = UUID.randomUUID();
-		var body = new DevilFruit("Gomu Gomu", TYPE_ID, null, Map.of(), null, new StoryPoint(CHAPTER_ID, episodeId));
+		var body = DevilFruit.builder()
+			.romaji("Gomu Gomu")
+			.typeContentId(TYPE_ID)
+			.firstAppearance(new StoryPoint(CHAPTER_ID, episodeId))
+			.build();
 		var access = new VersionAccess<>(Version.<DevilFruit>builder()
 			.number(1)
 			.status(VersionStatus.DRAFT)
@@ -320,7 +323,7 @@ class DevilFruitControllerTest {
 			.updatedAt(CREATED)
 			.build(), Set.of());
 		when(this.service.getVersion(any(), any(), eq(CONTENT_ID), eq(1))).thenReturn(access);
-		when(this.firstAppearances.referencesFor(anyCollection()))
+		when(this.firstAppearances.referencesOfPoints(anyCollection()))
 			.thenReturn(Map.of(CHAPTER_ID, new NumberedReference(CHAPTER_ID, 1, Map.of("it", "Romance Dawn")),
 					episodeId, new NumberedReference(episodeId, 4, Map.of("it", "Il passato di Luffy"))));
 
@@ -459,7 +462,7 @@ class DevilFruitControllerTest {
 			.number(1)
 			.status(VersionStatus.DRAFT)
 			.author(NAMI)
-			.body(new DevilFruit("Gomu Gomu", null, Map.of(), "abc"))
+			.body(DevilFruit.builder().romaji("Gomu Gomu").imageId("abc").build())
 			.createdAt(CREATED)
 			.updatedAt(CREATED)
 			.build();
@@ -491,12 +494,12 @@ class DevilFruitControllerTest {
 	}
 
 	private static Version<DevilFruit> version(VersionStatus status, UUID type) {
-		var translations = Map.of("it", new DevilFruitTranslation("Gomu", "Elastico", null, null));
+		var translations = Map.of("it", new DevilFruitTranslation("Gomu"));
 		return Version.<DevilFruit>builder()
 			.number(1)
 			.status(status)
 			.author(NAMI)
-			.body(new DevilFruit("Gomu Gomu", type, translations))
+			.body(DevilFruit.builder().romaji("Gomu Gomu").typeContentId(type).translations(translations).build())
 			.createdAt(CREATED)
 			.updatedAt(CREATED)
 			.build();

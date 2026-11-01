@@ -1,9 +1,9 @@
 package dev.onepieceapi.contentservice.service.bounty;
 
+import static dev.onepieceapi.contentservice.domain.readertime.ParagraphFixtures.paragraph;
 import dev.onepieceapi.contentservice.domain.bounty.Bounty;
 import dev.onepieceapi.contentservice.domain.bounty.BountyCondition;
 import dev.onepieceapi.contentservice.domain.bounty.BountyReference;
-import dev.onepieceapi.contentservice.domain.bounty.BountyTranslation;
 import dev.onepieceapi.contentservice.domain.bounty.BountyValidity;
 import dev.onepieceapi.contentservice.domain.security.Permission;
 import dev.onepieceapi.contentservice.domain.workflow.ContentFilter;
@@ -354,13 +354,16 @@ class BountyListIntegrationTest {
 	}
 
 	private static Bounty onlyAlive(Bounty bounty) {
-		return new Bounty(bounty.posterName(), bounty.amount(), BountyCondition.ONLY_ALIVE, bounty.inactive(),
-				bounty.previousContentId(), null, bounty.translations(), null, bounty.firstAppearance());
+		return bounty.toBuilder().condition(BountyCondition.ONLY_ALIVE).holderContentId(null).imageId(null).build();
 	}
 
 	private static Bounty inactive(Bounty bounty) {
-		return new Bounty(bounty.posterName(), bounty.amount(), bounty.condition(), true, bounty.previousContentId(),
-				null, Map.of("it", new BountyTranslation("Revocata")), null, bounty.firstAppearance());
+		return bounty.toBuilder()
+			.inactive(true)
+			.holderContentId(null)
+			.imageId(null)
+			.description(paragraph("it", "Revocata"))
+			.build();
 	}
 
 	private void stored() {

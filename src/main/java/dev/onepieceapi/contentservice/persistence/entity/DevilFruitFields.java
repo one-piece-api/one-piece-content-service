@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.persistence.entity;
 
+import java.util.List;
 import lombok.Builder;
 
 import java.util.Map;
@@ -12,6 +13,6 @@ import java.util.UUID;
 @Builder
 public record DevilFruitFields(String romaji, UUID typeContentId, UUID subcategoryId,
 		Map<String, TranslationEmbeddable> translations, String imageId, FirstAppearanceIds firstAppearance,
-		boolean multipleUsers) {
+		boolean multipleUsers, List<ParagraphFields> paragraphs) {
 
 }

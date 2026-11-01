@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.persistence.mapper;
 
+import dev.onepieceapi.contentservice.domain.readertime.ParagraphSection;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitTranslation;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
@@ -22,10 +23,12 @@ import java.util.TreeMap;
 public class DevilFruitVersionMapper {
 
 	public Version<DevilFruit> toDomain(DevilFruitVersionEntity entity) {
+		var paragraphs = ParagraphMapper.toDomain(entity.getParagraphs());
 		var body = new DevilFruit(entity.getRomaji(), entity.getTypeContentId(), entity.getSubcategoryId(),
 				toDomain(entity.getTranslations()), entity.getImageId(),
 				new StoryPoint(entity.getFirstAppearanceChapterId(), entity.getFirstAppearanceEpisodeId()),
-				entity.isMultipleUsers());
+				entity.isMultipleUsers(), paragraphs.get(ParagraphSection.DESCRIPTION),
+				paragraphs.get(ParagraphSection.ADVANTAGES), paragraphs.get(ParagraphSection.DISADVANTAGES));
 		return ContentVersionMapper.toDomain(entity.getVersion(), body);
 	}
 
@@ -39,6 +42,7 @@ public class DevilFruitVersionMapper {
 			.imageId(body.imageId())
 			.firstAppearance(FirstAppearanceMapper.toIds(body.firstAppearance()))
 			.multipleUsers(body.multipleUsers())
+			.paragraphs(ParagraphMapper.toFields(body.paragraphs()))
 			.build(), now);
 	}
 
@@ -50,8 +54,7 @@ public class DevilFruitVersionMapper {
 	}
 
 	private static DevilFruitTranslation toDomain(TranslationEmbeddable translation) {
-		return new DevilFruitTranslation(translation.getName(), translation.getDescription(),
-				translation.getAdvantages(), translation.getDisadvantages());
+		return new DevilFruitTranslation(translation.getName());
 	}
 
 	private static Map<String, TranslationEmbeddable> toEmbeddables(Map<String, DevilFruitTranslation> translations) {
@@ -61,8 +64,7 @@ public class DevilFruitVersionMapper {
 	}
 
 	private static TranslationEmbeddable toEmbeddable(DevilFruitTranslation translation) {
-		return new TranslationEmbeddable(translation.name(), translation.description(), translation.advantages(),
-				translation.disadvantages());
+		return new TranslationEmbeddable(translation.name());
 	}
 
 }

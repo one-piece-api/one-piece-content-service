@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.web.controller;
 
+import dev.onepieceapi.contentservice.service.story.FirstAppearanceLinks;
 import dev.onepieceapi.contentservice.domain.story.Saga;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSortField;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
@@ -57,8 +58,9 @@ class SagaController extends ContentController<Saga, SagaResponse, SagaNamesResp
 	private final SagaLinks links;
 
 	@Autowired
-	SagaController(SagaService service, SagaLinks links) {
-		super(service, StoryResponseMapper::toVersionResponse);
+	SagaController(SagaService service, SagaLinks links, FirstAppearanceLinks storyItems) {
+		super(service, access -> StoryResponseMapper.toVersionResponse(access,
+				storyItems.referencesOfPoints(access.body().points())));
 		this.service = service;
 		this.links = links;
 	}
@@ -109,7 +111,7 @@ class SagaController extends ContentController<Saga, SagaResponse, SagaNamesResp
 			@RequestBody @Valid SagaRequest request, @AuthenticationPrincipal AuthenticatedCaller caller) {
 		var version = this.service.edit(caller.permissions(), caller.user(), id, number,
 				StoryRequestMapper.toDomain(request));
-		return StoryResponseMapper.toVersionResponse(version);
+		return versionResponse(version);
 	}
 
 }

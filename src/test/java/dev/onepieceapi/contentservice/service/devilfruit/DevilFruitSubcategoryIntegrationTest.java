@@ -1,13 +1,14 @@
 package dev.onepieceapi.contentservice.service.devilfruit;
 
+import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitTypeFixtures;
+import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitFixtures;
+import dev.onepieceapi.contentservice.service.validation.ParagraphRules;
 import dev.onepieceapi.contentservice.config.RulesProperties;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
-import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitTranslation;
 import dev.onepieceapi.contentservice.domain.devilfruit.SubcategoryReference;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitType;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitTypeSubcategory;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitTypeSubcategoryTranslation;
-import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitTypeTranslation;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.domain.security.Permission;
 import dev.onepieceapi.contentservice.domain.security.User;
@@ -161,7 +162,9 @@ class DevilFruitSubcategoryIntegrationTest {
 		this.fruits = new DevilFruitService(
 				new DevilFruitDefinition(this.fruitRepository,
 						new DevilFruitValidator(this.fruitRepository, this.languageRepository, this.typeRepository,
-								this.chapterRepository, this.episodeRepository),
+								this.chapterRepository, this.episodeRepository,
+								new ParagraphRules(new ReaderAxisRules(this.contentRepository, this.chapterRepository,
+										this.episodeRepository))),
 						new DevilFruitRules(this.contentRepository, this.typeRepository, this.chapterRepository,
 								this.episodeRepository, this.characterRepository,
 								new ReaderAxisRules(this.contentRepository, this.chapterRepository,
@@ -172,9 +175,13 @@ class DevilFruitSubcategoryIntegrationTest {
 		this.types = new DevilFruitTypeService(this.typeRepository, this.contentVersionRepository,
 				this.contentRepository,
 				new DevilFruitTypeValidator(this.typeRepository, this.languageRepository, this.chapterRepository,
-						this.episodeRepository),
+						this.episodeRepository,
+						new ParagraphRules(new ReaderAxisRules(this.contentRepository, this.chapterRepository,
+								this.episodeRepository))),
 				new DevilFruitTypeRules(this.contentRepository, this.fruitRepository, this.chapterRepository,
-						this.episodeRepository, new RulesProperties(5)),
+						this.episodeRepository,
+						new ReaderAxisRules(this.contentRepository, this.chapterRepository, this.episodeRepository),
+						new RulesProperties(5)),
 				auditLogService, clock);
 	}
 
@@ -272,8 +279,11 @@ class DevilFruitSubcategoryIntegrationTest {
 	@Test
 	void aLanguageASubcategoryIsWrittenInIsInUse() {
 		UUID type = typeContent(DRAFT,
-				new DevilFruitType("Dobutsu", Map.of(), List.of(new DevilFruitTypeSubcategory(ANCIENT,
-						Map.of("en", new DevilFruitTypeSubcategoryTranslation("Ancient", null))))));
+				DevilFruitType.builder()
+					.romaji("Dobutsu")
+					.subcategories(List.of(new DevilFruitTypeSubcategory(ANCIENT,
+							Map.of("en", new DevilFruitTypeSubcategoryTranslation("Ancient", null)))))
+					.build());
 		stored();
 
 		assertThat(this.typeRepository.findOnline(type)).isEmpty();
@@ -296,7 +306,7 @@ class DevilFruitSubcategoryIntegrationTest {
 	void aFruitIsNotSavedWithASubcategoryOfAnotherTypeNoneOrOneRemoved() {
 		UUID zoan = typeContent(PUBLISHED, zoan(subcategory(ANCIENT, "Antico"), subcategory(MYTHICAL, "Mitico")));
 		typeVersion(zoan, 2, READY_TO_PUBLISH, zoan(subcategory(ANCIENT, "Antico")));
-		UUID logia = typeContent(PUBLISHED, new DevilFruitType("Logia", Map.of()));
+		UUID logia = typeContent(PUBLISHED, DevilFruitType.builder().romaji("Logia").build());
 		stored();
 
 		for (DevilFruit refusedFruit : List.of(fruit("Uo Uo", logia, ANCIENT), fruit("Uo Uo", null, ANCIENT),
@@ -419,10 +429,10 @@ class DevilFruitSubcategoryIntegrationTest {
 
 	/** Complete in both languages of the catalog, with these subcategories in order. */
 	private DevilFruitType zoan(DevilFruitTypeSubcategory... subcategories) {
-		return new DevilFruitType("Dobutsu",
-				Map.of("it", new DevilFruitTypeTranslation("Zoo Zoo", "Descrizione", "Pro", "Contro"), "en",
-						new DevilFruitTypeTranslation("Zoan", "Description", "Pros", "Cons")),
-				List.of(subcategories), this.firstAppearance);
+		return DevilFruitTypeFixtures.complete("Dobutsu", this.firstAppearance)
+			.toBuilder()
+			.subcategories(List.of(subcategories))
+			.build();
 	}
 
 	/** Complete in both languages; the English name follows the Italian one. */
@@ -434,10 +444,7 @@ class DevilFruitSubcategoryIntegrationTest {
 	}
 
 	private DevilFruit fruit(String romaji, UUID type, UUID subcategory) {
-		return new DevilFruit(romaji, type, subcategory,
-				Map.of("it", new DevilFruitTranslation(romaji + " it", "Descrizione", "Pro", "Contro"), "en",
-						new DevilFruitTranslation(romaji + " no Mi", "Description", "Pros", "Cons")),
-				null, this.firstAppearance);
+		return DevilFruitFixtures.complete(romaji, type, subcategory, this.firstAppearance);
 	}
 
 	/** What was done so far is written and read again from the database. */

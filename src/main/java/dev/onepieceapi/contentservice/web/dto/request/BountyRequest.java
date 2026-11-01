@@ -1,5 +1,8 @@
 package dev.onepieceapi.contentservice.web.dto.request;
 
+import java.util.List;
+import jakarta.validation.constraints.NotNull;
+import dev.onepieceapi.contentservice.domain.readertime.Paragraph;
 import dev.onepieceapi.contentservice.domain.bounty.Bounty;
 import dev.onepieceapi.contentservice.domain.bounty.BountyCondition;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -7,7 +10,6 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 
-import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -23,19 +25,18 @@ import java.util.UUID;
  * be chosen is answered by {@code GET /bounties/linkable}; left out for none
  * @param holder the id of the content of the character the poster is about; whether it
  * can be chosen is answered by {@code GET /characters/linkable}; left out for none
- * @param translations the description per language code; a language left out, or with
- * nothing written in it, has no translation
  * @param firstAppearance where the poster is revealed; left out for none, which a draft
  * may be - it is required to go online
+ * @param description its paragraphs, in order; left out for none
  * @param removeImage true to remove the draft's poster; not together with an uploaded
  * one. Left out, the poster is kept - or replaced, when one is uploaded with the request
  */
 public record BountyRequest(@Size(max = Bounty.POSTER_NAME_MAX_LENGTH) String posterName,
 		@PositiveOrZero @Schema(description = "Berry, as plain digits") Long amount, BountyCondition condition,
 		Boolean inactive, @Schema(description = "The content id of the bounty it replaces") UUID previous,
-		@Schema(description = "The content id of the character the poster is about") UUID holder,
-		Map<String, @Valid BountyTranslationRequest> translations, Boolean removeImage,
-		FirstAppearanceRequest firstAppearance) {
+		@Schema(description = "The content id of the character the poster is about") UUID holder, Boolean removeImage,
+		FirstAppearanceRequest firstAppearance,
+		@Size(max = Paragraph.MAX_PER_SECTION) List<@NotNull @Valid ParagraphRequest> description) {
 
 	/** Whether the bounty is marked inactive; not saying so is not. */
 	public boolean markedInactive() {

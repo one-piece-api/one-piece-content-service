@@ -1,5 +1,7 @@
 package dev.onepieceapi.contentservice.persistence.repository;
 
+import org.springframework.data.domain.Pageable;
+import java.util.List;
 import dev.onepieceapi.contentservice.persistence.entity.SagaVersionEntity;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -40,5 +42,38 @@ public interface SagaVersionRepository extends VersionBodyRepository<SagaVersion
 			on conflict (entity_type, slug) do update set assigned_at = excluded.assigned_at
 			where content_slug.content_id = excluded.content_id""", nativeQuery = true)
 	int assignSlug(UUID versionId, Instant assignedAt);
+
+	/**
+	 * How many sagas are online with a paragraph naming this chapter or episode (workflow
+	 * 3.7.4).
+	 */
+	@Query("""
+			select count(d) from SagaVersionEntity d join d.version v
+			where v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED
+				and exists (select 1 from SagaParagraphEntity p where p member of d.paragraphs
+						and (p.window.discoveredChapterId = :storyContentId or p.window.discoveredEpisodeId = :storyContentId
+							or p.window.endedChapterId = :storyContentId or p.window.endedEpisodeId = :storyContentId))""")
+	long countOnlineWithPointIn(UUID storyContentId);
+
+	/**
+	 * The sagas online with a paragraph naming this chapter or episode, by number: as
+	 * many as the page asks for.
+	 */
+	@Query("""
+			select d from SagaVersionEntity d join fetch d.version v
+			where v.status = dev.onepieceapi.contentservice.domain.workflow.VersionStatus.PUBLISHED
+				and exists (select 1 from SagaParagraphEntity p where p member of d.paragraphs
+						and (p.window.discoveredChapterId = :storyContentId or p.window.discoveredEpisodeId = :storyContentId
+							or p.window.endedChapterId = :storyContentId or p.window.endedEpisodeId = :storyContentId))
+			order by d.number""")
+	List<SagaVersionEntity> findOnlineWithPointIn(UUID storyContentId, Pageable pageable);
+
+	/** The paragraphs count too: a language they are written in is in use. */
+	@Override
+	@Query(value = """
+			select exists (select 1 from saga_version_translation where language_code = :languageCode)
+			    or exists (select 1 from saga_version_paragraph_translation
+			               where language_code = :languageCode)""", nativeQuery = true)
+	boolean existsByLanguage(String languageCode);
 
 }

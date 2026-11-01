@@ -95,7 +95,7 @@ class LanguageServiceIntegrationTest {
 			.updatedAt(Instant.EPOCH)
 			.build();
 		var draft = new DevilFruitTypeVersionEntity(workflow);
-		draft.getTranslations().put("it", new TranslationEmbeddable("Paramisia", null, null, null));
+		draft.getTranslations().put("it", new TranslationEmbeddable("Paramisia"));
 		this.versionRepository.saveAndFlush(draft);
 
 		assertThatThrownBy(() -> this.service.delete("it", this.admin)).isInstanceOf(LanguageInUseException.class);

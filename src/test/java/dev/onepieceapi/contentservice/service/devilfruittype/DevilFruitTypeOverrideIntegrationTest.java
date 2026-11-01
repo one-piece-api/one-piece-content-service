@@ -1,10 +1,12 @@
 package dev.onepieceapi.contentservice.service.devilfruittype;
 
+import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitTypeFixtures;
+import dev.onepieceapi.contentservice.service.validation.ParagraphRules;
+import dev.onepieceapi.contentservice.service.content.ReaderAxisRules;
 import dev.onepieceapi.contentservice.service.audit.AuditLogService;
 
 import dev.onepieceapi.contentservice.config.RulesProperties;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitType;
-import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitTypeTranslation;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.domain.security.Permission;
 import dev.onepieceapi.contentservice.domain.security.User;
@@ -45,8 +47,6 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -142,10 +142,14 @@ class DevilFruitTypeOverrideIntegrationTest {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
 		var auditLogService = new AuditLogService(this.auditLogRepository, clock);
 		var validator = new DevilFruitTypeValidator(this.versionRepository, this.languageRepository,
-				this.chapterRepository, this.episodeRepository);
+				this.chapterRepository, this.episodeRepository, new ParagraphRules(
+						new ReaderAxisRules(this.contentRepository, this.chapterRepository, this.episodeRepository)));
 		this.service = new DevilFruitTypeService(this.versionRepository, this.contentVersionRepository,
-				this.contentRepository, validator, new DevilFruitTypeRules(this.contentRepository, this.fruitRepository,
-						this.chapterRepository, this.episodeRepository, new RulesProperties(5)),
+				this.contentRepository, validator,
+				new DevilFruitTypeRules(this.contentRepository, this.fruitRepository, this.chapterRepository,
+						this.episodeRepository,
+						new ReaderAxisRules(this.contentRepository, this.chapterRepository, this.episodeRepository),
+						new RulesProperties(5)),
 				auditLogService, clock);
 
 		this.logia = content();
@@ -257,11 +261,7 @@ class DevilFruitTypeOverrideIntegrationTest {
 
 	/** Complete in both languages of the catalog. */
 	private DevilFruitType body(String romaji) {
-		return new DevilFruitType(romaji,
-				Map.of("it", new DevilFruitTypeTranslation(romaji + " IT", "descrizione", "vantaggi", "svantaggi"),
-						"en",
-						new DevilFruitTypeTranslation(romaji + " EN", "description", "advantages", "disadvantages")),
-				List.of(), this.firstAppearance);
+		return DevilFruitTypeFixtures.complete(romaji, this.firstAppearance);
 	}
 
 	/** Seeds the first version of a content. */

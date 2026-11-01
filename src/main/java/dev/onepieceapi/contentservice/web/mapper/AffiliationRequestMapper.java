@@ -25,7 +25,8 @@ public class AffiliationRequestMapper {
 			.orElseGet(Map::of)
 			.forEach((language, translation) -> translations.put(language, toDomain(translation)));
 		return new Affiliation(request.romaji(), translations, null,
-				FirstAppearanceMapper.toDomain(request.firstAppearance()), request.kind());
+				FirstAppearanceMapper.toDomain(request.firstAppearance()), request.kind(),
+				ParagraphRequestMapper.toDomain(request.description()));
 	}
 
 	/**
@@ -46,8 +47,7 @@ public class AffiliationRequestMapper {
 
 	/** A language sent with nothing in it is a language with nothing written. */
 	private static AffiliationTranslation toDomain(AffiliationTranslationRequest translation) {
-		return translation == null ? new AffiliationTranslation(null, null)
-				: new AffiliationTranslation(translation.name(), translation.description());
+		return translation == null ? new AffiliationTranslation(null) : new AffiliationTranslation(translation.name());
 	}
 
 }

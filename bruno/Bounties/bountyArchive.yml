@@ -74,6 +74,35 @@ examples:
                 }
               ],
               "condition": "DEAD_OR_ALIVE",
+              "description": [
+                {
+                  "discovered": {
+                    "chapter": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    },
+                    "episode": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    }
+                  },
+                  "ended": {
+                    "chapter": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    },
+                    "episode": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    }
+                  },
+                  "text": {}
+                }
+              ],
               "firstAppearance": {
                 "chapter": {
                   "id": "",
@@ -110,7 +139,6 @@ examples:
                 "key": "",
                 "posterName": ""
               },
-              "translations": {},
               "validity": "ACTIVE"
             },
             "claimant": {

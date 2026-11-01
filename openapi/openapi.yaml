@@ -8479,6 +8479,12 @@ components:
     AffiliationRequest:
       type: object
       properties:
+        description:
+          type: array
+          items:
+            $ref: "#/components/schemas/ParagraphRequest"
+          maxItems: 50
+          minItems: 0
         firstAppearance:
           $ref: "#/components/schemas/FirstAppearanceRequest"
         kind:
@@ -8502,6 +8508,10 @@ components:
     AffiliationResponse:
       type: object
       properties:
+        description:
+          type: array
+          items:
+            $ref: "#/components/schemas/ParagraphResponse"
         firstAppearance:
           $ref: "#/components/schemas/FirstAppearanceResponse"
         image:
@@ -8523,10 +8533,6 @@ components:
     AffiliationTranslationRequest:
       type: object
       properties:
-        description:
-          type: string
-          maxLength: 2000
-          minLength: 0
         name:
           type: string
           maxLength: 100
@@ -8534,8 +8540,6 @@ components:
     AffiliationTranslationResponse:
       type: object
       properties:
-        description:
-          type: string
         name:
           type: string
     AliasRequest:
@@ -8575,6 +8579,12 @@ components:
     ArcRequest:
       type: object
       properties:
+        description:
+          type: array
+          items:
+            $ref: "#/components/schemas/ParagraphRequest"
+          maxItems: 50
+          minItems: 0
         number:
           type: integer
           format: int32
@@ -8586,10 +8596,14 @@ components:
         translations:
           type: object
           additionalProperties:
-            $ref: "#/components/schemas/StoryTranslationRequest"
+            $ref: "#/components/schemas/TitleTranslationRequest"
     ArcResponse:
       type: object
       properties:
+        description:
+          type: array
+          items:
+            $ref: "#/components/schemas/ParagraphResponse"
         number:
           type: integer
           format: int32
@@ -8598,7 +8612,7 @@ components:
         translations:
           type: object
           additionalProperties:
-            $ref: "#/components/schemas/StoryTranslationResponse"
+            $ref: "#/components/schemas/TitleTranslationResponse"
     BlockedActionResponse:
       type: object
       properties:
@@ -8689,6 +8703,12 @@ components:
           enum:
           - DEAD_OR_ALIVE
           - ONLY_ALIVE
+        description:
+          type: array
+          items:
+            $ref: "#/components/schemas/ParagraphRequest"
+          maxItems: 50
+          minItems: 0
         firstAppearance:
           $ref: "#/components/schemas/FirstAppearanceRequest"
         holder:
@@ -8707,10 +8727,6 @@ components:
           description: The content id of the bounty it replaces
         removeImage:
           type: boolean
-        translations:
-          type: object
-          additionalProperties:
-            $ref: "#/components/schemas/BountyTranslationRequest"
     BountyResponse:
       type: object
       properties:
@@ -8726,6 +8742,10 @@ components:
           enum:
           - DEAD_OR_ALIVE
           - ONLY_ALIVE
+        description:
+          type: array
+          items:
+            $ref: "#/components/schemas/ParagraphResponse"
         firstAppearance:
           $ref: "#/components/schemas/FirstAppearanceResponse"
         holder:
@@ -8740,28 +8760,12 @@ components:
           type: string
         previous:
           $ref: "#/components/schemas/BountyReferenceResponse"
-        translations:
-          type: object
-          additionalProperties:
-            $ref: "#/components/schemas/BountyTranslationResponse"
         validity:
           type: string
           enum:
           - ACTIVE
           - SUPERSEDED
           - INACTIVE
-    BountyTranslationRequest:
-      type: object
-      properties:
-        description:
-          type: string
-          maxLength: 2000
-          minLength: 0
-    BountyTranslationResponse:
-      type: object
-      properties:
-        description:
-          type: string
     ChapterNamesResponse:
       type: object
       properties:
@@ -8876,6 +8880,12 @@ components:
         birthday:
           type: string
           example: --05-05
+        description:
+          type: array
+          items:
+            $ref: "#/components/schemas/ParagraphRequest"
+          maxItems: 50
+          minItems: 0
         devilFruits:
           type: array
           items:
@@ -8936,6 +8946,10 @@ components:
         birthday:
           type: string
           example: --05-05
+        description:
+          type: array
+          items:
+            $ref: "#/components/schemas/ParagraphResponse"
         devilFruits:
           type: array
           items:
@@ -8983,10 +8997,6 @@ components:
     CharacterTranslationRequest:
       type: object
       properties:
-        description:
-          type: string
-          maxLength: 2000
-          minLength: 0
         name:
           type: string
           maxLength: 100
@@ -8994,8 +9004,6 @@ components:
     CharacterTranslationResponse:
       type: object
       properties:
-        description:
-          type: string
         name:
           type: string
     ContentListSummaryResponse:
@@ -9859,6 +9867,24 @@ components:
     DevilFruitRequest:
       type: object
       properties:
+        advantages:
+          type: array
+          items:
+            $ref: "#/components/schemas/ParagraphRequest"
+          maxItems: 50
+          minItems: 0
+        description:
+          type: array
+          items:
+            $ref: "#/components/schemas/ParagraphRequest"
+          maxItems: 50
+          minItems: 0
+        disadvantages:
+          type: array
+          items:
+            $ref: "#/components/schemas/ParagraphRequest"
+          maxItems: 50
+          minItems: 0
         firstAppearance:
           $ref: "#/components/schemas/FirstAppearanceRequest"
         multipleUsers:
@@ -9885,6 +9911,18 @@ components:
     DevilFruitResponse:
       type: object
       properties:
+        advantages:
+          type: array
+          items:
+            $ref: "#/components/schemas/ParagraphResponse"
+        description:
+          type: array
+          items:
+            $ref: "#/components/schemas/ParagraphResponse"
+        disadvantages:
+          type: array
+          items:
+            $ref: "#/components/schemas/ParagraphResponse"
         firstAppearance:
           $ref: "#/components/schemas/FirstAppearanceResponse"
         image:
@@ -9904,18 +9942,6 @@ components:
     DevilFruitTranslationRequest:
       type: object
       properties:
-        advantages:
-          type: string
-          maxLength: 2000
-          minLength: 0
-        description:
-          type: string
-          maxLength: 2000
-          minLength: 0
-        disadvantages:
-          type: string
-          maxLength: 2000
-          minLength: 0
         name:
           type: string
           maxLength: 100
@@ -9923,12 +9949,6 @@ components:
     DevilFruitTranslationResponse:
       type: object
       properties:
-        advantages:
-          type: string
-        description:
-          type: string
-        disadvantages:
-          type: string
         name:
           type: string
     DevilFruitTypeNamesResponse:
@@ -9946,6 +9966,24 @@ components:
     DevilFruitTypeRequest:
       type: object
       properties:
+        advantages:
+          type: array
+          items:
+            $ref: "#/components/schemas/ParagraphRequest"
+          maxItems: 50
+          minItems: 0
+        description:
+          type: array
+          items:
+            $ref: "#/components/schemas/ParagraphRequest"
+          maxItems: 50
+          minItems: 0
+        disadvantages:
+          type: array
+          items:
+            $ref: "#/components/schemas/ParagraphRequest"
+          maxItems: 50
+          minItems: 0
         firstAppearance:
           $ref: "#/components/schemas/FirstAppearanceRequest"
         romaji:
@@ -9963,6 +10001,18 @@ components:
     DevilFruitTypeResponse:
       type: object
       properties:
+        advantages:
+          type: array
+          items:
+            $ref: "#/components/schemas/ParagraphResponse"
+        description:
+          type: array
+          items:
+            $ref: "#/components/schemas/ParagraphResponse"
+        disadvantages:
+          type: array
+          items:
+            $ref: "#/components/schemas/ParagraphResponse"
         firstAppearance:
           $ref: "#/components/schemas/FirstAppearanceResponse"
         romaji:
@@ -10022,18 +10072,6 @@ components:
     DevilFruitTypeTranslationRequest:
       type: object
       properties:
-        advantages:
-          type: string
-          maxLength: 2000
-          minLength: 0
-        description:
-          type: string
-          maxLength: 2000
-          minLength: 0
-        disadvantages:
-          type: string
-          maxLength: 2000
-          minLength: 0
         name:
           type: string
           maxLength: 100
@@ -10041,12 +10079,6 @@ components:
     DevilFruitTypeTranslationResponse:
       type: object
       properties:
-        advantages:
-          type: string
-        description:
-          type: string
-        disadvantages:
-          type: string
         name:
           type: string
     EpisodeNamesResponse:
@@ -10661,6 +10693,28 @@ components:
         totalPages:
           type: integer
           format: int32
+    ParagraphRequest:
+      type: object
+      properties:
+        discovered:
+          $ref: "#/components/schemas/FirstAppearanceRequest"
+        ended:
+          $ref: "#/components/schemas/FirstAppearanceRequest"
+        text:
+          type: object
+          additionalProperties:
+            type: string
+    ParagraphResponse:
+      type: object
+      properties:
+        discovered:
+          $ref: "#/components/schemas/FirstAppearanceResponse"
+        ended:
+          $ref: "#/components/schemas/FirstAppearanceResponse"
+        text:
+          type: object
+          additionalProperties:
+            type: string
     ProblemDetail:
       type: object
       description: "RFC 9457 problem detail, plus this API's own properties"
@@ -10793,6 +10847,12 @@ components:
     SagaRequest:
       type: object
       properties:
+        description:
+          type: array
+          items:
+            $ref: "#/components/schemas/ParagraphRequest"
+          maxItems: 50
+          minItems: 0
         number:
           type: integer
           format: int32
@@ -10800,17 +10860,21 @@ components:
         translations:
           type: object
           additionalProperties:
-            $ref: "#/components/schemas/StoryTranslationRequest"
+            $ref: "#/components/schemas/TitleTranslationRequest"
     SagaResponse:
       type: object
       properties:
+        description:
+          type: array
+          items:
+            $ref: "#/components/schemas/ParagraphResponse"
         number:
           type: integer
           format: int32
         translations:
           type: object
           additionalProperties:
-            $ref: "#/components/schemas/StoryTranslationResponse"
+            $ref: "#/components/schemas/TitleTranslationResponse"
     SpeciesEntryRequest:
       type: object
       properties:
@@ -10857,6 +10921,12 @@ components:
     SpeciesRequest:
       type: object
       properties:
+        description:
+          type: array
+          items:
+            $ref: "#/components/schemas/ParagraphRequest"
+          maxItems: 50
+          minItems: 0
         firstAppearance:
           $ref: "#/components/schemas/FirstAppearanceRequest"
         removeImage:
@@ -10872,6 +10942,10 @@ components:
     SpeciesResponse:
       type: object
       properties:
+        description:
+          type: array
+          items:
+            $ref: "#/components/schemas/ParagraphResponse"
         firstAppearance:
           $ref: "#/components/schemas/FirstAppearanceResponse"
         image:
@@ -10885,10 +10959,6 @@ components:
     SpeciesTranslationRequest:
       type: object
       properties:
-        description:
-          type: string
-          maxLength: 2000
-          minLength: 0
         name:
           type: string
           maxLength: 100
@@ -10896,8 +10966,6 @@ components:
     SpeciesTranslationResponse:
       type: object
       properties:
-        description:
-          type: string
         name:
           type: string
     StatusCountResponse:
@@ -11045,6 +11113,18 @@ components:
           type: object
           additionalProperties:
             type: string
+    TitleTranslationRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 200
+          minLength: 0
+    TitleTranslationResponse:
+      type: object
+      properties:
+        title:
+          type: string
     TypeReferenceResponse:
       type: object
       properties:
@@ -12069,7 +12149,7 @@ components:
         translations:
           type: object
           additionalProperties:
-            $ref: "#/components/schemas/VolumeTranslationRequest"
+            $ref: "#/components/schemas/TitleTranslationRequest"
     VolumeResponse:
       type: object
       properties:
@@ -12087,19 +12167,7 @@ components:
         translations:
           type: object
           additionalProperties:
-            $ref: "#/components/schemas/VolumeTranslationResponse"
-    VolumeTranslationRequest:
-      type: object
-      properties:
-        title:
-          type: string
-          maxLength: 200
-          minLength: 0
-    VolumeTranslationResponse:
-      type: object
-      properties:
-        title:
-          type: string
+            $ref: "#/components/schemas/TitleTranslationResponse"
   securitySchemes:
     keycloak:
       flows:

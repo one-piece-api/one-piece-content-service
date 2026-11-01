@@ -132,12 +132,11 @@ class PublishedSpeciesViewIntegrationTest {
 		UUID id = version(contentId, versionNumber, status);
 		this.jdbc.sql("insert into species_version (version_id, romaji) values (?, ?)").params(id, romaji).update();
 		for (String language : languages) {
-			this.jdbc
-				.sql("insert into species_version_translation (version_id, language_code, name, description)"
-						+ " values (?, ?, ?, ?)")
-				.params(id, language, "Name " + language.toUpperCase(), "Description " + language.toUpperCase())
+			this.jdbc.sql("insert into species_version_translation (version_id, language_code, name) values (?, ?, ?)")
+				.params(id, language, "Name " + language.toUpperCase())
 				.update();
 		}
+		ParagraphRows.description(this.jdbc, "species", id, languages);
 		return id;
 	}
 

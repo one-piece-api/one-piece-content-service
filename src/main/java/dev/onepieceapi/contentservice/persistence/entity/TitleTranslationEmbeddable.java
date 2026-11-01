@@ -8,16 +8,16 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.FieldNameConstants;
 
 /**
- * The title of a volume version in one language - a value owned by its version. Mapped as
- * {@code name}, like {@link StoryTranslationEmbeddable}, so the generic queries read it;
- * stored in column {@code title}. A volume has no description.
+ * The title of a volume, saga or arc version in one language - a value owned by its
+ * version. Mapped as {@code name}, like {@link StoryTranslationEmbeddable}, so the
+ * generic queries read it; stored in column {@code title}.
  */
 @Embeddable
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldNameConstants
-public class VolumeTranslationEmbeddable {
+public class TitleTranslationEmbeddable {
 
 	/** The title. */
 	@Column(name = "title")

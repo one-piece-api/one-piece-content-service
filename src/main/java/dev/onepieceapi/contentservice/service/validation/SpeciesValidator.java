@@ -30,12 +30,16 @@ public class SpeciesValidator extends ContentValidator<Species, SpeciesVersionEn
 
 	private final EpisodeVersionRepository episodeRepository;
 
+	private final ParagraphRules paragraphRules;
+
 	@Autowired
 	public SpeciesValidator(SpeciesVersionRepository versionRepository, LanguageRepository languageRepository,
-			ChapterVersionRepository chapterRepository, EpisodeVersionRepository episodeRepository) {
+			ChapterVersionRepository chapterRepository, EpisodeVersionRepository episodeRepository,
+			ParagraphRules paragraphRules) {
 		super(versionRepository, languageRepository, SpeciesVersionMapper::toDomain);
 		this.chapterRepository = chapterRepository;
 		this.episodeRepository = episodeRepository;
+		this.paragraphRules = paragraphRules;
 	}
 
 	/** Every part of the first appearance at fault is reported. */
@@ -46,6 +50,7 @@ public class SpeciesValidator extends ContentValidator<Species, SpeciesVersionEn
 			.ifPresent(violations::add);
 		RelationRules.notLinkable(SpeciesRelations.FIRST_APPEARANCE_EPISODE, body, "", this.episodeRepository)
 			.ifPresent(violations::add);
+		violations.addAll(this.paragraphRules.violationsOnSave(body));
 		if (!violations.isEmpty()) {
 			throw new ValueInvalidException(violations);
 		}

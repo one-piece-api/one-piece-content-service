@@ -1,5 +1,7 @@
 package dev.onepieceapi.contentservice.service.character;
 
+import static dev.onepieceapi.contentservice.domain.readertime.ParagraphFixtures.discoveredAt;
+import dev.onepieceapi.contentservice.service.validation.ParagraphRules;
 import dev.onepieceapi.contentservice.config.RulesProperties;
 import dev.onepieceapi.contentservice.domain.affiliation.Affiliation;
 import dev.onepieceapi.contentservice.domain.affiliation.AffiliationKind;
@@ -173,8 +175,9 @@ final class CharacterFixtures {
 	/** The service of the species, to retire one a character names. */
 	SpeciesService speciesService() {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
-		var validator = new SpeciesValidator(this.species, this.languages, this.chapters, this.episodes);
-		var rules = new SpeciesRules(this.contents, this.chapters, this.episodes, this.characters,
+		var validator = new SpeciesValidator(this.species, this.languages, this.chapters, this.episodes,
+				new ParagraphRules(readerAxisRules()));
+		var rules = new SpeciesRules(this.contents, this.chapters, this.episodes, this.characters, readerAxisRules(),
 				new RulesProperties(5));
 		return new SpeciesService(new SpeciesDefinition(this.species, validator, rules), this.contentVersions,
 				this.contents, new AuditLogService(this.auditLog, clock), clock, mock(ContentImages.class));
@@ -183,9 +186,10 @@ final class CharacterFixtures {
 	/** The service of the affiliations, to publish and retire one a character names. */
 	AffiliationService affiliationService() {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
-		var validator = new AffiliationValidator(this.affiliations, this.languages, this.chapters, this.episodes);
+		var validator = new AffiliationValidator(this.affiliations, this.languages, this.chapters, this.episodes,
+				new ParagraphRules(readerAxisRules()));
 		var rules = new AffiliationRules(this.contents, this.chapters, this.episodes, this.characters,
-				new RulesProperties(5));
+				readerAxisRules(), new RulesProperties(5));
 		return new AffiliationService(new AffiliationDefinition(this.affiliations, validator, rules),
 				this.contentVersions, this.contents, new AuditLogService(this.auditLog, clock), clock,
 				mock(ContentImages.class));
@@ -197,8 +201,10 @@ final class CharacterFixtures {
 	Character complete(String romaji) {
 		return Character.builder()
 			.romaji(romaji)
-			.translations(Map.of("it", new CharacterTranslation(romaji + " (it)", "Descrizione di " + romaji), "en",
-					new CharacterTranslation(romaji + " (en)", "Description of " + romaji)))
+			.translations(Map.of("it", new CharacterTranslation(romaji + " (it)"), "en",
+					new CharacterTranslation(romaji + " (en)")))
+			.description(discoveredAt(this.firstAppearance,
+					Map.of("it", "Descrizione di " + romaji, "en", "Description of " + romaji)))
 			.status(CharacterStatus.ALIVE)
 			.gender(Gender.FEMALE)
 			.firstAppearance(this.firstAppearance)
@@ -258,7 +264,8 @@ final class CharacterFixtures {
 	 */
 	UUID species(VersionStatus status, String romaji) {
 		var version = new SpeciesVersionEntity(workflow(content(EntityType.SPECIES), status));
-		SpeciesVersionMapper.rewrite(version, new Species(romaji, Map.of(), null, this.firstAppearance), EARLIER);
+		SpeciesVersionMapper.rewrite(version,
+				Species.builder().romaji(romaji).firstAppearance(this.firstAppearance).build(), EARLIER);
 		return this.species.save(version).getContentId();
 	}
 
@@ -275,10 +282,15 @@ final class CharacterFixtures {
 	/** A later version of an affiliation, in this status and of this kind. */
 	void affiliationVersion(UUID contentId, int number, VersionStatus status, String romaji, AffiliationKind kind) {
 		var version = new AffiliationVersionEntity(workflow(contentId, status, number));
-		AffiliationVersionMapper.rewrite(version, new Affiliation(romaji,
-				Map.of("it", new AffiliationTranslation(romaji + " (it)", "Descrizione"), "en",
-						new AffiliationTranslation(romaji + " (en)", "Description")),
-				null, this.firstAppearance, kind), EARLIER);
+		var affiliation = Affiliation.builder()
+			.romaji(romaji)
+			.translations(Map.of("it", new AffiliationTranslation(romaji + " (it)"), "en",
+					new AffiliationTranslation(romaji + " (en)")))
+			.firstAppearance(this.firstAppearance)
+			.kind(kind)
+			.description(discoveredAt(this.firstAppearance, Map.of("it", "Descrizione", "en", "Description")))
+			.build();
+		AffiliationVersionMapper.rewrite(version, affiliation, EARLIER);
 		this.affiliations.save(version);
 	}
 
@@ -299,9 +311,17 @@ final class CharacterFixtures {
 	 */
 	UUID devilFruit(VersionStatus status, String romaji, boolean multipleUsers) {
 		var version = new DevilFruitVersionEntity(workflow(content(EntityType.DEVIL_FRUIT), status));
-		var translations = Map.of("en", new DevilFruitTranslation(romaji + " (en)", "Description", "Pro", "Con"));
-		DevilFruitVersionMapper.rewrite(version, new DevilFruit(romaji, content(EntityType.DEVIL_FRUIT_TYPE), null,
-				translations, null, this.firstAppearance, multipleUsers), EARLIER);
+		var fruit = DevilFruit.builder()
+			.romaji(romaji)
+			.typeContentId(content(EntityType.DEVIL_FRUIT_TYPE))
+			.translations(Map.of("en", new DevilFruitTranslation(romaji + " (en)")))
+			.firstAppearance(this.firstAppearance)
+			.multipleUsers(multipleUsers)
+			.description(discoveredAt(this.firstAppearance, Map.of("en", "Description")))
+			.advantages(discoveredAt(this.firstAppearance, Map.of("en", "Pro")))
+			.disadvantages(discoveredAt(this.firstAppearance, Map.of("en", "Con")))
+			.build();
+		DevilFruitVersionMapper.rewrite(version, fruit, EARLIER);
 		return this.devilFruits.save(version).getContentId();
 	}
 
@@ -314,8 +334,14 @@ final class CharacterFixtures {
 	/** A new bounty held by this character, with its first version in this status. */
 	UUID bounty(VersionStatus status, UUID holder) {
 		var version = new BountyVersionEntity(workflow(content(EntityType.BOUNTY), status));
-		BountyVersionMapper.rewrite(version, new Bounty("Nami", 16_000_000L, BountyCondition.DEAD_OR_ALIVE, false, null,
-				holder, Map.of(), null, this.firstAppearance), EARLIER);
+		var bounty = Bounty.builder()
+			.posterName("Nami")
+			.amount(16_000_000L)
+			.condition(BountyCondition.DEAD_OR_ALIVE)
+			.holderContentId(holder)
+			.firstAppearance(this.firstAppearance)
+			.build();
+		BountyVersionMapper.rewrite(version, bounty, EARLIER);
 		return this.bounties.save(version).getContentId();
 	}
 

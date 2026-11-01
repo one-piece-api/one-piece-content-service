@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.web.controller;
 
+import static dev.onepieceapi.contentservice.domain.readertime.ParagraphFixtures.paragraph;
 import dev.onepieceapi.contentservice.domain.affiliation.Affiliation;
 import dev.onepieceapi.contentservice.domain.affiliation.AffiliationKind;
 import dev.onepieceapi.contentservice.domain.affiliation.AffiliationReference;
@@ -103,7 +104,7 @@ class AffiliationControllerTest {
 	void aVersionSaysEverythingWithItsEmblemAndItsFirstAppearance() throws Exception {
 		when(this.service.getVersion(any(), any(), eq(CONTENT_ID), eq(1)))
 			.thenReturn(new VersionAccess<>(version(VersionStatus.PUBLISHED, "abc"), Set.of()));
-		when(this.firstAppearances.referencesFor(anyCollection()))
+		when(this.firstAppearances.referencesOfPoints(anyCollection()))
 			.thenReturn(Map.of(CHAPTER_ID, new NumberedReference(CHAPTER_ID, 1, Map.of("it", "Romance Dawn"))));
 		when(this.images.toResponse("abc")).thenReturn(new ImageResponse("abc", "/api/content/images/abc"));
 
@@ -112,7 +113,7 @@ class AffiliationControllerTest {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.body.romaji").value("Mugiwara no Ichimi"))
 			.andExpect(jsonPath("$.body.translations.it.name").value("Pirati di Cappello di Paglia"))
-			.andExpect(jsonPath("$.body.translations.it.description").value("La ciurma di Rufy"))
+			.andExpect(jsonPath("$.body.description[0].text.it").value("La ciurma di Rufy"))
 			.andExpect(jsonPath("$.body.kind").value("PIRATE_CREW"))
 			.andExpect(jsonPath("$.body.image.url").value("/api/content/images/abc"))
 			.andExpect(jsonPath("$.body.firstAppearance.chapter.number").value(1))
@@ -169,8 +170,9 @@ class AffiliationControllerTest {
 
 		this.mockMvc.perform(post("/affiliations").with(callerWith(Permission.CONTENT_WRITE))
 			.contentType("application/json")
-			.content("{\"romaji\":\"Mugiwara no Ichimi\",\"translations\":{\"en\":{\"name\":\"Straw Hat Pirates\","
-					+ "\"description\":\"Luffy's crew\"}},\"firstAppearance\":{\"chapter\":\"" + CHAPTER_ID + "\"}}"))
+			.content("{\"romaji\":\"Mugiwara no Ichimi\",\"translations\":{\"en\":{\"name\":\"Straw Hat Pirates\""
+					+ "}},\"description\":[{\"text\":{\"en\":\"Luffy's crew\"}}],\"firstAppearance\":{\"chapter\":\""
+					+ CHAPTER_ID + "\"}}"))
 			.andExpect(status().isCreated())
 			.andExpect(jsonPath("$.id").value(CONTENT_ID.toString()));
 
@@ -179,7 +181,7 @@ class AffiliationControllerTest {
 				eq(ImageChange.KEEP));
 		assertThat(written.getValue().romaji()).isEqualTo("Mugiwara no Ichimi");
 		assertThat(written.getValue().translations().get("en"))
-			.isEqualTo(new AffiliationTranslation("Straw Hat Pirates", "Luffy's crew"));
+			.isEqualTo(new AffiliationTranslation("Straw Hat Pirates"));
 		assertThat(written.getValue().firstAppearance()).isEqualTo(StoryPoint.ofChapter(CHAPTER_ID));
 	}
 
@@ -225,7 +227,7 @@ class AffiliationControllerTest {
 	void aTextLongerThanItsLimitIsABadRequestAndOneAsLongIsAccepted() throws Exception {
 		for (String body : List.of("{\"romaji\":\"" + "x".repeat(101) + "\"}",
 				"{\"translations\":{\"it\":{\"name\":\"" + "x".repeat(101) + "\"}}}",
-				"{\"translations\":{\"it\":{\"description\":\"" + "x".repeat(2001) + "\"}}}")) {
+				"{\"description\":[{\"text\":{\"it\":\"" + "x".repeat(2001) + "\"}}]}")) {
 			this.mockMvc
 				.perform(post("/affiliations").with(callerWith(Permission.CONTENT_WRITE))
 					.contentType("application/json")
@@ -238,7 +240,7 @@ class AffiliationControllerTest {
 			.perform(post("/affiliations").with(callerWith(Permission.CONTENT_WRITE))
 				.contentType("application/json")
 				.content("{\"romaji\":\"" + "x".repeat(100) + "\",\"translations\":{\"it\":{\"name\":\""
-						+ "x".repeat(100) + "\",\"description\":\"" + "x".repeat(2000) + "\"}}}"))
+						+ "x".repeat(100) + "\"}},\"description\":[{\"text\":{\"it\":\"" + "x".repeat(2000) + "\"}}]}"))
 			.andExpect(status().isCreated());
 	}
 
@@ -330,14 +332,19 @@ class AffiliationControllerTest {
 	}
 
 	private static Version<Affiliation> version(VersionStatus status, String imageId) {
-		var translations = Map.of("it",
-				new AffiliationTranslation("Pirati di Cappello di Paglia", "La ciurma di Rufy"));
+		var translations = Map.of("it", new AffiliationTranslation("Pirati di Cappello di Paglia"));
 		return Version.<Affiliation>builder()
 			.number(1)
 			.status(status)
 			.author(NAMI)
-			.body(new Affiliation("Mugiwara no Ichimi", translations, imageId, StoryPoint.ofChapter(CHAPTER_ID),
-					AffiliationKind.PIRATE_CREW))
+			.body(Affiliation.builder()
+				.romaji("Mugiwara no Ichimi")
+				.translations(translations)
+				.imageId(imageId)
+				.firstAppearance(StoryPoint.ofChapter(CHAPTER_ID))
+				.kind(AffiliationKind.PIRATE_CREW)
+				.description(paragraph("it", "La ciurma di Rufy"))
+				.build())
 			.createdAt(CREATED)
 			.updatedAt(CREATED)
 			.build();

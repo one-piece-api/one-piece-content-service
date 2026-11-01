@@ -31,14 +31,16 @@ public class DevilFruitTypeRequestMapper {
 			.map(DevilFruitTypeRequestMapper::toDomain)
 			.toList();
 		return new DevilFruitType(request.romaji(), translations, subcategories,
-				FirstAppearanceMapper.toDomain(request.firstAppearance()));
+				FirstAppearanceMapper.toDomain(request.firstAppearance()),
+				ParagraphRequestMapper.toDomain(request.description()),
+				ParagraphRequestMapper.toDomain(request.advantages()),
+				ParagraphRequestMapper.toDomain(request.disadvantages()));
 	}
 
 	/** A language sent with nothing in it is a language with nothing written. */
 	private static DevilFruitTypeTranslation toDomain(DevilFruitTypeTranslationRequest translation) {
-		return translation == null ? new DevilFruitTypeTranslation(null, null, null, null)
-				: new DevilFruitTypeTranslation(translation.name(), translation.description(), translation.advantages(),
-						translation.disadvantages());
+		return translation == null ? new DevilFruitTypeTranslation(null)
+				: new DevilFruitTypeTranslation(translation.name());
 	}
 
 	/** A subcategory sent as nothing at all is a new one with nothing written. */

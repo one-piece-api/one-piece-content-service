@@ -1,24 +1,32 @@
 package dev.onepieceapi.contentservice.domain.devilfruit;
 
 import dev.onepieceapi.contentservice.domain.readertime.FirstAppearing;
+import dev.onepieceapi.contentservice.domain.readertime.Paragraph;
+import dev.onepieceapi.contentservice.domain.readertime.ParagraphSection;
+import dev.onepieceapi.contentservice.domain.readertime.Paragraphed;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.domain.workflow.ContentBody;
 import dev.onepieceapi.contentservice.domain.workflow.NaturalKey;
 import dev.onepieceapi.contentservice.domain.workflow.Text;
+import lombok.Builder;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.UUID;
 
 /**
  * What one version of a Devil Fruit says (implementation plan of the Devil Fruit, D1,
- * D7): one romaji shared by every language, the Devil Fruit Type it belongs to, and a
- * name, description, advantages and disadvantages per language code. Plugged into the
- * generic {@code Content} and {@code Version}, which carry the workflow around it.
+ * D7): one romaji shared by every language, the Devil Fruit Type it belongs to, a name
+ * per language code, and its description, advantages and disadvantages as paragraphs
+ * (workflow 3.7.3). Plugged into the generic {@code Content} and {@code Version}, which
+ * carry the workflow around it.
  * <p>
  * The type is an id - the type's content, not one of its versions - and is missing while
  * the version is an incomplete draft. Two versions saying the same except for the type
@@ -35,10 +43,15 @@ import java.util.UUID;
  * @param multipleUsers whether several characters may use it at the same time, as the
  * SMILE fruits (implementation plan of the Character, D12); never missing, false unless
  * said
+ * @param description its paragraphs, in order; none is never null
+ * @param advantages as {@code description}
+ * @param disadvantages as {@code description}
  */
+@Builder(toBuilder = true)
 public record DevilFruit(String romaji, UUID typeContentId, UUID subcategoryId,
 		Map<String, DevilFruitTranslation> translations, String imageId, StoryPoint firstAppearance,
-		boolean multipleUsers) implements ContentBody<DevilFruit>, FirstAppearing {
+		boolean multipleUsers, List<Paragraph> description, List<Paragraph> advantages,
+		List<Paragraph> disadvantages) implements ContentBody<DevilFruit>, FirstAppearing, Paragraphed {
 
 	public static final int ROMAJI_MAX_LENGTH = 100;
 
@@ -49,44 +62,18 @@ public record DevilFruit(String romaji, UUID typeContentId, UUID subcategoryId,
 	/** Named as request validation names them, so a client reads both the same way. */
 	private static final String NAME_FIELD = "translations[%s].name";
 
-	private static final String DESCRIPTION_FIELD = "translations[%s].description";
-
-	private static final String ADVANTAGES_FIELD = "translations[%s].advantages";
-
-	private static final String DISADVANTAGES_FIELD = "translations[%s].disadvantages";
-
-	/** Nothing chosen is {@link StoryPoint#NONE}, not null. */
+	/** Nothing chosen is {@link StoryPoint#NONE}, not null; no list is null. */
 	public DevilFruit {
+		translations = translations == null ? Map.of() : translations;
 		firstAppearance = StoryPoint.orNone(firstAppearance);
-	}
-
-	/** A fruit with one user at a time. */
-	public DevilFruit(String romaji, UUID typeContentId, UUID subcategoryId,
-			Map<String, DevilFruitTranslation> translations, String imageId, StoryPoint firstAppearance) {
-		this(romaji, typeContentId, subcategoryId, translations, imageId, firstAppearance, false);
-	}
-
-	/** A fruit without a first appearance. */
-	public DevilFruit(String romaji, UUID typeContentId, UUID subcategoryId,
-			Map<String, DevilFruitTranslation> translations, String imageId) {
-		this(romaji, typeContentId, subcategoryId, translations, imageId, StoryPoint.NONE);
-	}
-
-	/** A fruit without a subcategory or an image. */
-	public DevilFruit(String romaji, UUID typeContentId, Map<String, DevilFruitTranslation> translations) {
-		this(romaji, typeContentId, null, translations, null);
-	}
-
-	/** A fruit without a subcategory. */
-	public DevilFruit(String romaji, UUID typeContentId, Map<String, DevilFruitTranslation> translations,
-			String imageId) {
-		this(romaji, typeContentId, null, translations, imageId);
+		description = description == null ? List.of() : List.copyOf(description);
+		advantages = advantages == null ? List.of() : List.copyOf(advantages);
+		disadvantages = disadvantages == null ? List.of() : List.copyOf(disadvantages);
 	}
 
 	/** The same fruit with another image, or none. */
 	public DevilFruit withImage(String newImageId) {
-		return new DevilFruit(this.romaji, this.typeContentId, this.subcategoryId, this.translations, newImageId,
-				this.firstAppearance, this.multipleUsers);
+		return toBuilder().imageId(newImageId).build();
 	}
 
 	@Override
@@ -98,13 +85,19 @@ public record DevilFruit(String romaji, UUID typeContentId, UUID subcategoryId,
 				written.put(language, normalized);
 			}
 		});
-		return new DevilFruit(Text.stripToNull(this.romaji), this.typeContentId, this.subcategoryId, written,
-				this.imageId, this.firstAppearance, this.multipleUsers);
+		return toBuilder().romaji(Text.stripToNull(this.romaji))
+			.translations(written)
+			.description(Paragraph.normalized(this.description))
+			.advantages(Paragraph.normalized(this.advantages))
+			.disadvantages(Paragraph.normalized(this.disadvantages))
+			.build();
 	}
 
 	@Override
 	public Set<String> languages() {
-		return this.translations.keySet();
+		Set<String> languages = new TreeSet<>(this.translations.keySet());
+		languages.addAll(paragraphLanguages());
+		return languages;
 	}
 
 	@Override
@@ -124,8 +117,8 @@ public record DevilFruit(String romaji, UUID typeContentId, UUID subcategoryId,
 	}
 
 	/**
-	 * The romaji, the type and the first appearance, then a name, a description,
-	 * advantages and disadvantages per language - every one missing.
+	 * The romaji, the type and the first appearance, then a name per language, then the
+	 * paragraphs of every section and their points - every one missing.
 	 */
 	@Override
 	public List<String> missingFields(Collection<String> languages) {
@@ -140,21 +133,24 @@ public record DevilFruit(String romaji, UUID typeContentId, UUID subcategoryId,
 			missing.add(FIELD);
 		}
 		for (String language : languages) {
-			DevilFruitTranslation translation = translationIn(language);
-			if (translation.name() == null) {
+			if (translationIn(language).name() == null) {
 				missing.add(NAME_FIELD.formatted(language));
 			}
-			if (translation.description() == null) {
-				missing.add(DESCRIPTION_FIELD.formatted(language));
-			}
-			if (translation.advantages() == null) {
-				missing.add(ADVANTAGES_FIELD.formatted(language));
-			}
-			if (translation.disadvantages() == null) {
-				missing.add(DISADVANTAGES_FIELD.formatted(language));
-			}
 		}
+		missing.addAll(missingParagraphs(languages));
+		missing.addAll(missingDiscovered());
 		return missing;
+	}
+
+	@Override
+	public Optional<StoryPoint> origin() {
+		return Optional.of(this.firstAppearance);
+	}
+
+	@Override
+	public Map<ParagraphSection, List<Paragraph>> paragraphs() {
+		return new EnumMap<>(Map.of(ParagraphSection.DESCRIPTION, this.description, ParagraphSection.ADVANTAGES,
+				this.advantages, ParagraphSection.DISADVANTAGES, this.disadvantages));
 	}
 
 	/**

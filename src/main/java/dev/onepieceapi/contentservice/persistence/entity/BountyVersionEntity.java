@@ -1,16 +1,18 @@
 package dev.onepieceapi.contentservice.persistence.entity;
 
+import java.util.List;
+import java.util.ArrayList;
+import jakarta.persistence.OrderColumn;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.CascadeType;
 import dev.onepieceapi.contentservice.domain.bounty.Bounty;
 import dev.onepieceapi.contentservice.domain.bounty.BountyCondition;
 import dev.onepieceapi.contentservice.domain.workflow.NaturalKey;
-import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
-import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.MapKeyColumn;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -19,17 +21,15 @@ import org.hibernate.annotations.Generated;
 import org.hibernate.generator.EventType;
 
 import java.time.Instant;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.UUID;
 
 /**
  * What one version of a bounty says (implementation plan of the Bounty, D1-D5): the
  * poster's name and the amount, which together are its natural key, the condition, the
  * inactive flag, the content of the bounty it replaces, the content of its holder, its
- * image, its first appearance (ADR-0008) and, per language, its description. The entity
- * types of the links are constants the database fills in: they keep a bounty from
- * pointing to anything but a bounty, a character, a chapter and an episode.
+ * image, its first appearance (ADR-0008) and its paragraphs. The entity types of the
+ * links are constants the database fills in: they keep a bounty from pointing to anything
+ * but a bounty, a character, a chapter and an episode.
  */
 @Entity
 @Table(name = "bounty_version")
@@ -74,12 +74,13 @@ public class BountyVersionEntity extends VersionBodyEntity {
 	private UUID firstAppearanceEpisodeId;
 
 	/**
-	 * The localized fields per language code; a language nothing was saved for is absent.
+	 * Its paragraphs, every section in one list (workflow 3.7.3): a section is in the
+	 * order of its rows; the position is the index in the list.
 	 */
-	@ElementCollection
-	@CollectionTable(name = "bounty_version_translation", joinColumns = @JoinColumn(name = "version_id"))
-	@MapKeyColumn(name = "language_code")
-	private Map<String, BountyTranslationEmbeddable> translations = new HashMap<>();
+	@OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+	@JoinColumn(name = "version_id", nullable = false)
+	@OrderColumn(name = "position")
+	private List<BountyParagraphEntity> paragraphs = new ArrayList<>();
 
 	public BountyVersionEntity(ContentVersionEntity version) {
 		super(version);
@@ -102,8 +103,8 @@ public class BountyVersionEntity extends VersionBodyEntity {
 		this.imageId = fields.imageId();
 		this.firstAppearanceChapterId = fields.firstAppearance().chapterId();
 		this.firstAppearanceEpisodeId = fields.firstAppearance().episodeId();
-		this.translations.clear();
-		this.translations.putAll(fields.translations());
+		PositionalRows.rewrite(this.paragraphs, fields.paragraphs(), BountyParagraphEntity::new,
+				ParagraphEntity::rewrite);
 		touch(now);
 	}
 

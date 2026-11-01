@@ -80,7 +80,7 @@ class DevilFruitController extends ContentController<DevilFruit, DevilFruitRespo
 		super(service,
 				access -> DevilFruitResponseMapper.toVersionResponse(access,
 						links.referencesFor(List.of(access.body())),
-						firstAppearances.referencesFor(List.of(access.body())), images));
+						firstAppearances.referencesOfPoints(access.body().points()), images));
 		this.service = service;
 		this.links = links;
 		this.fruitLinks = fruitLinks;

@@ -72,7 +72,7 @@ class SpeciesController extends ContentController<Species, SpeciesResponse, Spec
 	SpeciesController(SpeciesService service, SpeciesLinks links, FirstAppearanceLinks firstAppearances,
 			ImageResponseMapper images) {
 		super(service, access -> SpeciesResponseMapper.toVersionResponse(access,
-				firstAppearances.referencesFor(List.of(access.body())), images));
+				firstAppearances.referencesOfPoints(access.body().points()), images));
 		this.service = service;
 		this.links = links;
 	}

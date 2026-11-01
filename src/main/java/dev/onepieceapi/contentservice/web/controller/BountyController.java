@@ -114,7 +114,7 @@ class BountyController extends ContentController<Bounty, BountyResponse, BountyN
 		BountyChain chain = this.links.chainOf(contentId, bounty.previousContentId(), visible);
 		var bounties = this.links.referencesOf(chain.contentIds(), visible);
 		var holders = this.characters.referencesOf(holderIdsOf(bounty));
-		var storyItems = this.firstAppearances.referencesFor(List.of(bounty));
+		var storyItems = this.firstAppearances.referencesOfPoints(bounty.points());
 		return BountyResponseMapper.toVersionResponse(access, chain, bounties, holders, storyItems, this.images);
 	}
 

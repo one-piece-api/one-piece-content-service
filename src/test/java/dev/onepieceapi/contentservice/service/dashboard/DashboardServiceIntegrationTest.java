@@ -1,5 +1,7 @@
 package dev.onepieceapi.contentservice.service.dashboard;
 
+import dev.onepieceapi.contentservice.persistence.mapper.DevilFruitTypeVersionMapper;
+import static dev.onepieceapi.contentservice.domain.readertime.ParagraphFixtures.paragraph;
 import dev.onepieceapi.contentservice.service.devilfruittype.DevilFruitTypeTitleSource;
 import dev.onepieceapi.contentservice.service.content.StatusPage;
 
@@ -19,7 +21,6 @@ import dev.onepieceapi.contentservice.persistence.entity.AuditLogEntity;
 import dev.onepieceapi.contentservice.persistence.entity.ContentEntity;
 import dev.onepieceapi.contentservice.persistence.entity.ContentVersionEntity;
 import dev.onepieceapi.contentservice.persistence.entity.DevilFruitTypeVersionEntity;
-import dev.onepieceapi.contentservice.persistence.entity.TranslationEmbeddable;
 import dev.onepieceapi.contentservice.persistence.mapper.UserMapper;
 import dev.onepieceapi.contentservice.persistence.repository.AuditLogRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
@@ -385,15 +386,13 @@ class DashboardServiceIntegrationTest {
 			.updatedAt(EARLIER)
 			.build();
 		var version = new DevilFruitTypeVersionEntity(workflow);
-		var body = new DevilFruitType(romaji,
-				Map.of("it", new DevilFruitTypeTranslation(romaji + " IT", "descrizione", "vantaggi", "svantaggi"),
-						"en",
-						new DevilFruitTypeTranslation(romaji + " EN", "description", "advantages", "disadvantages")));
-		version.setRomaji(body.romaji());
-		body.translations()
-			.forEach((language, translation) -> version.getTranslations()
-				.put(language, new TranslationEmbeddable(translation.name(), translation.description(),
-						translation.advantages(), translation.disadvantages())));
+		var body = DevilFruitType.builder()
+			.romaji(romaji)
+			.translations(Map.of("it", new DevilFruitTypeTranslation(romaji + " IT"), "en",
+					new DevilFruitTypeTranslation(romaji + " EN")))
+			.description(paragraph(Map.of("it", "descrizione", "en", "description")))
+			.build();
+		DevilFruitTypeVersionMapper.rewrite(version, body, EARLIER);
 		this.versionRepository.save(version);
 	}
 

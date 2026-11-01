@@ -30,12 +30,16 @@ public class AffiliationValidator extends ContentValidator<Affiliation, Affiliat
 
 	private final EpisodeVersionRepository episodeRepository;
 
+	private final ParagraphRules paragraphRules;
+
 	@Autowired
 	public AffiliationValidator(AffiliationVersionRepository versionRepository, LanguageRepository languageRepository,
-			ChapterVersionRepository chapterRepository, EpisodeVersionRepository episodeRepository) {
+			ChapterVersionRepository chapterRepository, EpisodeVersionRepository episodeRepository,
+			ParagraphRules paragraphRules) {
 		super(versionRepository, languageRepository, AffiliationVersionMapper::toDomain);
 		this.chapterRepository = chapterRepository;
 		this.episodeRepository = episodeRepository;
+		this.paragraphRules = paragraphRules;
 	}
 
 	/** Every part of the first appearance at fault is reported. */
@@ -46,6 +50,7 @@ public class AffiliationValidator extends ContentValidator<Affiliation, Affiliat
 			.ifPresent(violations::add);
 		RelationRules.notLinkable(AffiliationRelations.FIRST_APPEARANCE_EPISODE, body, "", this.episodeRepository)
 			.ifPresent(violations::add);
+		violations.addAll(this.paragraphRules.violationsOnSave(body));
 		if (!violations.isEmpty()) {
 			throw new ValueInvalidException(violations);
 		}

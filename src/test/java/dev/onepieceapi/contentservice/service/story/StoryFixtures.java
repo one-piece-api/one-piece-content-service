@@ -1,5 +1,9 @@
 package dev.onepieceapi.contentservice.service.story;
 
+import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
+import static dev.onepieceapi.contentservice.domain.readertime.ParagraphFixtures.discoveredAt;
+import static dev.onepieceapi.contentservice.domain.readertime.ParagraphFixtures.paragraph;
+import dev.onepieceapi.contentservice.domain.readertime.Paragraph;
 import dev.onepieceapi.contentservice.config.ImageProperties;
 import dev.onepieceapi.contentservice.domain.security.User;
 import dev.onepieceapi.contentservice.domain.story.Arc;
@@ -8,7 +12,7 @@ import dev.onepieceapi.contentservice.domain.story.Episode;
 import dev.onepieceapi.contentservice.domain.story.Saga;
 import dev.onepieceapi.contentservice.domain.story.StoryTranslation;
 import dev.onepieceapi.contentservice.domain.story.Volume;
-import dev.onepieceapi.contentservice.domain.story.VolumeTranslation;
+import dev.onepieceapi.contentservice.domain.story.TitleTranslation;
 import dev.onepieceapi.contentservice.domain.workflow.EntityType;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.entity.ArcVersionEntity;
@@ -92,14 +96,14 @@ final class StoryFixtures {
 	UUID saga(VersionStatus status) {
 		UUID contentId = content(EntityType.SAGA);
 		var version = new SagaVersionEntity(workflow(contentId, 1, status));
-		StoryVersionMapper.rewrite(version, new Saga(++this.numbers, translations("Saga")), EARLIER);
+		StoryVersionMapper.rewrite(version, new Saga(++this.numbers, titles("Saga"), description()), EARLIER);
 		this.sagas.save(version);
 		return contentId;
 	}
 
 	UUID arc(UUID saga, VersionStatus status) {
 		UUID contentId = content(EntityType.ARC);
-		arcVersion(contentId, 1, status, new Arc(++this.numbers, saga, translations("Arc")));
+		arcVersion(contentId, 1, status, new Arc(++this.numbers, saga, titles("Arc"), description()));
 		return contentId;
 	}
 
@@ -163,9 +167,27 @@ final class StoryFixtures {
 	static Volume completeVolume(int number) {
 		return Volume.builder()
 			.number(number)
-			.translations(Map.of("it", new VolumeTranslation("Volume it " + number), "en",
-					new VolumeTranslation("Volume " + number)))
+			.translations(Map.of("it", new TitleTranslation("Volume it " + number), "en",
+					new TitleTranslation("Volume " + number)))
 			.build();
+	}
+
+	/** Complete in both languages of the catalog. */
+	static Map<String, TitleTranslation> titles(String title) {
+		return Map.of("it", new TitleTranslation(title + " it"), "en", new TitleTranslation(title));
+	}
+
+	/**
+	 * One paragraph in both languages of the catalog, discovered nowhere yet: enough for
+	 * a row seeded straight, not for a submission.
+	 */
+	static List<Paragraph> description() {
+		return paragraph(Map.of("it", "Descrizione", "en", "Description"));
+	}
+
+	/** As {@link #description()}, discovered at this point: enough for a submission. */
+	static List<Paragraph> description(StoryPoint discovered) {
+		return discoveredAt(discovered, Map.of("it", "Descrizione", "en", "Description"));
 	}
 
 	/** Complete in both languages of the catalog. */

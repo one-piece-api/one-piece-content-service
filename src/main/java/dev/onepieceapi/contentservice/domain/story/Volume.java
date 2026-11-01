@@ -10,7 +10,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeMap;
 
 /**
  * What one version of a manga volume says (implementation plan of the story structure,
@@ -27,7 +26,7 @@ import java.util.TreeMap;
  */
 @Builder(toBuilder = true)
 public record Volume(Integer number, String japaneseTitle, List<Release> releases, String coverImageId,
-		Map<String, VolumeTranslation> translations) implements ContentBody<Volume> {
+		Map<String, TitleTranslation> translations) implements ContentBody<Volume> {
 
 	/** Nothing written is empty, not null. */
 	public Volume {
@@ -42,16 +41,9 @@ public record Volume(Integer number, String japaneseTitle, List<Release> release
 
 	@Override
 	public Volume normalized() {
-		Map<String, VolumeTranslation> written = new TreeMap<>();
-		this.translations.forEach((language, translation) -> {
-			VolumeTranslation normalized = translation.normalized();
-			if (!normalized.isEmpty()) {
-				written.put(language, normalized);
-			}
-		});
 		return toBuilder().japaneseTitle(Text.stripToNull(this.japaneseTitle))
 			.releases(Release.normalized(this.releases))
-			.translations(written)
+			.translations(StoryTranslations.normalizedTitles(this.translations))
 			.build();
 	}
 
@@ -79,13 +71,7 @@ public record Volume(Integer number, String japaneseTitle, List<Release> release
 	/** The titles: what a volume is called. */
 	@Override
 	public Map<String, String> names() {
-		Map<String, String> titles = new TreeMap<>();
-		this.translations.forEach((language, translation) -> {
-			if (translation.title() != null) {
-				titles.put(language, translation.title());
-			}
-		});
-		return titles;
+		return StoryTranslations.titlesOf(this.translations);
 	}
 
 	/** The number, then a title per language - every one missing; never an extra. */
@@ -95,12 +81,7 @@ public record Volume(Integer number, String japaneseTitle, List<Release> release
 		if (this.number == null) {
 			missing.add(Saga.NUMBER_FIELD);
 		}
-		for (String language : languages) {
-			VolumeTranslation translation = this.translations.get(language);
-			if (translation == null || translation.title() == null) {
-				missing.add(StoryTranslations.TITLE_FIELD.formatted(language));
-			}
-		}
+		StoryTranslations.addMissingTitles(this.translations, languages, missing);
 		return missing;
 	}
 

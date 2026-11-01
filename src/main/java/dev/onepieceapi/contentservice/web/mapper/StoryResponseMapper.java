@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.web.mapper;
 
+import dev.onepieceapi.contentservice.domain.story.TitleTranslation;
 import dev.onepieceapi.contentservice.domain.story.Arc;
 import dev.onepieceapi.contentservice.domain.story.Chapter;
 import dev.onepieceapi.contentservice.domain.story.Episode;
@@ -25,7 +26,7 @@ import dev.onepieceapi.contentservice.web.dto.response.StoryTranslationResponse;
 import dev.onepieceapi.contentservice.web.dto.response.VersionResponse;
 import dev.onepieceapi.contentservice.web.dto.response.VolumeNamesResponse;
 import dev.onepieceapi.contentservice.web.dto.response.VolumeResponse;
-import dev.onepieceapi.contentservice.web.dto.response.VolumeTranslationResponse;
+import dev.onepieceapi.contentservice.web.dto.response.TitleTranslationResponse;
 import lombok.experimental.UtilityClass;
 
 import java.util.List;
@@ -42,8 +43,13 @@ import java.util.UUID;
 @UtilityClass
 public class StoryResponseMapper {
 
-	public VersionResponse<SagaResponse> toVersionResponse(VersionAccess<Saga> access) {
-		return ContentResponseMapper.toVersionResponse(access, StoryResponseMapper::toResponse);
+	/**
+	 * @param storyItems the chapters and the episodes its paragraphs point to, by content
+	 * id
+	 */
+	public VersionResponse<SagaResponse> toVersionResponse(VersionAccess<Saga> access,
+			Map<UUID, NumberedReference> storyItems) {
+		return ContentResponseMapper.toVersionResponse(access, saga -> toResponse(saga, storyItems));
 	}
 
 	public ContentSummaryResponse<SagaNamesResponse> toSummaryResponse(ContentSummary<Saga> summary) {
@@ -51,13 +57,18 @@ public class StoryResponseMapper {
 				saga -> new SagaNamesResponse(saga.number(), saga.names()));
 	}
 
-	public SagaResponse toResponse(Saga saga) {
-		return new SagaResponse(saga.number(), toResponses(saga.translations()));
+	public SagaResponse toResponse(Saga saga, Map<UUID, NumberedReference> storyItems) {
+		return new SagaResponse(saga.number(), titleResponses(saga.translations()),
+				ParagraphResponseMapper.toResponse(saga.description(), storyItems));
 	}
 
-	public VersionResponse<ArcResponse> toVersionResponse(VersionAccess<Arc> access,
-			Map<UUID, NumberedReference> sagas) {
-		return ContentResponseMapper.toVersionResponse(access, arc -> toResponse(arc, sagas));
+	/**
+	 * @param storyItems the chapters and the episodes its paragraphs point to, by content
+	 * id
+	 */
+	public VersionResponse<ArcResponse> toArcVersionResponse(VersionAccess<Arc> access,
+			Map<UUID, NumberedReference> sagas, Map<UUID, NumberedReference> storyItems) {
+		return ContentResponseMapper.toVersionResponse(access, arc -> toResponse(arc, sagas, storyItems));
 	}
 
 	public ContentSummaryResponse<ArcNamesResponse> toSummaryResponse(ContentSummary<Arc> summary,
@@ -66,9 +77,10 @@ public class StoryResponseMapper {
 				toReferenceResponse(arc.sagaContentId(), sagas)));
 	}
 
-	public ArcResponse toResponse(Arc arc, Map<UUID, NumberedReference> sagas) {
+	public ArcResponse toResponse(Arc arc, Map<UUID, NumberedReference> sagas,
+			Map<UUID, NumberedReference> storyItems) {
 		return new ArcResponse(arc.number(), toReferenceResponse(arc.sagaContentId(), sagas),
-				toResponses(arc.translations()));
+				titleResponses(arc.translations()), ParagraphResponseMapper.toResponse(arc.description(), storyItems));
 	}
 
 	public VersionResponse<VolumeResponse> toVersionResponse(VersionAccess<Volume> access, ImageResponseMapper images) {
@@ -82,12 +94,8 @@ public class StoryResponseMapper {
 	}
 
 	public VolumeResponse toResponse(Volume volume, ImageResponseMapper images) {
-		Map<String, VolumeTranslationResponse> translations = new TreeMap<>();
-		volume.translations()
-			.forEach((language, translation) -> translations.put(language,
-					new VolumeTranslationResponse(translation.title())));
 		return new VolumeResponse(volume.number(), volume.japaneseTitle(), toReleaseResponses(volume.releases()),
-				images.toResponse(volume.coverImageId()), translations);
+				images.toResponse(volume.coverImageId()), titleResponses(volume.translations()));
 	}
 
 	public VersionResponse<ChapterResponse> toVersionResponse(VersionAccess<Chapter> access,
@@ -145,6 +153,14 @@ public class StoryResponseMapper {
 
 	private static List<ReleaseResponse> toReleaseResponses(List<Release> releases) {
 		return releases.stream().map(release -> new ReleaseResponse(release.country(), release.date())).toList();
+	}
+
+	/** Sorted by language code. */
+	private static Map<String, TitleTranslationResponse> titleResponses(Map<String, TitleTranslation> translations) {
+		Map<String, TitleTranslationResponse> byLanguage = new TreeMap<>();
+		translations.forEach(
+				(language, translation) -> byLanguage.put(language, new TitleTranslationResponse(translation.title())));
+		return byLanguage;
 	}
 
 	private static Map<String, StoryTranslationResponse> toResponses(Map<String, StoryTranslation> translations) {

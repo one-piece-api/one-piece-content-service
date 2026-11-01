@@ -43,14 +43,17 @@ public class DevilFruitValidator extends ContentValidator<DevilFruit, DevilFruit
 
 	private final EpisodeVersionRepository episodeRepository;
 
+	private final ParagraphRules paragraphRules;
+
 	@Autowired
 	public DevilFruitValidator(DevilFruitVersionRepository versionRepository, LanguageRepository languageRepository,
 			DevilFruitTypeVersionRepository typeRepository, ChapterVersionRepository chapterRepository,
-			EpisodeVersionRepository episodeRepository) {
+			EpisodeVersionRepository episodeRepository, ParagraphRules paragraphRules) {
 		super(versionRepository, languageRepository, DevilFruitVersionMapper::toDomain);
 		this.typeRepository = typeRepository;
 		this.chapterRepository = chapterRepository;
 		this.episodeRepository = episodeRepository;
+		this.paragraphRules = paragraphRules;
 	}
 
 	@Override
@@ -64,6 +67,7 @@ public class DevilFruitValidator extends ContentValidator<DevilFruit, DevilFruit
 			.ifPresent(violations::add);
 		RelationRules.notLinkable(DevilFruitRelations.FIRST_APPEARANCE_EPISODE, body, "", this.episodeRepository)
 			.ifPresent(violations::add);
+		violations.addAll(this.paragraphRules.violationsOnSave(body));
 		if (!violations.isEmpty()) {
 			throw new ValueInvalidException(violations);
 		}

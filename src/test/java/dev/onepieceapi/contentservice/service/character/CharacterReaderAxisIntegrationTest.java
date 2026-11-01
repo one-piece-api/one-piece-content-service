@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.service.character;
 
+import static dev.onepieceapi.contentservice.domain.readertime.ParagraphFixtures.discoveredAt;
 import dev.onepieceapi.contentservice.domain.affiliation.AffiliationKind;
 import dev.onepieceapi.contentservice.domain.character.Alias;
 import dev.onepieceapi.contentservice.domain.character.Character;
@@ -8,6 +9,7 @@ import dev.onepieceapi.contentservice.domain.character.Membership;
 import dev.onepieceapi.contentservice.domain.character.MembershipPeriod;
 import dev.onepieceapi.contentservice.domain.character.Relative;
 import dev.onepieceapi.contentservice.domain.character.RelativeKind;
+import dev.onepieceapi.contentservice.domain.readertime.Paragraph;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.domain.readertime.StoryWindow;
 import dev.onepieceapi.contentservice.domain.workflow.BlockReason;
@@ -53,6 +55,7 @@ import static dev.onepieceapi.contentservice.service.character.CharacterFixtures
 import static dev.onepieceapi.contentservice.service.character.CharacterFixtures.CHOPPER;
 import static dev.onepieceapi.contentservice.service.character.CharacterFixtures.EDITOR;
 import static dev.onepieceapi.contentservice.service.character.CharacterFixtures.PUBLISHER;
+import static dev.onepieceapi.contentservice.service.character.CharacterFixtures.RETIRER;
 import static dev.onepieceapi.contentservice.service.character.CharacterFixtures.fieldsOf;
 import static dev.onepieceapi.contentservice.service.character.CharacterFixtures.violationsOf;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -250,6 +253,7 @@ class CharacterReaderAxisIntegrationTest {
 		UUID usopp = this.fixtures.character(READY_TO_PUBLISH, this.fixtures.complete("Usopp")
 			.toBuilder()
 			.firstAppearance(usoppMet)
+			.description(discoveredAt(usoppMet, Map.of("it", "Il cecchino", "en", "The sniper")))
 			.affiliations(List
 				.of(membership(this.mugiwara, period(usoppMet, chapter(332)), period(chapter(438), StoryPoint.NONE))))
 			.build());
@@ -268,6 +272,35 @@ class CharacterReaderAxisIntegrationTest {
 
 		assertThat(search(Character.AFFILIATION_ATTRIBUTE, this.mugiwara)).containsExactly(usopp);
 		assertThat(search(Character.AFFILIATION_KIND_ATTRIBUTE, AffiliationKind.NAVY)).containsExactly(koby);
+	}
+
+	@Test
+	void saboIsBelievedDeadUntilDressrosaAndHisParagraphsKeepTheirOrderAndWindowsOnlineAndInEveryVersion() {
+		// Sabo first appears in chapter 583, believed dead; the reader learns he is alive
+		// in chapter 744 (decision 4 of R3: confirmed numbers only).
+		StoryPoint met = chapter(583);
+		StoryPoint alive = chapter(744);
+		List<Paragraph> description = List.of(
+				new Paragraph(Map.of("it", "Creduto morto", "en", "Believed dead"), new StoryWindow(met, alive)),
+				new Paragraph(
+						Map.of("it", "Vivo, nell'Armata Rivoluzionaria", "en", "Alive, in the Revolutionary Army"),
+						StoryWindow.from(alive)));
+		UUID sabo = this.fixtures.character(READY_TO_PUBLISH,
+				this.fixtures.complete("Sabo").toBuilder().firstAppearance(met).description(description).build());
+		stored();
+
+		assertThat(this.service.publish(PUBLISHER, CHOPPER, sabo, 1).version().status()).isEqualTo(PUBLISHED);
+		stored();
+		assertThat(descriptionOf(sabo, 1)).isEqualTo(description);
+
+		this.service.openNewVersion(EDITOR, CHOPPER, sabo, 1);
+		stored();
+		assertThat(descriptionOf(sabo, 2)).isEqualTo(description);
+
+		this.service.retire(RETIRER, CHOPPER, sabo, 1);
+		this.service.restore(ADMIN, CHOPPER, sabo, 1);
+		stored();
+		assertThat(descriptionOf(sabo, 1)).isEqualTo(description);
 	}
 
 	@Test
@@ -322,6 +355,10 @@ class CharacterReaderAxisIntegrationTest {
 	private StoryPoint chapter(int number) {
 		return StoryPoint
 			.ofChapter(OnlineChapters.chapter(this.contentRepository, this.chapterRepository, PUBLISHED, number));
+	}
+
+	private List<Paragraph> descriptionOf(UUID character, int version) {
+		return this.service.getVersion(EDITOR, CHOPPER, character, version).version().body().description();
 	}
 
 	private Character withAliases(String romaji, Alias... aliases) {

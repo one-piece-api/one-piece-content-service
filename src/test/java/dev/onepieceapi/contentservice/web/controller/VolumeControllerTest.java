@@ -6,7 +6,7 @@ import dev.onepieceapi.contentservice.domain.security.User;
 import dev.onepieceapi.contentservice.domain.story.NumberedReference;
 import dev.onepieceapi.contentservice.domain.story.Release;
 import dev.onepieceapi.contentservice.domain.story.Volume;
-import dev.onepieceapi.contentservice.domain.story.VolumeTranslation;
+import dev.onepieceapi.contentservice.domain.story.TitleTranslation;
 import dev.onepieceapi.contentservice.domain.workflow.ActionBlock;
 import dev.onepieceapi.contentservice.domain.workflow.BlockReason;
 import dev.onepieceapi.contentservice.domain.workflow.Content;
@@ -210,7 +210,7 @@ class VolumeControllerTest {
 		assertThat(written.getValue().number()).isEqualTo(1);
 		assertThat(written.getValue().japaneseTitle()).isEqualTo("ROMANCE DAWN");
 		assertThat(written.getValue().releases()).containsExactly(new Release("JP", LocalDate.of(1997, 12, 24)));
-		assertThat(written.getValue().translations().get("it")).isEqualTo(new VolumeTranslation("L'alba"));
+		assertThat(written.getValue().translations().get("it")).isEqualTo(new TitleTranslation("L'alba"));
 	}
 
 	@Test
@@ -378,7 +378,7 @@ class VolumeControllerTest {
 			.coverImageId(coverImageId)
 			.japaneseTitle("ROMANCE DAWN")
 			.releases(List.of(new Release("JP", LocalDate.of(1997, 12, 24))))
-			.translations(Map.of("it", new VolumeTranslation("L'alba")))
+			.translations(Map.of("it", new TitleTranslation("L'alba")))
 			.build();
 		return Version.<Volume>builder()
 			.number(1)

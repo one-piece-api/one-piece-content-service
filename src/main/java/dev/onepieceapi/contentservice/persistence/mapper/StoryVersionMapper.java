@@ -7,14 +7,14 @@ import dev.onepieceapi.contentservice.domain.story.Release;
 import dev.onepieceapi.contentservice.domain.story.Saga;
 import dev.onepieceapi.contentservice.domain.story.StoryTranslation;
 import dev.onepieceapi.contentservice.domain.story.Volume;
-import dev.onepieceapi.contentservice.domain.story.VolumeTranslation;
+import dev.onepieceapi.contentservice.domain.story.TitleTranslation;
 import dev.onepieceapi.contentservice.domain.workflow.Version;
 import dev.onepieceapi.contentservice.persistence.entity.ArcVersionEntity;
 import dev.onepieceapi.contentservice.persistence.entity.ChapterVersionEntity;
 import dev.onepieceapi.contentservice.persistence.entity.EpisodeVersionEntity;
 import dev.onepieceapi.contentservice.persistence.entity.SagaVersionEntity;
 import dev.onepieceapi.contentservice.persistence.entity.StoryTranslationEmbeddable;
-import dev.onepieceapi.contentservice.persistence.entity.VolumeTranslationEmbeddable;
+import dev.onepieceapi.contentservice.persistence.entity.TitleTranslationEmbeddable;
 import dev.onepieceapi.contentservice.persistence.entity.VolumeVersionEntity;
 import lombok.experimental.UtilityClass;
 
@@ -34,21 +34,20 @@ import java.util.TreeMap;
 public class StoryVersionMapper {
 
 	public Version<Saga> toDomain(SagaVersionEntity entity) {
-		var body = new Saga(entity.getNumber(), toDomain(entity.getTranslations()));
+		var body = new Saga(entity.getNumber(), titlesOf(entity.getTranslations()),
+				ParagraphMapper.descriptionOf(entity.getParagraphs()));
 		return ContentVersionMapper.toDomain(entity.getVersion(), body);
 	}
 
 	public Version<Arc> toDomain(ArcVersionEntity entity) {
-		var body = new Arc(entity.getNumber(), entity.getSagaContentId(), toDomain(entity.getTranslations()));
+		var body = new Arc(entity.getNumber(), entity.getSagaContentId(), titlesOf(entity.getTranslations()),
+				ParagraphMapper.descriptionOf(entity.getParagraphs()));
 		return ContentVersionMapper.toDomain(entity.getVersion(), body);
 	}
 
 	public Version<Volume> toDomain(VolumeVersionEntity entity) {
-		Map<String, VolumeTranslation> titles = new TreeMap<>();
-		entity.getTranslations()
-			.forEach((language, translation) -> titles.put(language, new VolumeTranslation(translation.getName())));
 		var body = new Volume(entity.getNumber(), entity.getJapaneseTitle(), toReleases(entity.getReleases()),
-				entity.getCoverImageId(), titles);
+				entity.getCoverImageId(), titlesOf(entity.getTranslations()));
 		return ContentVersionMapper.toDomain(entity.getVersion(), body);
 	}
 
@@ -78,21 +77,19 @@ public class StoryVersionMapper {
 
 	/** Makes the version say what was given, in place of what it said. */
 	public void rewrite(SagaVersionEntity entity, Saga body, Instant now) {
-		entity.rewrite(body.number(), toEmbeddables(body.translations()), now);
+		entity.rewrite(body.number(), titleRows(body.translations()), ParagraphMapper.toFields(body.paragraphs()), now);
 	}
 
 	/** Makes the version say what was given, in place of what it said. */
 	public void rewrite(ArcVersionEntity entity, Arc body, Instant now) {
-		entity.rewrite(body.number(), body.sagaContentId(), toEmbeddables(body.translations()), now);
+		entity.rewrite(body.number(), body.sagaContentId(), titleRows(body.translations()),
+				ParagraphMapper.toFields(body.paragraphs()), now);
 	}
 
 	/** Makes the version say what was given, in place of what it said. */
 	public void rewrite(VolumeVersionEntity entity, Volume body, Instant now) {
-		Map<String, VolumeTranslationEmbeddable> titles = new HashMap<>();
-		body.translations()
-			.forEach((language, translation) -> titles.put(language,
-					new VolumeTranslationEmbeddable(translation.title())));
-		entity.rewrite(body.number(), body.japaneseTitle(), body.coverImageId(), toDates(body.releases()), titles, now);
+		entity.rewrite(body.number(), body.japaneseTitle(), body.coverImageId(), toDates(body.releases()),
+				titleRows(body.translations()), now);
 	}
 
 	/** Makes the version say what was given, in place of what it said. */
@@ -119,6 +116,21 @@ public class StoryVersionMapper {
 		Map<String, LocalDate> datesByCountry = new HashMap<>();
 		releases.forEach(release -> datesByCountry.put(release.country(), release.date()));
 		return datesByCountry;
+	}
+
+	/** Sorted by language code, so the same version always reads the same way. */
+	private static Map<String, TitleTranslation> titlesOf(Map<String, TitleTranslationEmbeddable> translations) {
+		Map<String, TitleTranslation> titles = new TreeMap<>();
+		translations
+			.forEach((language, translation) -> titles.put(language, new TitleTranslation(translation.getName())));
+		return titles;
+	}
+
+	private static Map<String, TitleTranslationEmbeddable> titleRows(Map<String, TitleTranslation> translations) {
+		Map<String, TitleTranslationEmbeddable> titles = new HashMap<>();
+		translations.forEach(
+				(language, translation) -> titles.put(language, new TitleTranslationEmbeddable(translation.title())));
+		return titles;
 	}
 
 	/** Sorted by language code, so the same version always reads the same way. */

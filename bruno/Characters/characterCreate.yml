@@ -45,6 +45,19 @@ http:
           }
         ],
         "birthday": "--05-05",
+        "description": [
+          {
+            "discovered": {
+              "chapter": "",
+              "episode": ""
+            },
+            "ended": {
+              "chapter": "",
+              "episode": ""
+            },
+            "text": {}
+          }
+        ],
         "devilFruits": [
           {
             "devilFruit": "",
@@ -161,6 +174,19 @@ examples:
               }
             ],
             "birthday": "--05-05",
+            "description": [
+              {
+                "discovered": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "ended": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "text": {}
+              }
+            ],
             "devilFruits": [
               {
                 "devilFruit": "",
@@ -306,6 +332,19 @@ examples:
               }
             ],
             "birthday": "--05-05",
+            "description": [
+              {
+                "discovered": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "ended": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "text": {}
+              }
+            ],
             "devilFruits": [
               {
                 "devilFruit": "",
@@ -435,6 +474,19 @@ examples:
               }
             ],
             "birthday": "--05-05",
+            "description": [
+              {
+                "discovered": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "ended": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "text": {}
+              }
+            ],
             "devilFruits": [
               {
                 "devilFruit": "",

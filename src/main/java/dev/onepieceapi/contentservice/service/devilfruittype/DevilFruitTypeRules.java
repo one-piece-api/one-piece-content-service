@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.service.devilfruittype;
 
+import dev.onepieceapi.contentservice.service.content.ReaderAxisRules;
 import dev.onepieceapi.contentservice.config.RulesProperties;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitType;
 import dev.onepieceapi.contentservice.domain.workflow.ActionBlock;
@@ -57,6 +58,8 @@ public class DevilFruitTypeRules implements ContentRules<DevilFruitType> {
 
 	private final EpisodeVersionRepository episodeRepository;
 
+	private final ReaderAxisRules readerAxisRules;
+
 	private final RulesProperties properties;
 
 	@Override
@@ -76,6 +79,7 @@ public class DevilFruitTypeRules implements ContentRules<DevilFruitType> {
 			RelationRules.lockTargetBefore(action, DevilFruitTypeRelations.SUBCATEGORY_EPISODE, subcategory,
 					this.contentRepository);
 		});
+		this.readerAxisRules.lockBefore(action, version.body());
 	}
 
 	@Override
@@ -91,6 +95,7 @@ public class DevilFruitTypeRules implements ContentRules<DevilFruitType> {
 							type, this.chapterRepository))
 					.or(() -> RelationRules.targetNotOnline(action, DevilFruitTypeRelations.FIRST_APPEARANCE_EPISODE,
 							type, this.episodeRepository))
+					.or(() -> this.readerAxisRules.blockOf(action, version.body()))
 					.or(() -> subcategoryStoryNotOnline(action, type))
 					.or(() -> subcategoriesInUse(contentId, type));
 			default -> Optional.empty();

@@ -85,6 +85,7 @@ public class DevilFruitRules implements ContentRules<DevilFruit> {
 				this.contentRepository);
 		RelationRules.lockTargetBefore(action, DevilFruitRelations.FIRST_APPEARANCE_EPISODE, version.body(),
 				this.contentRepository);
+		this.readerAxisRules.lockBefore(action, version.body());
 	}
 
 	@Override
@@ -97,6 +98,7 @@ public class DevilFruitRules implements ContentRules<DevilFruit> {
 					this.chapterRepository))
 			.or(() -> RelationRules.targetNotOnline(action, DevilFruitRelations.FIRST_APPEARANCE_EPISODE, fruit,
 					this.episodeRepository))
+			.or(() -> this.readerAxisRules.blockOf(action, version.body()))
 			.or(() -> severalUsers(action, contentId, fruit))
 			.or(() -> RelationRules.onlineItemsLinked(action, CharacterRelations.DEVIL_FRUIT, contentId,
 					linkedCharacters(), this.properties.blockingPreviewSize()));

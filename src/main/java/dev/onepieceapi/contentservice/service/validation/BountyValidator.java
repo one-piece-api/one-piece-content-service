@@ -53,16 +53,19 @@ public class BountyValidator extends ContentValidator<Bounty, BountyVersionEntit
 
 	private final BountyChains chains;
 
+	private final ParagraphRules paragraphRules;
+
 	@Autowired
 	public BountyValidator(BountyVersionRepository versionRepository, LanguageRepository languageRepository,
 			ChapterVersionRepository chapterRepository, CharacterVersionRepository characterRepository,
-			EpisodeVersionRepository episodeRepository, BountyChains chains) {
+			EpisodeVersionRepository episodeRepository, BountyChains chains, ParagraphRules paragraphRules) {
 		super(versionRepository, languageRepository, BountyVersionMapper::toDomain);
 		this.bountyRepository = versionRepository;
 		this.chapterRepository = chapterRepository;
 		this.characterRepository = characterRepository;
 		this.episodeRepository = episodeRepository;
 		this.chains = chains;
+		this.paragraphRules = paragraphRules;
 	}
 
 	@Override
@@ -93,6 +96,7 @@ public class BountyValidator extends ContentValidator<Bounty, BountyVersionEntit
 			.ifPresent(violations::add);
 		RelationRules.notLinkable(BountyRelations.FIRST_APPEARANCE_EPISODE, body, "", this.episodeRepository)
 			.ifPresent(violations::add);
+		violations.addAll(this.paragraphRules.violationsOnSave(body));
 		if (!violations.isEmpty()) {
 			throw new ValueInvalidException(violations);
 		}

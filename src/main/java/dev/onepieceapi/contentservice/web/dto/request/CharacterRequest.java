@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.web.dto.request;
 
+import dev.onepieceapi.contentservice.domain.readertime.Paragraph;
 import dev.onepieceapi.contentservice.domain.character.Character;
 import dev.onepieceapi.contentservice.domain.character.CharacterStatus;
 import dev.onepieceapi.contentservice.domain.character.Gender;
@@ -20,8 +21,8 @@ import java.util.Map;
  * entry blank or repeated, and whether the links may be made, is for the service to say.
  *
  * @param romaji the official Latin-script name, e.g. {@code Monkey D. Luffy}
- * @param translations name and description per language code; a language left out, or
- * with nothing written in it, has no translation
+ * @param translations the name per language code; a language left out, or with nothing
+ * written in it, has no translation
  * @param birthday day and month, ISO 8601 {@code --MM-DD}; a date that does not exist is
  * an unreadable request
  * @param epithets in the order they are shown; left out for none
@@ -45,7 +46,8 @@ public record CharacterRequest(@Size(max = Character.ROMAJI_MAX_LENGTH) String r
 		@Size(max = Character.MAX_ALIASES) List<@NotNull @Valid AliasRequest> aliases,
 		List<@NotNull @Valid SpeciesEntryRequest> species, List<@NotNull @Valid MembershipRequest> affiliations,
 		List<@NotNull @Valid FruitUseRequest> devilFruits, List<@NotNull @Valid RelativeRequest> relatives,
-		Boolean removeImage, FirstAppearanceRequest firstAppearance) {
+		Boolean removeImage, FirstAppearanceRequest firstAppearance,
+		@Size(max = Paragraph.MAX_PER_SECTION) List<@NotNull @Valid ParagraphRequest> description) {
 
 	/** Whether the portrait is to be removed; not saying so keeps it. */
 	public boolean removesImage() {

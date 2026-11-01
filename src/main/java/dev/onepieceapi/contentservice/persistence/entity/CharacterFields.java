@@ -18,6 +18,7 @@ import java.util.Map;
  * @param affiliations the memberships, in order
  * @param devilFruits the fruits, in order
  * @param relatives the relatives, in order
+ * @param paragraphs every section, in section order
  */
 @Builder
 public record CharacterFields(String romaji, String japaneseName,
@@ -25,6 +26,6 @@ public record CharacterFields(String romaji, String japaneseName,
 		Short birthdayMonth, Short birthdayDay, List<EpithetFields> epithets, List<CharacterAliasEmbeddable> aliases,
 		List<CharacterSpeciesEmbeddable> species, List<MembershipFields> affiliations,
 		List<CharacterFruitUseEmbeddable> devilFruits, List<CharacterRelativeEmbeddable> relatives, String imageId,
-		FirstAppearanceIds firstAppearance) {
+		FirstAppearanceIds firstAppearance, List<ParagraphFields> paragraphs) {
 
 }

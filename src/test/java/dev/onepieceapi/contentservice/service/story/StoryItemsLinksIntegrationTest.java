@@ -158,8 +158,8 @@ class StoryItemsLinksIntegrationTest {
 
 	@Test
 	void theArcAContentPointsToIsAsItWasLastApprovedNotAsItIsWritten() {
-		this.fixtures.arcVersion(this.published, 2, DRAFT,
-				new Arc(this.archivedNumber + 100, null, StoryFixtures.translations("Arc Draft")));
+		this.fixtures.arcVersion(this.published, 2, DRAFT, new Arc(this.archivedNumber + 100, null,
+				StoryFixtures.titles("Arc Draft"), StoryFixtures.description()));
 		this.fixtures.stored();
 
 		Map<UUID, NumberedReference> references = this.arcLinks

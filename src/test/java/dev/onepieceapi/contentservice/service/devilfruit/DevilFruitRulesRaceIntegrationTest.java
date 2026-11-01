@@ -1,12 +1,12 @@
 package dev.onepieceapi.contentservice.service.devilfruit;
 
+import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitFixtures;
+import dev.onepieceapi.contentservice.service.validation.ParagraphRules;
 import dev.onepieceapi.contentservice.service.audit.AuditLogService;
 import dev.onepieceapi.contentservice.service.devilfruittype.DevilFruitTypeService;
 import dev.onepieceapi.contentservice.service.devilfruittype.DevilFruitTypeRules;
 
 import dev.onepieceapi.contentservice.config.RulesProperties;
-import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
-import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitTranslation;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitType;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitTypeSubcategory;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitTypeSubcategoryTranslation;
@@ -286,18 +286,26 @@ class DevilFruitRulesRaceIntegrationTest {
 			.save(new ContentEntity(UUID.randomUUID(), EntityType.DEVIL_FRUIT_TYPE, NOW))
 			.getId();
 		String romaji = "Type " + contentId;
-		var translations = Map.of("it", new DevilFruitTypeTranslation(romaji, "Descrizione", "Pro", "Contro"));
+		var translations = Map.of("it", new DevilFruitTypeTranslation(romaji));
 		var online = new DevilFruitTypeVersionEntity(workflow(contentId, 1, PUBLISHED));
 		DevilFruitTypeVersionMapper.rewrite(online,
-				new DevilFruitType(romaji, translations,
-						List.of(new DevilFruitTypeSubcategory(subcategoryId,
-								Map.of("it", new DevilFruitTypeSubcategoryTranslation("Antico", "Descrizione")))),
-						firstAppearance()),
+				DevilFruitType.builder()
+					.romaji(romaji)
+					.translations(translations)
+					.subcategories(List.of(new DevilFruitTypeSubcategory(subcategoryId,
+							Map.of("it", new DevilFruitTypeSubcategoryTranslation("Antico", "Descrizione")))))
+					.firstAppearance(firstAppearance())
+					.build(),
 				NOW);
 		this.typeRepository.save(online);
 		var ready = new DevilFruitTypeVersionEntity(workflow(contentId, 2, READY_TO_PUBLISH));
 		DevilFruitTypeVersionMapper.rewrite(ready,
-				new DevilFruitType(romaji, translations, List.of(), firstAppearance()), NOW);
+				DevilFruitType.builder()
+					.romaji(romaji)
+					.translations(translations)
+					.firstAppearance(firstAppearance())
+					.build(),
+				NOW);
 		this.typeRepository.save(ready);
 		return contentId;
 	}
@@ -307,8 +315,11 @@ class DevilFruitRulesRaceIntegrationTest {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
 		return new DevilFruitTypeService(types, this.contentVersionRepository, this.contentRepository,
 				new DevilFruitTypeValidator(this.typeRepository, this.languageRepository, this.chapterRepository,
-						this.episodeRepository),
+						this.episodeRepository,
+						new ParagraphRules(new ReaderAxisRules(this.contentRepository, this.chapterRepository,
+								this.episodeRepository))),
 				new DevilFruitTypeRules(this.contentRepository, fruits, this.chapterRepository, this.episodeRepository,
+						new ReaderAxisRules(this.contentRepository, this.chapterRepository, this.episodeRepository),
 						new RulesProperties(5)),
 				new AuditLogService(this.auditLogRepository, clock), clock);
 	}
@@ -318,7 +329,9 @@ class DevilFruitRulesRaceIntegrationTest {
 		return new DevilFruitService(
 				new DevilFruitDefinition(this.fruitRepository,
 						new DevilFruitValidator(this.fruitRepository, this.languageRepository, types,
-								this.chapterRepository, this.episodeRepository),
+								this.chapterRepository, this.episodeRepository,
+								new ParagraphRules(new ReaderAxisRules(this.contentRepository, this.chapterRepository,
+										this.episodeRepository))),
 						new DevilFruitRules(this.contentRepository, types, this.chapterRepository,
 								this.episodeRepository, this.characterRepository,
 								new ReaderAxisRules(this.contentRepository, this.chapterRepository,
@@ -338,9 +351,11 @@ class DevilFruitRulesRaceIntegrationTest {
 		String romaji = "Type " + contentId;
 		var version = new DevilFruitTypeVersionEntity(workflow(contentId, status));
 		DevilFruitTypeVersionMapper.rewrite(version,
-				new DevilFruitType(romaji,
-						Map.of("it", new DevilFruitTypeTranslation(romaji, "Descrizione", "Pro", "Contro")), List.of(),
-						firstAppearance()),
+				DevilFruitType.builder()
+					.romaji(romaji)
+					.translations(Map.of("it", new DevilFruitTypeTranslation(romaji)))
+					.firstAppearance(firstAppearance())
+					.build(),
 				NOW);
 		this.typeRepository.save(version);
 		return contentId;
@@ -356,10 +371,7 @@ class DevilFruitRulesRaceIntegrationTest {
 		String romaji = "Fruit " + contentId;
 		var version = new DevilFruitVersionEntity(workflow(contentId, 1, status));
 		DevilFruitVersionMapper.rewrite(version,
-				new DevilFruit(romaji, type, subcategory,
-						Map.of("it", new DevilFruitTranslation(romaji, "Descrizione", "Pro", "Contro")), null,
-						firstAppearance()),
-				NOW);
+				DevilFruitFixtures.complete(romaji, type, subcategory, firstAppearance()), NOW);
 		this.fruitRepository.save(version);
 		return contentId;
 	}

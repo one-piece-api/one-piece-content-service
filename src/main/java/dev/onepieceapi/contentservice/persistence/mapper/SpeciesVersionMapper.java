@@ -22,21 +22,22 @@ public class SpeciesVersionMapper {
 
 	public Version<Species> toDomain(SpeciesVersionEntity entity) {
 		var body = new Species(entity.getRomaji(), toDomain(entity.getTranslations()), entity.getImageId(),
-				new StoryPoint(entity.getFirstAppearanceChapterId(), entity.getFirstAppearanceEpisodeId()));
+				new StoryPoint(entity.getFirstAppearanceChapterId(), entity.getFirstAppearanceEpisodeId()),
+				ParagraphMapper.descriptionOf(entity.getParagraphs()));
 		return ContentVersionMapper.toDomain(entity.getVersion(), body);
 	}
 
 	/** Makes the version say what was given, in place of what it said. */
 	public void rewrite(SpeciesVersionEntity entity, Species body, Instant now) {
 		entity.rewrite(body.romaji(), toEmbeddables(body.translations()), body.imageId(),
-				FirstAppearanceMapper.toIds(body.firstAppearance()), now);
+				FirstAppearanceMapper.toIds(body.firstAppearance()), ParagraphMapper.toFields(body.paragraphs()), now);
 	}
 
 	/** Sorted by language code, so the same version always reads the same way. */
 	private static Map<String, SpeciesTranslation> toDomain(Map<String, SpeciesTranslationEmbeddable> translations) {
 		Map<String, SpeciesTranslation> byLanguage = new TreeMap<>();
-		translations.forEach((language, translation) -> byLanguage.put(language,
-				new SpeciesTranslation(translation.getName(), translation.getDescription())));
+		translations.forEach(
+				(language, translation) -> byLanguage.put(language, new SpeciesTranslation(translation.getName())));
 		return byLanguage;
 	}
 
@@ -44,7 +45,7 @@ public class SpeciesVersionMapper {
 			Map<String, SpeciesTranslation> translations) {
 		Map<String, SpeciesTranslationEmbeddable> byLanguage = new HashMap<>();
 		translations.forEach((language, translation) -> byLanguage.put(language,
-				new SpeciesTranslationEmbeddable(translation.name(), translation.description())));
+				new SpeciesTranslationEmbeddable(translation.name())));
 		return byLanguage;
 	}
 

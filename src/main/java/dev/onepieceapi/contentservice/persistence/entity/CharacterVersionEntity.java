@@ -100,6 +100,15 @@ public class CharacterVersionEntity extends VersionBodyEntity {
 	@OrderColumn(name = "position")
 	private List<CharacterRelativeEmbeddable> relatives = new ArrayList<>();
 
+	/**
+	 * Its paragraphs, every section in one list (workflow 3.7.3): a section is in the
+	 * order of its rows; the position is the index in the list.
+	 */
+	@OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+	@JoinColumn(name = "version_id", nullable = false)
+	@OrderColumn(name = "position")
+	private List<CharacterParagraphEntity> paragraphs = new ArrayList<>();
+
 	/** The id of its image; null for none. */
 	private String imageId;
 
@@ -139,6 +148,8 @@ public class CharacterVersionEntity extends VersionBodyEntity {
 				CharacterMembershipEntity::rewrite);
 		replace(this.devilFruits, fields.devilFruits());
 		replace(this.relatives, fields.relatives());
+		PositionalRows.rewrite(this.paragraphs, fields.paragraphs(), CharacterParagraphEntity::new,
+				ParagraphEntity::rewrite);
 		touch(now);
 	}
 

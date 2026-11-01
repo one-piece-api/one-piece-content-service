@@ -1,5 +1,9 @@
 package dev.onepieceapi.contentservice.persistence.mapper;
 
+import java.util.List;
+import dev.onepieceapi.contentservice.domain.readertime.StoryWindow;
+import dev.onepieceapi.contentservice.domain.readertime.Paragraph;
+import static dev.onepieceapi.contentservice.domain.readertime.ParagraphFixtures.paragraph;
 import dev.onepieceapi.contentservice.domain.affiliation.Affiliation;
 import dev.onepieceapi.contentservice.domain.affiliation.AffiliationKind;
 import dev.onepieceapi.contentservice.domain.affiliation.AffiliationTranslation;
@@ -32,10 +36,18 @@ class AffiliationVersionMapperTest {
 	@Test
 	void aVersionTakesItsWorkflowFromTheSharedRowAndWhatItSaysFromItsOwn() {
 		var entity = draft();
-		var body = new Affiliation("Mugiwara no Ichimi",
-				Map.of("it", new AffiliationTranslation("Pirati di Cappello di Paglia", "Ciurma"), "en",
-						new AffiliationTranslation("Straw Hat Pirates", "Crew")),
-				"abc", new StoryPoint(CHAPTER_ID, EPISODE_ID), AffiliationKind.PIRATE_CREW);
+		var firstAppearance = new StoryPoint(CHAPTER_ID, EPISODE_ID);
+		var body = Affiliation.builder()
+			.romaji("Mugiwara no Ichimi")
+			.translations(Map.of("it", new AffiliationTranslation("Pirati di Cappello di Paglia"), "en",
+					new AffiliationTranslation("Straw Hat Pirates")))
+			.imageId("abc")
+			.firstAppearance(firstAppearance)
+			.kind(AffiliationKind.PIRATE_CREW)
+			.description(List.of(new Paragraph(Map.of("it", "Ciurma", "en", "Crew"), StoryWindow.from(firstAppearance)),
+					new Paragraph(Map.of("it", "Poi"),
+							new StoryWindow(StoryPoint.ofEpisode(EPISODE_ID), StoryPoint.ofChapter(CHAPTER_ID)))))
+			.build();
 
 		AffiliationVersionMapper.rewrite(entity, body, UPDATED);
 		var version = AffiliationVersionMapper.toDomain(entity);
@@ -52,19 +64,25 @@ class AffiliationVersionMapperTest {
 	void rewritingReplacesWhatTheVersionSaid() {
 		var entity = draft();
 		AffiliationVersionMapper.rewrite(entity,
-				new Affiliation("Kaigun", Map.of("it", new AffiliationTranslation("Marina", "Forze")), "abc",
-						StoryPoint.ofChapter(CHAPTER_ID), AffiliationKind.NAVY),
+				Affiliation.builder()
+					.romaji("Kaigun")
+					.translations(Map.of("it", new AffiliationTranslation("Marina")))
+					.imageId("abc")
+					.firstAppearance(StoryPoint.ofChapter(CHAPTER_ID))
+					.kind(AffiliationKind.NAVY)
+					.description(paragraph("it", "Forze"))
+					.build(),
 				CREATED);
 
 		AffiliationVersionMapper.rewrite(entity,
-				new Affiliation(null, Map.of("en", new AffiliationTranslation("Navy", null)), null, null, null),
-				UPDATED);
+				Affiliation.builder().translations(Map.of("en", new AffiliationTranslation("Navy"))).build(), UPDATED);
 
 		assertThat(entity.getRomaji()).isNull();
 		assertThat(entity.getImageId()).isNull();
 		assertThat(entity.getKind()).isNull();
 		assertThat(entity.getFirstAppearanceChapterId()).isNull();
 		assertThat(entity.getTranslations()).containsOnlyKeys("en");
+		assertThat(entity.getParagraphs()).isEmpty();
 	}
 
 	private static AffiliationVersionEntity draft() {
