@@ -104,6 +104,16 @@ public enum BlockReason {
 	 * {@code affiliations[0].periods[1].discovered.chapter}) and the rule
 	 * ({@code message}, as a save words it).
 	 */
-	STORY_POINT_OUT_OF_RANGE
+	STORY_POINT_OUT_OF_RANGE,
+
+	/**
+	 * A point of the story structure (Saga, Arc) names a chapter or an episode that has
+	 * passed no review yet: saved before it was, the structure goes online only once it
+	 * is (docs/user-flows/content-editorial-workflow.md 3.7.4). The detail names the part
+	 * ({@code field}, e.g. {@code description[0].discovered.chapter}), its content
+	 * ({@code chapterId} or {@code episodeId}) and, when its latest version has one, its
+	 * number ({@code chapterNumber} or {@code episodeNumber}).
+	 */
+	STORY_POINT_NOT_APPROVED
 
 }

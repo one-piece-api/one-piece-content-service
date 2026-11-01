@@ -71,7 +71,9 @@ answer "how is it at chapter N" and two users of a fruit at different times look
   the paragraph points with no new rule code.
 - **Submitting** asks each paragraph in every language and, per section, one paragraph discovered at the first
   appearance. Saga and Arc have no first appearance: one paragraph per section, discovered anywhere; their points
-  need only be linkable (approved), and `ended` is checked on the approved numbers.
+  need only exist on save and in review, and be approved going online (`STORY_POINT_NOT_APPROVED`, R8: on an empty
+  catalog the first saga can only point at a draft chapter, whose arc does not exist yet); `ended` is checked on
+  the approved numbers.
 - **A blank paragraph** is refused on save (`description[i]` "must not be blank").
 - **Storage**: one `<entity>_version_paragraph` table per entity (section, position, the V38 point columns) and
   `<entity>_version_paragraph_translation`. Persistence: `ParagraphEntity` (`@MappedSuperclass`) and one subclass

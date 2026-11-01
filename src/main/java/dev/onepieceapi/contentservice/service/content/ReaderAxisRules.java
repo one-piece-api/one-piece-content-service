@@ -33,6 +33,7 @@ import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -61,13 +62,16 @@ import java.util.stream.Stream;
  * entity's own query, read by {@code ChapterRules} and {@code EpisodeRules}.</li>
  * </ul>
  * The story structure (Saga, Arc) has no first appearance: its points are bounded only by
- * the rules on {@code ended}, and going online they need only be linkable, read on the
- * numbers last approved - a chapter goes online only with its arc online, so an arc could
- * never go online pointing at its own chapter (3.7.4). A window without
- * {@code discovered} is a draft's business: submitting requires it
- * ({@link WindowedItem#missingDiscovered()}). The first appearance itself is a relation
- * of the item ({@link FirstAppearanceRules}). The library {@code one-piece-reader-time}
- * compares the numbers. Not even {@code content:admin} lifts them.
+ * the rules on {@code ended}. On save a point need only be a chapter or an episode, in
+ * any status; going online it must be linkable, and the order is read on the numbers last
+ * approved. A chapter goes online only with its arc online, so an arc could never go
+ * online pointing at its own chapter; and a chapter is approved only with its arc
+ * approved, so asking an approved chapter on save would leave the first Saga of an empty
+ * catalog nothing to point to (3.7.4). A window without {@code discovered} is a draft's
+ * business: submitting requires it ({@link WindowedItem#missingDiscovered()}). The first
+ * appearance itself is a relation of the item ({@link FirstAppearanceRules}). The library
+ * {@code one-piece-reader-time} compares the numbers. Not even {@code content:admin}
+ * lifts them.
  */
 @Component
 @RequiredArgsConstructor(onConstructor_ = { @Autowired })
@@ -105,6 +109,12 @@ public class ReaderAxisRules {
 
 	private static final String ON_AXIS = "%s on the %s axis";
 
+	private static final String NOT_A_CHAPTER = "must be a Chapter";
+
+	private static final String NOT_AN_EPISODE = "must be an Episode";
+
+	private static final Set<VersionStatus> ANY_STATUS = EnumSet.allOf(VersionStatus.class);
+
 	/** Read on save only: what the items are called does not matter there. */
 	private static final RelationDescriptor<FirstAppearing> FIRST_APPEARANCE_CHAPTER = FirstAppearanceRules
 		.chapterRelation("items");
@@ -131,17 +141,32 @@ public class ReaderAxisRules {
 	}
 
 	/**
-	 * Every point at fault on save, each part named. The order is checked only once every
-	 * chapter and episode of the item is known: one that is not is already reported, as a
-	 * point or as the first appearance.
+	 * Every point at fault on save, each part named: not linkable, or - for the story
+	 * structure - not a chapter or an episode at all. The order is checked only once
+	 * every chapter and episode of the item is known: one that is not is already
+	 * reported, as a point or as the first appearance, or is a structure's point not
+	 * approved yet.
 	 */
 	public List<FieldViolation> violationsOnSave(WindowedItem item) {
+		boolean structure = item.origin().isEmpty();
 		List<FieldViolation> violations = new ArrayList<>();
-		parts(item).forEach(part -> RelationRules
-			.notLinkable(part.relation(), part.target(), part.prefix(), repositoryOf(part.relation()))
-			.ifPresent(violations::add));
+		parts(item).map(part -> structure ? unknown(part) : notLinkable(part))
+			.flatMap(Optional::stream)
+			.forEach(violations::add);
 		violations.addAll(orderViolations(item, VersionStatus.approved()));
 		return violations;
+	}
+
+	private Optional<FieldViolation> notLinkable(PointTarget part) {
+		return RelationRules.notLinkable(part.relation(), part.target(), part.prefix(), repositoryOf(part.relation()));
+	}
+
+	private Optional<FieldViolation> unknown(PointTarget part) {
+		if (repositoryOf(part.relation()).existsWithStatus(part.target(), ANY_STATUS)) {
+			return Optional.empty();
+		}
+		String message = part.relation() == CHAPTER ? NOT_A_CHAPTER : NOT_AN_EPISODE;
+		return Optional.of(new FieldViolation(part.field(), message));
 	}
 
 	/**
@@ -154,15 +179,19 @@ public class ReaderAxisRules {
 
 	/**
 	 * Going online, the first chapter or episode of a window that is not online, then the
-	 * first point the numbers online put out of order. For the story structure, only the
-	 * first point the numbers approved put out of order.
+	 * first point the numbers online put out of order. For the story structure, the first
+	 * chapter or episode not approved, then the first point the numbers approved put out
+	 * of order.
 	 */
 	public Optional<ActionBlock> blockOf(VersionAction action, WindowedItem item) {
 		if (!RelationRules.GOING_ONLINE.contains(action)) {
 			return Optional.empty();
 		}
 		if (item.origin().isEmpty()) {
-			return firstOutOfRange(item, VersionStatus.approved());
+			return parts(item).map(this::notApproved)
+				.flatMap(Optional::stream)
+				.findFirst()
+				.or(() -> firstOutOfRange(item, VersionStatus.approved()));
 		}
 		return parts(item)
 			.map(part -> RelationRules.targetNotOnline(action, part.relation(), part.target(),
@@ -170,6 +199,29 @@ public class ReaderAxisRules {
 			.flatMap(Optional::stream)
 			.findFirst()
 			.or(() -> firstOutOfRange(item, Set.of(VersionStatus.PUBLISHED)));
+	}
+
+	/**
+	 * A point of the story structure whose chapter or episode has passed no review yet,
+	 * named as its latest version numbers it, e.g. {@code {field, chapterId,
+	 * chapterNumber}}.
+	 */
+	private Optional<ActionBlock> notApproved(PointTarget part) {
+		VersionBodyRepository<?> targets = repositoryOf(part.relation());
+		if (targets.existsWithStatus(part.target(), VersionStatus.approved())) {
+			return Optional.empty();
+		}
+		String name = part.relation().name();
+		Map<String, Object> detail = new LinkedHashMap<>();
+		detail.put(FIELD, part.field());
+		detail.put(name + "Id", part.target());
+		targets.findMostRecent(List.of(part.target()), ANY_STATUS)
+			.stream()
+			.findFirst()
+			.map(VersionBodyEntity::naturalKey)
+			.filter(key -> key.value() instanceof Integer)
+			.ifPresent(key -> detail.put(name + "Number", key.value()));
+		return Optional.of(new ActionBlock(BlockReason.STORY_POINT_NOT_APPROVED, detail));
 	}
 
 	private Optional<ActionBlock> firstOutOfRange(WindowedItem item, Collection<VersionStatus> statuses) {

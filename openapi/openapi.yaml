@@ -8654,6 +8654,7 @@ components:
           - DEVIL_FRUIT_IN_USE
           - RELATIVE_ALREADY_LINKED
           - STORY_POINT_OUT_OF_RANGE
+          - STORY_POINT_NOT_APPROVED
     BountyNamesResponse:
       type: object
       properties:

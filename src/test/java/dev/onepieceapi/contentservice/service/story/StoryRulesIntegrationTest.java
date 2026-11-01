@@ -32,9 +32,11 @@ import dev.onepieceapi.contentservice.persistence.repository.ContentVersionRepos
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
 import dev.onepieceapi.contentservice.persistence.repository.SagaVersionRepository;
 import dev.onepieceapi.contentservice.service.audit.AuditLogService;
+import dev.onepieceapi.contentservice.service.exception.ValueInvalidException;
 import dev.onepieceapi.contentservice.service.exception.VersionActionBlockedException;
 import dev.onepieceapi.contentservice.service.validation.ArcValidator;
 import dev.onepieceapi.contentservice.service.validation.SagaValidator;
+import dev.onepieceapi.exception.web.FieldViolation;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -200,6 +202,45 @@ class StoryRulesIntegrationTest {
 		var refused = catchThrowableOfType(VersionActionBlockedException.class,
 				() -> this.sagas.publish(ADMIN, this.vivi, reversed, 1));
 		assertThat(refused.getDetails()).containsEntry("reason", BlockReason.STORY_POINT_OUT_OF_RANGE);
+	}
+
+	/**
+	 * The first Saga of an empty catalog: no chapter is approved before an arc is, nor an
+	 * arc before its saga, so the saga points to a chapter still in draft until it goes
+	 * online (3.7.4).
+	 */
+	@Test
+	void aSagaPointsToAChapterInDraftOnSaveAndInReviewButGoesOnlineOnlyOnceItIsApproved() {
+		int number = 1000 + ++this.numbers;
+		UUID chapter = OnlineChapters.chapter(this.contentRepository, this.chapterRepository, DRAFT, 9101);
+		var written = new Saga(number, complete(number).translations(),
+				StoryFixtures.description(StoryPoint.ofChapter(chapter)));
+		UUID saga = this.sagas.create(EDITOR, this.chopper, written).id();
+		stored();
+
+		this.sagas.submit(EDITOR, this.chopper, saga, 1);
+		this.sagas.claim(REVIEWER, this.zoro, saga, 1);
+		assertThat(this.sagas.approve(REVIEWER, this.zoro, saga, 1).version().status()).isEqualTo(READY_TO_PUBLISH);
+		stored();
+		var refused = catchThrowableOfType(VersionActionBlockedException.class,
+				() -> this.sagas.publish(ADMIN, this.vivi, saga, 1));
+
+		assertThat(refused.getDetails()).containsEntry("reason", BlockReason.STORY_POINT_NOT_APPROVED);
+		assertThat(refused.getDetails().get("detail")).isEqualTo(
+				Map.of("field", "description[0].discovered.chapter", "chapterId", chapter, "chapterNumber", 9101));
+	}
+
+	@Test
+	void aSagaIsRefusedOnSaveAPointThatIsNoChapter() {
+		int number = 1000 + ++this.numbers;
+		var written = new Saga(number, complete(number).translations(),
+				StoryFixtures.description(StoryPoint.ofChapter(UUID.randomUUID())));
+
+		var refused = catchThrowableOfType(ValueInvalidException.class,
+				() -> this.sagas.create(EDITOR, this.chopper, written));
+
+		assertThat(refused.getDetails().get("errors"))
+			.isEqualTo(List.of(new FieldViolation("description[0].discovered.chapter", "must be a Chapter")));
 	}
 
 	@Test
