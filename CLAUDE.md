@@ -40,6 +40,7 @@ Layered packages, one sub-package per feature inside each layer:
 - 0009 invariants between contents: checked on publish, serialized by locks (fruit row, pair advisory lock).
 - 0011 reader axis: a window (`discovered`, `ended`) on every list entry, periods on memberships; `former` derived; points checked by `ReaderAxisRules` + library `one-piece-reader-time`; fruit users must not overlap.
 - 0012 field reveals: main fields = current value; `initialKnowledge` + `reveals` (`Revealing`, per-entity field enum + values record), shape by `FieldRevealRules`, points by `ReaderAxisRules`; every romaji is a slug.
+- 0011 addendum: character gallery (`Galleried`, max 20, ASPETTO/FORMA, part `images` with `imageId` or `upload: n`; kept ids must be the draft's own; unused images deleted).
 - 0011 addendum: long texts are paragraph lists (`Paragraphed`), each with a window; one paragraph table per entity, each subclass of `ParagraphEntity` declares its own translation table (no JPA override for an inherited element collection).
 
 Adding an entity type: skill `new-content-type`. Copy the closest existing entity rather than inventing a new shape.

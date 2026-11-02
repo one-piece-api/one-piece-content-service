@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.persistence.mapper;
 
+import dev.onepieceapi.contentservice.domain.readertime.GalleryImage;
 import dev.onepieceapi.contentservice.domain.readertime.Paragraph;
 import dev.onepieceapi.contentservice.domain.character.Alias;
 import dev.onepieceapi.contentservice.domain.character.Character;
@@ -26,6 +27,8 @@ import dev.onepieceapi.contentservice.domain.character.CharacterField;
 import dev.onepieceapi.contentservice.domain.character.CharacterKnowledge;
 import dev.onepieceapi.contentservice.domain.readertime.Reveal;
 import org.junit.jupiter.api.Test;
+
+import dev.onepieceapi.readertime.ImageKind;
 
 import java.time.Instant;
 import java.time.MonthDay;
@@ -122,7 +125,7 @@ class CharacterVersionMapperTest {
 		assertThat(entity.getRomaji()).isNull();
 		assertThat(entity.getBirthdayMonth()).isNull();
 		assertThat(entity.getBirthdayDay()).isNull();
-		assertThat(entity.getImageId()).isNull();
+		assertThat(entity.getGallery()).isEmpty();
 		assertThat(entity.getFirstAppearanceChapterId()).isNull();
 		assertThat(entity.getAliases()).isEmpty();
 		assertThat(entity.getSpecies()).isEmpty();
@@ -172,7 +175,8 @@ class CharacterVersionMapperTest {
 							MarineRank.CHORE_BOY), new MembershipPeriod(OPEN, Map.of(), MarineRank.CAPTAIN)))))
 			.devilFruits(List.of(new FruitUse(MERA_MERA, CLOSED)))
 			.relatives(List.of(new Relative(GARP, RelativeKind.GRANDPARENT, PARTIAL)))
-			.imageId("abc")
+			.gallery(List.of(new GalleryImage("abc", ImageKind.ASPETTO, OPEN, Map.of("it", "Aspetto", "en", "Look")),
+					new GalleryImage("def", ImageKind.FORMA, CLOSED, Map.of("en", "Disguise"))))
 			.firstAppearance(new StoryPoint(CHAPTER_ID, EPISODE_ID))
 			.build();
 	}

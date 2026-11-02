@@ -7,11 +7,13 @@ import dev.onepieceapi.contentservice.persistence.repository.BountyVersionReposi
 import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.CharacterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
+import dev.onepieceapi.contentservice.persistence.repository.ImageRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.EpisodeVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
 import dev.onepieceapi.contentservice.persistence.repository.SpeciesVersionRepository;
 import dev.onepieceapi.contentservice.service.content.OnlineChapters;
+import dev.onepieceapi.contentservice.service.content.StoredImages;
 import dev.onepieceapi.contentservice.service.exception.VersionActionBlockedException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -81,6 +83,9 @@ class CharacterRulesIntegrationTest {
 	private ContentRepository contentRepository;
 
 	@Autowired
+	private ImageRepository imageRepository;
+
+	@Autowired
 	private LanguageRepository languageRepository;
 
 	@Autowired
@@ -106,6 +111,7 @@ class CharacterRulesIntegrationTest {
 			.languages(this.languageRepository)
 			.auditLog(this.auditLogRepository)
 			.firstAppearance(OnlineChapters.onlineChapter(this.contentRepository, this.chapterRepository))
+			.portrait(StoredImages.portrait(this.imageRepository))
 			.build();
 		this.service = this.fixtures.service();
 	}

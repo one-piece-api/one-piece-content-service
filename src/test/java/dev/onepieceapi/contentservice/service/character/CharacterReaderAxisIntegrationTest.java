@@ -21,10 +21,12 @@ import dev.onepieceapi.contentservice.persistence.repository.BountyVersionReposi
 import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.CharacterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
+import dev.onepieceapi.contentservice.persistence.repository.ImageRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.EpisodeVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
 import dev.onepieceapi.contentservice.persistence.repository.SpeciesVersionRepository;
+import dev.onepieceapi.contentservice.service.content.StoredImages;
 import dev.onepieceapi.contentservice.service.content.OnlineChapters;
 import dev.onepieceapi.contentservice.service.exception.ValueInvalidException;
 import dev.onepieceapi.contentservice.service.exception.VersionActionBlockedException;
@@ -105,6 +107,9 @@ class CharacterReaderAxisIntegrationTest {
 	private ContentRepository contentRepository;
 
 	@Autowired
+	private ImageRepository imageRepository;
+
+	@Autowired
 	private LanguageRepository languageRepository;
 
 	@Autowired
@@ -149,6 +154,7 @@ class CharacterReaderAxisIntegrationTest {
 			.languages(this.languageRepository)
 			.auditLog(this.auditLogRepository)
 			.firstAppearance(this.chapter10)
+			.portrait(StoredImages.portrait(this.imageRepository))
 			.build();
 		this.service = this.fixtures.service();
 		this.mugiwara = this.fixtures.affiliation(PUBLISHED, "Mugiwara no Ichimi", AffiliationKind.PIRATE_CREW);
@@ -253,6 +259,7 @@ class CharacterReaderAxisIntegrationTest {
 		UUID usopp = this.fixtures.character(READY_TO_PUBLISH, this.fixtures.complete("Usopp")
 			.toBuilder()
 			.firstAppearance(usoppMet)
+			.gallery(this.fixtures.galleryFrom(usoppMet))
 			.description(discoveredAt(usoppMet, Map.of("it", "Il cecchino", "en", "The sniper")))
 			.affiliations(List
 				.of(membership(this.mugiwara, period(usoppMet, chapter(332)), period(chapter(438), StoryPoint.NONE))))
@@ -286,7 +293,12 @@ class CharacterReaderAxisIntegrationTest {
 						Map.of("it", "Vivo, nell'Armata Rivoluzionaria", "en", "Alive, in the Revolutionary Army"),
 						StoryWindow.from(alive)));
 		UUID sabo = this.fixtures.character(READY_TO_PUBLISH,
-				this.fixtures.complete("Sabo").toBuilder().firstAppearance(met).description(description).build());
+				this.fixtures.complete("Sabo")
+					.toBuilder()
+					.firstAppearance(met)
+					.gallery(this.fixtures.galleryFrom(met))
+					.description(description)
+					.build());
 		stored();
 
 		assertThat(this.service.publish(PUBLISHER, CHOPPER, sabo, 1).version().status()).isEqualTo(PUBLISHED);

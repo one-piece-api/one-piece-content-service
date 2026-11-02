@@ -250,11 +250,41 @@ examples:
                   "number": 0
                 }
               },
+              "gallery": [
+                {
+                  "caption": {},
+                  "discovered": {
+                    "chapter": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    },
+                    "episode": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    }
+                  },
+                  "ended": {
+                    "chapter": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    },
+                    "episode": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    }
+                  },
+                  "image": {
+                    "id": "",
+                    "url": ""
+                  },
+                  "kind": "ASPETTO"
+                }
+              ],
               "gender": "MALE",
-              "image": {
-                "id": "",
-                "url": ""
-              },
               "initialKnowledge": {
                 "japaneseName": "",
                 "romaji": "",

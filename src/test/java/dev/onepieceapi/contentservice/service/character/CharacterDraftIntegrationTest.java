@@ -9,11 +9,13 @@ import dev.onepieceapi.contentservice.persistence.repository.BountyVersionReposi
 import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.CharacterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
+import dev.onepieceapi.contentservice.persistence.repository.ImageRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.EpisodeVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
 import dev.onepieceapi.contentservice.persistence.repository.SpeciesVersionRepository;
 import dev.onepieceapi.contentservice.service.content.OnlineChapters;
+import dev.onepieceapi.contentservice.service.content.StoredImages;
 import dev.onepieceapi.contentservice.service.exception.ValueAlreadyUsedException;
 import dev.onepieceapi.contentservice.service.exception.ValueInvalidException;
 import dev.onepieceapi.contentservice.service.exception.VersionIncompleteException;
@@ -89,6 +91,9 @@ class CharacterDraftIntegrationTest {
 	private ContentRepository contentRepository;
 
 	@Autowired
+	private ImageRepository imageRepository;
+
+	@Autowired
 	private LanguageRepository languageRepository;
 
 	@Autowired
@@ -121,6 +126,7 @@ class CharacterDraftIntegrationTest {
 			.languages(this.languageRepository)
 			.auditLog(this.auditLogRepository)
 			.firstAppearance(OnlineChapters.onlineChapter(this.contentRepository, this.chapterRepository))
+			.portrait(StoredImages.portrait(this.imageRepository))
 			.build();
 		this.service = this.fixtures.service();
 		this.fixtures.character(PUBLISHED, this.fixtures.complete("Nami"));
@@ -277,7 +283,7 @@ class CharacterDraftIntegrationTest {
 				() -> this.service.submit(EDITOR, CHOPPER, content.id(), 1));
 
 		assertThat(fieldsOf(refused)).containsExactly("status", "gender", "firstAppearance", "translations[en].name",
-				"epithets[0].text[en]", "description", "epithets[0].discovered");
+				"epithets[0].text[en]", "description", "gallery", "epithets[0].discovered");
 	}
 
 	@Test

@@ -88,6 +88,22 @@ http:
           "chapter": "",
           "episode": ""
         },
+        "gallery": [
+          {
+            "caption": {},
+            "discovered": {
+              "chapter": "",
+              "episode": ""
+            },
+            "ended": {
+              "chapter": "",
+              "episode": ""
+            },
+            "imageId": "",
+            "kind": "ASPETTO",
+            "upload": 0
+          }
+        ],
         "gender": "MALE",
         "initialKnowledge": {
           "japaneseName": "",
@@ -110,7 +126,6 @@ http:
             "relative": ""
           }
         ],
-        "removeImage": false,
         "reveals": [
           {
             "fields": [
@@ -239,6 +254,22 @@ examples:
               "chapter": "",
               "episode": ""
             },
+            "gallery": [
+              {
+                "caption": {},
+                "discovered": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "ended": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "imageId": "",
+                "kind": "ASPETTO",
+                "upload": 0
+              }
+            ],
             "gender": "MALE",
             "initialKnowledge": {
               "japaneseName": "",
@@ -261,7 +292,6 @@ examples:
                 "relative": ""
               }
             ],
-            "removeImage": false,
             "reveals": [
               {
                 "fields": [
@@ -419,6 +449,22 @@ examples:
               "chapter": "",
               "episode": ""
             },
+            "gallery": [
+              {
+                "caption": {},
+                "discovered": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "ended": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "imageId": "",
+                "kind": "ASPETTO",
+                "upload": 0
+              }
+            ],
             "gender": "MALE",
             "initialKnowledge": {
               "japaneseName": "",
@@ -441,7 +487,6 @@ examples:
                 "relative": ""
               }
             ],
-            "removeImage": false,
             "reveals": [
               {
                 "fields": [
@@ -583,6 +628,22 @@ examples:
               "chapter": "",
               "episode": ""
             },
+            "gallery": [
+              {
+                "caption": {},
+                "discovered": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "ended": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "imageId": "",
+                "kind": "ASPETTO",
+                "upload": 0
+              }
+            ],
             "gender": "MALE",
             "initialKnowledge": {
               "japaneseName": "",
@@ -605,7 +666,6 @@ examples:
                 "relative": ""
               }
             ],
-            "removeImage": false,
             "reveals": [
               {
                 "fields": [

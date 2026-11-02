@@ -11,6 +11,7 @@ import dev.onepieceapi.contentservice.domain.character.Membership;
 import dev.onepieceapi.contentservice.domain.character.MembershipPeriod;
 import dev.onepieceapi.contentservice.domain.character.Relative;
 import dev.onepieceapi.contentservice.domain.character.SpeciesEntry;
+import dev.onepieceapi.contentservice.domain.readertime.GalleryImage;
 import dev.onepieceapi.contentservice.domain.readertime.Reveal;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.domain.workflow.Version;
@@ -18,6 +19,7 @@ import dev.onepieceapi.contentservice.persistence.entity.CharacterAliasEmbeddabl
 import dev.onepieceapi.contentservice.persistence.entity.CharacterEpithetEntity;
 import dev.onepieceapi.contentservice.persistence.entity.CharacterFields;
 import dev.onepieceapi.contentservice.persistence.entity.CharacterFruitUseEmbeddable;
+import dev.onepieceapi.contentservice.persistence.entity.CharacterImageEntity;
 import dev.onepieceapi.contentservice.persistence.entity.CharacterMembershipEntity;
 import dev.onepieceapi.contentservice.persistence.entity.CharacterMembershipPeriodEntity;
 import dev.onepieceapi.contentservice.persistence.entity.CharacterRelativeEmbeddable;
@@ -26,6 +28,7 @@ import dev.onepieceapi.contentservice.persistence.entity.CharacterSpeciesEmbedda
 import dev.onepieceapi.contentservice.persistence.entity.CharacterTranslationEmbeddable;
 import dev.onepieceapi.contentservice.persistence.entity.CharacterVersionEntity;
 import dev.onepieceapi.contentservice.persistence.entity.EpithetFields;
+import dev.onepieceapi.contentservice.persistence.entity.GalleryImageFields;
 import dev.onepieceapi.contentservice.persistence.entity.MembershipFields;
 import dev.onepieceapi.contentservice.persistence.entity.MembershipPeriodFields;
 import lombok.experimental.UtilityClass;
@@ -58,7 +61,7 @@ public class CharacterVersionMapper {
 			.affiliations(entity.getAffiliations().stream().map(CharacterVersionMapper::toDomain).toList())
 			.devilFruits(entity.getDevilFruits().stream().map(CharacterVersionMapper::toDomain).toList())
 			.relatives(entity.getRelatives().stream().map(CharacterVersionMapper::toDomain).toList())
-			.imageId(entity.getImageId())
+			.gallery(entity.getGallery().stream().map(CharacterVersionMapper::toDomain).toList())
 			.firstAppearance(new StoryPoint(entity.getFirstAppearanceChapterId(), entity.getFirstAppearanceEpisodeId()))
 			.description(ParagraphMapper.descriptionOf(entity.getParagraphs()))
 			.initialKnowledge(initialKnowledgeOf(entity))
@@ -85,7 +88,7 @@ public class CharacterVersionMapper {
 			.affiliations(body.affiliations().stream().map(CharacterVersionMapper::toFields).toList())
 			.devilFruits(body.devilFruits().stream().map(CharacterVersionMapper::toEmbeddable).toList())
 			.relatives(body.relatives().stream().map(CharacterVersionMapper::toEmbeddable).toList())
-			.imageId(body.imageId())
+			.gallery(body.gallery().stream().map(CharacterVersionMapper::toFields).toList())
 			.firstAppearance(FirstAppearanceMapper.toIds(body.firstAppearance()))
 			.paragraphs(ParagraphMapper.toFields(body.paragraphs()))
 			.initialRomaji(initial.romaji())
@@ -188,6 +191,17 @@ public class CharacterVersionMapper {
 	private static CharacterSpeciesEmbeddable toEmbeddable(SpeciesEntry species) {
 		return new CharacterSpeciesEmbeddable(species.speciesContentId(),
 				StoryWindowMapper.toEmbeddable(species.window()));
+	}
+
+	/** Sorted by language code, so the same image always reads the same way. */
+	private static GalleryImage toDomain(CharacterImageEntity image) {
+		return new GalleryImage(image.getImageId(), image.getKind(), StoryWindowMapper.toDomain(image.getWindow()),
+				new TreeMap<>(image.getCaption()));
+	}
+
+	private static GalleryImageFields toFields(GalleryImage image) {
+		return new GalleryImageFields(image.imageId(), image.kind(), image.caption(),
+				StoryWindowMapper.toEmbeddable(image.window()));
 	}
 
 	/** Sorted by language code, so the same epithet always reads the same way. */

@@ -9,6 +9,7 @@ import dev.onepieceapi.contentservice.domain.character.Membership;
 import dev.onepieceapi.contentservice.domain.character.MembershipPeriod;
 import dev.onepieceapi.contentservice.domain.character.Relative;
 import dev.onepieceapi.contentservice.domain.character.SpeciesEntry;
+import dev.onepieceapi.contentservice.domain.readertime.Galleried;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.entity.AffiliationVersionEntity;
 import dev.onepieceapi.contentservice.persistence.mapper.AffiliationVersionMapper;
@@ -53,9 +54,10 @@ import java.util.stream.IntStream;
  * in a version that is online or still open (D13). Its first appearance, when chosen, is
  * in a chapter and an episode it may be linked to (3.4.3), and every point of its windows
  * follows the rules of the reader axis ({@link ReaderAxisRules}, 3.7.4). Each entry at
- * fault is reported, the later of two equal ones. Its portrait is checked against the
- * {@code character} image profile when uploaded, as every image. A birthday is always a
- * real date: a {@code MonthDay} cannot be anything else.
+ * fault is reported, the later of two equal ones. Its gallery holds at most
+ * {@value Galleried#MAX_IMAGES} images, each upload checked against the {@code character}
+ * image profile, as every image (3.5.1). A birthday is always a real date: a
+ * {@code MonthDay} cannot be anything else.
  */
 @Component
 public class CharacterValidator extends ContentValidator<Character, CharacterVersionEntity> {
@@ -142,6 +144,7 @@ public class CharacterValidator extends ContentValidator<Character, CharacterVer
 		List<FieldViolation> violations = new ArrayList<>();
 		requireAtMost(EPITHETS, body.epithets(), Character.MAX_EPITHETS, violations);
 		requireAtMost(ALIASES, body.aliases(), Character.MAX_ALIASES, violations);
+		requireAtMost(Galleried.GALLERY_FIELD, body.gallery(), Galleried.MAX_IMAGES, violations);
 		requireAtMostPeriods(body.affiliations(), violations);
 		requireValidEpithets(body.epithets(), violations);
 		requireValidAliases(body.aliases(), violations);

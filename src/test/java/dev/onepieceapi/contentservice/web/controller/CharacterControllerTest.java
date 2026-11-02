@@ -17,7 +17,9 @@ import dev.onepieceapi.contentservice.domain.character.Epithet;
 import dev.onepieceapi.contentservice.domain.character.FruitUse;
 import dev.onepieceapi.contentservice.domain.character.Gender;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitReference;
-import dev.onepieceapi.contentservice.domain.image.ImageChange;
+import dev.onepieceapi.contentservice.domain.image.GalleryUploads;
+import dev.onepieceapi.contentservice.domain.readertime.Galleried;
+import dev.onepieceapi.contentservice.domain.readertime.GalleryImage;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.domain.readertime.StoryWindow;
 import dev.onepieceapi.contentservice.domain.security.Permission;
@@ -45,11 +47,13 @@ import dev.onepieceapi.contentservice.service.devilfruit.DevilFruitLinks;
 import dev.onepieceapi.contentservice.service.species.SpeciesLinks;
 import dev.onepieceapi.contentservice.service.story.FirstAppearanceLinks;
 import dev.onepieceapi.contentservice.web.dto.response.ImageResponse;
+import dev.onepieceapi.contentservice.web.mapper.GalleryRequestMapper;
 import dev.onepieceapi.contentservice.web.mapper.ImageResponseMapper;
 import dev.onepieceapi.contentservice.web.security.SecurityConfig;
 import dev.onepieceapi.exception.web.ApplicationExceptionHandler;
 import dev.onepieceapi.exception.web.ConcurrentModificationExceptionHandler;
 import dev.onepieceapi.exception.web.FieldViolation;
+import dev.onepieceapi.readertime.ImageKind;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -73,6 +77,7 @@ import java.util.UUID;
 
 import static dev.onepieceapi.contentservice.web.controller.TestCallers.callerWith;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.eq;
@@ -82,7 +87,6 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -192,7 +196,9 @@ class CharacterControllerTest {
 			.andExpect(jsonPath("$.body.species[0].discovered.chapter.id").value(CHAPTER_ID.toString()))
 			.andExpect(jsonPath("$.body.species[1].species.romaji").value("Ningen"))
 			.andExpect(jsonPath("$.body.species[1].species.names.it").value("Umano"))
-			.andExpect(jsonPath("$.body.image.url").value("/api/content/images/abc"));
+			.andExpect(jsonPath("$.body.gallery[0].image.url").value("/api/content/images/abc"))
+			.andExpect(jsonPath("$.body.gallery[0].kind").value("ASPETTO"))
+			.andExpect(jsonPath("$.body.gallery[0].caption.it").value("Aspetto"));
 	}
 
 	@Test
@@ -470,7 +476,7 @@ class CharacterControllerTest {
 
 		var written = ArgumentCaptor.forClass(Character.class);
 		verify(this.service).create(eq(Set.of(Permission.CONTENT_WRITE)), any(), written.capture(),
-				eq(ImageChange.KEEP));
+				eq(GalleryUploads.NONE));
 		var body = written.getValue();
 		assertThat(body.romaji()).isEqualTo("Nami");
 		assertThat(body.japaneseName()).isEqualTo("ナミ");
@@ -523,34 +529,85 @@ class CharacterControllerTest {
 	}
 
 	@Test
-	void creatingWithAPortraitPassesOnTheFileAndEditingCanRemoveIt() throws Exception {
+	void creatingWithImagesPassesOnEachFileForTheImageThatPointsToIt() throws Exception {
 		var draft = new VersionAccess<>(version(VersionStatus.DRAFT, null), EnumSet.of(VersionAction.EDIT));
 		when(this.service.create(any(), any(), any(), any())).thenReturn(new Content<>(CONTENT_ID, List.of(draft)));
+		byte[] look = { 1, 2, 3 };
+		byte[] form = { 4, 5 };
+
+		this.mockMvc.perform(multipart("/characters")
+			.file(versionPart("""
+					{"romaji":"Nami","gallery":[
+					{"upload":1,"kind":"FORMA","caption":{"it":"Forma"}},
+					{"upload":0,"kind":"ASPETTO","caption":{"en":"Look"},"discovered":{"chapter":"%s"}}]}"""
+				.formatted(CHAPTER_ID)))
+			.file(imagesPart(look))
+			.file(imagesPart(form))
+			.with(callerWith(Permission.CONTENT_WRITE))).andExpect(status().isCreated());
+
+		var written = ArgumentCaptor.forClass(Character.class);
+		var uploads = ArgumentCaptor.forClass(GalleryUploads.class);
+		verify(this.service).create(any(), any(), written.capture(), uploads.capture());
+		assertThat(written.getValue().gallery()).containsExactly(
+				new GalleryImage(null, ImageKind.FORMA, StoryWindow.NONE, Map.of("it", "Forma")),
+				new GalleryImage(null, ImageKind.ASPETTO, OPEN, Map.of("en", "Look")));
+		assertThat(uploads.getValue().byEntry()).containsOnlyKeys(0, 1);
+		assertThat(uploads.getValue().of(0)).contains(form);
+		assertThat(uploads.getValue().of(1)).contains(look);
+	}
+
+	@Test
+	void editingKeepsTheImagesNamedByIdAndTakesTheUploadedOnes() throws Exception {
+		var draft = new VersionAccess<>(version(VersionStatus.DRAFT, null), EnumSet.of(VersionAction.EDIT));
 		when(this.service.edit(any(), any(), eq(CONTENT_ID), eq(1), any(), any())).thenReturn(draft);
-		byte[] upload = { 1, 2, 3 };
+		byte[] look = { 1, 2, 3 };
 
 		this.mockMvc
-			.perform(multipart("/characters").file(versionPart("{\"romaji\":\"Nami\"}"))
-				.file(new MockMultipartFile("image", "nami.png", "image/png", upload))
+			.perform(multipart(HttpMethod.PUT, "/characters/" + CONTENT_ID + "/versions/1").file(versionPart("""
+					{"romaji":"Nami","gallery":[{"imageId":"abc","kind":"ASPETTO"},{"upload":0,"kind":"ASPETTO"}]}"""))
+				.file(imagesPart(look))
 				.with(callerWith(Permission.CONTENT_WRITE)))
-			.andExpect(status().isCreated());
-		this.mockMvc
-			.perform(multipart(HttpMethod.PUT, "/characters/" + CONTENT_ID + "/versions/1")
-				.file(versionPart("{\"romaji\":\"Nami\"}"))
-				.with(callerWith(Permission.CONTENT_WRITE)))
-			.andExpect(status().isOk());
-		this.mockMvc
-			.perform(put("/characters/" + CONTENT_ID + "/versions/1").with(callerWith(Permission.CONTENT_WRITE))
-				.contentType("application/json")
-				.content("{\"romaji\":\"Nami\",\"removeImage\":true}"))
 			.andExpect(status().isOk());
 
-		var change = ArgumentCaptor.forClass(ImageChange.class);
-		verify(this.service).create(any(), any(), any(), change.capture());
-		assertThat(change.getValue()).isInstanceOfSatisfying(ImageChange.Replace.class,
-				replace -> assertThat(replace.upload()).isEqualTo(upload));
-		verify(this.service).edit(any(), any(), eq(CONTENT_ID), eq(1), any(), eq(ImageChange.KEEP));
-		verify(this.service).edit(any(), any(), eq(CONTENT_ID), eq(1), any(), eq(ImageChange.REMOVE));
+		var written = ArgumentCaptor.forClass(Character.class);
+		var uploads = ArgumentCaptor.forClass(GalleryUploads.class);
+		verify(this.service).edit(any(), any(), eq(CONTENT_ID), eq(1), written.capture(), uploads.capture());
+		assertThat(written.getValue().galleryImageIds()).containsExactly("abc");
+		assertThat(uploads.getValue().of(0)).isEmpty();
+		assertThat(uploads.getValue().of(1)).contains(look);
+	}
+
+	@Test
+	void aGalleryWhoseEntriesAndFilesDoNotMatchIsRefusedNamingEachMismatch() throws Exception {
+		this.mockMvc
+			.perform(multipart("/characters").file(versionPart("""
+					{"romaji":"Nami","gallery":[{"kind":"ASPETTO"},{"imageId":"abc","upload":0,"kind":"ASPETTO"},
+					{"upload":3,"kind":"ASPETTO"},{"upload":0,"kind":"ASPETTO"},{"upload":0,"kind":"FORMA"}]}"""))
+				.file(imagesPart(new byte[] { 1 }))
+				.file(imagesPart(new byte[] { 2 }))
+				.with(callerWith(Permission.CONTENT_WRITE)))
+			.andExpect(status().isUnprocessableContent())
+			.andExpect(jsonPath("$.errorCode").value("CONTENT_VALUE_INVALID"))
+			.andExpect(jsonPath("$.errors[*].field").value(containsInAnyOrder("gallery[0]", "gallery[1]",
+					"gallery[2].upload", "gallery[4].upload", "images[1]")));
+		verifyNoInteractions(this.service);
+	}
+
+	@Test
+	void aGalleryOverTwentyImagesOrACaptionOverItsLimitIsABadRequest() throws Exception {
+		String image = "{\"imageId\":\"abc\",\"kind\":\"ASPETTO\"},";
+		String tooMany = "[" + image.repeat(Galleried.MAX_IMAGES) + image.substring(0, image.length() - 1) + "]";
+		for (String body : List.of("{\"gallery\":" + tooMany + "}", "{\"gallery\":[{\"imageId\":\"abc\"}]}",
+				"{\"gallery\":[{\"imageId\":\"abc\",\"kind\":\"ASPETTO\",\"caption\":{\"it\":\"" + "x".repeat(101)
+						+ "\"}}]}",
+				"{\"gallery\":[{\"upload\":-1,\"kind\":\"ASPETTO\"}]}")) {
+			this.mockMvc
+				.perform(post("/characters").with(callerWith(Permission.CONTENT_WRITE))
+					.contentType("application/json")
+					.content(body))
+				.andExpect(status().isBadRequest());
+		}
+		verifyNoInteractions(this.service);
 	}
 
 	@Test
@@ -609,6 +666,10 @@ class CharacterControllerTest {
 			.andExpect(status().isForbidden());
 	}
 
+	private static MockMultipartFile imagesPart(byte[] bytes) {
+		return new MockMultipartFile(GalleryRequestMapper.IMAGES_PART, "image.png", "image/png", bytes);
+	}
+
 	private static MockMultipartFile versionPart(String json) {
 		return new MockMultipartFile("version", "", "application/json", json.getBytes(StandardCharsets.UTF_8));
 	}
@@ -631,7 +692,8 @@ class CharacterControllerTest {
 					new Epithet(Map.of("it", "Strega del tempo"), CLOSED)))
 			.aliases(List.of(new Alias("Miss Nami", OPEN)))
 			.species(List.of(new SpeciesEntry(GYOJIN, OPEN), new SpeciesEntry(NINGEN, OPEN)))
-			.imageId(imageId)
+			.gallery(imageId == null ? List.of()
+					: List.of(new GalleryImage(imageId, ImageKind.ASPETTO, OPEN, Map.of("it", "Aspetto"))))
 			.firstAppearance(StoryPoint.ofChapter(CHAPTER_ID))
 			.build();
 		return Version.<Character>builder()

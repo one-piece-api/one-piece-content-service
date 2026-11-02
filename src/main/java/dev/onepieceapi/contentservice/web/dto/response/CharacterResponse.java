@@ -21,7 +21,7 @@ import java.util.Map;
  * @param relatives each relative as the version stores it, in order
  * @param relativesOf the characters online that name this one as their relative, each
  * with the inverse kind; derived, never part of the version
- * @param image its portrait; null for none
+ * @param gallery its images in order (workflow 3.5.1); empty for none
  * @param firstAppearance the chapter and/or the episode it first appears in; null for
  * none
  * @param initialKnowledge what the reader believes at the first appearance (workflow
@@ -34,7 +34,8 @@ public record CharacterResponse(String romaji, String japaneseName,
 		@Schema(type = "string", example = "--05-05") MonthDay birthday, List<EpithetResponse> epithets,
 		List<AliasResponse> aliases, List<SpeciesEntryResponse> species, List<MembershipResponse> affiliations,
 		List<FruitUseResponse> devilFruits, List<RelativeResponse> relatives, List<RelativeResponse> relativesOf,
-		ImageResponse image, FirstAppearanceResponse firstAppearance, List<ParagraphResponse> description,
-		CharacterKnowledgeResponse initialKnowledge, List<CharacterRevealResponse> reveals) {
+		List<GalleryImageResponse> gallery, FirstAppearanceResponse firstAppearance,
+		List<ParagraphResponse> description, CharacterKnowledgeResponse initialKnowledge,
+		List<CharacterRevealResponse> reveals) {
 
 }

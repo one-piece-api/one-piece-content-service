@@ -52,6 +52,11 @@ public class ContentImages {
 		}
 	}
 
+	/** Checks, normalizes and stores an upload with the profile of the entity; its id. */
+	public String store(byte[] upload, EntityType entityType) {
+		return store(upload, profileOf(entityType));
+	}
+
 	private String store(byte[] upload, ImageProfile profile) {
 		NormalizedImage image = this.normalizer.normalize(this.validator.validate(upload, profile), profile);
 		this.store.save(image);

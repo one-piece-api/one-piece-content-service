@@ -24,10 +24,11 @@ import static org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTest
 
 /**
  * The Character in the interface one-piece-public-api reads ({@code V27}, {@code V33},
- * {@code V37}) against a real PostgreSQL (Testcontainers): only the versions online are
- * shown, one row per language, with their epithets, aliases, species and memberships in
- * the order of the version, and the portrait visible only while a character online uses
- * it. Seeded in SQL, as the table owner, and read through the {@code published} views.
+ * {@code V37}, {@code V41}) against a real PostgreSQL (Testcontainers): only the versions
+ * online are shown, one row per language, with their epithets, aliases, species and
+ * memberships in the order of the version, and the gallery visible only while a character
+ * online shows it. Seeded in SQL, as the table owner, and read through the
+ * {@code published} views.
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = Replace.NONE)
@@ -295,15 +296,37 @@ class PublishedCharacterViewIntegrationTest {
 	}
 
 	@Test
-	void thePortraitOfACharacterOnlineIsAPublishedImageAndADraftOneIsNot() {
-		String online = image('d');
-		String draft = image('e');
-		portrait(character(content(CHARACTER), 1, PUBLISHED, "Monkey D. Luffy", "it"), online);
-		portrait(character(content(CHARACTER), 1, "DRAFT", "Nami", "it"), draft);
+	void everyImageOfAGalleryOnlineIsAPublishedImageAndThoseOfADraftAreNot() {
+		String look = image('a');
+		String form = image('b');
+		String draft = image('c');
+		UUID luffy = character(content(CHARACTER), 1, PUBLISHED, "Monkey D. Luffy", "it");
+		galleryImage(luffy, 0, look, "ASPETTO", null);
+		galleryImage(luffy, 1, form, "FORMA", null);
+		galleryImage(character(content(CHARACTER), 1, "DRAFT", "Nami", "it"), 0, draft, "ASPETTO", null);
 
 		var ids = this.jdbc.sql("select id from published.image").query(String.class).list();
 
-		assertThat(ids).containsExactly(online);
+		assertThat(ids).containsExactlyInAnyOrder(look, form);
+	}
+
+	@Test
+	void theImageOfACharacterIsItsLastAppearanceWithoutAnEndElseItsLastAppearance() {
+		String before = image('a');
+		String after = image('b');
+		String gear = image('c');
+		String older = image('d');
+		UUID timeskip = content("CHAPTER");
+		UUID luffy = character(content(CHARACTER), 1, PUBLISHED, "Luffy", "it");
+		galleryImage(luffy, 0, before, "ASPETTO", timeskip);
+		galleryImage(luffy, 1, after, "ASPETTO", null);
+		galleryImage(luffy, 2, gear, "FORMA", null);
+		UUID ace = character(content(CHARACTER), 1, PUBLISHED, "Ace", "it");
+		galleryImage(ace, 0, older, "ASPETTO", timeskip);
+		galleryImage(ace, 1, before, "ASPETTO", timeskip);
+
+		assertThat(imageOf("Luffy")).isEqualTo(after);
+		assertThat(imageOf("Ace")).isEqualTo(before);
 	}
 
 	private UUID content(String entityType) {
@@ -451,10 +474,20 @@ class PublishedCharacterViewIntegrationTest {
 		return id;
 	}
 
-	private void portrait(UUID versionId, String imageId) {
-		this.jdbc.sql("update character_version set image_id = ? where version_id = ?")
-			.params(imageId, versionId)
+	/** Seeds an image of a gallery, ended at this chapter or open for null. */
+	private void galleryImage(UUID versionId, int position, String imageId, String kind, UUID endedChapterId) {
+		this.jdbc
+			.sql("insert into character_version_image (id, version_id, position, image_id, kind, ended_chapter_id)"
+					+ " values (?, ?, ?, ?, ?, ?)")
+			.params(UUID.randomUUID(), versionId, position, imageId, kind, endedChapterId)
 			.update();
+	}
+
+	private String imageOf(String romaji) {
+		return this.jdbc.sql("select distinct image_id from published.character where romaji = ?")
+			.param(romaji)
+			.query(String.class)
+			.single();
 	}
 
 	/** A chapter online, of an arc and a saga online, titled "Title LANGUAGE". */

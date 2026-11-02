@@ -1,10 +1,12 @@
 package dev.onepieceapi.contentservice.domain.character;
 
+import dev.onepieceapi.contentservice.domain.readertime.GalleryImage;
 import dev.onepieceapi.contentservice.domain.readertime.NamedWindow;
 import dev.onepieceapi.contentservice.domain.readertime.Paragraph;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.domain.readertime.StoryWindow;
 import dev.onepieceapi.contentservice.domain.readertime.WindowSequence;
+import dev.onepieceapi.readertime.ImageKind;
 import org.junit.jupiter.api.Test;
 
 import java.time.MonthDay;
@@ -81,7 +83,7 @@ class CharacterTest {
 			.epithets(List.of(new Epithet(Map.of("it", " Gatta ladra ", "en", "  "), FROM_START)))
 			.aliases(List.of(new Alias(" Miss All Sunday ", FROM_START), new Alias("  ", null)))
 			.species(List.of(new SpeciesEntry(NINGEN, FROM_START)))
-			.imageId("img")
+			.gallery(List.of(new GalleryImage("img", ImageKind.ASPETTO, FROM_START, Map.of("it", " Look ", "en", " "))))
 			.firstAppearance(StoryPoint.ofChapter(CHAPTER))
 			.build();
 
@@ -96,7 +98,8 @@ class CharacterTest {
 		assertThat(normalized.epithets()).containsExactly(new Epithet(Map.of("it", "Gatta ladra"), FROM_START));
 		assertThat(normalized.aliases()).containsExactly(new Alias("Miss All Sunday", FROM_START), new Alias("", null));
 		assertThat(normalized.species()).containsExactly(new SpeciesEntry(NINGEN, FROM_START));
-		assertThat(normalized.imageId()).isEqualTo("img");
+		assertThat(normalized.gallery())
+			.containsExactly(new GalleryImage("img", ImageKind.ASPETTO, FROM_START, Map.of("it", "Look")));
 		assertThat(normalized.firstAppearance()).isEqualTo(StoryPoint.ofChapter(CHAPTER));
 		assertThat(Character.builder().romaji("   ").build().normalized().romaji()).isNull();
 	}
@@ -113,11 +116,11 @@ class CharacterTest {
 
 		assertThat(empty.missingFields(List.of("en", "it"))).containsExactly("romaji", "status", "gender",
 				"firstAppearance", "translations[en].name", "translations[it].name", "epithets[0].text[en]",
-				"description");
+				"description", "gallery");
 	}
 
 	@Test
-	void theJapaneseNameTheBirthdayTheAliasesTheSpeciesAndTheImageAreNeverMissing() {
+	void theJapaneseNameTheBirthdayTheAliasesAndTheSpeciesAreNeverMissing() {
 		var complete = complete().build();
 
 		assertThat(complete.missingFields(List.of("it"))).isEmpty();
@@ -157,7 +160,7 @@ class CharacterTest {
 
 		assertThat(usopp.windows()).extracting(NamedWindow::field)
 			.containsExactly("epithets[0]", "aliases[0]", "species[0]", "affiliations[0].periods[0]",
-					"affiliations[0].periods[1]", "devilFruits[0]", "relatives[0]", "description[0]");
+					"affiliations[0].periods[1]", "devilFruits[0]", "relatives[0]", "description[0]", "gallery[0]");
 		assertThat(usopp.windowSequences())
 			.containsExactly(new WindowSequence("affiliations[0].periods", List.of(ENDED, FROM_START)));
 	}
@@ -169,7 +172,7 @@ class CharacterTest {
 			.build();
 
 		assertThat(luffy.points()).containsExactly(new StoryPoint(CHAPTER, EPISODE), StoryPoint.ofChapter(CHAPTER),
-				StoryPoint.ofChapter(LATER_CHAPTER), StoryPoint.ofChapter(CHAPTER));
+				StoryPoint.ofChapter(LATER_CHAPTER), StoryPoint.ofChapter(CHAPTER), StoryPoint.ofChapter(CHAPTER));
 	}
 
 	@Test
@@ -188,7 +191,7 @@ class CharacterTest {
 					base.toBuilder().aliases(List.of(new Alias("B", FROM_START), new Alias("A", FROM_START))).build())
 			.isNotEqualTo(base.toBuilder().aliases(List.of(new Alias("A", FROM_START), new Alias("B", ENDED))).build())
 			.isNotEqualTo(base.toBuilder().birthday(MonthDay.of(7, 3)).build())
-			.isNotEqualTo(base.withImage("img"));
+			.isNotEqualTo(base.withGallery(List.of(new GalleryImage("img", ImageKind.ASPETTO, FROM_START, null))));
 	}
 
 	@Test
@@ -196,6 +199,8 @@ class CharacterTest {
 		var withRoles = complete()
 			.translations(Map.of("it", new CharacterTranslation("Nami"), "en", new CharacterTranslation("Nami")))
 			.description(List.of(new Paragraph(Map.of("it", "Navigatrice", "en", "Navigator"), FROM_START)))
+			.gallery(List
+				.of(new GalleryImage("img", ImageKind.ASPETTO, FROM_START, Map.of("it", "Aspetto", "en", "Look"))))
 			.affiliations(List.of(new Membership(KAIGUN, List.of(new MembershipPeriod(FROM_START, Map.of(), null))),
 					new Membership(KAIGUN2,
 							List.of(new MembershipPeriod(ENDED, null, null),
@@ -261,7 +266,8 @@ class CharacterTest {
 			.description(List.of(new Paragraph(Map.of("it", "Navigatrice"), FROM_START)))
 			.status(CharacterStatus.ALIVE)
 			.gender(Gender.FEMALE)
-			.firstAppearance(StoryPoint.ofChapter(CHAPTER));
+			.firstAppearance(StoryPoint.ofChapter(CHAPTER))
+			.gallery(List.of(new GalleryImage("img", ImageKind.ASPETTO, FROM_START, Map.of("it", "Aspetto"))));
 	}
 
 }

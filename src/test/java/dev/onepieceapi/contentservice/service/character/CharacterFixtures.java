@@ -23,6 +23,7 @@ import dev.onepieceapi.contentservice.domain.character.RelativeKind;
 import dev.onepieceapi.contentservice.domain.character.SpeciesEntry;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitTranslation;
+import dev.onepieceapi.contentservice.domain.readertime.GalleryImage;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.domain.readertime.StoryWindow;
 import dev.onepieceapi.contentservice.domain.security.Permission;
@@ -62,6 +63,8 @@ import dev.onepieceapi.contentservice.service.affiliation.AffiliationDefinition;
 import dev.onepieceapi.contentservice.service.affiliation.AffiliationRules;
 import dev.onepieceapi.contentservice.service.affiliation.AffiliationService;
 import dev.onepieceapi.contentservice.service.image.ContentImages;
+import dev.onepieceapi.contentservice.service.image.GalleryImages;
+import dev.onepieceapi.readertime.ImageKind;
 import dev.onepieceapi.contentservice.service.species.SpeciesDefinition;
 import dev.onepieceapi.contentservice.service.species.SpeciesRules;
 import dev.onepieceapi.contentservice.service.species.SpeciesService;
@@ -143,6 +146,12 @@ final class CharacterFixtures {
 	 */
 	private final StoryPoint firstAppearance;
 
+	/**
+	 * The stored image every complete character shows as its appearance at the first
+	 * appearance, seeded by the test ({@code StoredImages#portrait}).
+	 */
+	private final String portrait;
+
 	CharacterService service() {
 		return service(mock(ContentImages.class));
 	}
@@ -164,7 +173,7 @@ final class CharacterFixtures {
 		var rules = new CharacterRules(this.contents, this.chapters, this.episodes, this.species, this.affiliations,
 				this.bounties, this.devilFruits, rulesCharacters, axis, new RulesProperties(5));
 		return new CharacterService(new CharacterDefinition(this.characters, validator, rules), this.contentVersions,
-				this.contents, new AuditLogService(this.auditLog, clock), clock, images);
+				this.contents, new AuditLogService(this.auditLog, clock), clock, new GalleryImages(images));
 	}
 
 	/** The rules of the reader axis over the repositories of the test. */
@@ -208,7 +217,25 @@ final class CharacterFixtures {
 			.status(CharacterStatus.ALIVE)
 			.gender(Gender.FEMALE)
 			.firstAppearance(this.firstAppearance)
+			.gallery(List.of(appearance(this.portrait)))
 			.build();
+	}
+
+	/** An appearance of this stored image, from the first appearance on, captioned. */
+	GalleryImage appearance(String imageId) {
+		return appearanceFrom(this.firstAppearance, imageId);
+	}
+
+	/**
+	 * The seeded portrait as the appearance of a character first appearing at this point.
+	 */
+	List<GalleryImage> galleryFrom(StoryPoint metAt) {
+		return List.of(appearanceFrom(metAt, this.portrait));
+	}
+
+	private static GalleryImage appearanceFrom(StoryPoint discovered, String imageId) {
+		return new GalleryImage(imageId, ImageKind.ASPETTO, StoryWindow.from(discovered),
+				Map.of("it", "Aspetto", "en", "Look"));
 	}
 
 	/**

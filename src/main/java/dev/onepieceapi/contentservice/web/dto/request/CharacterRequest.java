@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.web.dto.request;
 
+import dev.onepieceapi.contentservice.domain.readertime.Galleried;
 import dev.onepieceapi.contentservice.domain.readertime.Paragraph;
 import dev.onepieceapi.contentservice.domain.character.Character;
 import dev.onepieceapi.contentservice.domain.character.CharacterStatus;
@@ -34,9 +35,8 @@ import java.util.Map;
  * @param initialKnowledge what the reader believes at the first appearance (workflow
  * 3.7.1), for the fields some reveal names; left out for nothing
  * @param reveals what the reader learns later, in order; left out for none
- * @param removeImage true to remove the draft's portrait; not together with an uploaded
- * one. Left out, the portrait is kept - or replaced, when one is uploaded with the
- * request
+ * @param gallery its images in order (workflow 3.5.1), each kept or uploaded; left out
+ * for none
  * @param firstAppearance the chapter and/or the episode it is first shown or named in;
  * left out for none, which a draft may be - it is required to submit
  */
@@ -49,13 +49,9 @@ public record CharacterRequest(@Size(max = Character.ROMAJI_MAX_LENGTH) String r
 		@Size(max = Character.MAX_ALIASES) List<@NotNull @Valid AliasRequest> aliases,
 		List<@NotNull @Valid SpeciesEntryRequest> species, List<@NotNull @Valid MembershipRequest> affiliations,
 		List<@NotNull @Valid FruitUseRequest> devilFruits, List<@NotNull @Valid RelativeRequest> relatives,
-		Boolean removeImage, FirstAppearanceRequest firstAppearance,
+		@Size(max = Galleried.MAX_IMAGES) List<@NotNull @Valid GalleryImageRequest> gallery,
+		FirstAppearanceRequest firstAppearance,
 		@Size(max = Paragraph.MAX_PER_SECTION) List<@NotNull @Valid ParagraphRequest> description,
 		@Valid CharacterKnowledgeRequest initialKnowledge, List<@NotNull @Valid CharacterRevealRequest> reveals) {
-
-	/** Whether the portrait is to be removed; not saying so keeps it. */
-	public boolean removesImage() {
-		return Boolean.TRUE.equals(this.removeImage);
-	}
 
 }

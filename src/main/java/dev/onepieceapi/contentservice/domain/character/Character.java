@@ -1,6 +1,8 @@
 package dev.onepieceapi.contentservice.domain.character;
 
 import dev.onepieceapi.contentservice.domain.readertime.FirstAppearing;
+import dev.onepieceapi.contentservice.domain.readertime.Galleried;
+import dev.onepieceapi.contentservice.domain.readertime.GalleryImage;
 import dev.onepieceapi.contentservice.domain.readertime.NamedWindow;
 import dev.onepieceapi.contentservice.domain.readertime.Paragraph;
 import dev.onepieceapi.contentservice.domain.readertime.ParagraphSection;
@@ -48,7 +50,7 @@ import java.util.stream.Stream;
  * @param affiliations its memberships (D10), in order; none is never null
  * @param devilFruits the fruits it ate (D12), in order; none is never null
  * @param relatives its relatives (D13), in order; none is never null
- * @param imageId its portrait (D7), optional and not localized
+ * @param gallery its appearances and forms, in order (3.5.1); none is never null
  * @param firstAppearance where it is first shown or named (D9); {@link StoryPoint#NONE}
  * for none, which a draft may keep - it is required to submit and to go online
  * @param description its biography, one paragraph per arc (3.7.3); none is never null
@@ -60,11 +62,12 @@ import java.util.stream.Stream;
 public record Character(String romaji, String japaneseName, Map<String, CharacterTranslation> translations,
 		CharacterStatus status, Gender gender, MonthDay birthday, List<Epithet> epithets, List<Alias> aliases,
 		List<SpeciesEntry> species, List<Membership> affiliations, List<FruitUse> devilFruits, List<Relative> relatives,
-		String imageId, StoryPoint firstAppearance, List<Paragraph> description, CharacterKnowledge initialKnowledge,
-		List<Reveal<CharacterField, CharacterKnowledge>> reveals)
+		List<GalleryImage> gallery, StoryPoint firstAppearance, List<Paragraph> description,
+		CharacterKnowledge initialKnowledge, List<Reveal<CharacterField, CharacterKnowledge>> reveals)
 		implements
 			ContentBody<Character>,
 			FirstAppearing,
+			Galleried,
 			Paragraphed,
 			Revealing<CharacterField, CharacterKnowledge> {
 
@@ -126,15 +129,16 @@ public record Character(String romaji, String japaneseName, Map<String, Characte
 		affiliations = affiliations == null ? List.of() : List.copyOf(affiliations);
 		devilFruits = devilFruits == null ? List.of() : List.copyOf(devilFruits);
 		relatives = relatives == null ? List.of() : List.copyOf(relatives);
+		gallery = gallery == null ? List.of() : List.copyOf(gallery);
 		firstAppearance = StoryPoint.orNone(firstAppearance);
 		description = description == null ? List.of() : List.copyOf(description);
 		initialKnowledge = (initialKnowledge == null) ? CharacterKnowledge.NONE : initialKnowledge;
 		reveals = (reveals == null) ? List.of() : List.copyOf(reveals);
 	}
 
-	/** The same character with another portrait, or none. */
-	public Character withImage(String newImageId) {
-		return toBuilder().imageId(newImageId).build();
+	/** The same character with another gallery, e.g. its uploads stored. */
+	public Character withGallery(List<GalleryImage> newGallery) {
+		return toBuilder().gallery(newGallery).build();
 	}
 
 	/**
@@ -156,6 +160,7 @@ public record Character(String romaji, String japaneseName, Map<String, Characte
 			.epithets(this.epithets.stream().map(Epithet::normalized).toList())
 			.aliases(this.aliases.stream().map(Alias::normalized).toList())
 			.affiliations(this.affiliations.stream().map(Membership::normalized).toList())
+			.gallery(this.gallery.stream().map(GalleryImage::normalized).toList())
 			.description(Paragraph.normalized(this.description))
 			.initialKnowledge(this.initialKnowledge.normalized())
 			.reveals(Revealing.normalized(this.reveals))
@@ -163,14 +168,15 @@ public record Character(String romaji, String japaneseName, Map<String, Characte
 	}
 
 	/**
-	 * The languages of the character, of its paragraphs, of its epithets and of the roles
-	 * of the periods of its memberships.
+	 * The languages of the character, of its paragraphs, of its reveals, of its gallery
+	 * captions, of its epithets and of the roles of the periods of its memberships.
 	 */
 	@Override
 	public Set<String> languages() {
 		Set<String> languages = new TreeSet<>(this.translations.keySet());
 		languages.addAll(paragraphLanguages());
 		languages.addAll(revealLanguages());
+		languages.addAll(galleryLanguages());
 		this.epithets.forEach(epithet -> languages.addAll(epithet.text().keySet()));
 		this.affiliations
 			.forEach(membership -> membership.periods().forEach(period -> languages.addAll(period.role().keySet())));
@@ -197,9 +203,9 @@ public record Character(String romaji, String japaneseName, Map<String, Characte
 	 * The romaji, the status, the gender and the first appearance, then a name per
 	 * language, then the text of each epithet per language, then each membership without
 	 * a period and the role of each period that has one in some language, in the others,
-	 * then the paragraphs (3.7.3), then the {@code discovered} point of every window
-	 * (workflow 3.7.2) - every one missing. The Japanese name, the birthday, the rank,
-	 * the {@code ended} points and the image are never missing.
+	 * then the paragraphs (3.7.3), then the gallery (3.5.1), then the {@code discovered}
+	 * point of every window (workflow 3.7.2) - every one missing. The Japanese name, the
+	 * birthday, the rank and the {@code ended} points are never missing.
 	 */
 	@Override
 	public List<String> missingFields(Collection<String> languages) {
@@ -233,6 +239,7 @@ public record Character(String romaji, String japaneseName, Map<String, Characte
 			missing.addAll(missingOfMembership(index, languages));
 		}
 		missing.addAll(missingParagraphs(languages));
+		missing.addAll(missingGallery(languages));
 		missing.addAll(missingDiscovered());
 		missing.addAll(missingReveals(languages));
 		return missing;
@@ -268,7 +275,7 @@ public record Character(String romaji, String japaneseName, Map<String, Characte
 
 	/**
 	 * Every window, list by list in the order of the request: epithets, aliases, species,
-	 * the periods of each membership, devil fruits, relatives, paragraphs.
+	 * the periods of each membership, devil fruits, relatives, paragraphs, gallery.
 	 */
 	@Override
 	public List<NamedWindow> windows() {
@@ -278,7 +285,7 @@ public record Character(String romaji, String japaneseName, Map<String, Characte
 		return Stream
 			.of(named("epithets", this.epithets), named("aliases", this.aliases), named("species", this.species),
 					periods, named("devilFruits", this.devilFruits), named("relatives", this.relatives),
-					paragraphWindows().stream())
+					paragraphWindows().stream(), galleryWindows().stream())
 			.flatMap(Function.identity())
 			.toList();
 	}

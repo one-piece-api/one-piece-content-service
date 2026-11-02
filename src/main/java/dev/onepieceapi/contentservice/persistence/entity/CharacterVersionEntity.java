@@ -33,8 +33,8 @@ import java.util.UUID;
  * What one version of a Character says (docs/user-flows/content-editorial-workflow.md
  * 3.1.11): its romaji (its natural key), per language its name and description, its
  * closed values, its lists in order (implementation plan of the Character, D14), its
- * portrait and its first appearance, its initial knowledge (workflow 3.7.1: an optional
- * secondary table, no row while every column is null) and its reveals.
+ * gallery (workflow 3.5.1) and its first appearance, its initial knowledge (workflow
+ * 3.7.1: an optional secondary table, no row while every column is null) and its reveals.
  */
 @Entity
 @Table(name = "character_version")
@@ -118,8 +118,11 @@ public class CharacterVersionEntity extends VersionBodyEntity {
 	@OrderColumn(name = "position")
 	private List<CharacterParagraphEntity> paragraphs = new ArrayList<>();
 
-	/** The id of its image; null for none. */
-	private String imageId;
+	/** Its gallery (workflow 3.5.1), in the order shown; the position is the index. */
+	@OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+	@JoinColumn(name = "version_id", nullable = false)
+	@OrderColumn(name = "position")
+	private List<CharacterImageEntity> gallery = new ArrayList<>();
 
 	/** The content of the chapter it first appears in (ADR-0008); null for none. */
 	private UUID firstAppearanceChapterId;
@@ -168,7 +171,6 @@ public class CharacterVersionEntity extends VersionBodyEntity {
 		this.gender = fields.gender();
 		this.birthdayMonth = fields.birthdayMonth();
 		this.birthdayDay = fields.birthdayDay();
-		this.imageId = fields.imageId();
 		this.firstAppearanceChapterId = fields.firstAppearance().chapterId();
 		this.firstAppearanceEpisodeId = fields.firstAppearance().episodeId();
 		this.translations.clear();
@@ -181,6 +183,8 @@ public class CharacterVersionEntity extends VersionBodyEntity {
 				CharacterMembershipEntity::rewrite);
 		replace(this.devilFruits, fields.devilFruits());
 		replace(this.relatives, fields.relatives());
+		PositionalRows.rewrite(this.gallery, fields.gallery(), CharacterImageEntity::new,
+				CharacterImageEntity::rewrite);
 		PositionalRows.rewrite(this.paragraphs, fields.paragraphs(), CharacterParagraphEntity::new,
 				ParagraphEntity::rewrite);
 		this.initialRomaji = fields.initialRomaji();

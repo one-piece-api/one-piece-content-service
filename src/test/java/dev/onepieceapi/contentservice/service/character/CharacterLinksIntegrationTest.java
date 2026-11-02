@@ -8,11 +8,13 @@ import dev.onepieceapi.contentservice.persistence.repository.BountyVersionReposi
 import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.CharacterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
+import dev.onepieceapi.contentservice.persistence.repository.ImageRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.EpisodeVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
 import dev.onepieceapi.contentservice.persistence.repository.SpeciesVersionRepository;
 import dev.onepieceapi.contentservice.service.content.OnlineChapters;
+import dev.onepieceapi.contentservice.service.content.StoredImages;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -77,6 +79,9 @@ class CharacterLinksIntegrationTest {
 	private ContentRepository contentRepository;
 
 	@Autowired
+	private ImageRepository imageRepository;
+
+	@Autowired
 	private LanguageRepository languageRepository;
 
 	@Autowired
@@ -102,6 +107,7 @@ class CharacterLinksIntegrationTest {
 			.languages(this.languageRepository)
 			.auditLog(this.auditLogRepository)
 			.firstAppearance(OnlineChapters.onlineChapter(this.contentRepository, this.chapterRepository))
+			.portrait(StoredImages.portrait(this.imageRepository))
 			.build();
 		this.links = new CharacterLinks(this.characterRepository, Clock.fixed(CharacterFixtures.NOW, ZoneOffset.UTC));
 	}

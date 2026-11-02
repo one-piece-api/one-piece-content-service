@@ -9,6 +9,7 @@ import dev.onepieceapi.contentservice.domain.character.CharacterLookups;
 import dev.onepieceapi.contentservice.domain.character.CharacterReference;
 import dev.onepieceapi.contentservice.domain.character.CharacterTranslation;
 import dev.onepieceapi.contentservice.domain.character.Epithet;
+import dev.onepieceapi.contentservice.domain.readertime.GalleryImage;
 import dev.onepieceapi.contentservice.domain.character.FruitUse;
 import dev.onepieceapi.contentservice.domain.character.Membership;
 import dev.onepieceapi.contentservice.domain.character.MembershipPeriod;
@@ -33,6 +34,7 @@ import dev.onepieceapi.contentservice.web.dto.response.CharacterTranslationRespo
 import dev.onepieceapi.contentservice.web.dto.response.ContentSummaryResponse;
 import dev.onepieceapi.contentservice.web.dto.response.DevilFruitReferenceResponse;
 import dev.onepieceapi.contentservice.web.dto.response.EpithetResponse;
+import dev.onepieceapi.contentservice.web.dto.response.GalleryImageResponse;
 import dev.onepieceapi.contentservice.web.dto.response.FirstAppearanceResponse;
 import dev.onepieceapi.contentservice.web.dto.response.FruitUseResponse;
 import dev.onepieceapi.contentservice.web.dto.response.MembershipPeriodResponse;
@@ -94,7 +96,7 @@ public class CharacterResponseMapper {
 			.devilFruits(character.devilFruits().stream().map(entry -> toResponse(entry, lookups, storyItems)).toList())
 			.relatives(character.relatives().stream().map(entry -> toResponse(entry, lookups, storyItems)).toList())
 			.relativesOf(lookups.relativesOf().stream().map(entry -> toResponse(entry, storyItems)).toList())
-			.image(images.toResponse(character.imageId()))
+			.gallery(character.gallery().stream().map(image -> toResponse(image, storyItems, images)).toList())
 			.firstAppearance(FirstAppearanceMapper.toResponse(character.firstAppearance(), storyItems))
 			.description(ParagraphResponseMapper.toResponse(character.description(), storyItems))
 			.initialKnowledge(toInitialResponse(character.initialKnowledge()))
@@ -218,6 +220,14 @@ public class CharacterResponseMapper {
 
 	private static CharacterTranslationResponse toResponse(CharacterTranslation translation) {
 		return new CharacterTranslationResponse(translation.name());
+	}
+
+	/** Sorted by language code, so the same image always reads the same way. */
+	private static GalleryImageResponse toResponse(GalleryImage image, Map<UUID, NumberedReference> storyItems,
+			ImageResponseMapper images) {
+		return new GalleryImageResponse(images.toResponse(image.imageId()), image.kind(),
+				new TreeMap<>(image.caption()), discovered(image.window(), storyItems),
+				ended(image.window(), storyItems));
 	}
 
 	/** Sorted by language code, so the same epithet always reads the same way. */

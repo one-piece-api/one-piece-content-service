@@ -20,6 +20,12 @@ public class ImageRefusedException extends DomainException {
 		numbers.forEach(this::withDetail);
 	}
 
+	/** The same refusal naming another field, e.g. {@code gallery[3].image}. */
+	public ImageRefusedException atField(String field) {
+		withDetail("field", field);
+		return this;
+	}
+
 	public static ImageRefusedException formatUnsupported() {
 		return new ImageRefusedException(ContentErrorCode.IMAGE_FORMAT_UNSUPPORTED,
 				"The image must be a static PNG or WebP", Map.of());

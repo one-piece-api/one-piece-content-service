@@ -3,7 +3,7 @@ package dev.onepieceapi.contentservice.web.controller;
 import dev.onepieceapi.contentservice.domain.character.Character;
 import dev.onepieceapi.contentservice.domain.character.CharacterLookups;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
-import dev.onepieceapi.contentservice.domain.image.ImageChange;
+import dev.onepieceapi.contentservice.domain.image.GalleryUploads;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSortField;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAccess;
@@ -26,6 +26,7 @@ import dev.onepieceapi.contentservice.web.dto.response.VersionResponse;
 import dev.onepieceapi.contentservice.web.mapper.CharacterRequestMapper;
 import dev.onepieceapi.contentservice.web.mapper.CharacterResponseMapper;
 import dev.onepieceapi.contentservice.web.mapper.ContentResponseMapper;
+import dev.onepieceapi.contentservice.web.mapper.GalleryRequestMapper;
 import dev.onepieceapi.contentservice.web.mapper.ImageResponseMapper;
 import dev.onepieceapi.contentservice.web.security.AuthenticatedCaller;
 import dev.onepieceapi.contentservice.web.validation.SortableBy;
@@ -68,8 +69,6 @@ class CharacterController extends ContentController<Character, CharacterResponse
 
 	/** The parts of a save with a portrait: the version as JSON, and the file. */
 	private static final String VERSION_PART = "version";
-
-	private static final String IMAGE_PART = "image";
 
 	private final CharacterService service;
 
@@ -152,8 +151,8 @@ class CharacterController extends ContentController<Character, CharacterResponse
 	}
 
 	/**
-	 * A new content with its first draft, written by the caller (UF-CNT-01), without a
-	 * portrait. Answers with the content, so its id is known.
+	 * A new content with its first draft, written by the caller (UF-CNT-01), without an
+	 * upload. Answers with the content, so its id is known.
 	 */
 	@PostMapping(path = ApiPaths.CONTENT_LIST, consumes = MediaType.APPLICATION_JSON_VALUE)
 	@ResponseStatus(HttpStatus.CREATED)
@@ -163,21 +162,21 @@ class CharacterController extends ContentController<Character, CharacterResponse
 	}
 
 	/**
-	 * The same, with a portrait (implementation plan of the Character, D7): part
-	 * {@code version} is the JSON, part {@code image} the file. Text and portrait are
-	 * saved together or not at all.
+	 * The same, with the gallery's uploads (workflow 3.5.1): part {@code version} is the
+	 * JSON, part {@code images} the files, each pointed to by one gallery image
+	 * ({@code upload}: its index). Text and images are saved together or not at all.
 	 */
 	@PostMapping(path = ApiPaths.CONTENT_LIST, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
 	@ResponseStatus(HttpStatus.CREATED)
-	ContentResponse createWithImage(@RequestPart(VERSION_PART) @Valid CharacterRequest request,
-			@RequestPart(name = IMAGE_PART, required = false) MultipartFile image,
+	ContentResponse createWithImages(@RequestPart(VERSION_PART) @Valid CharacterRequest request,
+			@RequestPart(name = GalleryRequestMapper.IMAGES_PART, required = false) List<MultipartFile> files,
 			@AuthenticationPrincipal AuthenticatedCaller caller) {
-		return create(request, image, caller);
+		return create(request, files, caller);
 	}
 
 	/**
-	 * Replaces what a draft says (UF-CNT-02), keeping its portrait unless
-	 * {@code removeImage} is set; answers with the version as it now is.
+	 * Replaces what a draft says (UF-CNT-02), its gallery showing only images the draft
+	 * already has; answers with the version as it now is.
 	 */
 	@PutMapping(path = ApiPaths.CONTENT_VERSION, consumes = MediaType.APPLICATION_JSON_VALUE)
 	VersionResponse<CharacterResponse> edit(@PathVariable UUID id, @PathVariable int number,
@@ -186,30 +185,30 @@ class CharacterController extends ContentController<Character, CharacterResponse
 	}
 
 	/**
-	 * The same, with a portrait replacing the draft's: part {@code version} is the JSON,
-	 * part {@code image} the file; without the file, as {@link #edit}.
+	 * The same, with the gallery's uploads: part {@code version} is the JSON, part
+	 * {@code images} the files, as on {@link #createWithImages}.
 	 */
 	@PutMapping(path = ApiPaths.CONTENT_VERSION, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-	VersionResponse<CharacterResponse> editWithImage(@PathVariable UUID id, @PathVariable int number,
+	VersionResponse<CharacterResponse> editWithImages(@PathVariable UUID id, @PathVariable int number,
 			@RequestPart(VERSION_PART) @Valid CharacterRequest request,
-			@RequestPart(name = IMAGE_PART, required = false) MultipartFile image,
+			@RequestPart(name = GalleryRequestMapper.IMAGES_PART, required = false) List<MultipartFile> files,
 			@AuthenticationPrincipal AuthenticatedCaller caller) {
-		return edit(id, number, request, image, caller);
+		return edit(id, number, request, files, caller);
 	}
 
-	private ContentResponse create(CharacterRequest request, MultipartFile image, AuthenticatedCaller caller) {
+	private ContentResponse create(CharacterRequest request, List<MultipartFile> files, AuthenticatedCaller caller) {
 		Character written = CharacterRequestMapper.toDomain(request);
-		ImageChange change = CharacterRequestMapper.toImageChange(request, image);
-		var content = this.service.create(caller.permissions(), caller.user(), written, change);
+		GalleryUploads uploads = CharacterRequestMapper.toUploads(request, files);
+		var content = this.service.create(caller.permissions(), caller.user(), written, uploads);
 		return ContentResponseMapper.toContentResponse(content);
 	}
 
-	private VersionResponse<CharacterResponse> edit(UUID id, int number, CharacterRequest request, MultipartFile image,
-			AuthenticatedCaller caller) {
+	private VersionResponse<CharacterResponse> edit(UUID id, int number, CharacterRequest request,
+			List<MultipartFile> files, AuthenticatedCaller caller) {
 		Character written = CharacterRequestMapper.toDomain(request);
-		ImageChange change = CharacterRequestMapper.toImageChange(request, image);
+		GalleryUploads uploads = CharacterRequestMapper.toUploads(request, files);
 		VersionAccess<Character> version = this.service.edit(caller.permissions(), caller.user(), id, number, written,
-				change);
+				uploads);
 		return versionResponse(id, version, caller);
 	}
 

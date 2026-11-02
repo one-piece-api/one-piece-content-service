@@ -90,16 +90,17 @@ public interface CharacterVersionRepository extends VersionBodyRepository<Charac
 			where content_slug.content_id = excluded.content_id""", nativeQuery = true)
 	int assignSlug(UUID versionId, Instant assignedAt);
 
-	/** Whether a version in one of these statuses has this image. */
+	/** Whether a version in one of these statuses shows this image in its gallery. */
 	@Query("""
-			select count(d) > 0 from CharacterVersionEntity d join d.version v
-			where d.imageId = :imageId and v.status in :statuses""")
+			select count(d) > 0 from CharacterVersionEntity d join d.version v join d.gallery g
+			where g.imageId = :imageId and v.status in :statuses""")
 	boolean usesImage(String imageId, Collection<VersionStatus> statuses);
 
 	/**
 	 * The versions online naming this chapter or episode at any point of the reader axis
-	 * (workflow 3.7.4): the first appearance, a point of any window or of a reveal
-	 * (workflow 3.7.1). Each part is indexed (V26, V38, V40).
+	 * (workflow 3.7.4): the first appearance, a point of any window - gallery images
+	 * included - or of a reveal (workflow 3.7.1). Each part is indexed (V26, V38, V40,
+	 * V41).
 	 */
 	@Query(value = """
 			select v.id from content_version v
@@ -129,6 +130,9 @@ public interface CharacterVersionRepository extends VersionBodyRepository<Charac
 			        join character_version_affiliation_period p on p.membership_id = m.id
 			    where p.discovered_chapter_id = :storyContentId or p.discovered_episode_id = :storyContentId
 			        or p.ended_chapter_id = :storyContentId or p.ended_episode_id = :storyContentId
+			    union select version_id from character_version_image
+			    where discovered_chapter_id = :storyContentId or discovered_episode_id = :storyContentId
+			        or ended_chapter_id = :storyContentId or ended_episode_id = :storyContentId
 			    union select version_id from character_version_reveal
 			    where revealed_chapter_id = :storyContentId or revealed_episode_id = :storyContentId)""",
 			nativeQuery = true)

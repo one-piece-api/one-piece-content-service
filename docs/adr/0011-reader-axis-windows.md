@@ -88,3 +88,28 @@ answer "how is it at chapter N" and two users of a fruit at different times look
 Alternatives: one generic paragraph table for all entities (no per-entity FK, no cascade from the version);
 paragraphs as JSON (no FK on the points, so retire checks cannot see them); one table per section (eight tables
 more, same shape).
+
+## Addendum 2026-11-02: character gallery (reveals plan R5)
+
+- **The single portrait becomes a gallery**: an ordered list of at most 20 images, each `ASPETTO` (appearance) or
+  `FORMA` (form), with a window and a caption per language (max 100 chars). Domain: `GalleryImage`, capability
+  `Galleried` (a `WindowedItem`; named so to avoid clashing with the library's `Gallery`), so `ReaderAxisRules`
+  checks the image points with no new rule code. `ImageKind` comes from `one-piece-reader-time`.
+- **Submitting** asks every caption in every active language (`gallery[i].caption[lang]`) and one `ASPETTO`
+  discovered at the first appearance (`gallery`).
+- **Saving**: multipart part `images` (repeated); each JSON entry names `imageId` (keep) or `upload: n` (the n-th
+  file). A mismatch between entries and files is `422 CONTENT_VALUE_INVALID` per field, as the existing
+  single-image mismatch. A kept `imageId` must be one the draft already shows: otherwise a caller could attach an
+  image of a version they may not see. A profile refusal names `gallery[i].image`.
+- **Lifecycle**: an image no version shows any more (removed, replaced, draft discarded) is deleted in the same
+  transaction; a new version keeps its base's images.
+- **Storage**: `character_version_image` (position, image FK, kind, V38 point columns) and
+  `character_version_image_translation`; `character_version.image_id` is dropped.
+- **Published views keep their columns** until R6: `published.character.image_id` is the main portrait read
+  unfiltered (library `Gallery.mainPortrait`: last `ASPETTO` without an end, else last `ASPETTO`); `published.image`
+  exposes every image of an online gallery.
+- **Request size**: `max-request-size` 101MB (20 x 5MB + JSON).
+
+Alternatives: one request per image (no atomic save of text and images); images by id only, uploaded first through
+a separate endpoint (orphans to collect, a second round trip); `imageId` of any visible version (needs a visibility
+check per image, for no editorial need).

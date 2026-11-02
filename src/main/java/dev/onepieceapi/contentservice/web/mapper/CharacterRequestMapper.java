@@ -11,7 +11,7 @@ import dev.onepieceapi.contentservice.domain.character.Membership;
 import dev.onepieceapi.contentservice.domain.character.MembershipPeriod;
 import dev.onepieceapi.contentservice.domain.character.Relative;
 import dev.onepieceapi.contentservice.domain.character.SpeciesEntry;
-import dev.onepieceapi.contentservice.domain.image.ImageChange;
+import dev.onepieceapi.contentservice.domain.image.GalleryUploads;
 import dev.onepieceapi.contentservice.domain.readertime.Reveal;
 import dev.onepieceapi.contentservice.domain.workflow.ContentFilter;
 import dev.onepieceapi.contentservice.web.dto.request.AliasRequest;
@@ -59,6 +59,7 @@ public class CharacterRequestMapper {
 			.affiliations(entries(request.affiliations(), CharacterRequestMapper::toDomain))
 			.devilFruits(entries(request.devilFruits(), CharacterRequestMapper::toDomain))
 			.relatives(entries(request.relatives(), CharacterRequestMapper::toDomain))
+			.gallery(GalleryRequestMapper.toDomain(request.gallery()))
 			.firstAppearance(FirstAppearanceMapper.toDomain(request.firstAppearance()))
 			.description(ParagraphRequestMapper.toDomain(request.description()))
 			.initialKnowledge(Optional.ofNullable(request.initialKnowledge())
@@ -80,13 +81,12 @@ public class CharacterRequestMapper {
 	}
 
 	/**
-	 * What the save does to the draft's portrait (implementation plan of the Character,
-	 * D7): replaced by an upload, removed when asked, kept otherwise; both at once is
-	 * refused.
-	 * @param upload the file sent with the request; null or empty for none
+	 * The files the save uploads for the gallery (workflow 3.5.1), each attached to the
+	 * image that points to it.
+	 * @param files the multipart part {@code images}; null for none
 	 */
-	public ImageChange toImageChange(CharacterRequest request, MultipartFile upload) {
-		return ImageRequestMapper.toImageChange(request.removesImage(), upload);
+	public GalleryUploads toUploads(CharacterRequest request, List<MultipartFile> files) {
+		return GalleryRequestMapper.toUploads(request.gallery(), files);
 	}
 
 	/**

@@ -16,12 +16,14 @@ import dev.onepieceapi.contentservice.persistence.repository.BountyVersionReposi
 import dev.onepieceapi.contentservice.persistence.repository.ChapterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.CharacterVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentRepository;
+import dev.onepieceapi.contentservice.persistence.repository.ImageRepository;
 import dev.onepieceapi.contentservice.persistence.repository.ContentVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.EpisodeVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
 import dev.onepieceapi.contentservice.persistence.repository.SpeciesVersionRepository;
 import dev.onepieceapi.contentservice.service.affiliation.AffiliationLinks;
 import dev.onepieceapi.contentservice.service.content.OnlineChapters;
+import dev.onepieceapi.contentservice.service.content.StoredImages;
 import dev.onepieceapi.contentservice.service.exception.ValueInvalidException;
 import dev.onepieceapi.contentservice.service.exception.VersionActionBlockedException;
 import dev.onepieceapi.contentservice.service.exception.VersionIncompleteException;
@@ -107,6 +109,9 @@ class CharacterMembershipsIntegrationTest {
 	private ContentRepository contentRepository;
 
 	@Autowired
+	private ImageRepository imageRepository;
+
+	@Autowired
 	private LanguageRepository languageRepository;
 
 	@Autowired
@@ -143,6 +148,7 @@ class CharacterMembershipsIntegrationTest {
 			.languages(this.languageRepository)
 			.auditLog(this.auditLogRepository)
 			.firstAppearance(OnlineChapters.onlineChapter(this.contentRepository, this.chapterRepository))
+			.portrait(StoredImages.portrait(this.imageRepository))
 			.build();
 		this.service = this.fixtures.service();
 		this.mugiwara = this.fixtures.affiliation(PUBLISHED, "Mugiwara no Ichimi", AffiliationKind.PIRATE_CREW);
