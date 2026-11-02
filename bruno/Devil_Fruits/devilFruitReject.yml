@@ -179,7 +179,63 @@ examples:
                 "id": "",
                 "url": ""
               },
+              "initialKnowledge": {
+                "romaji": "",
+                "subcategory": {
+                  "id": "",
+                  "names": {}
+                },
+                "translations": {},
+                "type": {
+                  "id": "",
+                  "names": {},
+                  "romaji": "",
+                  "subcategories": [
+                    {
+                      "id": "",
+                      "names": {}
+                    }
+                  ]
+                }
+              },
               "multipleUsers": false,
+              "reveals": [
+                {
+                  "fields": [
+                    "NAME"
+                  ],
+                  "revealedAt": {
+                    "chapter": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    },
+                    "episode": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    }
+                  },
+                  "romaji": "",
+                  "subcategory": {
+                    "id": "",
+                    "names": {}
+                  },
+                  "titles": {},
+                  "translations": {},
+                  "type": {
+                    "id": "",
+                    "names": {},
+                    "romaji": "",
+                    "subcategories": [
+                      {
+                        "id": "",
+                        "names": {}
+                      }
+                    ]
+                  }
+                }
+              ],
               "romaji": "",
               "subcategory": {
                 "id": "",

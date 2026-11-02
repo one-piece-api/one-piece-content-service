@@ -56,24 +56,36 @@ public interface CharacterVersionRepository extends VersionBodyRepository<Charac
 		return conditions;
 	}
 
+	/**
+	 * Every romaji of every version of another character counts - current, initial or
+	 * revealed (workflow 3.7.1) - as do the slugs it held online.
+	 */
 	@Override
 	@Query(value = """
 			select exists (select 1 from character_version d join content_version v on v.id = d.version_id
 			               where d.romaji_slug = :slug and v.content_id <> :contentId)
+			    or exists (select 1 from character_version_initial_knowledge k
+			                   join content_version v on v.id = k.version_id
+			               where k.romaji_slug = :slug and v.content_id <> :contentId)
+			    or exists (select 1 from character_version_reveal r join content_version v on v.id = r.version_id
+			               where r.romaji_slug = :slug and v.content_id <> :contentId)
 			    or exists (select 1 from content_slug s
 			               where s.entity_type = 'CHARACTER' and s.slug = :slug and s.content_id <> :contentId)""",
 			nativeQuery = true)
 	boolean slugIsTakenByAnother(String slug, UUID contentId);
 
+	/** Every romaji it holds: current, initial and revealed (workflow 3.7.1). */
 	@Override
 	@Modifying
 	@Query(value = """
 			insert into content_slug (entity_type, slug, content_id, assigned_at)
-			select c.entity_type, d.romaji_slug, c.id, :assignedAt
-			from character_version d
-			    join content_version v on v.id = d.version_id
+			select c.entity_type, s.slug, c.id, :assignedAt
+			from (select d.romaji_slug as slug from character_version d where d.version_id = :versionId
+			      union select k.romaji_slug from character_version_initial_knowledge k where k.version_id = :versionId
+			      union select r.romaji_slug from character_version_reveal r where r.version_id = :versionId) s
+			    join content_version v on v.id = :versionId
 			    join content c on c.id = v.content_id
-			where d.version_id = :versionId and d.romaji_slug is not null
+			where s.slug is not null
 			on conflict (entity_type, slug) do update set assigned_at = excluded.assigned_at
 			where content_slug.content_id = excluded.content_id""", nativeQuery = true)
 	int assignSlug(UUID versionId, Instant assignedAt);
@@ -86,8 +98,8 @@ public interface CharacterVersionRepository extends VersionBodyRepository<Charac
 
 	/**
 	 * The versions online naming this chapter or episode at any point of the reader axis
-	 * (workflow 3.7.4): the first appearance or a point of any window. Each part is
-	 * indexed (V26, V38).
+	 * (workflow 3.7.4): the first appearance, a point of any window or of a reveal
+	 * (workflow 3.7.1). Each part is indexed (V26, V38, V40).
 	 */
 	@Query(value = """
 			select v.id from content_version v
@@ -116,7 +128,9 @@ public interface CharacterVersionRepository extends VersionBodyRepository<Charac
 			    union select m.version_id from character_version_affiliation m
 			        join character_version_affiliation_period p on p.membership_id = m.id
 			    where p.discovered_chapter_id = :storyContentId or p.discovered_episode_id = :storyContentId
-			        or p.ended_chapter_id = :storyContentId or p.ended_episode_id = :storyContentId)""",
+			        or p.ended_chapter_id = :storyContentId or p.ended_episode_id = :storyContentId
+			    union select version_id from character_version_reveal
+			    where revealed_chapter_id = :storyContentId or revealed_episode_id = :storyContentId)""",
 			nativeQuery = true)
 	List<UUID> findOnlineVersionIdsWithPointIn(UUID storyContentId);
 
@@ -301,8 +315,8 @@ public interface CharacterVersionRepository extends VersionBodyRepository<Charac
 	boolean namesAsRelative(UUID holderContentId, UUID namedContentId, Collection<VersionStatus> statuses);
 
 	/**
-	 * The epithets, the roles and the paragraphs count too: a language they are written
-	 * in is in use.
+	 * The epithets, the roles, the paragraphs, the initial knowledge and the reveals
+	 * count too: a language they are written in is in use.
 	 */
 	@Override
 	@Query(value = """
@@ -312,6 +326,10 @@ public interface CharacterVersionRepository extends VersionBodyRepository<Charac
 			    or exists (select 1 from character_version_affiliation_period_translation
 			               where language_code = :languageCode)
 			    or exists (select 1 from character_version_paragraph_translation
+			               where language_code = :languageCode)
+			    or exists (select 1 from character_version_initial_knowledge_translation
+			               where language_code = :languageCode)
+			    or exists (select 1 from character_version_reveal_translation
 			               where language_code = :languageCode)""", nativeQuery = true)
 	boolean existsByLanguage(String languageCode);
 

@@ -1,6 +1,7 @@
 package dev.onepieceapi.contentservice.service.validation;
 
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
+import dev.onepieceapi.contentservice.domain.devilfruit.TypeChoice;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.entity.DevilFruitVersionEntity;
 import dev.onepieceapi.contentservice.persistence.mapper.DevilFruitTypeVersionMapper;
@@ -28,7 +29,9 @@ import java.util.UUID;
  * versions passed review, the same on every save and again at submission. A subcategory,
  * optional, must be one of that type's (implementation plan of the subcategories, S5);
  * none can be named without a type. A first appearance, optional, is a chapter and an
- * episode it may be linked to (implementation plan of the timeline, T7).
+ * episode it may be linked to (implementation plan of the timeline, T7). The types and
+ * subcategories of its initial knowledge and reveals (workflow 3.7.1) meet the same
+ * rules, each reported where it is.
  */
 @Component
 public class DevilFruitValidator extends ContentValidator<DevilFruit, DevilFruitVersionEntity> {
@@ -67,10 +70,21 @@ public class DevilFruitValidator extends ContentValidator<DevilFruit, DevilFruit
 			.ifPresent(violations::add);
 		RelationRules.notLinkable(DevilFruitRelations.FIRST_APPEARANCE_EPISODE, body, "", this.episodeRepository)
 			.ifPresent(violations::add);
+		body.revealedTypes().forEach(choice -> violations.addAll(revealedTypeViolations(choice)));
 		violations.addAll(this.paragraphRules.violationsOnSave(body));
 		if (!violations.isEmpty()) {
 			throw new ValueInvalidException(violations);
 		}
+	}
+
+	private List<FieldViolation> revealedTypeViolations(TypeChoice choice) {
+		List<FieldViolation> violations = new ArrayList<>();
+		RelationRules.notLinkable(DevilFruitRelations.REVEALED_TYPE, choice, choice.field(), this.typeRepository)
+			.ifPresent(violations::add);
+		if (choice.subcategoryId() != null && !subcategoryOfType(choice.typeContentId(), choice.subcategoryId())) {
+			violations.add(new FieldViolation(choice.field() + SUBCATEGORY_FIELD, NOT_OF_TYPE));
+		}
+		return violations;
 	}
 
 	/**

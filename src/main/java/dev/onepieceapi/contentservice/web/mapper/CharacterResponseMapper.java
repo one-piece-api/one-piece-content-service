@@ -3,6 +3,8 @@ package dev.onepieceapi.contentservice.web.mapper;
 import dev.onepieceapi.contentservice.domain.affiliation.AffiliationReference;
 import dev.onepieceapi.contentservice.domain.character.Alias;
 import dev.onepieceapi.contentservice.domain.character.Character;
+import dev.onepieceapi.contentservice.domain.character.CharacterField;
+import dev.onepieceapi.contentservice.domain.character.CharacterKnowledge;
 import dev.onepieceapi.contentservice.domain.character.CharacterLookups;
 import dev.onepieceapi.contentservice.domain.character.CharacterReference;
 import dev.onepieceapi.contentservice.domain.character.CharacterTranslation;
@@ -14,6 +16,7 @@ import dev.onepieceapi.contentservice.domain.character.Relative;
 import dev.onepieceapi.contentservice.domain.character.RelativeOf;
 import dev.onepieceapi.contentservice.domain.character.SpeciesEntry;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitReference;
+import dev.onepieceapi.contentservice.domain.readertime.Reveal;
 import dev.onepieceapi.contentservice.domain.readertime.StoryWindow;
 import dev.onepieceapi.contentservice.domain.species.SpeciesReference;
 import dev.onepieceapi.contentservice.domain.story.NumberedReference;
@@ -21,9 +24,11 @@ import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAccess;
 import dev.onepieceapi.contentservice.web.dto.response.AffiliationReferenceResponse;
 import dev.onepieceapi.contentservice.web.dto.response.AliasResponse;
+import dev.onepieceapi.contentservice.web.dto.response.CharacterKnowledgeResponse;
 import dev.onepieceapi.contentservice.web.dto.response.CharacterNamesResponse;
 import dev.onepieceapi.contentservice.web.dto.response.CharacterReferenceResponse;
 import dev.onepieceapi.contentservice.web.dto.response.CharacterResponse;
+import dev.onepieceapi.contentservice.web.dto.response.CharacterRevealResponse;
 import dev.onepieceapi.contentservice.web.dto.response.CharacterTranslationResponse;
 import dev.onepieceapi.contentservice.web.dto.response.ContentSummaryResponse;
 import dev.onepieceapi.contentservice.web.dto.response.DevilFruitReferenceResponse;
@@ -92,8 +97,32 @@ public class CharacterResponseMapper {
 			.image(images.toResponse(character.imageId()))
 			.firstAppearance(FirstAppearanceMapper.toResponse(character.firstAppearance(), storyItems))
 			.description(ParagraphResponseMapper.toResponse(character.description(), storyItems))
-			.description(ParagraphResponseMapper.toResponse(character.description(), storyItems))
+			.initialKnowledge(toInitialResponse(character.initialKnowledge()))
+			.reveals(character.reveals().stream().map(reveal -> toResponse(reveal, storyItems)).toList())
 			.build();
+	}
+
+	/** Null for nothing known apart from the current values. */
+	private static CharacterKnowledgeResponse toInitialResponse(CharacterKnowledge knowledge) {
+		if (knowledge.equals(CharacterKnowledge.NONE)) {
+			return null;
+		}
+		return new CharacterKnowledgeResponse(knowledge.romaji(), knowledge.japaneseName(), knowledge.status(),
+				toNameResponses(knowledge.names()));
+	}
+
+	private static CharacterRevealResponse toResponse(Reveal<CharacterField, CharacterKnowledge> reveal,
+			Map<UUID, NumberedReference> storyItems) {
+		CharacterKnowledge values = reveal.values();
+		return new CharacterRevealResponse(FirstAppearanceMapper.toResponse(reveal.revealedAt(), storyItems),
+				reveal.titles(), reveal.fields(), values.romaji(), values.japaneseName(), values.status(),
+				toNameResponses(values.names()));
+	}
+
+	private static Map<String, CharacterTranslationResponse> toNameResponses(Map<String, String> names) {
+		Map<String, CharacterTranslationResponse> byLanguage = new TreeMap<>();
+		names.forEach((language, name) -> byLanguage.put(language, new CharacterTranslationResponse(name)));
+		return byLanguage;
 	}
 
 	private static SpeciesEntryResponse toResponse(SpeciesEntry entry, CharacterLookups lookups,

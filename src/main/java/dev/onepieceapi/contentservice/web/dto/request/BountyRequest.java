@@ -28,6 +28,9 @@ import java.util.UUID;
  * @param firstAppearance where the poster is revealed; left out for none, which a draft
  * may be - it is required to go online
  * @param description its paragraphs, in order; left out for none
+ * @param initialKnowledge what the reader believes at the first appearance (workflow
+ * 3.7.1), for the fields some reveal names; left out for nothing
+ * @param reveals what the reader learns later, in order; left out for none
  * @param removeImage true to remove the draft's poster; not together with an uploaded
  * one. Left out, the poster is kept - or replaced, when one is uploaded with the request
  */
@@ -36,7 +39,8 @@ public record BountyRequest(@Size(max = Bounty.POSTER_NAME_MAX_LENGTH) String po
 		Boolean inactive, @Schema(description = "The content id of the bounty it replaces") UUID previous,
 		@Schema(description = "The content id of the character the poster is about") UUID holder, Boolean removeImage,
 		FirstAppearanceRequest firstAppearance,
-		@Size(max = Paragraph.MAX_PER_SECTION) List<@NotNull @Valid ParagraphRequest> description) {
+		@Size(max = Paragraph.MAX_PER_SECTION) List<@NotNull @Valid ParagraphRequest> description,
+		@Valid BountyKnowledgeRequest initialKnowledge, List<@NotNull @Valid BountyRevealRequest> reveals) {
 
 	/** Whether the bounty is marked inactive; not saying so is not. */
 	public boolean markedInactive() {

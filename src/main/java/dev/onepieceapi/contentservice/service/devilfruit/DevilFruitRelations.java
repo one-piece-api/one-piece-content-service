@@ -1,6 +1,7 @@
 package dev.onepieceapi.contentservice.service.devilfruit;
 
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
+import dev.onepieceapi.contentservice.domain.devilfruit.TypeChoice;
 import dev.onepieceapi.contentservice.domain.workflow.BlockReason;
 import dev.onepieceapi.contentservice.service.content.FirstAppearanceRules;
 import dev.onepieceapi.contentservice.service.content.RelationDescriptor;
@@ -20,6 +21,19 @@ public final class DevilFruitRelations {
 		.targetNotOnline(BlockReason.TYPE_NOT_ONLINE)
 		.onlineItemsLinked(BlockReason.ONLINE_FRUITS_LINKED)
 		.itemsName("fruits")
+		.build();
+
+	/**
+	 * A type held by the initial knowledge or a reveal of a fruit (workflow 3.7.1): the
+	 * same rules and reason codes as its current type, reported where it is.
+	 */
+	public static final RelationDescriptor<TypeChoice> REVEALED_TYPE = RelationDescriptor.<TypeChoice>builder()
+		.name(TYPE.name())
+		.target(TypeChoice::typeContentId)
+		.notLinkable(TYPE.notLinkable())
+		.targetNotOnline(TYPE.targetNotOnline())
+		.onlineItemsLinked(TYPE.onlineItemsLinked())
+		.itemsName(TYPE.itemsName())
 		.build();
 
 	/** The chapter a fruit first appears in (ADR-0008). */

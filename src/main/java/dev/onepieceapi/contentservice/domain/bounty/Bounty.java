@@ -4,6 +4,8 @@ import dev.onepieceapi.contentservice.domain.readertime.FirstAppearing;
 import dev.onepieceapi.contentservice.domain.readertime.Paragraph;
 import dev.onepieceapi.contentservice.domain.readertime.ParagraphSection;
 import dev.onepieceapi.contentservice.domain.readertime.Paragraphed;
+import dev.onepieceapi.contentservice.domain.readertime.Reveal;
+import dev.onepieceapi.contentservice.domain.readertime.Revealing;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.domain.workflow.ContentBody;
 import dev.onepieceapi.contentservice.domain.workflow.NaturalKey;
@@ -12,10 +14,12 @@ import lombok.Builder;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
 
 /**
@@ -36,11 +40,20 @@ import java.util.UUID;
  * @param firstAppearance where the poster is revealed; {@link StoryPoint#NONE} for none,
  * which a draft may keep
  * @param description its paragraphs, in order; none is never null
+ * @param initialKnowledge what the reader believes at the first appearance (3.7.1); NONE
+ * for nothing
+ * @param reveals what the reader learns later, in list order; none is never null
  */
 @Builder(toBuilder = true)
 public record Bounty(String posterName, Long amount, BountyCondition condition, boolean inactive,
 		UUID previousContentId, UUID holderContentId, String imageId, StoryPoint firstAppearance,
-		List<Paragraph> description) implements ContentBody<Bounty>, FirstAppearing, Paragraphed {
+		List<Paragraph> description, BountyKnowledge initialKnowledge,
+		List<Reveal<BountyField, BountyKnowledge>> reveals)
+		implements
+			ContentBody<Bounty>,
+			FirstAppearing,
+			Paragraphed,
+			Revealing<BountyField, BountyKnowledge> {
 
 	public static final int POSTER_NAME_MAX_LENGTH = 100;
 
@@ -64,6 +77,8 @@ public record Bounty(String posterName, Long amount, BountyCondition condition, 
 	public Bounty {
 		firstAppearance = StoryPoint.orNone(firstAppearance);
 		description = description == null ? List.of() : List.copyOf(description);
+		initialKnowledge = (initialKnowledge == null) ? BountyKnowledge.NONE : initialKnowledge;
+		reveals = (reveals == null) ? List.of() : List.copyOf(reveals);
 	}
 
 	/** The same bounty with another image, or none. */
@@ -75,13 +90,16 @@ public record Bounty(String posterName, Long amount, BountyCondition condition, 
 	public Bounty normalized() {
 		return toBuilder().posterName(Text.stripToNull(this.posterName))
 			.description(Paragraph.normalized(this.description))
+			.reveals(Revealing.normalized(this.reveals))
 			.build();
 	}
 
 	/** Its only texts are its paragraphs. */
 	@Override
 	public Set<String> languages() {
-		return paragraphLanguages();
+		Set<String> languages = new TreeSet<>(paragraphLanguages());
+		languages.addAll(revealLanguages());
+		return languages;
 	}
 
 	/** A bounty has no localized name: the natural key alone names it. */
@@ -131,6 +149,7 @@ public record Bounty(String posterName, Long amount, BountyCondition condition, 
 		}
 		missing.addAll(missingParagraphs(languages));
 		missing.addAll(missingDiscovered());
+		missing.addAll(missingReveals(languages));
 		return missing;
 	}
 
@@ -142,6 +161,11 @@ public record Bounty(String posterName, Long amount, BountyCondition condition, 
 	@Override
 	public Map<ParagraphSection, List<Paragraph>> paragraphs() {
 		return Map.of(ParagraphSection.DESCRIPTION, this.description);
+	}
+
+	@Override
+	public Set<BountyField> revealableFields() {
+		return EnumSet.allOf(BountyField.class);
 	}
 
 }

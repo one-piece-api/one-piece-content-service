@@ -5,6 +5,7 @@ import dev.onepieceapi.contentservice.domain.character.Gender;
 import dev.onepieceapi.contentservice.domain.workflow.NaturalKey;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.CollectionTable;
+import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -14,6 +15,9 @@ import jakarta.persistence.MapKeyColumn;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderColumn;
 import jakarta.persistence.Table;
+import jakarta.persistence.PrimaryKeyJoinColumn;
+import jakarta.persistence.SecondaryTable;
+
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.FieldNameConstants;
@@ -29,14 +33,19 @@ import java.util.UUID;
  * What one version of a Character says (docs/user-flows/content-editorial-workflow.md
  * 3.1.11): its romaji (its natural key), per language its name and description, its
  * closed values, its lists in order (implementation plan of the Character, D14), its
- * portrait and its first appearance.
+ * portrait and its first appearance, its initial knowledge (workflow 3.7.1: an optional
+ * secondary table, no row while every column is null) and its reveals.
  */
 @Entity
 @Table(name = "character_version")
+@SecondaryTable(name = "character_version_initial_knowledge",
+		pkJoinColumns = @PrimaryKeyJoinColumn(name = "version_id"))
 @Getter
 @NoArgsConstructor
 @FieldNameConstants
 public class CharacterVersionEntity extends VersionBodyEntity {
+
+	private static final String INITIAL_KNOWLEDGE = "character_version_initial_knowledge";
 
 	/**
 	 * The natural key of the entity (see {@link #naturalKey()}); null while not written.
@@ -118,6 +127,30 @@ public class CharacterVersionEntity extends VersionBodyEntity {
 	/** The content of the episode it first appears in (ADR-0008); null for none. */
 	private UUID firstAppearanceEpisodeId;
 
+	/** The values known at the first appearance; null when not part of it. */
+	@Column(table = INITIAL_KNOWLEDGE, name = "romaji")
+	private String initialRomaji;
+
+	@Column(table = INITIAL_KNOWLEDGE, name = "japanese_name")
+	private String initialJapaneseName;
+
+	@Column(table = INITIAL_KNOWLEDGE, name = "status")
+	@Enumerated(EnumType.STRING)
+	private CharacterStatus initialStatus;
+
+	/** The names known at the first appearance, per language code. */
+	@ElementCollection
+	@CollectionTable(name = "character_version_initial_knowledge_translation",
+			joinColumns = @JoinColumn(name = "version_id"))
+	@MapKeyColumn(name = "language_code")
+	private Map<String, CharacterTranslationEmbeddable> initialTranslations = new HashMap<>();
+
+	/** Its reveals (workflow 3.7.1), in list order. */
+	@OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+	@JoinColumn(name = "version_id", nullable = false)
+	@OrderColumn(name = "position")
+	private List<CharacterRevealEntity> reveals = new ArrayList<>();
+
 	public CharacterVersionEntity(ContentVersionEntity version) {
 		super(version);
 	}
@@ -150,6 +183,13 @@ public class CharacterVersionEntity extends VersionBodyEntity {
 		replace(this.relatives, fields.relatives());
 		PositionalRows.rewrite(this.paragraphs, fields.paragraphs(), CharacterParagraphEntity::new,
 				ParagraphEntity::rewrite);
+		this.initialRomaji = fields.initialRomaji();
+		this.initialJapaneseName = fields.initialJapaneseName();
+		this.initialStatus = fields.initialStatus();
+		this.initialTranslations.clear();
+		this.initialTranslations.putAll(fields.initialTranslations());
+		PositionalRows.rewrite(this.reveals, fields.reveals(), CharacterRevealEntity::new,
+				CharacterRevealEntity::rewrite);
 		touch(now);
 	}
 

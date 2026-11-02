@@ -14,6 +14,9 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
+import jakarta.persistence.PrimaryKeyJoinColumn;
+import jakarta.persistence.SecondaryTable;
+
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.FieldNameConstants;
@@ -27,16 +30,20 @@ import java.util.UUID;
  * What one version of a bounty says (implementation plan of the Bounty, D1-D5): the
  * poster's name and the amount, which together are its natural key, the condition, the
  * inactive flag, the content of the bounty it replaces, the content of its holder, its
- * image, its first appearance (ADR-0008) and its paragraphs. The entity types of the
- * links are constants the database fills in: they keep a bounty from pointing to anything
- * but a bounty, a character, a chapter and an episode.
+ * image, its first appearance (ADR-0008), its paragraphs, its initial knowledge (workflow
+ * 3.7.1: an optional secondary table, no row while its column is null) and its reveals.
+ * The entity types of the links are constants the database fills in: they keep a bounty
+ * from pointing to anything but a bounty, a character, a chapter and an episode.
  */
 @Entity
 @Table(name = "bounty_version")
+@SecondaryTable(name = "bounty_version_initial_knowledge", pkJoinColumns = @PrimaryKeyJoinColumn(name = "version_id"))
 @Getter
 @NoArgsConstructor
 @FieldNameConstants
 public class BountyVersionEntity extends VersionBodyEntity {
+
+	private static final String INITIAL_KNOWLEDGE = "bounty_version_initial_knowledge";
 
 	private String posterName;
 
@@ -82,6 +89,16 @@ public class BountyVersionEntity extends VersionBodyEntity {
 	@OrderColumn(name = "position")
 	private List<BountyParagraphEntity> paragraphs = new ArrayList<>();
 
+	/** Whether it is inactive at the first appearance; null when not part of it. */
+	@Column(table = INITIAL_KNOWLEDGE, name = "inactive")
+	private Boolean initialInactive;
+
+	/** Its reveals (workflow 3.7.1), in list order. */
+	@OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+	@JoinColumn(name = "version_id", nullable = false)
+	@OrderColumn(name = "position")
+	private List<BountyRevealEntity> reveals = new ArrayList<>();
+
 	public BountyVersionEntity(ContentVersionEntity version) {
 		super(version);
 	}
@@ -105,6 +122,8 @@ public class BountyVersionEntity extends VersionBodyEntity {
 		this.firstAppearanceEpisodeId = fields.firstAppearance().episodeId();
 		PositionalRows.rewrite(this.paragraphs, fields.paragraphs(), BountyParagraphEntity::new,
 				ParagraphEntity::rewrite);
+		this.initialInactive = fields.initialInactive();
+		PositionalRows.rewrite(this.reveals, fields.reveals(), BountyRevealEntity::new, BountyRevealEntity::rewrite);
 		touch(now);
 	}
 

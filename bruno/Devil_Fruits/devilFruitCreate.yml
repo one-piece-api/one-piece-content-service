@@ -55,8 +55,30 @@ http:
           "chapter": "",
           "episode": ""
         },
+        "initialKnowledge": {
+          "romaji": "",
+          "subcategory": "",
+          "translations": {},
+          "type": ""
+        },
         "multipleUsers": false,
         "removeImage": false,
+        "reveals": [
+          {
+            "fields": [
+              "NAME"
+            ],
+            "revealedAt": {
+              "chapter": "",
+              "episode": ""
+            },
+            "romaji": "",
+            "subcategory": "",
+            "titles": {},
+            "translations": {},
+            "type": ""
+          }
+        ],
         "romaji": "",
         "subcategory": "",
         "translations": {},
@@ -124,8 +146,30 @@ examples:
               "chapter": "",
               "episode": ""
             },
+            "initialKnowledge": {
+              "romaji": "",
+              "subcategory": "",
+              "translations": {},
+              "type": ""
+            },
             "multipleUsers": false,
             "removeImage": false,
+            "reveals": [
+              {
+                "fields": [
+                  "NAME"
+                ],
+                "revealedAt": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "romaji": "",
+                "subcategory": "",
+                "titles": {},
+                "translations": {},
+                "type": ""
+              }
+            ],
             "romaji": "",
             "subcategory": "",
             "translations": {},
@@ -222,8 +266,30 @@ examples:
               "chapter": "",
               "episode": ""
             },
+            "initialKnowledge": {
+              "romaji": "",
+              "subcategory": "",
+              "translations": {},
+              "type": ""
+            },
             "multipleUsers": false,
             "removeImage": false,
+            "reveals": [
+              {
+                "fields": [
+                  "NAME"
+                ],
+                "revealedAt": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "romaji": "",
+                "subcategory": "",
+                "titles": {},
+                "translations": {},
+                "type": ""
+              }
+            ],
             "romaji": "",
             "subcategory": "",
             "translations": {},
@@ -304,8 +370,30 @@ examples:
               "chapter": "",
               "episode": ""
             },
+            "initialKnowledge": {
+              "romaji": "",
+              "subcategory": "",
+              "translations": {},
+              "type": ""
+            },
             "multipleUsers": false,
             "removeImage": false,
+            "reveals": [
+              {
+                "fields": [
+                  "NAME"
+                ],
+                "revealedAt": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "romaji": "",
+                "subcategory": "",
+                "titles": {},
+                "translations": {},
+                "type": ""
+              }
+            ],
             "romaji": "",
             "subcategory": "",
             "translations": {},

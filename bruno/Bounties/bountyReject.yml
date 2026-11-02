@@ -138,6 +138,9 @@ examples:
                 "url": ""
               },
               "inactive": false,
+              "initialKnowledge": {
+                "inactive": false
+              },
               "next": {
                 "amount": 0,
                 "id": "",
@@ -151,6 +154,27 @@ examples:
                 "key": "",
                 "posterName": ""
               },
+              "reveals": [
+                {
+                  "fields": [
+                    "INACTIVE"
+                  ],
+                  "inactive": false,
+                  "revealedAt": {
+                    "chapter": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    },
+                    "episode": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    }
+                  },
+                  "titles": {}
+                }
+              ],
               "validity": "ACTIVE"
             },
             "claimant": {

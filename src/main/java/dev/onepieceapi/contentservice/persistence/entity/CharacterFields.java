@@ -26,6 +26,8 @@ public record CharacterFields(String romaji, String japaneseName,
 		Short birthdayMonth, Short birthdayDay, List<EpithetFields> epithets, List<CharacterAliasEmbeddable> aliases,
 		List<CharacterSpeciesEmbeddable> species, List<MembershipFields> affiliations,
 		List<CharacterFruitUseEmbeddable> devilFruits, List<CharacterRelativeEmbeddable> relatives, String imageId,
-		FirstAppearanceIds firstAppearance, List<ParagraphFields> paragraphs) {
+		FirstAppearanceIds firstAppearance, List<ParagraphFields> paragraphs, String initialRomaji,
+		String initialJapaneseName, CharacterStatus initialStatus,
+		Map<String, CharacterTranslationEmbeddable> initialTranslations, List<CharacterRevealEntity.Written> reveals) {
 
 }

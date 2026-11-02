@@ -13,6 +13,6 @@ import java.util.UUID;
 @Builder
 public record BountyFields(String posterName, Long amount, BountyCondition condition, boolean inactive,
 		UUID previousContentId, UUID holderContentId, String imageId, FirstAppearanceIds firstAppearance,
-		List<ParagraphFields> paragraphs) {
+		List<ParagraphFields> paragraphs, Boolean initialInactive, List<BountyRevealEntity.Written> reveals) {
 
 }

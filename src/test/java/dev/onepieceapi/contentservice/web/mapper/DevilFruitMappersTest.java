@@ -15,6 +15,13 @@ import dev.onepieceapi.contentservice.web.dto.request.DevilFruitListRequest;
 import dev.onepieceapi.contentservice.web.dto.request.DevilFruitRequest;
 import dev.onepieceapi.contentservice.web.dto.request.DevilFruitTranslationRequest;
 import dev.onepieceapi.contentservice.web.dto.response.SubcategoryReferenceResponse;
+import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitField;
+import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitKnowledge;
+import dev.onepieceapi.contentservice.domain.readertime.Reveal;
+import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
+import dev.onepieceapi.contentservice.web.dto.request.DevilFruitKnowledgeRequest;
+import dev.onepieceapi.contentservice.web.dto.request.DevilFruitRevealRequest;
+import dev.onepieceapi.contentservice.web.dto.request.FirstAppearanceRequest;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -22,6 +29,7 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -41,7 +49,7 @@ class DevilFruitMappersTest {
 	@Test
 	void aRequestBecomesWhatItSaysAsTypedWithItsType() {
 		var request = new DevilFruitRequest(" Gomu Gomu ", TYPE_ID, null, null,
-				Map.of("it", new DevilFruitTranslationRequest(" Gomu ")), null, null, null, null, null);
+				Map.of("it", new DevilFruitTranslationRequest(" Gomu ")), null, null, null, null, null, null, null);
 
 		var fruit = DevilFruitRequestMapper.toDomain(request);
 
@@ -55,10 +63,10 @@ class DevilFruitMappersTest {
 		Map<String, DevilFruitTranslationRequest> translations = new HashMap<>();
 		translations.put("it", null);
 
-		var fruit = DevilFruitRequestMapper
-			.toDomain(new DevilFruitRequest(null, null, null, null, translations, null, null, null, null, null));
+		var fruit = DevilFruitRequestMapper.toDomain(
+				new DevilFruitRequest(null, null, null, null, translations, null, null, null, null, null, null, null));
 		var bare = DevilFruitRequestMapper
-			.toDomain(new DevilFruitRequest(null, null, null, null, null, null, null, null, null, null));
+			.toDomain(new DevilFruitRequest(null, null, null, null, null, null, null, null, null, null, null, null));
 
 		assertThat(fruit.typeContentId()).isNull();
 		assertThat(fruit.translations()).containsExactly(entry("it", new DevilFruitTranslation(null)));
@@ -133,10 +141,30 @@ class DevilFruitMappersTest {
 	void aRequestSaysItsSubcategory() {
 		UUID mythical = UUID.randomUUID();
 
-		var fruit = DevilFruitRequestMapper
-			.toDomain(new DevilFruitRequest("Uo Uo", TYPE_ID, mythical, null, null, null, null, null, null, null));
+		var fruit = DevilFruitRequestMapper.toDomain(new DevilFruitRequest("Uo Uo", TYPE_ID, mythical, null, null, null,
+				null, null, null, null, null, null));
 
 		assertThat(fruit.subcategoryId()).isEqualTo(mythical);
+	}
+
+	@Test
+	void aRequestSaysItsInitialKnowledgeAndItsRevealsWithTheNamesOfEachLanguageWritten() {
+		UUID paramecia = UUID.randomUUID();
+		UUID chapter = UUID.randomUUID();
+		Map<String, DevilFruitTranslationRequest> names = new HashMap<>();
+		names.put("it", new DevilFruitTranslationRequest("Frutto Gom Gom"));
+		names.put("en", null);
+		var initial = new DevilFruitKnowledgeRequest("Gomu Gomu no Mi", paramecia, null, names);
+		var reveal = new DevilFruitRevealRequest(new FirstAppearanceRequest(chapter, null), Map.of("en", "Nika"),
+				Set.of(DevilFruitField.NAME, DevilFruitField.ROMAJI), null, null, null, null);
+
+		var fruit = DevilFruitRequestMapper.toDomain(new DevilFruitRequest("Hito Hito no Mi", TYPE_ID, null, null, null,
+				null, null, null, null, null, initial, List.of(reveal)));
+
+		assertThat(fruit.initialKnowledge())
+			.isEqualTo(new DevilFruitKnowledge("Gomu Gomu no Mi", paramecia, null, Map.of("it", "Frutto Gom Gom")));
+		assertThat(fruit.reveals()).containsExactly(new Reveal<>(StoryPoint.ofChapter(chapter),
+				Set.of(DevilFruitField.NAME, DevilFruitField.ROMAJI), DevilFruitKnowledge.NONE, Map.of("en", "Nika")));
 	}
 
 	private static DevilFruit fruit(UUID type) {

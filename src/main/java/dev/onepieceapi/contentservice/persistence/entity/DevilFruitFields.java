@@ -13,6 +13,8 @@ import java.util.UUID;
 @Builder
 public record DevilFruitFields(String romaji, UUID typeContentId, UUID subcategoryId,
 		Map<String, TranslationEmbeddable> translations, String imageId, FirstAppearanceIds firstAppearance,
-		boolean multipleUsers, List<ParagraphFields> paragraphs) {
+		boolean multipleUsers, List<ParagraphFields> paragraphs, String initialRomaji, UUID initialTypeContentId,
+		UUID initialSubcategoryId, Map<String, TranslationEmbeddable> initialTranslations,
+		List<DevilFruitRevealEntity.Written> reveals) {
 
 }

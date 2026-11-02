@@ -40,9 +40,25 @@ http:
         },
         "holder": "",
         "inactive": false,
+        "initialKnowledge": {
+          "inactive": false
+        },
         "posterName": "",
         "previous": "",
-        "removeImage": false
+        "removeImage": false,
+        "reveals": [
+          {
+            "fields": [
+              "INACTIVE"
+            ],
+            "inactive": false,
+            "revealedAt": {
+              "chapter": "",
+              "episode": ""
+            },
+            "titles": {}
+          }
+        ]
       }
   auth: inherit
 
@@ -91,9 +107,25 @@ examples:
             },
             "holder": "",
             "inactive": false,
+            "initialKnowledge": {
+              "inactive": false
+            },
             "posterName": "",
             "previous": "",
-            "removeImage": false
+            "removeImage": false,
+            "reveals": [
+              {
+                "fields": [
+                  "INACTIVE"
+                ],
+                "inactive": false,
+                "revealedAt": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "titles": {}
+              }
+            ]
           }
     response:
       status: 200
@@ -184,6 +216,9 @@ examples:
                 "url": ""
               },
               "inactive": false,
+              "initialKnowledge": {
+                "inactive": false
+              },
               "next": {
                 "amount": 0,
                 "id": "",
@@ -197,6 +232,27 @@ examples:
                 "key": "",
                 "posterName": ""
               },
+              "reveals": [
+                {
+                  "fields": [
+                    "INACTIVE"
+                  ],
+                  "inactive": false,
+                  "revealedAt": {
+                    "chapter": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    },
+                    "episode": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    }
+                  },
+                  "titles": {}
+                }
+              ],
               "validity": "ACTIVE"
             },
             "claimant": {
@@ -251,9 +307,25 @@ examples:
             },
             "holder": "",
             "inactive": false,
+            "initialKnowledge": {
+              "inactive": false
+            },
             "posterName": "",
             "previous": "",
-            "removeImage": false
+            "removeImage": false,
+            "reveals": [
+              {
+                "fields": [
+                  "INACTIVE"
+                ],
+                "inactive": false,
+                "revealedAt": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "titles": {}
+              }
+            ]
           }
     response:
       headers:
@@ -315,9 +387,25 @@ examples:
             },
             "holder": "",
             "inactive": false,
+            "initialKnowledge": {
+              "inactive": false
+            },
             "posterName": "",
             "previous": "",
-            "removeImage": false
+            "removeImage": false,
+            "reveals": [
+              {
+                "fields": [
+                  "INACTIVE"
+                ],
+                "inactive": false,
+                "revealedAt": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "titles": {}
+              }
+            ]
           }
     response:
       headers:

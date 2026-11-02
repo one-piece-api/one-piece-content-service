@@ -1,6 +1,7 @@
 package dev.onepieceapi.contentservice.service.devilfruit;
 
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
+import dev.onepieceapi.contentservice.domain.devilfruit.TypeChoice;
 import dev.onepieceapi.contentservice.config.RulesProperties;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitType;
 import dev.onepieceapi.contentservice.domain.workflow.ActionBlock;
@@ -43,7 +44,9 @@ import java.util.stream.IntStream;
  * Going online also needs a first appearance, in a chapter or an episode online - the
  * same relation rules for {@link DevilFruitRelations#FIRST_APPEARANCE_CHAPTER} and
  * {@link DevilFruitRelations#FIRST_APPEARANCE_EPISODE} (implementation plan of the
- * timeline, T7): first what the fruit itself lacks, then what it points to.
+ * timeline, T7): first what the fruit itself lacks, then what it points to. The types and
+ * subcategories of its initial knowledge and reveals (workflow 3.7.1) follow the same
+ * rules as its current one, the detail of a block naming where they are.
  * <p>
  * Going online holds the type's content shared first ({@link RelationRules}), and putting
  * one of the type's versions online holds it exclusively ({@code DevilFruitTypeRules}):
@@ -81,6 +84,8 @@ public class DevilFruitRules implements ContentRules<DevilFruit> {
 			this.contentRepository.lockExclusive(contentId);
 		}
 		RelationRules.lockTargetBefore(action, DevilFruitRelations.TYPE, version.body(), this.contentRepository);
+		RelationRules.lockTargetBefore(action, DevilFruitRelations.REVEALED_TYPE, version.body().revealedTypes(),
+				this.contentRepository);
 		RelationRules.lockTargetBefore(action, DevilFruitRelations.FIRST_APPEARANCE_CHAPTER, version.body(),
 				this.contentRepository);
 		RelationRules.lockTargetBefore(action, DevilFruitRelations.FIRST_APPEARANCE_EPISODE, version.body(),
@@ -93,7 +98,9 @@ public class DevilFruitRules implements ContentRules<DevilFruit> {
 		DevilFruit fruit = version.body();
 		return FirstAppearanceRules.missing(action, fruit)
 			.or(() -> RelationRules.targetNotOnline(action, DevilFruitRelations.TYPE, fruit, this.typeRepository))
-			.or(() -> subcategoryNotOnline(action, fruit))
+			.or(() -> subcategoryNotOnline(action,
+					new TypeChoice("", Map.of(), fruit.typeContentId(), fruit.subcategoryId())))
+			.or(() -> revealedTypeNotOnline(action, fruit))
 			.or(() -> RelationRules.targetNotOnline(action, DevilFruitRelations.FIRST_APPEARANCE_CHAPTER, fruit,
 					this.chapterRepository))
 			.or(() -> RelationRules.targetNotOnline(action, DevilFruitRelations.FIRST_APPEARANCE_EPISODE, fruit,
@@ -140,25 +147,38 @@ public class DevilFruitRules implements ContentRules<DevilFruit> {
 				this.characterRepository::findOnlineWithDevilFruit);
 	}
 
+	/**
+	 * The first type, or subcategory, of the initial knowledge or a reveal not online.
+	 */
+	private Optional<ActionBlock> revealedTypeNotOnline(VersionAction action, DevilFruit fruit) {
+		return fruit.revealedTypes()
+			.stream()
+			.map(choice -> RelationRules
+				.targetNotOnline(action, DevilFruitRelations.REVEALED_TYPE, choice, choice.part(), this.typeRepository)
+				.or(() -> subcategoryNotOnline(action, choice)))
+			.flatMap(Optional::stream)
+			.findFirst();
+	}
+
 	/** Checked once the type is known to be online. */
-	private Optional<ActionBlock> subcategoryNotOnline(VersionAction action, DevilFruit fruit) {
-		UUID typeContentId = fruit.typeContentId();
-		UUID subcategoryId = fruit.subcategoryId();
+	private Optional<ActionBlock> subcategoryNotOnline(VersionAction action, TypeChoice choice) {
+		UUID typeContentId = choice.typeContentId();
+		UUID subcategoryId = choice.subcategoryId();
 		if (!RelationRules.GOING_ONLINE.contains(action) || typeContentId == null || subcategoryId == null
 				|| typeAsOf(typeContentId, Set.of(VersionStatus.PUBLISHED))
 					.flatMap(type -> type.subcategory(subcategoryId))
 					.isPresent()) {
 			return Optional.empty();
 		}
-		return Optional.of(subcategoryNotOnline(typeContentId, subcategoryId));
+		return Optional.of(subcategoryNotOnline(choice.part(), typeContentId, subcategoryId));
 	}
 
 	/**
 	 * Named as the most recent approved version of the type that has it says, when one
-	 * does - the version online may well have left it out.
+	 * does - the version online may well have left it out - after where it is.
 	 */
-	private ActionBlock subcategoryNotOnline(UUID typeContentId, UUID subcategoryId) {
-		Map<String, Object> detail = new LinkedHashMap<>();
+	private ActionBlock subcategoryNotOnline(Map<String, Object> part, UUID typeContentId, UUID subcategoryId) {
+		Map<String, Object> detail = new LinkedHashMap<>(part);
 		detail.put("typeId", typeContentId);
 		detail.put("subcategoryId", subcategoryId);
 		this.typeRepository.findLastApprovedSubcategory(typeContentId, subcategoryId)

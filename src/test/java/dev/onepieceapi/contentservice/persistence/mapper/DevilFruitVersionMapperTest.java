@@ -10,10 +10,14 @@ import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.domain.security.User;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.entity.DevilFruitVersionEntity;
+import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitField;
+import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitKnowledge;
+import dev.onepieceapi.contentservice.domain.readertime.Reveal;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -96,6 +100,34 @@ class DevilFruitVersionMapperTest {
 				UPDATED);
 
 		assertThat(DevilFruitVersionMapper.toDomain(entity).body().firstAppearance()).isEqualTo(StoryPoint.NONE);
+	}
+
+	@Test
+	void theInitialKnowledgeAndTheRevealsAreWrittenAndReadBackInTheirOrder() {
+		var entity = draft();
+		var subcategory = UUID.randomUUID();
+		var body = DevilFruit.builder()
+			.romaji("Hito Hito no Mi, Model: Nika")
+			.typeContentId(TYPE_ID)
+			.subcategoryId(subcategory)
+			.initialKnowledge(new DevilFruitKnowledge("Gomu Gomu no Mi", UUID.randomUUID(), null,
+					Map.of("it", "Frutto Gom Gom", "en", "Gum-Gum Fruit")))
+			.reveals(List.of(
+					new Reveal<>(StoryPoint.ofChapter(UUID.randomUUID()), Set.of(DevilFruitField.TYPE),
+							new DevilFruitKnowledge(null, TYPE_ID, null, Map.of()), Map.of("en", "A Zoan")),
+					new Reveal<>(StoryPoint.ofEpisode(UUID.randomUUID()),
+							Set.of(DevilFruitField.NAME, DevilFruitField.ROMAJI), DevilFruitKnowledge.NONE,
+							Map.of("it", "Nika", "en", "Nika"))))
+			.build();
+
+		DevilFruitVersionMapper.rewrite(entity, body, UPDATED);
+
+		assertThat(DevilFruitVersionMapper.toDomain(entity).body()).isEqualTo(body);
+		DevilFruitVersionMapper.rewrite(entity,
+				body.toBuilder().reveals(List.of()).initialKnowledge(DevilFruitKnowledge.NONE).build(), UPDATED);
+		assertThat(DevilFruitVersionMapper.toDomain(entity).body().reveals()).isEmpty();
+		assertThat(DevilFruitVersionMapper.toDomain(entity).body().initialKnowledge())
+			.isEqualTo(DevilFruitKnowledge.NONE);
 	}
 
 	private static DevilFruitVersionEntity draft() {

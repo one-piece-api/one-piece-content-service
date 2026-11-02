@@ -30,6 +30,9 @@ import java.util.UUID;
  * @param description its paragraphs, in order; left out for none
  * @param advantages as {@code description}
  * @param disadvantages as {@code description}
+ * @param initialKnowledge what the reader believes at the first appearance (workflow
+ * 3.7.1), for the fields some reveal names; left out for nothing
+ * @param reveals what the reader learns later, in order; left out for none
  * @param removeImage true to remove the draft's image; not together with an uploaded one.
  * Left out, the image is kept - or replaced, when one is uploaded with the request
  */
@@ -40,7 +43,8 @@ public record DevilFruitRequest(@Size(max = DevilFruit.ROMAJI_MAX_LENGTH) String
 		FirstAppearanceRequest firstAppearance,
 		@Size(max = Paragraph.MAX_PER_SECTION) List<@NotNull @Valid ParagraphRequest> description,
 		@Size(max = Paragraph.MAX_PER_SECTION) List<@NotNull @Valid ParagraphRequest> advantages,
-		@Size(max = Paragraph.MAX_PER_SECTION) List<@NotNull @Valid ParagraphRequest> disadvantages) {
+		@Size(max = Paragraph.MAX_PER_SECTION) List<@NotNull @Valid ParagraphRequest> disadvantages,
+		@Valid DevilFruitKnowledgeRequest initialKnowledge, List<@NotNull @Valid DevilFruitRevealRequest> reveals) {
 
 	/** Whether several characters may use it; not saying so is not. */
 	public boolean allowsMultipleUsers() {

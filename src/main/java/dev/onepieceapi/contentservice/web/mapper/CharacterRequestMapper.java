@@ -2,6 +2,8 @@ package dev.onepieceapi.contentservice.web.mapper;
 
 import dev.onepieceapi.contentservice.domain.character.Alias;
 import dev.onepieceapi.contentservice.domain.character.Character;
+import dev.onepieceapi.contentservice.domain.character.CharacterField;
+import dev.onepieceapi.contentservice.domain.character.CharacterKnowledge;
 import dev.onepieceapi.contentservice.domain.character.CharacterTranslation;
 import dev.onepieceapi.contentservice.domain.character.Epithet;
 import dev.onepieceapi.contentservice.domain.character.FruitUse;
@@ -10,10 +12,13 @@ import dev.onepieceapi.contentservice.domain.character.MembershipPeriod;
 import dev.onepieceapi.contentservice.domain.character.Relative;
 import dev.onepieceapi.contentservice.domain.character.SpeciesEntry;
 import dev.onepieceapi.contentservice.domain.image.ImageChange;
+import dev.onepieceapi.contentservice.domain.readertime.Reveal;
 import dev.onepieceapi.contentservice.domain.workflow.ContentFilter;
 import dev.onepieceapi.contentservice.web.dto.request.AliasRequest;
+import dev.onepieceapi.contentservice.web.dto.request.CharacterKnowledgeRequest;
 import dev.onepieceapi.contentservice.web.dto.request.CharacterListRequest;
 import dev.onepieceapi.contentservice.web.dto.request.CharacterRequest;
+import dev.onepieceapi.contentservice.web.dto.request.CharacterRevealRequest;
 import dev.onepieceapi.contentservice.web.dto.request.CharacterTranslationRequest;
 import dev.onepieceapi.contentservice.web.dto.request.EpithetRequest;
 import dev.onepieceapi.contentservice.web.dto.request.FruitUseRequest;
@@ -56,7 +61,22 @@ public class CharacterRequestMapper {
 			.relatives(entries(request.relatives(), CharacterRequestMapper::toDomain))
 			.firstAppearance(FirstAppearanceMapper.toDomain(request.firstAppearance()))
 			.description(ParagraphRequestMapper.toDomain(request.description()))
+			.initialKnowledge(Optional.ofNullable(request.initialKnowledge())
+				.map(CharacterRequestMapper::toDomain)
+				.orElse(CharacterKnowledge.NONE))
+			.reveals(RevealRequestMapper.each(request.reveals(), CharacterRequestMapper::toDomain))
 			.build();
+	}
+
+	private static CharacterKnowledge toDomain(CharacterKnowledgeRequest knowledge) {
+		return new CharacterKnowledge(knowledge.romaji(), knowledge.japaneseName(), knowledge.status(),
+				RevealRequestMapper.names(knowledge.translations(), CharacterTranslationRequest::name));
+	}
+
+	private static Reveal<CharacterField, CharacterKnowledge> toDomain(CharacterRevealRequest reveal) {
+		var values = new CharacterKnowledge(reveal.romaji(), reveal.japaneseName(), reveal.status(),
+				RevealRequestMapper.names(reveal.translations(), CharacterTranslationRequest::name));
+		return RevealRequestMapper.toDomain(reveal, values);
 	}
 
 	/**

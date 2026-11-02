@@ -2,6 +2,7 @@ package dev.onepieceapi.contentservice.service.devilfruittype;
 
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
 import dev.onepieceapi.contentservice.domain.devilfruit.SubcategoryReference;
+import dev.onepieceapi.contentservice.domain.devilfruit.TypeChoice;
 import dev.onepieceapi.contentservice.domain.devilfruit.TypeReference;
 import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitType;
 import dev.onepieceapi.contentservice.domain.security.Permission;
@@ -32,6 +33,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * What the Devil Fruit Types and the Devil Fruits say of each other (implementation plan
@@ -71,17 +73,19 @@ public class DevilFruitTypeLinks {
 	/**
 	 * The types the given fruits point to, as {@link #referencesOf}; a subcategory a
 	 * fruit names that its type has since left out is named too, as the most recent
-	 * approved version having it said - so a fruit is never shown with a bare id.
+	 * approved version having it said - so a fruit is never shown with a bare id. The
+	 * types of their initial knowledge and reveals (workflow 3.7.1) are among them.
 	 */
 	public Map<UUID, TypeReference> referencesFor(Collection<DevilFruit> fruits) {
-		Set<UUID> typeIds = fruits.stream()
-			.map(DevilFruit::typeContentId)
+		List<TypeChoice> choices = fruits.stream().flatMap(DevilFruitTypeLinks::typeChoicesOf).toList();
+		Set<UUID> typeIds = choices.stream()
+			.map(TypeChoice::typeContentId)
 			.filter(Objects::nonNull)
 			.collect(Collectors.toSet());
 		Map<UUID, TypeReference> types = new HashMap<>(referencesOf(typeIds));
-		for (DevilFruit fruit : fruits) {
-			TypeReference type = types.get(fruit.typeContentId());
-			UUID subcategoryId = fruit.subcategoryId();
+		for (TypeChoice choice : choices) {
+			TypeReference type = types.get(choice.typeContentId());
+			UUID subcategoryId = choice.subcategoryId();
 			if (type != null && subcategoryId != null && type.subcategory(subcategoryId).isEmpty()) {
 				this.typeRepository.findLastApprovedSubcategory(type.id(), subcategoryId)
 					.ifPresent(dropped -> types.put(type.id(),
@@ -89,6 +93,12 @@ public class DevilFruitTypeLinks {
 			}
 		}
 		return types;
+	}
+
+	/** Its current type, then those of its initial knowledge and reveals. */
+	private static Stream<TypeChoice> typeChoicesOf(DevilFruit fruit) {
+		var current = new TypeChoice("", Map.of(), fruit.typeContentId(), fruit.subcategoryId());
+		return Stream.concat(Stream.of(current), fruit.revealedTypes().stream());
 	}
 
 	/**

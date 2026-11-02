@@ -2,6 +2,7 @@ package dev.onepieceapi.contentservice.domain.readertime;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 /**
@@ -28,9 +29,23 @@ public interface WindowedItem {
 		return List.of();
 	}
 
-	/** Every point of the item: its first appearance, then those of its windows. */
+	/**
+	 * The point of each reveal of the item, in list order: none unless it is
+	 * {@link Revealing}.
+	 */
+	default List<NamedReveal> namedReveals() {
+		return List.of();
+	}
+
+	/**
+	 * Every point of the item: its first appearance, then those of its windows and of its
+	 * reveals.
+	 */
 	default List<StoryPoint> points() {
-		return Stream.concat(origin().stream(), windows().stream().flatMap(named -> named.window().points()))
+		Stream<StoryPoint> windowPoints = windows().stream().flatMap(named -> named.window().points());
+		Stream<StoryPoint> revealPoints = namedReveals().stream().map(NamedReveal::point);
+		return Stream.of(origin().stream(), windowPoints, revealPoints)
+			.flatMap(Function.identity())
 			.filter(point -> !point.isMissing())
 			.toList();
 	}

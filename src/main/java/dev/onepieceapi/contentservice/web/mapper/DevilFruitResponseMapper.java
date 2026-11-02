@@ -1,15 +1,20 @@
 package dev.onepieceapi.contentservice.web.mapper;
 
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
+import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitField;
+import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitKnowledge;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitTranslation;
 import dev.onepieceapi.contentservice.domain.devilfruit.SubcategoryReference;
 import dev.onepieceapi.contentservice.domain.devilfruit.TypeReference;
+import dev.onepieceapi.contentservice.domain.readertime.Reveal;
 import dev.onepieceapi.contentservice.domain.story.NumberedReference;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAccess;
 import dev.onepieceapi.contentservice.web.dto.response.ContentSummaryResponse;
+import dev.onepieceapi.contentservice.web.dto.response.DevilFruitKnowledgeResponse;
 import dev.onepieceapi.contentservice.web.dto.response.DevilFruitNamesResponse;
 import dev.onepieceapi.contentservice.web.dto.response.DevilFruitResponse;
+import dev.onepieceapi.contentservice.web.dto.response.DevilFruitRevealResponse;
 import dev.onepieceapi.contentservice.web.dto.response.DevilFruitTranslationResponse;
 import dev.onepieceapi.contentservice.web.dto.response.SubcategoryReferenceResponse;
 import dev.onepieceapi.contentservice.web.dto.response.TypeReferenceResponse;
@@ -48,13 +53,46 @@ public class DevilFruitResponseMapper {
 			Map<UUID, NumberedReference> storyItems, ImageResponseMapper images) {
 		Map<String, DevilFruitTranslationResponse> translations = new TreeMap<>();
 		fruit.translations().forEach((language, translation) -> translations.put(language, toResponse(translation)));
-		return new DevilFruitResponse(fruit.romaji(), toTypeResponse(fruit.typeContentId(), types),
-				toSubcategoryResponse(fruit, types), fruit.multipleUsers(), translations,
-				images.toResponse(fruit.imageId()),
-				FirstAppearanceMapper.toResponse(fruit.firstAppearance(), storyItems),
-				ParagraphResponseMapper.toResponse(fruit.description(), storyItems),
-				ParagraphResponseMapper.toResponse(fruit.advantages(), storyItems),
-				ParagraphResponseMapper.toResponse(fruit.disadvantages(), storyItems));
+		return DevilFruitResponse.builder()
+			.romaji(fruit.romaji())
+			.type(toTypeResponse(fruit.typeContentId(), types))
+			.subcategory(toSubcategoryResponse(fruit, types))
+			.multipleUsers(fruit.multipleUsers())
+			.translations(translations)
+			.image(images.toResponse(fruit.imageId()))
+			.firstAppearance(FirstAppearanceMapper.toResponse(fruit.firstAppearance(), storyItems))
+			.description(ParagraphResponseMapper.toResponse(fruit.description(), storyItems))
+			.advantages(ParagraphResponseMapper.toResponse(fruit.advantages(), storyItems))
+			.disadvantages(ParagraphResponseMapper.toResponse(fruit.disadvantages(), storyItems))
+			.initialKnowledge(toInitialResponse(fruit.initialKnowledge(), types))
+			.reveals(fruit.reveals().stream().map(reveal -> toResponse(reveal, types, storyItems)).toList())
+			.build();
+	}
+
+	/** Null for nothing known apart from the current values. */
+	private static DevilFruitKnowledgeResponse toInitialResponse(DevilFruitKnowledge knowledge,
+			Map<UUID, TypeReference> types) {
+		if (knowledge.equals(DevilFruitKnowledge.NONE)) {
+			return null;
+		}
+		return new DevilFruitKnowledgeResponse(knowledge.romaji(), toTypeResponse(knowledge.typeContentId(), types),
+				toSubcategoryResponse(knowledge.typeContentId(), knowledge.subcategoryId(), types),
+				toNameResponses(knowledge.names()));
+	}
+
+	private static DevilFruitRevealResponse toResponse(Reveal<DevilFruitField, DevilFruitKnowledge> reveal,
+			Map<UUID, TypeReference> types, Map<UUID, NumberedReference> storyItems) {
+		DevilFruitKnowledge values = reveal.values();
+		return new DevilFruitRevealResponse(FirstAppearanceMapper.toResponse(reveal.revealedAt(), storyItems),
+				reveal.titles(), reveal.fields(), values.romaji(), toTypeResponse(values.typeContentId(), types),
+				toSubcategoryResponse(values.typeContentId(), values.subcategoryId(), types),
+				toNameResponses(values.names()));
+	}
+
+	private static Map<String, DevilFruitTranslationResponse> toNameResponses(Map<String, String> names) {
+		Map<String, DevilFruitTranslationResponse> byLanguage = new TreeMap<>();
+		names.forEach((language, name) -> byLanguage.put(language, new DevilFruitTranslationResponse(name)));
+		return byLanguage;
 	}
 
 	/**
@@ -71,11 +109,16 @@ public class DevilFruitResponseMapper {
 	 * when the type no longer has it, which a read must not fail for; null for none.
 	 */
 	public SubcategoryReferenceResponse toSubcategoryResponse(DevilFruit fruit, Map<UUID, TypeReference> types) {
-		UUID subcategoryId = fruit.subcategoryId();
+		return toSubcategoryResponse(fruit.typeContentId(), fruit.subcategoryId(), types);
+	}
+
+	/** The same, for a type and a subcategory held apart from the current ones. */
+	public SubcategoryReferenceResponse toSubcategoryResponse(UUID typeContentId, UUID subcategoryId,
+			Map<UUID, TypeReference> types) {
 		if (subcategoryId == null) {
 			return null;
 		}
-		return Optional.ofNullable(types.get(fruit.typeContentId()))
+		return Optional.ofNullable(types.get(typeContentId))
 			.flatMap(type -> type.subcategory(subcategoryId))
 			.map(DevilFruitResponseMapper::toResponse)
 			.orElseGet(() -> new SubcategoryReferenceResponse(subcategoryId, Map.of()));

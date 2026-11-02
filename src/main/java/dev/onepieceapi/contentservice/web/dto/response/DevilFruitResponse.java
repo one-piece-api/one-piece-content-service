@@ -1,5 +1,7 @@
 package dev.onepieceapi.contentservice.web.dto.response;
 
+import lombok.Builder;
+
 import java.util.List;
 import java.util.Map;
 
@@ -15,10 +17,15 @@ import java.util.Map;
  * @param description its paragraphs, in order; empty for none
  * @param advantages as {@code description}
  * @param disadvantages as {@code description}
+ * @param initialKnowledge what the reader believes at the first appearance (workflow
+ * 3.7.1); null for nothing
+ * @param reveals what the reader learns later, in order; empty for none
  */
+@Builder
 public record DevilFruitResponse(String romaji, TypeReferenceResponse type, SubcategoryReferenceResponse subcategory,
 		boolean multipleUsers, Map<String, DevilFruitTranslationResponse> translations, ImageResponse image,
 		FirstAppearanceResponse firstAppearance, List<ParagraphResponse> description,
-		List<ParagraphResponse> advantages, List<ParagraphResponse> disadvantages) {
+		List<ParagraphResponse> advantages, List<ParagraphResponse> disadvantages,
+		DevilFruitKnowledgeResponse initialKnowledge, List<DevilFruitRevealResponse> reveals) {
 
 }

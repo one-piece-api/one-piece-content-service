@@ -4,6 +4,8 @@ import dev.onepieceapi.contentservice.domain.readertime.FirstAppearing;
 import dev.onepieceapi.contentservice.domain.readertime.Paragraph;
 import dev.onepieceapi.contentservice.domain.readertime.ParagraphSection;
 import dev.onepieceapi.contentservice.domain.readertime.Paragraphed;
+import dev.onepieceapi.contentservice.domain.readertime.Reveal;
+import dev.onepieceapi.contentservice.domain.readertime.Revealing;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.domain.workflow.ContentBody;
 import dev.onepieceapi.contentservice.domain.workflow.NaturalKey;
@@ -13,6 +15,7 @@ import lombok.Builder;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -46,18 +49,29 @@ import java.util.UUID;
  * @param description its paragraphs, in order; none is never null
  * @param advantages as {@code description}
  * @param disadvantages as {@code description}
+ * @param initialKnowledge what the reader believes at the first appearance (workflow
+ * 3.7.1); {@link DevilFruitKnowledge#NONE} for nothing
+ * @param reveals what the reader learns later, in list order; none is never null
  */
 @Builder(toBuilder = true)
 public record DevilFruit(String romaji, UUID typeContentId, UUID subcategoryId,
 		Map<String, DevilFruitTranslation> translations, String imageId, StoryPoint firstAppearance,
-		boolean multipleUsers, List<Paragraph> description, List<Paragraph> advantages,
-		List<Paragraph> disadvantages) implements ContentBody<DevilFruit>, FirstAppearing, Paragraphed {
+		boolean multipleUsers, List<Paragraph> description, List<Paragraph> advantages, List<Paragraph> disadvantages,
+		DevilFruitKnowledge initialKnowledge, List<Reveal<DevilFruitField, DevilFruitKnowledge>> reveals)
+		implements
+			ContentBody<DevilFruit>,
+			FirstAppearing,
+			Paragraphed,
+			Revealing<DevilFruitField, DevilFruitKnowledge> {
 
 	public static final int ROMAJI_MAX_LENGTH = 100;
 
 	private static final String ROMAJI_FIELD = "romaji";
 
 	private static final String TYPE_FIELD = "type";
+
+	/** A reveal, as the detail of a block names it. */
+	private static final String REVEAL_INDEX = "revealIndex";
 
 	/** Named as request validation names them, so a client reads both the same way. */
 	private static final String NAME_FIELD = "translations[%s].name";
@@ -69,6 +83,8 @@ public record DevilFruit(String romaji, UUID typeContentId, UUID subcategoryId,
 		description = description == null ? List.of() : List.copyOf(description);
 		advantages = advantages == null ? List.of() : List.copyOf(advantages);
 		disadvantages = disadvantages == null ? List.of() : List.copyOf(disadvantages);
+		initialKnowledge = (initialKnowledge == null) ? DevilFruitKnowledge.NONE : initialKnowledge;
+		reveals = (reveals == null) ? List.of() : List.copyOf(reveals);
 	}
 
 	/** The same fruit with another image, or none. */
@@ -90,6 +106,8 @@ public record DevilFruit(String romaji, UUID typeContentId, UUID subcategoryId,
 			.description(Paragraph.normalized(this.description))
 			.advantages(Paragraph.normalized(this.advantages))
 			.disadvantages(Paragraph.normalized(this.disadvantages))
+			.initialKnowledge(this.initialKnowledge.normalized())
+			.reveals(Revealing.normalized(this.reveals))
 			.build();
 	}
 
@@ -97,6 +115,7 @@ public record DevilFruit(String romaji, UUID typeContentId, UUID subcategoryId,
 	public Set<String> languages() {
 		Set<String> languages = new TreeSet<>(this.translations.keySet());
 		languages.addAll(paragraphLanguages());
+		languages.addAll(revealLanguages());
 		return languages;
 	}
 
@@ -139,6 +158,7 @@ public record DevilFruit(String romaji, UUID typeContentId, UUID subcategoryId,
 		}
 		missing.addAll(missingParagraphs(languages));
 		missing.addAll(missingDiscovered());
+		missing.addAll(missingReveals(languages));
 		return missing;
 	}
 
@@ -151,6 +171,25 @@ public record DevilFruit(String romaji, UUID typeContentId, UUID subcategoryId,
 	public Map<ParagraphSection, List<Paragraph>> paragraphs() {
 		return new EnumMap<>(Map.of(ParagraphSection.DESCRIPTION, this.description, ParagraphSection.ADVANTAGES,
 				this.advantages, ParagraphSection.DISADVANTAGES, this.disadvantages));
+	}
+
+	@Override
+	public Set<DevilFruitField> revealableFields() {
+		return EnumSet.allOf(DevilFruitField.class);
+	}
+
+	/**
+	 * The types its initial knowledge and its reveals hold (workflow 3.7.1), each named
+	 * where a request names it, in that order.
+	 */
+	public List<TypeChoice> revealedTypes() {
+		List<TypeChoice> choices = new ArrayList<>();
+		choices.add(new TypeChoice(INITIAL_KNOWLEDGE + ".", Map.of(INITIAL_KNOWLEDGE, true), this.initialKnowledge));
+		for (int index = 0; index < this.reveals.size(); index++) {
+			choices.add(new TypeChoice(REVEAL_FIELD.formatted(index) + ".", Map.of(REVEAL_INDEX, index),
+					this.reveals.get(index).values()));
+		}
+		return choices.stream().filter(TypeChoice::isHeld).toList();
 	}
 
 	/**

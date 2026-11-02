@@ -8,11 +8,15 @@ import dev.onepieceapi.contentservice.domain.readertime.StoryWindow;
 import dev.onepieceapi.contentservice.domain.security.User;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.entity.BountyVersionEntity;
+import dev.onepieceapi.contentservice.domain.bounty.BountyField;
+import dev.onepieceapi.contentservice.domain.bounty.BountyKnowledge;
+import dev.onepieceapi.contentservice.domain.readertime.Reveal;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -109,6 +113,23 @@ class BountyVersionMapperTest {
 		assertThat(entity.getFirstAppearanceChapterId()).isNull();
 		assertThat(entity.getParagraphs()).hasSize(1);
 		assertThat(BountyVersionMapper.toDomain(entity).body().description()).isEqualTo(rewritten.description());
+	}
+
+	@Test
+	void theInitialKnowledgeAndTheRevealsAreWrittenAndReadBack() {
+		var entity = draft();
+		var body = Bounty.builder()
+			.posterName("Monkey D. Luffy")
+			.amount(30_000_000L)
+			.inactive(true)
+			.initialKnowledge(new BountyKnowledge(false))
+			.reveals(List.of(new Reveal<>(StoryPoint.ofChapter(CHAPTER_ID), Set.of(BountyField.INACTIVE),
+					BountyKnowledge.NONE, Map.of("it", "Superata", "en", "Superseded"))))
+			.build();
+
+		BountyVersionMapper.rewrite(entity, body, UPDATED);
+
+		assertThat(BountyVersionMapper.toDomain(entity).body()).isEqualTo(body);
 	}
 
 	private static BountyVersionEntity draft() {

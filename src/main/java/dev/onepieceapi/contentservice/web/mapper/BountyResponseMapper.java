@@ -2,15 +2,20 @@ package dev.onepieceapi.contentservice.web.mapper;
 
 import dev.onepieceapi.contentservice.domain.bounty.Bounty;
 import dev.onepieceapi.contentservice.domain.bounty.BountyChain;
+import dev.onepieceapi.contentservice.domain.bounty.BountyField;
+import dev.onepieceapi.contentservice.domain.bounty.BountyKnowledge;
 import dev.onepieceapi.contentservice.domain.bounty.BountyReference;
 import dev.onepieceapi.contentservice.domain.bounty.BountyValidity;
 import dev.onepieceapi.contentservice.domain.character.CharacterReference;
+import dev.onepieceapi.contentservice.domain.readertime.Reveal;
 import dev.onepieceapi.contentservice.domain.story.NumberedReference;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAccess;
+import dev.onepieceapi.contentservice.web.dto.response.BountyKnowledgeResponse;
 import dev.onepieceapi.contentservice.web.dto.response.BountyNamesResponse;
 import dev.onepieceapi.contentservice.web.dto.response.BountyReferenceResponse;
 import dev.onepieceapi.contentservice.web.dto.response.BountyResponse;
+import dev.onepieceapi.contentservice.web.dto.response.BountyRevealResponse;
 import dev.onepieceapi.contentservice.web.dto.response.CharacterReferenceResponse;
 import dev.onepieceapi.contentservice.web.dto.response.ContentSummaryResponse;
 import dev.onepieceapi.contentservice.web.dto.response.VersionResponse;
@@ -54,12 +59,33 @@ public class BountyResponseMapper {
 			.stream()
 			.map(id -> toResponse(id, bounties))
 			.toList();
-		return new BountyResponse(bounty.posterName(), bounty.amount(), bounty.condition(), bounty.inactive(),
-				BountyValidity.of(bounty.inactive(), chain.next() != null),
-				toResponse(bounty.previousContentId(), bounties), toHolderResponse(bounty.holderContentId(), holders),
-				toResponse(chain.next(), bounties), members, images.toResponse(bounty.imageId()),
-				FirstAppearanceMapper.toResponse(bounty.firstAppearance(), storyItems),
-				ParagraphResponseMapper.toResponse(bounty.description(), storyItems));
+		return BountyResponse.builder()
+			.posterName(bounty.posterName())
+			.amount(bounty.amount())
+			.condition(bounty.condition())
+			.inactive(bounty.inactive())
+			.validity(BountyValidity.of(bounty.inactive(), chain.next() != null))
+			.previous(toResponse(bounty.previousContentId(), bounties))
+			.holder(toHolderResponse(bounty.holderContentId(), holders))
+			.next(toResponse(chain.next(), bounties))
+			.chain(members)
+			.image(images.toResponse(bounty.imageId()))
+			.firstAppearance(FirstAppearanceMapper.toResponse(bounty.firstAppearance(), storyItems))
+			.description(ParagraphResponseMapper.toResponse(bounty.description(), storyItems))
+			.initialKnowledge(toInitialResponse(bounty.initialKnowledge()))
+			.reveals(bounty.reveals().stream().map(reveal -> toResponse(reveal, storyItems)).toList())
+			.build();
+	}
+
+	/** Null for nothing known apart from the current values. */
+	private static BountyKnowledgeResponse toInitialResponse(BountyKnowledge knowledge) {
+		return knowledge.equals(BountyKnowledge.NONE) ? null : new BountyKnowledgeResponse(knowledge.inactive());
+	}
+
+	private static BountyRevealResponse toResponse(Reveal<BountyField, BountyKnowledge> reveal,
+			Map<UUID, NumberedReference> storyItems) {
+		return new BountyRevealResponse(FirstAppearanceMapper.toResponse(reveal.revealedAt(), storyItems),
+				reveal.titles(), reveal.fields(), reveal.values().inactive());
 	}
 
 	/**

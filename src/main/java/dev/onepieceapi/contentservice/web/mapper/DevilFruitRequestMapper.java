@@ -1,11 +1,16 @@
 package dev.onepieceapi.contentservice.web.mapper;
 
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
+import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitField;
+import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitKnowledge;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitTranslation;
 import dev.onepieceapi.contentservice.domain.image.ImageChange;
+import dev.onepieceapi.contentservice.domain.readertime.Reveal;
 import dev.onepieceapi.contentservice.domain.workflow.ContentFilter;
+import dev.onepieceapi.contentservice.web.dto.request.DevilFruitKnowledgeRequest;
 import dev.onepieceapi.contentservice.web.dto.request.DevilFruitListRequest;
 import dev.onepieceapi.contentservice.web.dto.request.DevilFruitRequest;
+import dev.onepieceapi.contentservice.web.dto.request.DevilFruitRevealRequest;
 import dev.onepieceapi.contentservice.web.dto.request.DevilFruitTranslationRequest;
 import lombok.experimental.UtilityClass;
 import org.springframework.web.multipart.MultipartFile;
@@ -27,11 +32,32 @@ public class DevilFruitRequestMapper {
 		Optional.ofNullable(request.translations())
 			.orElseGet(Map::of)
 			.forEach((language, translation) -> translations.put(language, toDomain(translation)));
-		return new DevilFruit(request.romaji(), request.type(), request.subcategory(), translations, null,
-				FirstAppearanceMapper.toDomain(request.firstAppearance()), request.allowsMultipleUsers(),
-				ParagraphRequestMapper.toDomain(request.description()),
-				ParagraphRequestMapper.toDomain(request.advantages()),
-				ParagraphRequestMapper.toDomain(request.disadvantages()));
+		return DevilFruit.builder()
+			.romaji(request.romaji())
+			.typeContentId(request.type())
+			.subcategoryId(request.subcategory())
+			.translations(translations)
+			.firstAppearance(FirstAppearanceMapper.toDomain(request.firstAppearance()))
+			.multipleUsers(request.allowsMultipleUsers())
+			.description(ParagraphRequestMapper.toDomain(request.description()))
+			.advantages(ParagraphRequestMapper.toDomain(request.advantages()))
+			.disadvantages(ParagraphRequestMapper.toDomain(request.disadvantages()))
+			.initialKnowledge(Optional.ofNullable(request.initialKnowledge())
+				.map(DevilFruitRequestMapper::toDomain)
+				.orElse(DevilFruitKnowledge.NONE))
+			.reveals(RevealRequestMapper.each(request.reveals(), DevilFruitRequestMapper::toDomain))
+			.build();
+	}
+
+	private static DevilFruitKnowledge toDomain(DevilFruitKnowledgeRequest knowledge) {
+		return new DevilFruitKnowledge(knowledge.romaji(), knowledge.type(), knowledge.subcategory(),
+				RevealRequestMapper.names(knowledge.translations(), DevilFruitTranslationRequest::name));
+	}
+
+	private static Reveal<DevilFruitField, DevilFruitKnowledge> toDomain(DevilFruitRevealRequest reveal) {
+		var values = new DevilFruitKnowledge(reveal.romaji(), reveal.type(), reveal.subcategory(),
+				RevealRequestMapper.names(reveal.translations(), DevilFruitTranslationRequest::name));
+		return RevealRequestMapper.toDomain(reveal, values);
 	}
 
 	/**

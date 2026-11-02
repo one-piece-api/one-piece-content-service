@@ -33,9 +33,25 @@ http:
         },
         "holder": "",
         "inactive": false,
+        "initialKnowledge": {
+          "inactive": false
+        },
         "posterName": "",
         "previous": "",
-        "removeImage": false
+        "removeImage": false,
+        "reveals": [
+          {
+            "fields": [
+              "INACTIVE"
+            ],
+            "inactive": false,
+            "revealedAt": {
+              "chapter": "",
+              "episode": ""
+            },
+            "titles": {}
+          }
+        ]
       }
   auth: inherit
 
@@ -77,9 +93,25 @@ examples:
             },
             "holder": "",
             "inactive": false,
+            "initialKnowledge": {
+              "inactive": false
+            },
             "posterName": "",
             "previous": "",
-            "removeImage": false
+            "removeImage": false,
+            "reveals": [
+              {
+                "fields": [
+                  "INACTIVE"
+                ],
+                "inactive": false,
+                "revealedAt": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "titles": {}
+              }
+            ]
           }
     response:
       status: 201
@@ -150,9 +182,25 @@ examples:
             },
             "holder": "",
             "inactive": false,
+            "initialKnowledge": {
+              "inactive": false
+            },
             "posterName": "",
             "previous": "",
-            "removeImage": false
+            "removeImage": false,
+            "reveals": [
+              {
+                "fields": [
+                  "INACTIVE"
+                ],
+                "inactive": false,
+                "revealedAt": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "titles": {}
+              }
+            ]
           }
     response:
       headers:
@@ -207,9 +255,25 @@ examples:
             },
             "holder": "",
             "inactive": false,
+            "initialKnowledge": {
+              "inactive": false
+            },
             "posterName": "",
             "previous": "",
-            "removeImage": false
+            "removeImage": false,
+            "reveals": [
+              {
+                "fields": [
+                  "INACTIVE"
+                ],
+                "inactive": false,
+                "revealedAt": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "titles": {}
+              }
+            ]
           }
     response:
       headers:

@@ -2,6 +2,8 @@ package dev.onepieceapi.contentservice.persistence.mapper;
 
 import dev.onepieceapi.contentservice.domain.character.Character;
 import dev.onepieceapi.contentservice.domain.character.Alias;
+import dev.onepieceapi.contentservice.domain.character.CharacterField;
+import dev.onepieceapi.contentservice.domain.character.CharacterKnowledge;
 import dev.onepieceapi.contentservice.domain.character.CharacterTranslation;
 import dev.onepieceapi.contentservice.domain.character.Epithet;
 import dev.onepieceapi.contentservice.domain.character.FruitUse;
@@ -9,6 +11,7 @@ import dev.onepieceapi.contentservice.domain.character.Membership;
 import dev.onepieceapi.contentservice.domain.character.MembershipPeriod;
 import dev.onepieceapi.contentservice.domain.character.Relative;
 import dev.onepieceapi.contentservice.domain.character.SpeciesEntry;
+import dev.onepieceapi.contentservice.domain.readertime.Reveal;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.domain.workflow.Version;
 import dev.onepieceapi.contentservice.persistence.entity.CharacterAliasEmbeddable;
@@ -18,6 +21,7 @@ import dev.onepieceapi.contentservice.persistence.entity.CharacterFruitUseEmbedd
 import dev.onepieceapi.contentservice.persistence.entity.CharacterMembershipEntity;
 import dev.onepieceapi.contentservice.persistence.entity.CharacterMembershipPeriodEntity;
 import dev.onepieceapi.contentservice.persistence.entity.CharacterRelativeEmbeddable;
+import dev.onepieceapi.contentservice.persistence.entity.CharacterRevealEntity;
 import dev.onepieceapi.contentservice.persistence.entity.CharacterSpeciesEmbeddable;
 import dev.onepieceapi.contentservice.persistence.entity.CharacterTranslationEmbeddable;
 import dev.onepieceapi.contentservice.persistence.entity.CharacterVersionEntity;
@@ -34,7 +38,8 @@ import java.util.TreeMap;
 
 /**
  * Between the rows of a Character version - its workflow in the shared table, what it
- * says in the entity's own and in its lists - and the domain.
+ * says in the entity's own and in its lists, its initial knowledge and reveals - and the
+ * domain.
  */
 @UtilityClass
 public class CharacterVersionMapper {
@@ -56,6 +61,8 @@ public class CharacterVersionMapper {
 			.imageId(entity.getImageId())
 			.firstAppearance(new StoryPoint(entity.getFirstAppearanceChapterId(), entity.getFirstAppearanceEpisodeId()))
 			.description(ParagraphMapper.descriptionOf(entity.getParagraphs()))
+			.initialKnowledge(initialKnowledgeOf(entity))
+			.reveals(entity.getReveals().stream().map(CharacterVersionMapper::toDomain).toList())
 			.build();
 		return ContentVersionMapper.toDomain(entity.getVersion(), body);
 	}
@@ -63,6 +70,7 @@ public class CharacterVersionMapper {
 	/** Makes the version say what was given, in place of what it said. */
 	public void rewrite(CharacterVersionEntity entity, Character body, Instant now) {
 		MonthDay birthday = body.birthday();
+		CharacterKnowledge initial = body.initialKnowledge();
 		entity.rewrite(CharacterFields.builder()
 			.romaji(body.romaji())
 			.japaneseName(body.japaneseName())
@@ -80,7 +88,44 @@ public class CharacterVersionMapper {
 			.imageId(body.imageId())
 			.firstAppearance(FirstAppearanceMapper.toIds(body.firstAppearance()))
 			.paragraphs(ParagraphMapper.toFields(body.paragraphs()))
+			.initialRomaji(initial.romaji())
+			.initialJapaneseName(initial.japaneseName())
+			.initialStatus(initial.status())
+			.initialTranslations(namesToEmbeddables(initial.names()))
+			.reveals(body.reveals().stream().map(CharacterVersionMapper::toWritten).toList())
 			.build(), now);
+	}
+
+	private static CharacterKnowledge initialKnowledgeOf(CharacterVersionEntity entity) {
+		Map<String, String> names = new TreeMap<>();
+		entity.getInitialTranslations().forEach((language, translation) -> names.put(language, translation.getName()));
+		return new CharacterKnowledge(entity.getInitialRomaji(), entity.getInitialJapaneseName(),
+				entity.getInitialStatus(), names);
+	}
+
+	private static Reveal<CharacterField, CharacterKnowledge> toDomain(CharacterRevealEntity reveal) {
+		var values = new CharacterKnowledge(reveal.getRomaji(), reveal.getJapaneseName(), reveal.getStatus(),
+				RevealMapper.namesOf(reveal.getTranslations()));
+		return new Reveal<>(RevealMapper.pointOf(reveal), reveal.getFields(), values,
+				RevealMapper.titlesOf(reveal.getTranslations()));
+	}
+
+	private static CharacterRevealEntity.Written toWritten(Reveal<CharacterField, CharacterKnowledge> reveal) {
+		CharacterKnowledge values = reveal.values();
+		return CharacterRevealEntity.Written.builder()
+			.point(FirstAppearanceMapper.toIds(reveal.revealedAt()))
+			.fields(reveal.fields())
+			.romaji(values.romaji())
+			.japaneseName(values.japaneseName())
+			.status(values.status())
+			.translations(RevealMapper.toTranslations(reveal.titles(), values.names()))
+			.build();
+	}
+
+	private static Map<String, CharacterTranslationEmbeddable> namesToEmbeddables(Map<String, String> names) {
+		Map<String, CharacterTranslationEmbeddable> byLanguage = new HashMap<>();
+		names.forEach((language, name) -> byLanguage.put(language, new CharacterTranslationEmbeddable(name)));
+		return byLanguage;
 	}
 
 	/** Both columns or neither: the schema says so. */

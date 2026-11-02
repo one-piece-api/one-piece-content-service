@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.service.validation;
 
+import dev.onepieceapi.contentservice.domain.readertime.Revealing;
 import dev.onepieceapi.contentservice.domain.workflow.ContentBody;
 import dev.onepieceapi.contentservice.domain.workflow.NaturalKey;
 import dev.onepieceapi.contentservice.domain.workflow.Version;
@@ -7,6 +8,7 @@ import dev.onepieceapi.contentservice.persistence.entity.LanguageEntity;
 import dev.onepieceapi.contentservice.persistence.entity.VersionBodyEntity;
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
 import dev.onepieceapi.contentservice.persistence.repository.VersionBodyRepository;
+import dev.onepieceapi.contentservice.service.content.FieldRevealRules;
 import dev.onepieceapi.contentservice.service.exception.SlugAlreadyUsedException;
 import dev.onepieceapi.contentservice.service.exception.TranslationLanguageUnknownException;
 import dev.onepieceapi.contentservice.service.exception.ValueAlreadyUsedException;
@@ -24,6 +26,7 @@ import java.util.TreeSet;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * The rules every content must meet, whatever its entity
@@ -35,6 +38,10 @@ import java.util.stream.Collectors;
  * the entity's to say, see {@link ContentBody#missingFields}), a natural key that gives a
  * slug, still unique, and different from every other version of its content. Each entity
  * has its own, extending this one, e.g. {@link DevilFruitTypeValidator}.
+ * <p>
+ * An item whose fields are revealed (workflow 3.7.1; {@link Revealing}) also has its
+ * reveals checked on every save ({@link FieldRevealRules}), and every romaji it holds -
+ * initial or learned - gives a slug no other content has, as its natural key does.
  *
  * @param <T> what a version of the entity says
  * @param <E> the entity's version table
@@ -76,8 +83,9 @@ public class ContentValidator<T extends ContentBody<T>, E extends VersionBodyEnt
 		requireKnownLanguages(body);
 		requireValidRevision(previous, body);
 		requireValidFields(body);
+		requireValidReveals(body);
 		requireValidRelations(contentId, body);
-		requireUniqueValues(contentId, body, slugOf(body));
+		requireUniqueValues(contentId, body, slugsOf(body));
 	}
 
 	/**
@@ -88,7 +96,7 @@ public class ContentValidator<T extends ContentBody<T>, E extends VersionBodyEnt
 	public void validateSubmission(UUID contentId, int versionNumber, T body) {
 		requireComplete(body);
 		requireValidRelations(contentId, body);
-		requireUniqueValues(contentId, body, slugOf(body));
+		requireUniqueValues(contentId, body, slugsOf(body));
 		requireDifferentFromOtherVersions(contentId, versionNumber, body);
 	}
 
@@ -132,6 +140,15 @@ public class ContentValidator<T extends ContentBody<T>, E extends VersionBodyEnt
 		}
 	}
 
+	private void requireValidReveals(T body) {
+		if (body instanceof Revealing<?, ?> revealing) {
+			List<FieldViolation> violations = FieldRevealRules.violations(revealing);
+			if (!violations.isEmpty()) {
+				throw new ValueInvalidException(violations);
+			}
+		}
+	}
+
 	private void requireComplete(T body) {
 		List<FieldViolation> missing = body.missingFields(catalogCodes())
 			.stream()
@@ -155,29 +172,42 @@ public class ContentValidator<T extends ContentBody<T>, E extends VersionBodyEnt
 	}
 
 	/**
-	 * The slug of the natural key - the public address of the content - refused when the
-	 * key gives none; empty while no key is written.
+	 * The slug of the natural key - the public address of the content - and of every
+	 * romaji revealed, refused when a key gives none; none for a key not written.
 	 */
-	private Optional<String> slugOf(T body) {
-		NaturalKey key = body.naturalKey();
-		if (key.isMissing()) {
-			return Optional.empty();
+	private List<KeySlug> slugsOf(T body) {
+		List<KeySlug> slugs = new ArrayList<>();
+		List<FieldViolation> violations = new ArrayList<>();
+		slugKeysOf(body).forEach(key -> this.versionRepository.slugOf(key.text())
+			.ifPresentOrElse(slug -> slugs.add(new KeySlug(key, slug)),
+					() -> violations.addAll(violationsOn(key, NO_SLUG))));
+		if (!violations.isEmpty()) {
+			throw new ValueInvalidException(violations);
 		}
-		return Optional.of(this.versionRepository.slugOf(key.text())
-			.orElseThrow(() -> new ValueInvalidException(violationsOn(key, NO_SLUG))));
+		return slugs;
+	}
+
+	/** The natural key, then every romaji of the initial knowledge and the reveals. */
+	private static List<NaturalKey> slugKeysOf(ContentBody<?> body) {
+		Stream<NaturalKey> revealed = (body instanceof Revealing<?, ?> revealing)
+				? revealing.revealedNaturalKeys().stream() : Stream.empty();
+		return Stream.concat(Stream.of(body.naturalKey()), revealed).filter(key -> !key.isMissing()).toList();
 	}
 
 	/**
 	 * Every value equal to another content's is reported, not just the first one found.
 	 * Then the slug: a natural key no other content has may still give the address of
 	 * another one (a macron is all that sets Ryu apart) - said apart, since there is no
-	 * equal value to show.
+	 * equal value to show; the first slug taken is reported.
 	 */
-	private void requireUniqueValues(UUID contentId, T body, Optional<String> slug) {
+	private void requireUniqueValues(UUID contentId, T body, List<KeySlug> slugs) {
 		requireUnusedValues(contentId, body);
-		slug.filter(value -> this.versionRepository.slugIsTakenByAnother(value, contentId)).ifPresent(value -> {
-			throw new SlugAlreadyUsedException(value, violationsOn(body.naturalKey(), SLUG_TAKEN));
-		});
+		slugs.stream()
+			.filter(keySlug -> this.versionRepository.slugIsTakenByAnother(keySlug.slug(), contentId))
+			.findFirst()
+			.ifPresent(taken -> {
+				throw new SlugAlreadyUsedException(taken.slug(), violationsOn(taken.key(), SLUG_TAKEN));
+			});
 	}
 
 	private void requireUnusedValues(UUID contentId, T body) {
@@ -201,6 +231,10 @@ public class ContentValidator<T extends ContentBody<T>, E extends VersionBodyEnt
 	/** One violation per field the key is made of, so that a composite key names each. */
 	private static List<FieldViolation> violationsOn(NaturalKey key, String message) {
 		return key.fields().stream().map(field -> new FieldViolation(field, message)).toList();
+	}
+
+	/** A natural key and the slug it gives. */
+	private record KeySlug(NaturalKey key, String slug) {
 	}
 
 	/** The language codes of the catalog, in order. */

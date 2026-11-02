@@ -243,6 +243,12 @@ examples:
                 "id": "",
                 "url": ""
               },
+              "initialKnowledge": {
+                "japaneseName": "",
+                "romaji": "",
+                "status": "ALIVE",
+                "translations": {}
+              },
               "japaneseName": "",
               "relatives": [
                 {
@@ -312,6 +318,30 @@ examples:
                     "names": {},
                     "romaji": ""
                   }
+                }
+              ],
+              "reveals": [
+                {
+                  "fields": [
+                    "IDENTITY"
+                  ],
+                  "japaneseName": "",
+                  "revealedAt": {
+                    "chapter": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    },
+                    "episode": {
+                      "id": "",
+                      "names": {},
+                      "number": 0
+                    }
+                  },
+                  "romaji": "",
+                  "status": "ALIVE",
+                  "titles": {},
+                  "translations": {}
                 }
               ],
               "romaji": "",

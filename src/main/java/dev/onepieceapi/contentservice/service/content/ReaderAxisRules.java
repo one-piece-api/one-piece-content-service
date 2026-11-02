@@ -1,6 +1,7 @@
 package dev.onepieceapi.contentservice.service.content;
 
 import dev.onepieceapi.contentservice.domain.readertime.FirstAppearing;
+import dev.onepieceapi.contentservice.domain.readertime.NamedReveal;
 import dev.onepieceapi.contentservice.domain.readertime.NamedWindow;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.domain.readertime.StoryWindow;
@@ -17,6 +18,7 @@ import dev.onepieceapi.contentservice.persistence.repository.EpisodeVersionRepos
 import dev.onepieceapi.contentservice.persistence.repository.VersionBodyRepository;
 import dev.onepieceapi.exception.web.FieldViolation;
 import dev.onepieceapi.readertime.Axis;
+import dev.onepieceapi.readertime.FieldReveal;
 import dev.onepieceapi.readertime.PeriodRule;
 import dev.onepieceapi.readertime.PeriodRules;
 import dev.onepieceapi.readertime.PeriodViolation;
@@ -25,6 +27,7 @@ import dev.onepieceapi.readertime.PointPart;
 import dev.onepieceapi.readertime.PointRule;
 import dev.onepieceapi.readertime.PointRules;
 import dev.onepieceapi.readertime.PointViolation;
+import dev.onepieceapi.readertime.RevealedField;
 import dev.onepieceapi.readertime.RevealWindow;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -54,7 +57,9 @@ import java.util.stream.Stream;
  * <li>on save, each chapter and episode of a window is linkable, and - on the numbers
  * last approved - each window keeps to the axes of the first appearance, is not
  * discovered before it, does not end before it is discovered, and the windows of a
- * sequence follow one another without overlapping;</li>
+ * sequence follow one another without overlapping; each reveal (3.7.1) is strictly after
+ * the first appearance, on its axes only, and two reveals naming the same field never
+ * share a point on an axis;</li>
  * <li>going online, each chapter and episode is online, and the same rules hold on the
  * numbers online: a chapter may have been renumbered since the save
  * ({@link BlockReason#STORY_POINT_OUT_OF_RANGE});</li>
@@ -101,7 +106,10 @@ public class ReaderAxisRules {
 			Map.of(PointRule.AXIS_NOT_MET, "must be on an axis of the first appearance",
 					PointRule.BEFORE_FIRST_APPEARANCE, "must not be before the first appearance",
 					PointRule.ENDED_NOT_DISCOVERED, "must be on an axis where discovered has a part",
-					PointRule.ENDED_BEFORE_DISCOVERED, "must not be before discovered"));
+					PointRule.ENDED_BEFORE_DISCOVERED, "must not be before discovered",
+					PointRule.NOT_AFTER_FIRST_APPEARANCE, "must be after the first appearance"));
+
+	private static final String SHARED_POINT = "must not share its point with an earlier reveal of %s on the %s axis";
 
 	private static final Map<PeriodRule, String> PERIOD_MESSAGES = new EnumMap<>(Map.of(PeriodRule.OUT_OF_ORDER,
 			"must not start before a previous period", PeriodRule.OVERLAPPING, "must not overlap a previous period",
@@ -249,8 +257,50 @@ public class ReaderAxisRules {
 				.flatMap(sequence -> PeriodRules.check(sequence.windows().stream().map(numbers::windowOf).toList())
 					.stream()
 					.map(violation -> periodViolation(sequence, violation)));
-			return Stream.concat(points, periods).distinct().toList();
+			Stream<FieldViolation> reveals = origin.stream()
+				.flatMap(firstAppearance -> revealViolations(item.namedReveals(), numbers, firstAppearance));
+			return Stream.of(points, periods, reveals, sharedPoints(item.namedReveals(), numbers))
+				.flatMap(Function.identity())
+				.distinct()
+				.toList();
 		}).orElse(List.of());
+	}
+
+	/** Each reveal not strictly after the first appearance, or off its axes (3.7.1). */
+	private static Stream<FieldViolation> revealViolations(List<NamedReveal> reveals, AxisNumbers numbers,
+			Point firstAppearance) {
+		return reveals.stream()
+			.flatMap(named -> PointRules.ofReveal(numbers.pointOf(named.point()), firstAppearance)
+				.stream()
+				.filter(violation -> violation.rule() != PointRule.MISSING)
+				.map(violation -> new FieldViolation(named.pointField() + "." + axisName(violation.axis()),
+						POINT_MESSAGES.get(violation.rule()))));
+	}
+
+	/**
+	 * Each reveal sharing its point on an axis with an earlier reveal of the same field
+	 * (3.7.1): the reader could not tell which comes first.
+	 */
+	private static Stream<FieldViolation> sharedPoints(List<NamedReveal> reveals, AxisNumbers numbers) {
+		return reveals.stream()
+			.flatMap(named -> named.fieldNames().stream())
+			.distinct()
+			.sorted()
+			.flatMap(fieldName -> sharedPoints(fieldName, reveals, numbers));
+	}
+
+	private static Stream<FieldViolation> sharedPoints(String fieldName, List<NamedReveal> reveals,
+			AxisNumbers numbers) {
+		List<NamedReveal> naming = reveals.stream().filter(named -> named.fieldNames().contains(fieldName)).toList();
+		List<FieldReveal<Object>> points = naming.stream()
+			.map(named -> FieldReveal.ofCurrentValue(numbers.pointOf(named.point())))
+			.toList();
+		return dev.onepieceapi.readertime.RevealRules.check(new RevealedField<>(null, null, points))
+			.stream()
+			.filter(violation -> violation.index() != null && violation.axis() != null)
+			.map(violation -> new FieldViolation(
+					naming.get(violation.index()).pointField() + "." + axisName(violation.axis()),
+					SHARED_POINT.formatted(fieldName, axisName(violation.axis()))));
 	}
 
 	private static List<PointViolation> pointRules(RevealWindow window, Optional<Point> origin) {
@@ -319,9 +369,15 @@ public class ReaderAxisRules {
 		return numbers;
 	}
 
-	/** Every chapter and episode of the windows of the item, each where it is named. */
+	/**
+	 * Every chapter and episode of the windows and of the reveals of the item, each where
+	 * it is named.
+	 */
 	private static Stream<PointTarget> parts(WindowedItem item) {
-		return item.windows().stream().flatMap(ReaderAxisRules::partsOf);
+		Stream<PointTarget> revealParts = item.namedReveals()
+			.stream()
+			.flatMap(named -> partsOf(named.pointField(), named.point()));
+		return Stream.concat(item.windows().stream().flatMap(ReaderAxisRules::partsOf), revealParts);
 	}
 
 	private static Stream<PointTarget> partsOf(NamedWindow named) {

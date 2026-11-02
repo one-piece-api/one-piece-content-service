@@ -89,6 +89,12 @@ http:
           "episode": ""
         },
         "gender": "MALE",
+        "initialKnowledge": {
+          "japaneseName": "",
+          "romaji": "",
+          "status": "ALIVE",
+          "translations": {}
+        },
         "japaneseName": "",
         "relatives": [
           {
@@ -105,6 +111,22 @@ http:
           }
         ],
         "removeImage": false,
+        "reveals": [
+          {
+            "fields": [
+              "IDENTITY"
+            ],
+            "japaneseName": "",
+            "revealedAt": {
+              "chapter": "",
+              "episode": ""
+            },
+            "romaji": "",
+            "status": "ALIVE",
+            "titles": {},
+            "translations": {}
+          }
+        ],
         "romaji": "",
         "species": [
           {
@@ -218,6 +240,12 @@ examples:
               "episode": ""
             },
             "gender": "MALE",
+            "initialKnowledge": {
+              "japaneseName": "",
+              "romaji": "",
+              "status": "ALIVE",
+              "translations": {}
+            },
             "japaneseName": "",
             "relatives": [
               {
@@ -234,6 +262,22 @@ examples:
               }
             ],
             "removeImage": false,
+            "reveals": [
+              {
+                "fields": [
+                  "IDENTITY"
+                ],
+                "japaneseName": "",
+                "revealedAt": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "romaji": "",
+                "status": "ALIVE",
+                "titles": {},
+                "translations": {}
+              }
+            ],
             "romaji": "",
             "species": [
               {
@@ -376,6 +420,12 @@ examples:
               "episode": ""
             },
             "gender": "MALE",
+            "initialKnowledge": {
+              "japaneseName": "",
+              "romaji": "",
+              "status": "ALIVE",
+              "translations": {}
+            },
             "japaneseName": "",
             "relatives": [
               {
@@ -392,6 +442,22 @@ examples:
               }
             ],
             "removeImage": false,
+            "reveals": [
+              {
+                "fields": [
+                  "IDENTITY"
+                ],
+                "japaneseName": "",
+                "revealedAt": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "romaji": "",
+                "status": "ALIVE",
+                "titles": {},
+                "translations": {}
+              }
+            ],
             "romaji": "",
             "species": [
               {
@@ -518,6 +584,12 @@ examples:
               "episode": ""
             },
             "gender": "MALE",
+            "initialKnowledge": {
+              "japaneseName": "",
+              "romaji": "",
+              "status": "ALIVE",
+              "translations": {}
+            },
             "japaneseName": "",
             "relatives": [
               {
@@ -534,6 +606,22 @@ examples:
               }
             ],
             "removeImage": false,
+            "reveals": [
+              {
+                "fields": [
+                  "IDENTITY"
+                ],
+                "japaneseName": "",
+                "revealedAt": {
+                  "chapter": "",
+                  "episode": ""
+                },
+                "romaji": "",
+                "status": "ALIVE",
+                "titles": {},
+                "translations": {}
+              }
+            ],
             "romaji": "",
             "species": [
               {

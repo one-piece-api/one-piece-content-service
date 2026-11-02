@@ -5,6 +5,8 @@ import dev.onepieceapi.contentservice.domain.readertime.NamedWindow;
 import dev.onepieceapi.contentservice.domain.readertime.Paragraph;
 import dev.onepieceapi.contentservice.domain.readertime.ParagraphSection;
 import dev.onepieceapi.contentservice.domain.readertime.Paragraphed;
+import dev.onepieceapi.contentservice.domain.readertime.Reveal;
+import dev.onepieceapi.contentservice.domain.readertime.Revealing;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.domain.readertime.WindowSequence;
 import dev.onepieceapi.contentservice.domain.readertime.Windowed;
@@ -16,6 +18,7 @@ import lombok.Builder;
 import java.time.MonthDay;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -49,13 +52,21 @@ import java.util.stream.Stream;
  * @param firstAppearance where it is first shown or named (D9); {@link StoryPoint#NONE}
  * for none, which a draft may keep - it is required to submit and to go online
  * @param description its biography, one paragraph per arc (3.7.3); none is never null
+ * @param initialKnowledge what the reader believes at the first appearance (3.7.1); NONE
+ * for nothing
+ * @param reveals what the reader learns later, in list order; none is never null
  */
 @Builder(toBuilder = true)
 public record Character(String romaji, String japaneseName, Map<String, CharacterTranslation> translations,
 		CharacterStatus status, Gender gender, MonthDay birthday, List<Epithet> epithets, List<Alias> aliases,
 		List<SpeciesEntry> species, List<Membership> affiliations, List<FruitUse> devilFruits, List<Relative> relatives,
-		String imageId, StoryPoint firstAppearance,
-		List<Paragraph> description) implements ContentBody<Character>, FirstAppearing, Paragraphed {
+		String imageId, StoryPoint firstAppearance, List<Paragraph> description, CharacterKnowledge initialKnowledge,
+		List<Reveal<CharacterField, CharacterKnowledge>> reveals)
+		implements
+			ContentBody<Character>,
+			FirstAppearing,
+			Paragraphed,
+			Revealing<CharacterField, CharacterKnowledge> {
 
 	public static final int ROMAJI_MAX_LENGTH = 100;
 
@@ -117,6 +128,8 @@ public record Character(String romaji, String japaneseName, Map<String, Characte
 		relatives = relatives == null ? List.of() : List.copyOf(relatives);
 		firstAppearance = StoryPoint.orNone(firstAppearance);
 		description = description == null ? List.of() : List.copyOf(description);
+		initialKnowledge = (initialKnowledge == null) ? CharacterKnowledge.NONE : initialKnowledge;
+		reveals = (reveals == null) ? List.of() : List.copyOf(reveals);
 	}
 
 	/** The same character with another portrait, or none. */
@@ -144,6 +157,8 @@ public record Character(String romaji, String japaneseName, Map<String, Characte
 			.aliases(this.aliases.stream().map(Alias::normalized).toList())
 			.affiliations(this.affiliations.stream().map(Membership::normalized).toList())
 			.description(Paragraph.normalized(this.description))
+			.initialKnowledge(this.initialKnowledge.normalized())
+			.reveals(Revealing.normalized(this.reveals))
 			.build();
 	}
 
@@ -155,6 +170,7 @@ public record Character(String romaji, String japaneseName, Map<String, Characte
 	public Set<String> languages() {
 		Set<String> languages = new TreeSet<>(this.translations.keySet());
 		languages.addAll(paragraphLanguages());
+		languages.addAll(revealLanguages());
 		this.epithets.forEach(epithet -> languages.addAll(epithet.text().keySet()));
 		this.affiliations
 			.forEach(membership -> membership.periods().forEach(period -> languages.addAll(period.role().keySet())));
@@ -218,6 +234,7 @@ public record Character(String romaji, String japaneseName, Map<String, Characte
 		}
 		missing.addAll(missingParagraphs(languages));
 		missing.addAll(missingDiscovered());
+		missing.addAll(missingReveals(languages));
 		return missing;
 	}
 
@@ -283,6 +300,11 @@ public record Character(String romaji, String japaneseName, Map<String, Characte
 	/**
 	 * What it says in this language - nothing at all, when no translation was written.
 	 */
+	@Override
+	public Set<CharacterField> revealableFields() {
+		return EnumSet.allOf(CharacterField.class);
+	}
+
 	public CharacterTranslation translationIn(String language) {
 		return this.translations.getOrDefault(language, CharacterTranslation.NONE);
 	}

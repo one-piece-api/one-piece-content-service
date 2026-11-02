@@ -31,6 +31,9 @@ import java.util.Map;
  * @param affiliations its memberships, in order; left out for none
  * @param devilFruits the fruits it ate, in order; left out for none
  * @param relatives its relatives, in order; left out for none
+ * @param initialKnowledge what the reader believes at the first appearance (workflow
+ * 3.7.1), for the fields some reveal names; left out for nothing
+ * @param reveals what the reader learns later, in order; left out for none
  * @param removeImage true to remove the draft's portrait; not together with an uploaded
  * one. Left out, the portrait is kept - or replaced, when one is uploaded with the
  * request
@@ -47,7 +50,8 @@ public record CharacterRequest(@Size(max = Character.ROMAJI_MAX_LENGTH) String r
 		List<@NotNull @Valid SpeciesEntryRequest> species, List<@NotNull @Valid MembershipRequest> affiliations,
 		List<@NotNull @Valid FruitUseRequest> devilFruits, List<@NotNull @Valid RelativeRequest> relatives,
 		Boolean removeImage, FirstAppearanceRequest firstAppearance,
-		@Size(max = Paragraph.MAX_PER_SECTION) List<@NotNull @Valid ParagraphRequest> description) {
+		@Size(max = Paragraph.MAX_PER_SECTION) List<@NotNull @Valid ParagraphRequest> description,
+		@Valid CharacterKnowledgeRequest initialKnowledge, List<@NotNull @Valid CharacterRevealRequest> reveals) {
 
 	/** Whether the portrait is to be removed; not saying so keeps it. */
 	public boolean removesImage() {

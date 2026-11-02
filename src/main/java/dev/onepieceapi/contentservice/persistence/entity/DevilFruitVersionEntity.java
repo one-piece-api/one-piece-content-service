@@ -3,6 +3,7 @@ package dev.onepieceapi.contentservice.persistence.entity;
 import java.util.List;
 import java.util.ArrayList;
 import jakarta.persistence.OrderColumn;
+import jakarta.persistence.Column;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.CascadeType;
 import dev.onepieceapi.contentservice.domain.workflow.NaturalKey;
@@ -12,6 +13,9 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.MapKeyColumn;
 import jakarta.persistence.Table;
+import jakarta.persistence.PrimaryKeyJoinColumn;
+import jakarta.persistence.SecondaryTable;
+
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -26,15 +30,21 @@ import java.util.UUID;
  * What one version of a Devil Fruit says (implementation plan of the Devil Fruit, D1,
  * D7): its romaji (its natural key), the content of its Devil Fruit Type and of one of
  * its subcategories, and, per language, its name, description, advantages and
- * disadvantages. The entity type of the link is a constant the database fills in: it is
- * what keeps a fruit from pointing to a fruit.
+ * disadvantages. Its initial knowledge (workflow 3.7.1) is a row of its own, written only
+ * when it holds something: an optional secondary table, which Hibernate leaves out while
+ * every column is null. The entity type of the link is a constant the database fills in:
+ * it is what keeps a fruit from pointing to a fruit.
  */
 @Entity
 @Table(name = "devil_fruit_version")
+@SecondaryTable(name = "devil_fruit_version_initial_knowledge",
+		pkJoinColumns = @PrimaryKeyJoinColumn(name = "version_id"))
 @Getter
 @NoArgsConstructor
 @FieldNameConstants
 public class DevilFruitVersionEntity extends VersionBodyEntity {
+
+	private static final String INITIAL_KNOWLEDGE = "devil_fruit_version_initial_knowledge";
 
 	/**
 	 * The natural key of the entity (see {@link #naturalKey()}); null while not written.
@@ -77,6 +87,29 @@ public class DevilFruitVersionEntity extends VersionBodyEntity {
 	@OrderColumn(name = "position")
 	private List<DevilFruitParagraphEntity> paragraphs = new ArrayList<>();
 
+	/** The values known at the first appearance; null when not part of it. */
+	@Column(table = INITIAL_KNOWLEDGE, name = "romaji")
+	private String initialRomaji;
+
+	@Column(table = INITIAL_KNOWLEDGE, name = "type_content_id")
+	private UUID initialTypeContentId;
+
+	@Column(table = INITIAL_KNOWLEDGE, name = "subcategory_id")
+	private UUID initialSubcategoryId;
+
+	/** The names known at the first appearance, per language code. */
+	@ElementCollection
+	@CollectionTable(name = "devil_fruit_version_initial_knowledge_translation",
+			joinColumns = @JoinColumn(name = "version_id"))
+	@MapKeyColumn(name = "language_code")
+	private Map<String, TranslationEmbeddable> initialTranslations = new HashMap<>();
+
+	/** Its reveals (workflow 3.7.1), in list order. */
+	@OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+	@JoinColumn(name = "version_id", nullable = false)
+	@OrderColumn(name = "position")
+	private List<DevilFruitRevealEntity> reveals = new ArrayList<>();
+
 	public DevilFruitVersionEntity(ContentVersionEntity version) {
 		super(version);
 	}
@@ -99,6 +132,13 @@ public class DevilFruitVersionEntity extends VersionBodyEntity {
 		this.translations.putAll(fields.translations());
 		PositionalRows.rewrite(this.paragraphs, fields.paragraphs(), DevilFruitParagraphEntity::new,
 				ParagraphEntity::rewrite);
+		this.initialRomaji = fields.initialRomaji();
+		this.initialTypeContentId = fields.initialTypeContentId();
+		this.initialSubcategoryId = fields.initialSubcategoryId();
+		this.initialTranslations.clear();
+		this.initialTranslations.putAll(fields.initialTranslations());
+		PositionalRows.rewrite(this.reveals, fields.reveals(), DevilFruitRevealEntity::new,
+				DevilFruitRevealEntity::rewrite);
 		touch(now);
 	}
 

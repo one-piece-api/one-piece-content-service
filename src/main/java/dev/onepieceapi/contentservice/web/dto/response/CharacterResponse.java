@@ -24,6 +24,9 @@ import java.util.Map;
  * @param image its portrait; null for none
  * @param firstAppearance the chapter and/or the episode it first appears in; null for
  * none
+ * @param initialKnowledge what the reader believes at the first appearance (workflow
+ * 3.7.1); null for nothing
+ * @param reveals what the reader learns later, in order; empty for none
  */
 @Builder
 public record CharacterResponse(String romaji, String japaneseName,
@@ -31,6 +34,7 @@ public record CharacterResponse(String romaji, String japaneseName,
 		@Schema(type = "string", example = "--05-05") MonthDay birthday, List<EpithetResponse> epithets,
 		List<AliasResponse> aliases, List<SpeciesEntryResponse> species, List<MembershipResponse> affiliations,
 		List<FruitUseResponse> devilFruits, List<RelativeResponse> relatives, List<RelativeResponse> relativesOf,
-		ImageResponse image, FirstAppearanceResponse firstAppearance, List<ParagraphResponse> description) {
+		ImageResponse image, FirstAppearanceResponse firstAppearance, List<ParagraphResponse> description,
+		CharacterKnowledgeResponse initialKnowledge, List<CharacterRevealResponse> reveals) {
 
 }

@@ -8655,6 +8655,16 @@ components:
           - RELATIVE_ALREADY_LINKED
           - STORY_POINT_OUT_OF_RANGE
           - STORY_POINT_NOT_APPROVED
+    BountyKnowledgeRequest:
+      type: object
+      properties:
+        inactive:
+          type: boolean
+    BountyKnowledgeResponse:
+      type: object
+      properties:
+        inactive:
+          type: boolean
     BountyNamesResponse:
       type: object
       properties:
@@ -8718,6 +8728,8 @@ components:
           description: The content id of the character the poster is about
         inactive:
           type: boolean
+        initialKnowledge:
+          $ref: "#/components/schemas/BountyKnowledgeRequest"
         posterName:
           type: string
           maxLength: 100
@@ -8728,6 +8740,10 @@ components:
           description: The content id of the bounty it replaces
         removeImage:
           type: boolean
+        reveals:
+          type: array
+          items:
+            $ref: "#/components/schemas/BountyRevealRequest"
     BountyResponse:
       type: object
       properties:
@@ -8755,18 +8771,60 @@ components:
           $ref: "#/components/schemas/ImageResponse"
         inactive:
           type: boolean
+        initialKnowledge:
+          $ref: "#/components/schemas/BountyKnowledgeResponse"
         next:
           $ref: "#/components/schemas/BountyReferenceResponse"
         posterName:
           type: string
         previous:
           $ref: "#/components/schemas/BountyReferenceResponse"
+        reveals:
+          type: array
+          items:
+            $ref: "#/components/schemas/BountyRevealResponse"
         validity:
           type: string
           enum:
           - ACTIVE
           - SUPERSEDED
           - INACTIVE
+    BountyRevealRequest:
+      type: object
+      properties:
+        fields:
+          type: array
+          items:
+            type: string
+            enum:
+            - INACTIVE
+          uniqueItems: true
+        inactive:
+          type: boolean
+        revealedAt:
+          $ref: "#/components/schemas/FirstAppearanceRequest"
+        titles:
+          type: object
+          additionalProperties:
+            type: string
+    BountyRevealResponse:
+      type: object
+      properties:
+        fields:
+          type: array
+          items:
+            type: string
+            enum:
+            - INACTIVE
+          uniqueItems: true
+        inactive:
+          type: boolean
+        revealedAt:
+          $ref: "#/components/schemas/FirstAppearanceResponse"
+        titles:
+          type: object
+          additionalProperties:
+            type: string
     ChapterNamesResponse:
       type: object
       properties:
@@ -8835,6 +8893,44 @@ components:
             $ref: "#/components/schemas/StoryTranslationResponse"
         volume:
           $ref: "#/components/schemas/NumberedReferenceResponse"
+    CharacterKnowledgeRequest:
+      type: object
+      properties:
+        japaneseName:
+          type: string
+          maxLength: 100
+          minLength: 0
+        romaji:
+          type: string
+          maxLength: 100
+          minLength: 0
+        status:
+          type: string
+          enum:
+          - ALIVE
+          - DECEASED
+          - UNKNOWN
+        translations:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/CharacterTranslationRequest"
+    CharacterKnowledgeResponse:
+      type: object
+      properties:
+        japaneseName:
+          type: string
+        romaji:
+          type: string
+        status:
+          type: string
+          enum:
+          - ALIVE
+          - DECEASED
+          - UNKNOWN
+        translations:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/CharacterTranslationResponse"
     CharacterNamesResponse:
       type: object
       properties:
@@ -8905,6 +9001,8 @@ components:
           - MALE
           - FEMALE
           - UNKNOWN
+        initialKnowledge:
+          $ref: "#/components/schemas/CharacterKnowledgeRequest"
         japaneseName:
           type: string
           maxLength: 100
@@ -8915,6 +9013,10 @@ components:
             $ref: "#/components/schemas/RelativeRequest"
         removeImage:
           type: boolean
+        reveals:
+          type: array
+          items:
+            $ref: "#/components/schemas/CharacterRevealRequest"
         romaji:
           type: string
           maxLength: 100
@@ -8969,6 +9071,8 @@ components:
           - UNKNOWN
         image:
           $ref: "#/components/schemas/ImageResponse"
+        initialKnowledge:
+          $ref: "#/components/schemas/CharacterKnowledgeResponse"
         japaneseName:
           type: string
         relatives:
@@ -8979,6 +9083,10 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/RelativeResponse"
+        reveals:
+          type: array
+          items:
+            $ref: "#/components/schemas/CharacterRevealResponse"
         romaji:
           type: string
         species:
@@ -8991,6 +9099,72 @@ components:
           - ALIVE
           - DECEASED
           - UNKNOWN
+        translations:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/CharacterTranslationResponse"
+    CharacterRevealRequest:
+      type: object
+      properties:
+        fields:
+          type: array
+          items:
+            type: string
+            enum:
+            - IDENTITY
+            - STATUS
+          uniqueItems: true
+        japaneseName:
+          type: string
+          maxLength: 100
+          minLength: 0
+        revealedAt:
+          $ref: "#/components/schemas/FirstAppearanceRequest"
+        romaji:
+          type: string
+          maxLength: 100
+          minLength: 0
+        status:
+          type: string
+          enum:
+          - ALIVE
+          - DECEASED
+          - UNKNOWN
+        titles:
+          type: object
+          additionalProperties:
+            type: string
+        translations:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/CharacterTranslationRequest"
+    CharacterRevealResponse:
+      type: object
+      properties:
+        fields:
+          type: array
+          items:
+            type: string
+            enum:
+            - IDENTITY
+            - STATUS
+          uniqueItems: true
+        japaneseName:
+          type: string
+        revealedAt:
+          $ref: "#/components/schemas/FirstAppearanceResponse"
+        romaji:
+          type: string
+        status:
+          type: string
+          enum:
+          - ALIVE
+          - DECEASED
+          - UNKNOWN
+        titles:
+          type: object
+          additionalProperties:
+            type: string
         translations:
           type: object
           additionalProperties:
@@ -9835,6 +10009,38 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/StatusCountResponse"
+    DevilFruitKnowledgeRequest:
+      type: object
+      properties:
+        romaji:
+          type: string
+          maxLength: 100
+          minLength: 0
+        subcategory:
+          type: string
+          format: uuid
+          description: The id of a subcategory of that type
+        translations:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/DevilFruitTranslationRequest"
+        type:
+          type: string
+          format: uuid
+          description: The content id of a Devil Fruit Type
+    DevilFruitKnowledgeResponse:
+      type: object
+      properties:
+        romaji:
+          type: string
+        subcategory:
+          $ref: "#/components/schemas/SubcategoryReferenceResponse"
+        translations:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/DevilFruitTranslationResponse"
+        type:
+          $ref: "#/components/schemas/TypeReferenceResponse"
     DevilFruitNamesResponse:
       type: object
       properties:
@@ -9888,10 +10094,16 @@ components:
           minItems: 0
         firstAppearance:
           $ref: "#/components/schemas/FirstAppearanceRequest"
+        initialKnowledge:
+          $ref: "#/components/schemas/DevilFruitKnowledgeRequest"
         multipleUsers:
           type: boolean
         removeImage:
           type: boolean
+        reveals:
+          type: array
+          items:
+            $ref: "#/components/schemas/DevilFruitRevealRequest"
         romaji:
           type: string
           maxLength: 100
@@ -9928,12 +10140,80 @@ components:
           $ref: "#/components/schemas/FirstAppearanceResponse"
         image:
           $ref: "#/components/schemas/ImageResponse"
+        initialKnowledge:
+          $ref: "#/components/schemas/DevilFruitKnowledgeResponse"
         multipleUsers:
           type: boolean
+        reveals:
+          type: array
+          items:
+            $ref: "#/components/schemas/DevilFruitRevealResponse"
         romaji:
           type: string
         subcategory:
           $ref: "#/components/schemas/SubcategoryReferenceResponse"
+        translations:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/DevilFruitTranslationResponse"
+        type:
+          $ref: "#/components/schemas/TypeReferenceResponse"
+    DevilFruitRevealRequest:
+      type: object
+      properties:
+        fields:
+          type: array
+          items:
+            type: string
+            enum:
+            - NAME
+            - ROMAJI
+            - TYPE
+          uniqueItems: true
+        revealedAt:
+          $ref: "#/components/schemas/FirstAppearanceRequest"
+        romaji:
+          type: string
+          maxLength: 100
+          minLength: 0
+        subcategory:
+          type: string
+          format: uuid
+          description: The id of a subcategory of that type
+        titles:
+          type: object
+          additionalProperties:
+            type: string
+        translations:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/DevilFruitTranslationRequest"
+        type:
+          type: string
+          format: uuid
+          description: The content id of a Devil Fruit Type
+    DevilFruitRevealResponse:
+      type: object
+      properties:
+        fields:
+          type: array
+          items:
+            type: string
+            enum:
+            - NAME
+            - ROMAJI
+            - TYPE
+          uniqueItems: true
+        revealedAt:
+          $ref: "#/components/schemas/FirstAppearanceResponse"
+        romaji:
+          type: string
+        subcategory:
+          $ref: "#/components/schemas/SubcategoryReferenceResponse"
+        titles:
+          type: object
+          additionalProperties:
+            type: string
         translations:
           type: object
           additionalProperties:

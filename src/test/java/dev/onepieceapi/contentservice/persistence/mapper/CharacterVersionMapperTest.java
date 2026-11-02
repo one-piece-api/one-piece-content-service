@@ -22,12 +22,16 @@ import dev.onepieceapi.contentservice.persistence.entity.CharacterEpithetEntity;
 import dev.onepieceapi.contentservice.persistence.entity.CharacterMembershipEntity;
 import dev.onepieceapi.contentservice.persistence.entity.CharacterMembershipPeriodEntity;
 import dev.onepieceapi.contentservice.persistence.entity.CharacterVersionEntity;
+import dev.onepieceapi.contentservice.domain.character.CharacterField;
+import dev.onepieceapi.contentservice.domain.character.CharacterKnowledge;
+import dev.onepieceapi.contentservice.domain.readertime.Reveal;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.time.MonthDay;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -130,6 +134,23 @@ class CharacterVersionMapperTest {
 		assertThat(membership.getPeriods()).containsExactly(period);
 		assertThat(period.getRole()).isEmpty();
 		assertThat(period.getMarineRank()).isNull();
+	}
+
+	@Test
+	void theInitialKnowledgeAndTheRevealsAreWrittenAndReadBack() {
+		var entity = draft();
+		var body = nami().toBuilder()
+			.status(CharacterStatus.DECEASED)
+			.initialKnowledge(new CharacterKnowledge("Miss Nami", "Misu Nami", CharacterStatus.ALIVE,
+					Map.of("it", "Signorina Nami")))
+			.reveals(List.of(new Reveal<>(new StoryPoint(LATER_CHAPTER_ID, LATER_EPISODE_ID),
+					Set.of(CharacterField.IDENTITY, CharacterField.STATUS), CharacterKnowledge.NONE,
+					Map.of("it", "Chi e davvero", "en", "Who she is"))))
+			.build();
+
+		CharacterVersionMapper.rewrite(entity, body, UPDATED);
+
+		assertThat(CharacterVersionMapper.toDomain(entity).body()).isEqualTo(body);
 	}
 
 	private static Character nami() {
