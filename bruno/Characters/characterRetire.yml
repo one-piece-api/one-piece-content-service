@@ -1,7 +1,7 @@
 info:
   name: characterRetire
   type: http
-  seq: 21
+  seq: 22
   tags:
     - Characters
 

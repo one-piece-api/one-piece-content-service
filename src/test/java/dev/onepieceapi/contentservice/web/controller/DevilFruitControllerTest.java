@@ -19,6 +19,7 @@ import dev.onepieceapi.contentservice.domain.workflow.Version;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAccess;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAction;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
+import dev.onepieceapi.contentservice.service.devilfruit.DevilFruitPreviewer;
 import dev.onepieceapi.contentservice.service.devilfruit.DevilFruitService;
 import dev.onepieceapi.contentservice.service.devilfruit.DevilFruitLinks;
 import dev.onepieceapi.contentservice.service.devilfruittype.DevilFruitTypeLinks;
@@ -95,6 +96,9 @@ class DevilFruitControllerTest {
 
 	@Autowired
 	private MockMvc mockMvc;
+
+	@MockitoBean
+	private DevilFruitPreviewer previewer;
 
 	@MockitoBean
 	private DevilFruitService service;

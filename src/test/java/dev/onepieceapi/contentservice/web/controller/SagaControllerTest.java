@@ -19,7 +19,9 @@ import dev.onepieceapi.contentservice.service.exception.SagaNotFoundException;
 import dev.onepieceapi.contentservice.service.exception.ValueAlreadyUsedException;
 import dev.onepieceapi.contentservice.service.exception.VersionActionBlockedException;
 import dev.onepieceapi.contentservice.service.story.SagaLinks;
+import dev.onepieceapi.contentservice.service.story.SagaPreviewer;
 import dev.onepieceapi.contentservice.service.story.SagaService;
+import dev.onepieceapi.contentservice.web.mapper.ImageResponseMapper;
 import dev.onepieceapi.contentservice.web.security.SecurityConfig;
 import dev.onepieceapi.exception.web.ApplicationExceptionHandler;
 import dev.onepieceapi.exception.web.ConcurrentModificationExceptionHandler;
@@ -78,6 +80,12 @@ class SagaControllerTest {
 
 	@Autowired
 	private MockMvc mockMvc;
+
+	@MockitoBean
+	private SagaPreviewer previewer;
+
+	@MockitoBean
+	private ImageResponseMapper images;
 
 	@MockitoBean
 	private SagaService service;

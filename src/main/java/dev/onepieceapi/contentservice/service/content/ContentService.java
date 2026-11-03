@@ -3,6 +3,8 @@ package dev.onepieceapi.contentservice.service.content;
 import dev.onepieceapi.contentservice.service.audit.AuditLogService;
 import dev.onepieceapi.contentservice.service.audit.VersionAuditRecord;
 
+import dev.onepieceapi.contentservice.domain.readertime.Preview;
+import dev.onepieceapi.contentservice.domain.readertime.VersionPreview;
 import dev.onepieceapi.contentservice.domain.security.Permission;
 import dev.onepieceapi.contentservice.domain.security.User;
 import dev.onepieceapi.contentservice.domain.workflow.BlockedAction;
@@ -32,6 +34,7 @@ import dev.onepieceapi.contentservice.service.exception.VersionActionConflictExc
 import dev.onepieceapi.contentservice.service.exception.VersionActionForbiddenException;
 import dev.onepieceapi.contentservice.service.exception.VersionNotFoundException;
 import dev.onepieceapi.contentservice.service.validation.ContentValidator;
+import dev.onepieceapi.readertime.ReaderPosition;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -200,6 +203,18 @@ public class ContentService<T extends ContentBody<T>, E extends VersionBodyEntit
 		E entity = visibleVersion(permissions, contentId, versionNumber);
 		Version<T> version = this.definition.toDomain(entity);
 		return accessTo(contentId, version, contextOf(version, contentId, caller, permissions));
+	}
+
+	/**
+	 * A version the caller sees as a reader at chapter or episode N will see it
+	 * (UF-CNT-23), in any status: read-only, the same visibility as reading it.
+	 */
+	public VersionPreview<T> preview(Set<Permission> permissions, UUID contentId, int versionNumber,
+			ReaderPosition position, ContentPreviewer<T> previewer) {
+		Version<T> version = this.definition.toDomain(visibleVersion(permissions, contentId, versionNumber));
+		Preview<T> preview = previewer.previewOf(contentId, version.body(), position);
+		Version<T> resolved = version.toBuilder().body(preview.body()).build();
+		return new VersionPreview<>(preview, new VersionAccess<>(resolved, Set.of()));
 	}
 
 	/** The history of a version the caller sees, oldest first. */

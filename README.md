@@ -70,6 +70,10 @@ copertina), **Capitolo** ed **Episodio** (relazioni verso arco/volume, date per 
   `relatives[i].relative`; in pubblicazione `RELATIVE_ALREADY_LINKED`, sotto un lock per coppia).
   La risposta aggiunge `relativesOf` (sola lettura): i personaggi online che nominano questo, con il tipo
   inverso. Un personaggio non si ritira finché personaggi online lo nominano come parente. Un capitolo o un episodio con personaggi online non si ritira (voce `characters`).
+- **Anteprima a N** (ADR-0013): `GET /<sezione>/{id}/versions/{n}/preview?asOfChapter=N` oppure
+  `?asOfEpisode=N` (uno solo, N ≥ 1) su frutti, tipi, personaggi, bounty, affiliazioni, specie, saghe e
+  archi: la versione, anche bozza, come la vede un lettore a N (`visible`, `body`, `mainPortrait`), con le
+  voci nascoste inattese (`hiddenEntries`). Le viste `published` (V42) espongono gli stessi punti come numeri.
 - **Dashboard** (`/dashboard`): contatori per stato, attività recente del chiamante
   (dall'audit log) e pagine per stato trasversali alle entità.
 

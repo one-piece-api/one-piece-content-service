@@ -5,6 +5,7 @@ import dev.onepieceapi.contentservice.domain.story.Saga;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSortField;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
 import dev.onepieceapi.contentservice.service.story.SagaLinks;
+import dev.onepieceapi.contentservice.service.story.SagaPreviewer;
 import dev.onepieceapi.contentservice.service.story.SagaService;
 import dev.onepieceapi.contentservice.web.ApiPaths;
 import dev.onepieceapi.contentservice.web.dto.request.ContentListRequest;
@@ -19,6 +20,7 @@ import dev.onepieceapi.contentservice.web.dto.response.SagaResponse;
 import dev.onepieceapi.contentservice.web.dto.response.VersionResponse;
 import dev.onepieceapi.contentservice.web.mapper.ContentRequestMapper;
 import dev.onepieceapi.contentservice.web.mapper.ContentResponseMapper;
+import dev.onepieceapi.contentservice.web.mapper.ImageResponseMapper;
 import dev.onepieceapi.contentservice.web.mapper.StoryRequestMapper;
 import dev.onepieceapi.contentservice.web.mapper.StoryResponseMapper;
 import dev.onepieceapi.contentservice.web.security.AuthenticatedCaller;
@@ -51,16 +53,17 @@ import java.util.UUID;
 @RestController
 @RequestMapping(ApiPaths.SAGAS)
 @Tag(name = "Sagas")
-class SagaController extends ContentController<Saga, SagaResponse, SagaNamesResponse> {
+class SagaController extends PreviewableContentController<Saga, SagaResponse, SagaNamesResponse> {
 
 	private final SagaService service;
 
 	private final SagaLinks links;
 
 	@Autowired
-	SagaController(SagaService service, SagaLinks links, FirstAppearanceLinks storyItems) {
+	SagaController(SagaService service, SagaLinks links, FirstAppearanceLinks storyItems, SagaPreviewer previewer,
+			ImageResponseMapper images) {
 		super(service, access -> StoryResponseMapper.toVersionResponse(access,
-				storyItems.referencesOfPoints(access.body().points())));
+				storyItems.referencesOfPoints(access.body().points())), previewer, images);
 		this.service = service;
 		this.links = links;
 	}

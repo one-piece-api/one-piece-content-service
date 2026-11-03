@@ -1,6 +1,7 @@
 package dev.onepieceapi.contentservice.service.devilfruit;
 
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitFixtures;
+import dev.onepieceapi.contentservice.service.content.StoryNumbering;
 import dev.onepieceapi.contentservice.service.validation.ParagraphRules;
 import dev.onepieceapi.contentservice.config.RulesProperties;
 import dev.onepieceapi.contentservice.service.content.OnlineChapters;
@@ -180,17 +181,17 @@ class DevilFruitImageIntegrationTest {
 	void setUp() {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
 		var validator = new DevilFruitValidator(this.versionRepository, this.languageRepository, this.typeRepository,
-				this.chapterRepository, this.episodeRepository, new ParagraphRules(
-						new ReaderAxisRules(this.contentRepository, this.chapterRepository, this.episodeRepository)));
+				this.chapterRepository, this.episodeRepository,
+				new ParagraphRules(new ReaderAxisRules(this.contentRepository, this.chapterRepository,
+						this.episodeRepository, new StoryNumbering(this.chapterRepository, this.episodeRepository))));
 		var store = new JpaImageStore(this.imageRepository, clock);
 		var images = new ContentImages(new ImageValidator(), new ImageNormalizer(ENCODER), store, PROPERTIES);
 		this.service = new DevilFruitService(
-				new DevilFruitDefinition(this.versionRepository, validator,
-						new DevilFruitRules(this.contentRepository, this.typeRepository, this.chapterRepository,
-								this.episodeRepository, this.characterRepository,
-								new ReaderAxisRules(this.contentRepository, this.chapterRepository,
-										this.episodeRepository),
-								new RulesProperties(5))),
+				new DevilFruitDefinition(this.versionRepository, validator, new DevilFruitRules(this.contentRepository,
+						this.typeRepository, this.chapterRepository, this.episodeRepository, this.characterRepository,
+						new ReaderAxisRules(this.contentRepository, this.chapterRepository, this.episodeRepository,
+								new StoryNumbering(this.chapterRepository, this.episodeRepository)),
+						new RulesProperties(5))),
 				this.contentVersionRepository, this.contentRepository,
 				new AuditLogService(this.auditLogRepository, clock), clock, images);
 		this.imageService = new ImageService(store, this.versionRepository, this.volumeRepository,

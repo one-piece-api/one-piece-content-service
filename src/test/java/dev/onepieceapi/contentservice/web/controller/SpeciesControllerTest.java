@@ -1,6 +1,10 @@
 package dev.onepieceapi.contentservice.web.controller;
 
 import static dev.onepieceapi.contentservice.domain.readertime.ParagraphFixtures.paragraph;
+import dev.onepieceapi.contentservice.domain.readertime.HiddenEntry;
+import dev.onepieceapi.contentservice.domain.readertime.HiddenReason;
+import dev.onepieceapi.contentservice.domain.readertime.Preview;
+import dev.onepieceapi.contentservice.domain.readertime.VersionPreview;
 import dev.onepieceapi.contentservice.domain.species.Species;
 import dev.onepieceapi.contentservice.domain.species.SpeciesReference;
 import dev.onepieceapi.contentservice.domain.species.SpeciesTranslation;
@@ -18,6 +22,7 @@ import dev.onepieceapi.contentservice.domain.workflow.VersionAccess;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAction;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.service.species.SpeciesLinks;
+import dev.onepieceapi.contentservice.service.species.SpeciesPreviewer;
 import dev.onepieceapi.contentservice.service.species.SpeciesService;
 import dev.onepieceapi.contentservice.service.exception.SpeciesNotFoundException;
 import dev.onepieceapi.contentservice.service.exception.ContentErrorCode;
@@ -31,6 +36,7 @@ import dev.onepieceapi.contentservice.web.security.SecurityConfig;
 import dev.onepieceapi.exception.web.ApplicationExceptionHandler;
 import dev.onepieceapi.exception.web.ConcurrentModificationExceptionHandler;
 import dev.onepieceapi.exception.web.FieldViolation;
+import dev.onepieceapi.readertime.ReaderPosition;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -57,6 +63,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -87,6 +94,9 @@ class SpeciesControllerTest {
 
 	@Autowired
 	private MockMvc mockMvc;
+
+	@MockitoBean
+	private SpeciesPreviewer previewer;
 
 	@MockitoBean
 	private SpeciesService service;
@@ -341,6 +351,72 @@ class SpeciesControllerTest {
 			.andExpect(status().isForbidden());
 		this.mockMvc.perform(get("/species/linkable")).andExpect(status().isUnauthorized());
 		verifyNoInteractions(this.links);
+	}
+
+	@Test
+	void aPreviewAnswersTheBodyResolvedAtNWithWhereTheReaderIsAndTheEntriesHidden() throws Exception {
+		var position = ReaderPosition.atChapter(10);
+		var hidden = List.of(new HiddenEntry("description[1]", HiddenReason.NOT_ON_AXIS, null));
+		var preview = new Preview<>(position, version(VersionStatus.DRAFT, null).body(), null, hidden, Map.of());
+		when(this.service.preview(any(), eq(CONTENT_ID), eq(2), eq(position), eq(this.previewer))).thenReturn(
+				new VersionPreview<>(preview, new VersionAccess<>(version(VersionStatus.DRAFT, null), Set.of())));
+
+		this.mockMvc
+			.perform(get("/species/" + CONTENT_ID + "/versions/2/preview").param("asOfChapter", "10")
+				.with(callerWith(Permission.CONTENT_READ)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.asOf.axis").value("CHAPTER"))
+			.andExpect(jsonPath("$.asOf.number").value(10))
+			.andExpect(jsonPath("$.visible").value(true))
+			.andExpect(jsonPath("$.body.romaji").value("Gyojin"))
+			.andExpect(jsonPath("$.mainPortrait").doesNotExist())
+			.andExpect(jsonPath("$.hiddenEntries[0].path").value("description[1]"))
+			.andExpect(jsonPath("$.hiddenEntries[0].reason").value("NOT_ON_AXIS"));
+	}
+
+	@Test
+	void aPreviewOfAnItemNotMetYetAtNIsNotVisibleAndHasNoBody() throws Exception {
+		var position = ReaderPosition.atEpisode(3);
+		when(this.service.preview(any(), eq(CONTENT_ID), eq(1), eq(position), eq(this.previewer)))
+			.thenReturn(new VersionPreview<>(Preview.notVisible(position),
+					new VersionAccess<>(version(VersionStatus.PUBLISHED, null), Set.of())));
+
+		this.mockMvc
+			.perform(get("/species/" + CONTENT_ID + "/versions/1/preview").param("asOfEpisode", "3")
+				.with(callerWith(Permission.CONTENT_READ)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.asOf.axis").value("EPISODE"))
+			.andExpect(jsonPath("$.visible").value(false))
+			.andExpect(jsonPath("$.body").doesNotExist())
+			.andExpect(jsonPath("$.hiddenEntries").isEmpty());
+	}
+
+	@Test
+	void aPreviewTakesExactlyOnePositiveChapterOrEpisode() throws Exception {
+		String path = "/species/" + CONTENT_ID + "/versions/1/preview";
+		this.mockMvc.perform(get(path).with(callerWith(Permission.CONTENT_READ)))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.errorCode").value("VALIDATION_FAILED"))
+			.andExpect(jsonPath("$.errors[0].field").value("asOfChapter"));
+		this.mockMvc.perform(
+				get(path).param("asOfChapter", "1").param("asOfEpisode", "1").with(callerWith(Permission.CONTENT_READ)))
+			.andExpect(status().isBadRequest());
+		this.mockMvc.perform(get(path).param("asOfChapter", "0").with(callerWith(Permission.CONTENT_READ)))
+			.andExpect(status().isBadRequest());
+		verifyNoInteractions(this.previewer);
+		verify(this.service, never()).preview(any(), any(), anyInt(), any(), any());
+	}
+
+	@Test
+	void aPreviewOfAVersionTheCallerDoesNotSeeIsNotFoundAndNeedsContentRead() throws Exception {
+		when(this.service.preview(any(), eq(CONTENT_ID), eq(1), any(), any()))
+			.thenThrow(new SpeciesNotFoundException(CONTENT_ID));
+		String path = "/species/" + CONTENT_ID + "/versions/1/preview";
+
+		this.mockMvc.perform(get(path).param("asOfChapter", "1").with(callerWith(Permission.CONTENT_READ)))
+			.andExpect(status().isNotFound());
+		this.mockMvc.perform(get(path).param("asOfChapter", "1").with(callerWith(Permission.CONTENT_WRITE)))
+			.andExpect(status().isForbidden());
 	}
 
 }

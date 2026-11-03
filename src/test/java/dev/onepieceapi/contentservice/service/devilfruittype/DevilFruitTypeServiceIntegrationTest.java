@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.service.devilfruittype;
 
+import dev.onepieceapi.contentservice.service.content.StoryNumbering;
 import dev.onepieceapi.contentservice.service.validation.ParagraphRules;
 import dev.onepieceapi.contentservice.service.content.ReaderAxisRules;
 import dev.onepieceapi.contentservice.service.audit.AuditLogService;
@@ -156,15 +157,16 @@ class DevilFruitTypeServiceIntegrationTest {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
 		var auditLogService = new AuditLogService(this.auditLogRepository, clock);
 		var validator = new DevilFruitTypeValidator(this.versionRepository, this.languageRepository,
-				this.chapterRepository, this.episodeRepository, new ParagraphRules(
-						new ReaderAxisRules(this.contentRepository, this.chapterRepository, this.episodeRepository)));
-		this.service = new DevilFruitTypeService(this.versionRepository, this.contentVersionRepository,
-				this.contentRepository, validator,
-				new DevilFruitTypeRules(this.contentRepository, this.fruitRepository, this.chapterRepository,
-						this.episodeRepository,
-						new ReaderAxisRules(this.contentRepository, this.chapterRepository, this.episodeRepository),
-						new RulesProperties(5)),
-				auditLogService, clock);
+				this.chapterRepository, this.episodeRepository,
+				new ParagraphRules(new ReaderAxisRules(this.contentRepository, this.chapterRepository,
+						this.episodeRepository, new StoryNumbering(this.chapterRepository, this.episodeRepository))));
+		this.service = new DevilFruitTypeService(
+				new DevilFruitTypeDefinition(this.versionRepository, validator, new DevilFruitTypeRules(
+						this.contentRepository, this.fruitRepository, this.chapterRepository, this.episodeRepository,
+						new ReaderAxisRules(this.contentRepository, this.chapterRepository, this.episodeRepository,
+								new StoryNumbering(this.chapterRepository, this.episodeRepository)),
+						new RulesProperties(5))),
+				this.contentVersionRepository, this.contentRepository, auditLogService, clock);
 
 		this.paramecia = content();
 		version(this.paramecia, 1, SUPERSEDED, this.nami, 60, names("Paramecia", "Paramisia", "Paramecia"));

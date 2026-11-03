@@ -13,6 +13,7 @@ import dev.onepieceapi.contentservice.service.exception.DevilFruitTypeNotFoundEx
 import dev.onepieceapi.contentservice.service.validation.DevilFruitTypeValidator;
 import dev.onepieceapi.exception.NotFoundException;
 import lombok.Getter;
+import org.springframework.stereotype.Component;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 
@@ -20,10 +21,11 @@ import java.time.Instant;
 import java.util.UUID;
 
 /** The Devil Fruit Type, as the generic workflow sees it. */
+@Component
 @Getter
 @Accessors(fluent = true)
 @RequiredArgsConstructor
-class DevilFruitTypeDefinition implements ContentDefinition<DevilFruitType, DevilFruitTypeVersionEntity> {
+public class DevilFruitTypeDefinition implements ContentDefinition<DevilFruitType, DevilFruitTypeVersionEntity> {
 
 	private final DevilFruitTypeVersionRepository repository;
 

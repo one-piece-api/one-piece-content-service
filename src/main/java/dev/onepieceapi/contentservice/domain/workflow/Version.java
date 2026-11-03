@@ -19,7 +19,7 @@ import java.util.Objects;
  * in draft
  * @param body what this version says
  */
-@Builder
+@Builder(toBuilder = true)
 public record Version<T>(int number, Integer basedOn, VersionStatus status, User author, User claimant,
 		String rejectionReason, T body, Instant createdAt, Instant updatedAt) {
 

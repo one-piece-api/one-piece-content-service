@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.service.content;
 
+import dev.onepieceapi.contentservice.service.devilfruittype.DevilFruitTypeDefinition;
 import static dev.onepieceapi.contentservice.domain.readertime.ParagraphFixtures.paragraph;
 import dev.onepieceapi.contentservice.persistence.repository.SagaVersionRepository;
 import dev.onepieceapi.contentservice.service.validation.ParagraphRules;
@@ -214,26 +215,31 @@ class FirstAppearanceIntegrationTest {
 				new DevilFruitDefinition(this.fruitRepository,
 						new DevilFruitValidator(this.fruitRepository, this.languageRepository, this.typeRepository,
 								this.chapterRepository, this.episodeRepository,
-								new ParagraphRules(new ReaderAxisRules(this.contentRepository, this.chapterRepository,
-										this.episodeRepository))),
+								new ParagraphRules(new ReaderAxisRules(
+										this.contentRepository, this.chapterRepository, this.episodeRepository,
+										new StoryNumbering(this.chapterRepository, this.episodeRepository)))),
 						new DevilFruitRules(this.contentRepository, this.typeRepository, this.chapterRepository,
 								this.episodeRepository, this.characterRepository,
 								new ReaderAxisRules(this.contentRepository, this.chapterRepository,
-										this.episodeRepository),
+										this.episodeRepository,
+										new StoryNumbering(this.chapterRepository, this.episodeRepository)),
 								new RulesProperties(5))),
 				this.contentVersionRepository, this.contentRepository, auditLogService, clock,
 				mock(ContentImages.class));
-		this.types = new DevilFruitTypeService(this.typeRepository, this.contentVersionRepository,
-				this.contentRepository,
-				new DevilFruitTypeValidator(this.typeRepository, this.languageRepository, this.chapterRepository,
-						this.episodeRepository,
-						new ParagraphRules(new ReaderAxisRules(this.contentRepository, this.chapterRepository,
-								this.episodeRepository))),
-				new DevilFruitTypeRules(this.contentRepository, this.fruitRepository, this.chapterRepository,
-						this.episodeRepository,
-						new ReaderAxisRules(this.contentRepository, this.chapterRepository, this.episodeRepository),
-						properties),
-				auditLogService, clock);
+		this.types = new DevilFruitTypeService(
+				new DevilFruitTypeDefinition(this.typeRepository,
+						new DevilFruitTypeValidator(this.typeRepository, this.languageRepository,
+								this.chapterRepository, this.episodeRepository,
+								new ParagraphRules(new ReaderAxisRules(
+										this.contentRepository, this.chapterRepository, this.episodeRepository,
+										new StoryNumbering(this.chapterRepository, this.episodeRepository)))),
+						new DevilFruitTypeRules(this.contentRepository, this.fruitRepository, this.chapterRepository,
+								this.episodeRepository,
+								new ReaderAxisRules(this.contentRepository, this.chapterRepository,
+										this.episodeRepository,
+										new StoryNumbering(this.chapterRepository, this.episodeRepository)),
+								properties)),
+				this.contentVersionRepository, this.contentRepository, auditLogService, clock);
 		this.chapters = new ChapterService(this.chapterRepository, this.contentVersionRepository,
 				this.contentRepository,
 				new ChapterValidator(this.chapterRepository, this.languageRepository, this.arcRepository,

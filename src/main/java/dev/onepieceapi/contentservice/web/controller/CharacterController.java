@@ -4,11 +4,14 @@ import dev.onepieceapi.contentservice.domain.character.Character;
 import dev.onepieceapi.contentservice.domain.character.CharacterLookups;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.domain.image.GalleryUploads;
+import dev.onepieceapi.contentservice.domain.readertime.VersionPreview;
+import dev.onepieceapi.contentservice.domain.story.NumberedReference;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSortField;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAccess;
 import dev.onepieceapi.contentservice.service.bounty.BountyLinks;
 import dev.onepieceapi.contentservice.service.character.CharacterLinks;
+import dev.onepieceapi.contentservice.service.character.CharacterPreviewer;
 import dev.onepieceapi.contentservice.service.character.CharacterReferences;
 import dev.onepieceapi.contentservice.service.character.CharacterService;
 import dev.onepieceapi.contentservice.service.story.FirstAppearanceLinks;
@@ -65,12 +68,14 @@ import java.util.stream.Stream;
 @RestController
 @RequestMapping(ApiPaths.CHARACTERS)
 @Tag(name = "Characters")
-class CharacterController extends ContentController<Character, CharacterResponse, CharacterNamesResponse> {
+class CharacterController extends PreviewableContentController<Character, CharacterResponse, CharacterNamesResponse> {
 
 	/** The parts of a save with a portrait: the version as JSON, and the file. */
 	private static final String VERSION_PART = "version";
 
 	private final CharacterService service;
+
+	private final CharacterPreviewer previewer;
 
 	private final CharacterLinks links;
 
@@ -84,8 +89,10 @@ class CharacterController extends ContentController<Character, CharacterResponse
 
 	@Autowired
 	CharacterController(CharacterService service, CharacterLinks links, BountyLinks bounties,
-			CharacterReferences references, FirstAppearanceLinks firstAppearances, ImageResponseMapper images) {
-		super(service, CharacterController::answeredWithTheContent);
+			CharacterReferences references, FirstAppearanceLinks firstAppearances, CharacterPreviewer previewer,
+			ImageResponseMapper images) {
+		super(service, CharacterController::answeredWithTheContent, previewer, images);
+		this.previewer = previewer;
 		this.service = service;
 		this.links = links;
 		this.bounties = bounties;
@@ -110,12 +117,29 @@ class CharacterController extends ContentController<Character, CharacterResponse
 			AuthenticatedCaller caller) {
 		Character character = access.body();
 		CharacterLookups lookups = this.references.lookupsOf(contentId, character);
+		return CharacterResponseMapper.toVersionResponse(access, lookups, storyItemsOf(character, lookups),
+				this.images);
+	}
+
+	/**
+	 * The resolved character, with what it points to and who points to it read at N: the
+	 * names of its fruits and relatives as the reader knows them there.
+	 */
+	@Override
+	protected CharacterResponse previewBody(UUID contentId, VersionPreview<Character> preview,
+			AuthenticatedCaller caller) {
+		Character character = preview.preview().body();
+		CharacterLookups lookups = this.previewer.lookupsAt(contentId, preview.preview());
+		return CharacterResponseMapper.toResponse(character, lookups, storyItemsOf(character, lookups), this.images);
+	}
+
+	/** The chapters and episodes the character and the characters naming it point to. */
+	private Map<UUID, NumberedReference> storyItemsOf(Character character, CharacterLookups lookups) {
 		List<StoryPoint> points = Stream
 			.concat(character.points().stream(),
 					lookups.relativesOf().stream().flatMap(relative -> relative.window().points()))
 			.toList();
-		return CharacterResponseMapper.toVersionResponse(access, lookups,
-				this.firstAppearances.referencesOfPoints(points), this.images);
+		return this.firstAppearances.referencesOfPoints(points);
 	}
 
 	/**

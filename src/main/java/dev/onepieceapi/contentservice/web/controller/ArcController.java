@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.web.controller;
 
+import dev.onepieceapi.contentservice.service.story.ArcPreviewer;
 import dev.onepieceapi.contentservice.service.story.FirstAppearanceLinks;
 import dev.onepieceapi.contentservice.domain.story.Arc;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSortField;
@@ -19,6 +20,7 @@ import dev.onepieceapi.contentservice.web.dto.response.NumberedReferenceResponse
 import dev.onepieceapi.contentservice.web.dto.response.PageResponse;
 import dev.onepieceapi.contentservice.web.dto.response.VersionResponse;
 import dev.onepieceapi.contentservice.web.mapper.ContentResponseMapper;
+import dev.onepieceapi.contentservice.web.mapper.ImageResponseMapper;
 import dev.onepieceapi.contentservice.web.mapper.StoryRequestMapper;
 import dev.onepieceapi.contentservice.web.mapper.StoryResponseMapper;
 import dev.onepieceapi.contentservice.web.security.AuthenticatedCaller;
@@ -53,7 +55,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping(ApiPaths.ARCS)
 @Tag(name = "Arcs")
-class ArcController extends ContentController<Arc, ArcResponse, ArcNamesResponse> {
+class ArcController extends PreviewableContentController<Arc, ArcResponse, ArcNamesResponse> {
 
 	private final ArcService service;
 
@@ -62,9 +64,11 @@ class ArcController extends ContentController<Arc, ArcResponse, ArcNamesResponse
 	private final ArcLinks links;
 
 	@Autowired
-	ArcController(ArcService service, SagaLinks sagas, ArcLinks links, FirstAppearanceLinks storyItems) {
+	ArcController(ArcService service, SagaLinks sagas, ArcLinks links, FirstAppearanceLinks storyItems,
+			ArcPreviewer previewer, ImageResponseMapper images) {
 		super(service, access -> StoryResponseMapper.toArcVersionResponse(access,
-				sagas.referencesFor(List.of(access.body())), storyItems.referencesOfPoints(access.body().points())));
+				sagas.referencesFor(List.of(access.body())), storyItems.referencesOfPoints(access.body().points())),
+				previewer, images);
 		this.service = service;
 		this.sagas = sagas;
 		this.links = links;

@@ -26,6 +26,7 @@ enum ContentEndpoint {
 	GET(HttpMethod.GET, ApiPaths.CONTENT_BY_ID, Permission.CONTENT_READ),
 	VERSION(HttpMethod.GET, ApiPaths.CONTENT_VERSION, Permission.CONTENT_READ),
 	VERSION_EVENTS(HttpMethod.GET, ApiPaths.CONTENT_VERSION_EVENTS, Permission.CONTENT_READ),
+	VERSION_PREVIEW(HttpMethod.GET, ApiPaths.CONTENT_VERSION_PREVIEW, Permission.CONTENT_READ),
 
 	// Writing takes content:write; whether this caller may change this version - its
 	// author, while it is a draft - is decided by TransitionPolicy.

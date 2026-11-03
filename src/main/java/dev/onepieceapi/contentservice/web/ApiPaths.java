@@ -131,6 +131,9 @@ public final class ApiPaths {
 
 	public static final String CONTENT_VERSION_EVENTS = CONTENT_VERSION + "/events";
 
+	/** A version as a reader at chapter or episode N will see it (UF-CNT-23). */
+	public static final String CONTENT_VERSION_PREVIEW = CONTENT_VERSION + "/preview";
+
 	/**
 	 * Workflow actions: one path per transition, posted with no body - except a
 	 * rejection, which carries its reason.

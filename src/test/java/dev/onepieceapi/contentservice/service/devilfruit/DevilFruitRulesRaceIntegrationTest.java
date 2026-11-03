@@ -1,6 +1,8 @@
 package dev.onepieceapi.contentservice.service.devilfruit;
 
+import dev.onepieceapi.contentservice.service.devilfruittype.DevilFruitTypeDefinition;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitFixtures;
+import dev.onepieceapi.contentservice.service.content.StoryNumbering;
 import dev.onepieceapi.contentservice.service.validation.ParagraphRules;
 import dev.onepieceapi.contentservice.service.audit.AuditLogService;
 import dev.onepieceapi.contentservice.service.devilfruittype.DevilFruitTypeService;
@@ -313,14 +315,20 @@ class DevilFruitRulesRaceIntegrationTest {
 	private DevilFruitTypeService typeService(DevilFruitVersionRepository fruits,
 			DevilFruitTypeVersionRepository types) {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
-		return new DevilFruitTypeService(types, this.contentVersionRepository, this.contentRepository,
-				new DevilFruitTypeValidator(this.typeRepository, this.languageRepository, this.chapterRepository,
-						this.episodeRepository,
-						new ParagraphRules(new ReaderAxisRules(this.contentRepository, this.chapterRepository,
-								this.episodeRepository))),
-				new DevilFruitTypeRules(this.contentRepository, fruits, this.chapterRepository, this.episodeRepository,
-						new ReaderAxisRules(this.contentRepository, this.chapterRepository, this.episodeRepository),
-						new RulesProperties(5)),
+		return new DevilFruitTypeService(
+				new DevilFruitTypeDefinition(types,
+						new DevilFruitTypeValidator(this.typeRepository, this.languageRepository,
+								this.chapterRepository, this.episodeRepository,
+								new ParagraphRules(new ReaderAxisRules(
+										this.contentRepository, this.chapterRepository, this.episodeRepository,
+										new StoryNumbering(this.chapterRepository, this.episodeRepository)))),
+						new DevilFruitTypeRules(this.contentRepository, fruits, this.chapterRepository,
+								this.episodeRepository,
+								new ReaderAxisRules(this.contentRepository, this.chapterRepository,
+										this.episodeRepository,
+										new StoryNumbering(this.chapterRepository, this.episodeRepository)),
+								new RulesProperties(5))),
+				this.contentVersionRepository, this.contentRepository,
 				new AuditLogService(this.auditLogRepository, clock), clock);
 	}
 
@@ -330,12 +338,14 @@ class DevilFruitRulesRaceIntegrationTest {
 				new DevilFruitDefinition(this.fruitRepository,
 						new DevilFruitValidator(this.fruitRepository, this.languageRepository, types,
 								this.chapterRepository, this.episodeRepository,
-								new ParagraphRules(new ReaderAxisRules(this.contentRepository, this.chapterRepository,
-										this.episodeRepository))),
+								new ParagraphRules(new ReaderAxisRules(
+										this.contentRepository, this.chapterRepository, this.episodeRepository,
+										new StoryNumbering(this.chapterRepository, this.episodeRepository)))),
 						new DevilFruitRules(this.contentRepository, types, this.chapterRepository,
 								this.episodeRepository, this.characterRepository,
 								new ReaderAxisRules(this.contentRepository, this.chapterRepository,
-										this.episodeRepository),
+										this.episodeRepository,
+										new StoryNumbering(this.chapterRepository, this.episodeRepository)),
 								new RulesProperties(5))),
 				this.contentVersionRepository, this.contentRepository,
 				new AuditLogService(this.auditLogRepository, clock), clock, mock(ContentImages.class));

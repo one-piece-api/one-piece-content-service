@@ -20,6 +20,7 @@ import dev.onepieceapi.contentservice.domain.workflow.VersionAccess;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAction;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.service.affiliation.AffiliationLinks;
+import dev.onepieceapi.contentservice.service.affiliation.AffiliationPreviewer;
 import dev.onepieceapi.contentservice.service.affiliation.AffiliationService;
 import dev.onepieceapi.contentservice.service.exception.AffiliationNotFoundException;
 import dev.onepieceapi.contentservice.service.exception.ContentErrorCode;
@@ -87,6 +88,9 @@ class AffiliationControllerTest {
 
 	@Autowired
 	private MockMvc mockMvc;
+
+	@MockitoBean
+	private AffiliationPreviewer previewer;
 
 	@MockitoBean
 	private AffiliationService service;

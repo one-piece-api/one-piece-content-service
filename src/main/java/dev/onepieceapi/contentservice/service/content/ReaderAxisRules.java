@@ -37,16 +37,13 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EnumMap;
 import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -135,6 +132,8 @@ public class ReaderAxisRules {
 	private final ChapterVersionRepository chapterRepository;
 
 	private final EpisodeVersionRepository episodeRepository;
+
+	private final StoryNumbering numbering;
 
 	/**
 	 * The chapter and the episode of the first appearance, the point every other one is
@@ -267,7 +266,7 @@ public class ReaderAxisRules {
 	}
 
 	/** Each reveal not strictly after the first appearance, or off its axes (3.7.1). */
-	private static Stream<FieldViolation> revealViolations(List<NamedReveal> reveals, AxisNumbers numbers,
+	private static Stream<FieldViolation> revealViolations(List<NamedReveal> reveals, StoryNumbers numbers,
 			Point firstAppearance) {
 		return reveals.stream()
 			.flatMap(named -> PointRules.ofReveal(numbers.pointOf(named.point()), firstAppearance)
@@ -281,7 +280,7 @@ public class ReaderAxisRules {
 	 * Each reveal sharing its point on an axis with an earlier reveal of the same field
 	 * (3.7.1): the reader could not tell which comes first.
 	 */
-	private static Stream<FieldViolation> sharedPoints(List<NamedReveal> reveals, AxisNumbers numbers) {
+	private static Stream<FieldViolation> sharedPoints(List<NamedReveal> reveals, StoryNumbers numbers) {
 		return reveals.stream()
 			.flatMap(named -> named.fieldNames().stream())
 			.distinct()
@@ -290,7 +289,7 @@ public class ReaderAxisRules {
 	}
 
 	private static Stream<FieldViolation> sharedPoints(String fieldName, List<NamedReveal> reveals,
-			AxisNumbers numbers) {
+			StoryNumbers numbers) {
 		List<NamedReveal> naming = reveals.stream().filter(named -> named.fieldNames().contains(fieldName)).toList();
 		List<FieldReveal<Object>> points = naming.stream()
 			.map(named -> FieldReveal.ofCurrentValue(numbers.pointOf(named.point())))
@@ -333,7 +332,7 @@ public class ReaderAxisRules {
 	 */
 	public List<RevealWindow> onlineWindows(List<StoryWindow> windows) {
 		List<StoryPoint> points = windows.stream().flatMap(StoryWindow::points).toList();
-		AxisNumbers numbers = numbersOf(points, Set.of(VersionStatus.PUBLISHED));
+		StoryNumbers numbers = this.numbering.numbersOf(points, Set.of(VersionStatus.PUBLISHED));
 		return windows.stream().map(numbers::windowOf).toList();
 	}
 
@@ -341,32 +340,10 @@ public class ReaderAxisRules {
 	 * The numbers of every chapter and episode of the item, as of the latest version in
 	 * these statuses; empty while one of them has none.
 	 */
-	private Optional<AxisNumbers> numbersOf(WindowedItem item, Collection<VersionStatus> statuses) {
+	private Optional<StoryNumbers> numbersOf(WindowedItem item, Collection<VersionStatus> statuses) {
 		List<StoryPoint> points = item.points();
-		AxisNumbers numbers = numbersOf(points, statuses);
+		StoryNumbers numbers = this.numbering.numbersOf(points, statuses);
 		return Optional.of(numbers).filter(known -> known.coverAll(points));
-	}
-
-	private AxisNumbers numbersOf(List<StoryPoint> points, Collection<VersionStatus> statuses) {
-		return new AxisNumbers(numbersOf(idsOf(points, StoryPoint::chapterContentId), statuses, this.chapterRepository),
-				numbersOf(idsOf(points, StoryPoint::episodeContentId), statuses, this.episodeRepository));
-	}
-
-	private static Set<UUID> idsOf(List<StoryPoint> points, Function<StoryPoint, UUID> part) {
-		return points.stream().map(part).filter(Objects::nonNull).collect(Collectors.toSet());
-	}
-
-	private static Map<UUID, Integer> numbersOf(Set<UUID> contentIds, Collection<VersionStatus> statuses,
-			VersionBodyRepository<? extends VersionBodyEntity> repository) {
-		Map<UUID, Integer> numbers = new HashMap<>();
-		if (!contentIds.isEmpty()) {
-			repository.findMostRecent(contentIds, statuses).forEach(version -> {
-				if (version.naturalKey().value() instanceof Integer number) {
-					numbers.put(version.getContentId(), number);
-				}
-			});
-		}
-		return numbers;
 	}
 
 	/**
@@ -425,30 +402,6 @@ public class ReaderAxisRules {
 		/** The part, e.g. {@code species[1].discovered.chapter}. */
 		String field() {
 			return prefix() + this.relation.field();
-		}
-
-	}
-
-	/** The numbers of the chapters and the episodes, by content. */
-	private record AxisNumbers(Map<UUID, Integer> chapters, Map<UUID, Integer> episodes) {
-
-		Point pointOf(StoryPoint point) {
-			return new Point(numberOf(this.chapters, point.chapterContentId()),
-					numberOf(this.episodes, point.episodeContentId()));
-		}
-
-		RevealWindow windowOf(StoryWindow window) {
-			return new RevealWindow(pointOf(window.discovered()), pointOf(window.ended()));
-		}
-
-		/** Whether every chapter and episode of these points has a number. */
-		boolean coverAll(List<StoryPoint> points) {
-			return this.chapters.keySet().containsAll(idsOf(points, StoryPoint::chapterContentId))
-					&& this.episodes.keySet().containsAll(idsOf(points, StoryPoint::episodeContentId));
-		}
-
-		private static Integer numberOf(Map<UUID, Integer> numbers, UUID contentId) {
-			return contentId == null ? null : numbers.get(contentId);
 		}
 
 	}

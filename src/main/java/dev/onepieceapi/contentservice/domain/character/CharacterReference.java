@@ -1,5 +1,7 @@
 package dev.onepieceapi.contentservice.domain.character;
 
+import dev.onepieceapi.contentservice.domain.readertime.RevealedName;
+
 import java.util.Map;
 import java.util.UUID;
 
@@ -12,5 +14,10 @@ import java.util.UUID;
  * @param gender as the work presents the character; it gives the labels of a relative
  */
 public record CharacterReference(UUID id, String romaji, Map<String, String> names, Gender gender) {
+
+	/** The same character called as the reader knows it at some point (3.7.1). */
+	public CharacterReference named(RevealedName name) {
+		return new CharacterReference(this.id, name.romaji(), name.names(), this.gender);
+	}
 
 }

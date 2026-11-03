@@ -36,6 +36,7 @@ import dev.onepieceapi.contentservice.domain.workflow.VersionAccess;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAction;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.service.affiliation.AffiliationLinks;
+import dev.onepieceapi.contentservice.service.character.CharacterPreviewer;
 import dev.onepieceapi.contentservice.service.character.CharacterService;
 import dev.onepieceapi.contentservice.service.exception.CharacterNotFoundException;
 import dev.onepieceapi.contentservice.service.exception.ValueAlreadyUsedException;
@@ -141,6 +142,9 @@ class CharacterControllerTest {
 
 	@Autowired
 	private MockMvc mockMvc;
+
+	@MockitoBean
+	private CharacterPreviewer previewer;
 
 	@MockitoBean
 	private CharacterService service;

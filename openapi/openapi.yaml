@@ -482,6 +482,52 @@ paths:
       tags:
       - Affiliations
       x-required-permission: content:read
+  /affiliations/{id}/versions/{number}/preview:
+    get:
+      operationId: affiliationPreview
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      - description: "The chapter the reader is at, 1 or more; not with asOfEpisode"
+        in: query
+        name: asOfChapter
+        required: false
+        schema:
+          type: integer
+          format: int32
+          exclusiveMinimum: 0
+      - description: "The episode the reader is at, 1 or more; not with asOfChapter"
+        in: query
+        name: asOfEpisode
+        required: false
+        schema:
+          type: integer
+          format: int32
+          exclusiveMinimum: 0
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PreviewResponseAffiliationResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Affiliations
+      x-required-permission: content:read
   /affiliations/{id}/versions/{number}/publish:
     post:
       operationId: affiliationPublish
@@ -1200,6 +1246,52 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/VersionEventResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Arcs
+      x-required-permission: content:read
+  /arcs/{id}/versions/{number}/preview:
+    get:
+      operationId: arcPreview
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      - description: "The chapter the reader is at, 1 or more; not with asOfEpisode"
+        in: query
+        name: asOfChapter
+        required: false
+        schema:
+          type: integer
+          format: int32
+          exclusiveMinimum: 0
+      - description: "The episode the reader is at, 1 or more; not with asOfChapter"
+        in: query
+        name: asOfEpisode
+        required: false
+        schema:
+          type: integer
+          format: int32
+          exclusiveMinimum: 0
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PreviewResponseArcResponse"
           description: OK
         "4XX":
           $ref: "#/components/responses/ClientError"
@@ -1962,6 +2054,52 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/VersionEventResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Bounties
+      x-required-permission: content:read
+  /bounties/{id}/versions/{number}/preview:
+    get:
+      operationId: bountyPreview
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      - description: "The chapter the reader is at, 1 or more; not with asOfEpisode"
+        in: query
+        name: asOfChapter
+        required: false
+        schema:
+          type: integer
+          format: int32
+          exclusiveMinimum: 0
+      - description: "The episode the reader is at, 1 or more; not with asOfChapter"
+        in: query
+        name: asOfEpisode
+        required: false
+        schema:
+          type: integer
+          format: int32
+          exclusiveMinimum: 0
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PreviewResponseBountyResponse"
           description: OK
         "4XX":
           $ref: "#/components/responses/ClientError"
@@ -3492,6 +3630,52 @@ paths:
       tags:
       - Characters
       x-required-permission: content:read
+  /characters/{id}/versions/{number}/preview:
+    get:
+      operationId: characterPreview
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      - description: "The chapter the reader is at, 1 or more; not with asOfEpisode"
+        in: query
+        name: asOfChapter
+        required: false
+        schema:
+          type: integer
+          format: int32
+          exclusiveMinimum: 0
+      - description: "The episode the reader is at, 1 or more; not with asOfChapter"
+        in: query
+        name: asOfEpisode
+        required: false
+        schema:
+          type: integer
+          format: int32
+          exclusiveMinimum: 0
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PreviewResponseCharacterResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Characters
+      x-required-permission: content:read
   /characters/{id}/versions/{number}/publish:
     post:
       operationId: characterPublish
@@ -4364,6 +4548,52 @@ paths:
       tags:
       - Devil Fruit Types
       x-required-permission: content:read
+  /devil-fruit-types/{id}/versions/{number}/preview:
+    get:
+      operationId: devilFruitTypePreview
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      - description: "The chapter the reader is at, 1 or more; not with asOfEpisode"
+        in: query
+        name: asOfChapter
+        required: false
+        schema:
+          type: integer
+          format: int32
+          exclusiveMinimum: 0
+      - description: "The episode the reader is at, 1 or more; not with asOfChapter"
+        in: query
+        name: asOfEpisode
+        required: false
+        schema:
+          type: integer
+          format: int32
+          exclusiveMinimum: 0
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PreviewResponseDevilFruitTypeResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Devil Fruit Types
+      x-required-permission: content:read
   /devil-fruit-types/{id}/versions/{number}/publish:
     post:
       operationId: devilFruitTypePublish
@@ -5104,6 +5334,52 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/VersionEventResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Devil Fruits
+      x-required-permission: content:read
+  /devil-fruits/{id}/versions/{number}/preview:
+    get:
+      operationId: devilFruitPreview
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      - description: "The chapter the reader is at, 1 or more; not with asOfEpisode"
+        in: query
+        name: asOfChapter
+        required: false
+        schema:
+          type: integer
+          format: int32
+          exclusiveMinimum: 0
+      - description: "The episode the reader is at, 1 or more; not with asOfChapter"
+        in: query
+        name: asOfEpisode
+        required: false
+        schema:
+          type: integer
+          format: int32
+          exclusiveMinimum: 0
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PreviewResponseDevilFruitResponse"
           description: OK
         "4XX":
           $ref: "#/components/responses/ClientError"
@@ -6643,6 +6919,52 @@ paths:
       tags:
       - Sagas
       x-required-permission: content:read
+  /sagas/{id}/versions/{number}/preview:
+    get:
+      operationId: sagaPreview
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      - description: "The chapter the reader is at, 1 or more; not with asOfEpisode"
+        in: query
+        name: asOfChapter
+        required: false
+        schema:
+          type: integer
+          format: int32
+          exclusiveMinimum: 0
+      - description: "The episode the reader is at, 1 or more; not with asOfChapter"
+        in: query
+        name: asOfEpisode
+        required: false
+        schema:
+          type: integer
+          format: int32
+          exclusiveMinimum: 0
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PreviewResponseSagaResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Sagas
+      x-required-permission: content:read
   /sagas/{id}/versions/{number}/publish:
     post:
       operationId: sagaPublish
@@ -7375,6 +7697,52 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/VersionEventResponse"
+          description: OK
+        "4XX":
+          $ref: "#/components/responses/ClientError"
+        "5XX":
+          $ref: "#/components/responses/ServerError"
+      tags:
+      - Species
+      x-required-permission: content:read
+  /species/{id}/versions/{number}/preview:
+    get:
+      operationId: speciesPreview
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: number
+        required: true
+        schema:
+          type: integer
+          format: int32
+      - description: "The chapter the reader is at, 1 or more; not with asOfEpisode"
+        in: query
+        name: asOfChapter
+        required: false
+        schema:
+          type: integer
+          format: int32
+          exclusiveMinimum: 0
+      - description: "The episode the reader is at, 1 or more; not with asOfChapter"
+        in: query
+        name: asOfEpisode
+        required: false
+        schema:
+          type: integer
+          format: int32
+          exclusiveMinimum: 0
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PreviewResponseSpeciesResponse"
           description: OK
         "4XX":
           $ref: "#/components/responses/ClientError"
@@ -10539,6 +10907,20 @@ components:
           enum:
           - ASPETTO
           - FORMA
+    HiddenEntryResponse:
+      type: object
+      properties:
+        path:
+          type: string
+        reason:
+          type: string
+          enum:
+          - TARGET_NOT_VISIBLE
+          - TARGET_NOT_ONLINE
+          - NOT_ON_AXIS
+        visibleFrom:
+          type: integer
+          format: int32
     ImageResponse:
       type: object
       properties:
@@ -11048,6 +11430,126 @@ components:
           type: object
           additionalProperties:
             type: string
+    PreviewResponseAffiliationResponse:
+      type: object
+      properties:
+        asOf:
+          $ref: "#/components/schemas/ReaderPositionResponse"
+        body:
+          $ref: "#/components/schemas/AffiliationResponse"
+        hiddenEntries:
+          type: array
+          items:
+            $ref: "#/components/schemas/HiddenEntryResponse"
+        mainPortrait:
+          $ref: "#/components/schemas/ImageResponse"
+        visible:
+          type: boolean
+    PreviewResponseArcResponse:
+      type: object
+      properties:
+        asOf:
+          $ref: "#/components/schemas/ReaderPositionResponse"
+        body:
+          $ref: "#/components/schemas/ArcResponse"
+        hiddenEntries:
+          type: array
+          items:
+            $ref: "#/components/schemas/HiddenEntryResponse"
+        mainPortrait:
+          $ref: "#/components/schemas/ImageResponse"
+        visible:
+          type: boolean
+    PreviewResponseBountyResponse:
+      type: object
+      properties:
+        asOf:
+          $ref: "#/components/schemas/ReaderPositionResponse"
+        body:
+          $ref: "#/components/schemas/BountyResponse"
+        hiddenEntries:
+          type: array
+          items:
+            $ref: "#/components/schemas/HiddenEntryResponse"
+        mainPortrait:
+          $ref: "#/components/schemas/ImageResponse"
+        visible:
+          type: boolean
+    PreviewResponseCharacterResponse:
+      type: object
+      properties:
+        asOf:
+          $ref: "#/components/schemas/ReaderPositionResponse"
+        body:
+          $ref: "#/components/schemas/CharacterResponse"
+        hiddenEntries:
+          type: array
+          items:
+            $ref: "#/components/schemas/HiddenEntryResponse"
+        mainPortrait:
+          $ref: "#/components/schemas/ImageResponse"
+        visible:
+          type: boolean
+    PreviewResponseDevilFruitResponse:
+      type: object
+      properties:
+        asOf:
+          $ref: "#/components/schemas/ReaderPositionResponse"
+        body:
+          $ref: "#/components/schemas/DevilFruitResponse"
+        hiddenEntries:
+          type: array
+          items:
+            $ref: "#/components/schemas/HiddenEntryResponse"
+        mainPortrait:
+          $ref: "#/components/schemas/ImageResponse"
+        visible:
+          type: boolean
+    PreviewResponseDevilFruitTypeResponse:
+      type: object
+      properties:
+        asOf:
+          $ref: "#/components/schemas/ReaderPositionResponse"
+        body:
+          $ref: "#/components/schemas/DevilFruitTypeResponse"
+        hiddenEntries:
+          type: array
+          items:
+            $ref: "#/components/schemas/HiddenEntryResponse"
+        mainPortrait:
+          $ref: "#/components/schemas/ImageResponse"
+        visible:
+          type: boolean
+    PreviewResponseSagaResponse:
+      type: object
+      properties:
+        asOf:
+          $ref: "#/components/schemas/ReaderPositionResponse"
+        body:
+          $ref: "#/components/schemas/SagaResponse"
+        hiddenEntries:
+          type: array
+          items:
+            $ref: "#/components/schemas/HiddenEntryResponse"
+        mainPortrait:
+          $ref: "#/components/schemas/ImageResponse"
+        visible:
+          type: boolean
+    PreviewResponseSpeciesResponse:
+      type: object
+      properties:
+        asOf:
+          $ref: "#/components/schemas/ReaderPositionResponse"
+        body:
+          $ref: "#/components/schemas/SpeciesResponse"
+        hiddenEntries:
+          type: array
+          items:
+            $ref: "#/components/schemas/HiddenEntryResponse"
+        mainPortrait:
+          $ref: "#/components/schemas/ImageResponse"
+        visible:
+          type: boolean
     ProblemDetail:
       type: object
       description: "RFC 9457 problem detail, plus this API's own properties"
@@ -11083,6 +11585,17 @@ components:
       - status
       - title
       - type
+    ReaderPositionResponse:
+      type: object
+      properties:
+        axis:
+          type: string
+          enum:
+          - CHAPTER
+          - EPISODE
+        number:
+          type: integer
+          format: int32
     RejectVersionRequest:
       type: object
       properties:

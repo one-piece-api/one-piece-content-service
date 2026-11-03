@@ -22,6 +22,7 @@ import dev.onepieceapi.contentservice.domain.workflow.VersionAccess;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAction;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.service.bounty.BountyLinks;
+import dev.onepieceapi.contentservice.service.bounty.BountyPreviewer;
 import dev.onepieceapi.contentservice.service.bounty.BountyService;
 import dev.onepieceapi.contentservice.service.character.CharacterLinks;
 import dev.onepieceapi.contentservice.service.exception.BountyNotFoundException;
@@ -98,6 +99,9 @@ class BountyControllerTest {
 
 	@Autowired
 	private MockMvc mockMvc;
+
+	@MockitoBean
+	private BountyPreviewer previewer;
 
 	@MockitoBean
 	private BountyService service;

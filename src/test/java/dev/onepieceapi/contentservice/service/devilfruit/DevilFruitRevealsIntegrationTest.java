@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.service.devilfruit;
 
+import dev.onepieceapi.contentservice.service.devilfruittype.DevilFruitTypeDefinition;
 import dev.onepieceapi.contentservice.config.RulesProperties;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruit;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitField;
@@ -34,6 +35,7 @@ import dev.onepieceapi.contentservice.persistence.repository.DevilFruitVersionRe
 import dev.onepieceapi.contentservice.persistence.repository.EpisodeVersionRepository;
 import dev.onepieceapi.contentservice.persistence.repository.LanguageRepository;
 import dev.onepieceapi.contentservice.service.audit.AuditLogService;
+import dev.onepieceapi.contentservice.service.content.StoryNumbering;
 import dev.onepieceapi.contentservice.service.image.ContentImages;
 import dev.onepieceapi.contentservice.service.content.OnlineChapters;
 import dev.onepieceapi.contentservice.service.content.ReaderAxisRules;
@@ -162,7 +164,7 @@ class DevilFruitRevealsIntegrationTest {
 		this.firstAppearance = point(1, 1);
 		this.nikaRevealed = point(1044, 1071);
 		var readerAxisRules = new ReaderAxisRules(this.contentRepository, this.chapterRepository,
-				this.episodeRepository);
+				this.episodeRepository, new StoryNumbering(this.chapterRepository, this.episodeRepository));
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
 		var auditLogService = new AuditLogService(this.auditLogRepository, clock);
 		this.fruits = new DevilFruitService(new DevilFruitDefinition(this.fruitRepository,
@@ -172,13 +174,13 @@ class DevilFruitRevealsIntegrationTest {
 						this.episodeRepository, this.characterRepository, readerAxisRules, new RulesProperties(5))),
 				this.contentVersionRepository, this.contentRepository, auditLogService, clock,
 				mock(ContentImages.class));
-		this.types = new DevilFruitTypeService(this.typeRepository, this.contentVersionRepository,
-				this.contentRepository,
-				new DevilFruitTypeValidator(this.typeRepository, this.languageRepository, this.chapterRepository,
-						this.episodeRepository, new ParagraphRules(readerAxisRules)),
-				new DevilFruitTypeRules(this.contentRepository, this.fruitRepository, this.chapterRepository,
-						this.episodeRepository, readerAxisRules, new RulesProperties(5)),
-				auditLogService, clock);
+		this.types = new DevilFruitTypeService(
+				new DevilFruitTypeDefinition(this.typeRepository,
+						new DevilFruitTypeValidator(this.typeRepository, this.languageRepository,
+								this.chapterRepository, this.episodeRepository, new ParagraphRules(readerAxisRules)),
+						new DevilFruitTypeRules(this.contentRepository, this.fruitRepository, this.chapterRepository,
+								this.episodeRepository, readerAxisRules, new RulesProperties(5))),
+				this.contentVersionRepository, this.contentRepository, auditLogService, clock);
 		this.paramecia = typeContent(PUBLISHED, type("Choujin"));
 		this.zoan = typeContent(PUBLISHED, type("Dobutsu").toBuilder().subcategories(List.of(mythical())).build());
 		stored();

@@ -1,6 +1,7 @@
 package dev.onepieceapi.contentservice.service.character;
 
 import static dev.onepieceapi.contentservice.domain.readertime.ParagraphFixtures.discoveredAt;
+import dev.onepieceapi.contentservice.service.content.StoryNumbering;
 import dev.onepieceapi.contentservice.service.validation.ParagraphRules;
 import dev.onepieceapi.contentservice.config.RulesProperties;
 import dev.onepieceapi.contentservice.domain.affiliation.Affiliation;
@@ -178,7 +179,8 @@ final class CharacterFixtures {
 
 	/** The rules of the reader axis over the repositories of the test. */
 	ReaderAxisRules readerAxisRules() {
-		return new ReaderAxisRules(this.contents, this.chapters, this.episodes);
+		return new ReaderAxisRules(this.contents, this.chapters, this.episodes,
+				new StoryNumbering(this.chapters, this.episodes));
 	}
 
 	/** The service of the species, to retire one a character names. */

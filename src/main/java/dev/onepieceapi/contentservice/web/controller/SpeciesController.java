@@ -6,6 +6,7 @@ import dev.onepieceapi.contentservice.domain.workflow.ContentSortField;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAccess;
 import dev.onepieceapi.contentservice.service.species.SpeciesLinks;
+import dev.onepieceapi.contentservice.service.species.SpeciesPreviewer;
 import dev.onepieceapi.contentservice.service.species.SpeciesService;
 import dev.onepieceapi.contentservice.web.dto.request.LinkableTypesRequest;
 import dev.onepieceapi.contentservice.web.dto.response.SpeciesReferenceResponse;
@@ -57,7 +58,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping(ApiPaths.SPECIES)
 @Tag(name = "Species")
-class SpeciesController extends ContentController<Species, SpeciesResponse, SpeciesNamesResponse> {
+class SpeciesController extends PreviewableContentController<Species, SpeciesResponse, SpeciesNamesResponse> {
 
 	/** The parts of a save with a picture: the version as JSON, and the file. */
 	private static final String VERSION_PART = "version";
@@ -70,9 +71,9 @@ class SpeciesController extends ContentController<Species, SpeciesResponse, Spec
 
 	@Autowired
 	SpeciesController(SpeciesService service, SpeciesLinks links, FirstAppearanceLinks firstAppearances,
-			ImageResponseMapper images) {
+			SpeciesPreviewer previewer, ImageResponseMapper images) {
 		super(service, access -> SpeciesResponseMapper.toVersionResponse(access,
-				firstAppearances.referencesOfPoints(access.body().points()), images));
+				firstAppearances.referencesOfPoints(access.body().points()), images), previewer, images);
 		this.service = service;
 		this.links = links;
 	}

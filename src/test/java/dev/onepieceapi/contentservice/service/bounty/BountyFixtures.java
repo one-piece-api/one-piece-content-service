@@ -1,6 +1,7 @@
 package dev.onepieceapi.contentservice.service.bounty;
 
 import static dev.onepieceapi.contentservice.domain.readertime.ParagraphFixtures.discoveredAt;
+import dev.onepieceapi.contentservice.service.content.StoryNumbering;
 import dev.onepieceapi.contentservice.service.validation.ParagraphRules;
 import dev.onepieceapi.contentservice.service.content.ReaderAxisRules;
 import dev.onepieceapi.contentservice.config.RulesProperties;
@@ -105,7 +106,8 @@ final class BountyFixtures {
 	}
 
 	ReaderAxisRules readerAxisRules() {
-		return new ReaderAxisRules(this.contents, this.chapters, this.episodes);
+		return new ReaderAxisRules(this.contents, this.chapters, this.episodes,
+				new StoryNumbering(this.chapters, this.episodes));
 	}
 
 	BountyService service() {

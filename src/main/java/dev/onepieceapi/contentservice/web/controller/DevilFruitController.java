@@ -6,6 +6,7 @@ import dev.onepieceapi.contentservice.domain.workflow.ContentSortField;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAccess;
 import dev.onepieceapi.contentservice.service.devilfruit.DevilFruitLinks;
+import dev.onepieceapi.contentservice.service.devilfruit.DevilFruitPreviewer;
 import dev.onepieceapi.contentservice.service.devilfruit.DevilFruitService;
 import dev.onepieceapi.contentservice.service.devilfruittype.DevilFruitTypeLinks;
 import dev.onepieceapi.contentservice.service.story.FirstAppearanceLinks;
@@ -61,7 +62,8 @@ import java.util.UUID;
 @RestController
 @RequestMapping(ApiPaths.DEVIL_FRUITS)
 @Tag(name = "Devil Fruits")
-class DevilFruitController extends ContentController<DevilFruit, DevilFruitResponse, DevilFruitNamesResponse> {
+class DevilFruitController
+		extends PreviewableContentController<DevilFruit, DevilFruitResponse, DevilFruitNamesResponse> {
 
 	/** The parts of a save with an image: the version as JSON, and the file. */
 	private static final String VERSION_PART = "version";
@@ -76,11 +78,12 @@ class DevilFruitController extends ContentController<DevilFruit, DevilFruitRespo
 
 	@Autowired
 	DevilFruitController(DevilFruitService service, DevilFruitTypeLinks links, DevilFruitLinks fruitLinks,
-			FirstAppearanceLinks firstAppearances, ImageResponseMapper images) {
+			FirstAppearanceLinks firstAppearances, DevilFruitPreviewer previewer, ImageResponseMapper images) {
 		super(service,
 				access -> DevilFruitResponseMapper.toVersionResponse(access,
 						links.referencesFor(List.of(access.body())),
-						firstAppearances.referencesOfPoints(access.body().points()), images));
+						firstAppearances.referencesOfPoints(access.body().points()), images),
+				previewer, images);
 		this.service = service;
 		this.links = links;
 		this.fruitLinks = fruitLinks;

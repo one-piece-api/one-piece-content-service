@@ -6,6 +6,7 @@ import dev.onepieceapi.contentservice.domain.workflow.ContentSortField;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAccess;
 import dev.onepieceapi.contentservice.service.affiliation.AffiliationLinks;
+import dev.onepieceapi.contentservice.service.affiliation.AffiliationPreviewer;
 import dev.onepieceapi.contentservice.service.affiliation.AffiliationService;
 import dev.onepieceapi.contentservice.service.story.FirstAppearanceLinks;
 import dev.onepieceapi.contentservice.web.ApiPaths;
@@ -58,7 +59,8 @@ import java.util.UUID;
 @RestController
 @RequestMapping(ApiPaths.AFFILIATIONS)
 @Tag(name = "Affiliations")
-class AffiliationController extends ContentController<Affiliation, AffiliationResponse, AffiliationNamesResponse> {
+class AffiliationController
+		extends PreviewableContentController<Affiliation, AffiliationResponse, AffiliationNamesResponse> {
 
 	/** The parts of a save with an emblem: the version as JSON, and the file. */
 	private static final String VERSION_PART = "version";
@@ -71,9 +73,9 @@ class AffiliationController extends ContentController<Affiliation, AffiliationRe
 
 	@Autowired
 	AffiliationController(AffiliationService service, AffiliationLinks links, FirstAppearanceLinks firstAppearances,
-			ImageResponseMapper images) {
+			AffiliationPreviewer previewer, ImageResponseMapper images) {
 		super(service, access -> AffiliationResponseMapper.toVersionResponse(access,
-				firstAppearances.referencesOfPoints(access.body().points()), images));
+				firstAppearances.referencesOfPoints(access.body().points()), images), previewer, images);
 		this.service = service;
 		this.links = links;
 	}

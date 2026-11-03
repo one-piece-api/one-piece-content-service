@@ -1,6 +1,7 @@
 package dev.onepieceapi.contentservice.service.devilfruit;
 
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitFixtures;
+import dev.onepieceapi.contentservice.service.content.StoryNumbering;
 import dev.onepieceapi.contentservice.service.validation.ParagraphRules;
 import dev.onepieceapi.contentservice.config.RulesProperties;
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
@@ -153,15 +154,15 @@ class DevilFruitDraftIntegrationTest {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
 		var auditLogService = new AuditLogService(this.auditLogRepository, clock);
 		var validator = new DevilFruitValidator(this.versionRepository, this.languageRepository, this.typeRepository,
-				this.chapterRepository, this.episodeRepository, new ParagraphRules(
-						new ReaderAxisRules(this.contentRepository, this.chapterRepository, this.episodeRepository)));
+				this.chapterRepository, this.episodeRepository,
+				new ParagraphRules(new ReaderAxisRules(this.contentRepository, this.chapterRepository,
+						this.episodeRepository, new StoryNumbering(this.chapterRepository, this.episodeRepository))));
 		this.service = new DevilFruitService(
-				new DevilFruitDefinition(this.versionRepository, validator,
-						new DevilFruitRules(this.contentRepository, this.typeRepository, this.chapterRepository,
-								this.episodeRepository, this.characterRepository,
-								new ReaderAxisRules(this.contentRepository, this.chapterRepository,
-										this.episodeRepository),
-								new RulesProperties(5))),
+				new DevilFruitDefinition(this.versionRepository, validator, new DevilFruitRules(this.contentRepository,
+						this.typeRepository, this.chapterRepository, this.episodeRepository, this.characterRepository,
+						new ReaderAxisRules(this.contentRepository, this.chapterRepository, this.episodeRepository,
+								new StoryNumbering(this.chapterRepository, this.episodeRepository)),
+						new RulesProperties(5))),
 				this.contentVersionRepository, this.contentRepository, auditLogService, clock,
 				mock(ContentImages.class));
 

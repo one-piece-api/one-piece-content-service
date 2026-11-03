@@ -2,6 +2,7 @@ package dev.onepieceapi.contentservice.service.story;
 
 import dev.onepieceapi.contentservice.service.content.OnlineChapters;
 import dev.onepieceapi.contentservice.domain.story.TitleTranslation;
+import dev.onepieceapi.contentservice.service.content.StoryNumbering;
 import dev.onepieceapi.contentservice.service.validation.ParagraphRules;
 import dev.onepieceapi.contentservice.service.content.ReaderAxisRules;
 import dev.onepieceapi.contentservice.config.RulesProperties;
@@ -154,18 +155,22 @@ class StoryRulesIntegrationTest {
 		this.sagas = new SagaService(this.sagaRepository, this.contentVersionRepository, this.contentRepository,
 				new SagaValidator(this.sagaRepository, this.languageRepository,
 						new ParagraphRules(new ReaderAxisRules(this.contentRepository, this.chapterRepository,
-								this.episodeRepository))),
+								this.episodeRepository,
+								new StoryNumbering(this.chapterRepository, this.episodeRepository)))),
 				new SagaRules(this.contentRepository, this.arcRepository,
-						new ReaderAxisRules(this.contentRepository, this.chapterRepository, this.episodeRepository),
+						new ReaderAxisRules(this.contentRepository, this.chapterRepository, this.episodeRepository,
+								new StoryNumbering(this.chapterRepository, this.episodeRepository)),
 						new RulesProperties(5)),
 				auditLogService, clock);
 		this.arcs = new ArcService(this.arcRepository, this.contentVersionRepository, this.contentRepository,
 				new ArcValidator(this.arcRepository, this.languageRepository, this.sagaRepository,
 						new ParagraphRules(new ReaderAxisRules(this.contentRepository, this.chapterRepository,
-								this.episodeRepository))),
+								this.episodeRepository,
+								new StoryNumbering(this.chapterRepository, this.episodeRepository)))),
 				new ArcRules(this.contentRepository, this.sagaRepository, this.chapterRepository,
 						this.episodeRepository,
-						new ReaderAxisRules(this.contentRepository, this.chapterRepository, this.episodeRepository),
+						new ReaderAxisRules(this.contentRepository, this.chapterRepository, this.episodeRepository,
+								new StoryNumbering(this.chapterRepository, this.episodeRepository)),
 						new RulesProperties(5)),
 				auditLogService, clock);
 	}

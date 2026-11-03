@@ -2,6 +2,7 @@ package dev.onepieceapi.contentservice.service.devilfruittype;
 
 import dev.onepieceapi.contentservice.domain.readertime.StoryPoint;
 import dev.onepieceapi.contentservice.domain.devilfruit.DevilFruitFixtures;
+import dev.onepieceapi.contentservice.service.content.StoryNumbering;
 import dev.onepieceapi.contentservice.service.validation.ParagraphRules;
 import dev.onepieceapi.contentservice.config.RulesProperties;
 import dev.onepieceapi.contentservice.service.audit.AuditLogService;
@@ -146,12 +147,14 @@ class DevilFruitTypeLinksIntegrationTest {
 				new DevilFruitDefinition(this.fruitRepository,
 						new DevilFruitValidator(this.fruitRepository, this.languageRepository, this.typeRepository,
 								this.chapterRepository, this.episodeRepository,
-								new ParagraphRules(new ReaderAxisRules(this.contentRepository, this.chapterRepository,
-										this.episodeRepository))),
+								new ParagraphRules(new ReaderAxisRules(
+										this.contentRepository, this.chapterRepository, this.episodeRepository,
+										new StoryNumbering(this.chapterRepository, this.episodeRepository)))),
 						new DevilFruitRules(this.contentRepository, this.typeRepository, this.chapterRepository,
 								this.episodeRepository, this.characterRepository,
 								new ReaderAxisRules(this.contentRepository, this.chapterRepository,
-										this.episodeRepository),
+										this.episodeRepository,
+										new StoryNumbering(this.chapterRepository, this.episodeRepository)),
 								new RulesProperties(5))),
 				this.contentVersionRepository, this.contentRepository,
 				new AuditLogService(this.auditLogRepository, clock), clock, mock(ContentImages.class));

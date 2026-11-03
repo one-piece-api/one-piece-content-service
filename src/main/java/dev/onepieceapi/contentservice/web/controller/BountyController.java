@@ -4,12 +4,14 @@ import dev.onepieceapi.contentservice.domain.bounty.Bounty;
 import dev.onepieceapi.contentservice.domain.bounty.BountyChain;
 import dev.onepieceapi.contentservice.domain.bounty.BountySortField;
 import dev.onepieceapi.contentservice.domain.image.ImageChange;
+import dev.onepieceapi.contentservice.domain.readertime.VersionPreview;
 import dev.onepieceapi.contentservice.domain.security.Permission;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
 import dev.onepieceapi.contentservice.domain.workflow.VersionAccess;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.domain.workflow.VisibilityPolicy;
 import dev.onepieceapi.contentservice.service.bounty.BountyLinks;
+import dev.onepieceapi.contentservice.service.bounty.BountyPreviewer;
 import dev.onepieceapi.contentservice.service.bounty.BountyService;
 import dev.onepieceapi.contentservice.service.character.CharacterLinks;
 import dev.onepieceapi.contentservice.service.story.FirstAppearanceLinks;
@@ -68,7 +70,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping(ApiPaths.BOUNTIES)
 @Tag(name = "Bounties")
-class BountyController extends ContentController<Bounty, BountyResponse, BountyNamesResponse> {
+class BountyController extends PreviewableContentController<Bounty, BountyResponse, BountyNamesResponse> {
 
 	/** The parts of a save with a poster: the version as JSON, and the file. */
 	private static final String VERSION_PART = "version";
@@ -76,6 +78,8 @@ class BountyController extends ContentController<Bounty, BountyResponse, BountyN
 	private static final String IMAGE_PART = "image";
 
 	private final BountyService service;
+
+	private final BountyPreviewer previewer;
 
 	private final BountyLinks links;
 
@@ -87,8 +91,9 @@ class BountyController extends ContentController<Bounty, BountyResponse, BountyN
 
 	@Autowired
 	BountyController(BountyService service, BountyLinks links, CharacterLinks characters,
-			FirstAppearanceLinks firstAppearances, ImageResponseMapper images) {
-		super(service, BountyController::answeredWithTheCaller);
+			FirstAppearanceLinks firstAppearances, BountyPreviewer previewer, ImageResponseMapper images) {
+		super(service, BountyController::answeredWithTheCaller, previewer, images);
+		this.previewer = previewer;
 		this.service = service;
 		this.links = links;
 		this.characters = characters;
@@ -116,6 +121,20 @@ class BountyController extends ContentController<Bounty, BountyResponse, BountyN
 		var holders = this.characters.referencesOf(holderIdsOf(bounty));
 		var storyItems = this.firstAppearances.referencesOfPoints(bounty.points());
 		return BountyResponseMapper.toVersionResponse(access, chain, bounties, holders, storyItems, this.images);
+	}
+
+	/**
+	 * The resolved bounty with its chain at N - the bounties online the reader has met -
+	 * and its holder called as the reader knows them there.
+	 */
+	@Override
+	protected BountyResponse previewBody(UUID contentId, VersionPreview<Bounty> preview, AuthenticatedCaller caller) {
+		Bounty bounty = preview.preview().body();
+		BountyChain chain = this.previewer.chainAt(contentId, preview.preview());
+		var bounties = this.links.referencesOf(chain.contentIds(), visibleTo(caller));
+		var holders = this.previewer.holdersAt(preview.preview());
+		var storyItems = this.firstAppearances.referencesOfPoints(bounty.points());
+		return BountyResponseMapper.toResponse(bounty, chain, bounties, holders, storyItems, this.images);
 	}
 
 	/**

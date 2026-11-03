@@ -1,7 +1,7 @@
 info:
   name: bountyReturnToDraft
   type: http
-  seq: 22
+  seq: 23
   tags:
     - Bounties
 

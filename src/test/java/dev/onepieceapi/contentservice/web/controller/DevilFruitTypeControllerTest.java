@@ -23,6 +23,7 @@ import dev.onepieceapi.contentservice.domain.workflow.VersionEvent;
 import dev.onepieceapi.contentservice.domain.workflow.VersionStatus;
 import dev.onepieceapi.contentservice.persistence.entity.ContentVersionEntity;
 import dev.onepieceapi.contentservice.service.devilfruittype.DevilFruitTypeLinks;
+import dev.onepieceapi.contentservice.service.devilfruittype.DevilFruitTypePreviewer;
 import dev.onepieceapi.contentservice.service.devilfruittype.DevilFruitTypeService;
 import dev.onepieceapi.contentservice.service.exception.DevilFruitTypeNotFoundException;
 import dev.onepieceapi.contentservice.service.exception.SlugAlreadyUsedException;
@@ -36,6 +37,7 @@ import dev.onepieceapi.contentservice.service.exception.VersionIdenticalExceptio
 import dev.onepieceapi.contentservice.service.exception.VersionIncompleteException;
 import dev.onepieceapi.contentservice.service.exception.VersionNotFoundException;
 import dev.onepieceapi.contentservice.service.story.FirstAppearanceLinks;
+import dev.onepieceapi.contentservice.web.mapper.ImageResponseMapper;
 import dev.onepieceapi.contentservice.web.security.SecurityConfig;
 import dev.onepieceapi.exception.web.ApplicationExceptionHandler;
 import dev.onepieceapi.exception.web.ConcurrentModificationExceptionHandler;
@@ -110,6 +112,12 @@ class DevilFruitTypeControllerTest {
 
 	@Autowired
 	private MockMvc mockMvc;
+
+	@MockitoBean
+	private DevilFruitTypePreviewer previewer;
+
+	@MockitoBean
+	private ImageResponseMapper images;
 
 	@MockitoBean
 	private DevilFruitTypeService service;

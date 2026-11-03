@@ -4,6 +4,7 @@ import dev.onepieceapi.contentservice.domain.devilfruittype.DevilFruitType;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSortField;
 import dev.onepieceapi.contentservice.domain.workflow.ContentSummary;
 import dev.onepieceapi.contentservice.service.devilfruittype.DevilFruitTypeLinks;
+import dev.onepieceapi.contentservice.service.devilfruittype.DevilFruitTypePreviewer;
 import dev.onepieceapi.contentservice.service.devilfruittype.DevilFruitTypeService;
 import dev.onepieceapi.contentservice.service.story.FirstAppearanceLinks;
 import dev.onepieceapi.contentservice.web.ApiPaths;
@@ -22,6 +23,7 @@ import dev.onepieceapi.contentservice.web.mapper.ContentResponseMapper;
 import dev.onepieceapi.contentservice.web.mapper.DevilFruitResponseMapper;
 import dev.onepieceapi.contentservice.web.mapper.DevilFruitTypeRequestMapper;
 import dev.onepieceapi.contentservice.web.mapper.DevilFruitTypeResponseMapper;
+import dev.onepieceapi.contentservice.web.mapper.ImageResponseMapper;
 import dev.onepieceapi.contentservice.web.security.AuthenticatedCaller;
 import dev.onepieceapi.contentservice.web.validation.SortableBy;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -54,7 +56,7 @@ import java.util.UUID;
 @RequestMapping(ApiPaths.DEVIL_FRUIT_TYPES)
 @Tag(name = "Devil Fruit Types")
 class DevilFruitTypeController
-		extends ContentController<DevilFruitType, DevilFruitTypeResponse, DevilFruitTypeNamesResponse> {
+		extends PreviewableContentController<DevilFruitType, DevilFruitTypeResponse, DevilFruitTypeNamesResponse> {
 
 	private final DevilFruitTypeService service;
 
@@ -62,9 +64,9 @@ class DevilFruitTypeController
 
 	@Autowired
 	DevilFruitTypeController(DevilFruitTypeService service, DevilFruitTypeLinks links,
-			FirstAppearanceLinks firstAppearances) {
+			FirstAppearanceLinks firstAppearances, DevilFruitTypePreviewer previewer, ImageResponseMapper images) {
 		super(service, access -> DevilFruitTypeResponseMapper.toVersionResponse(access,
-				firstAppearances.referencesOfPoints(access.body().shownPoints())));
+				firstAppearances.referencesOfPoints(access.body().shownPoints())), previewer, images);
 		this.service = service;
 		this.links = links;
 	}

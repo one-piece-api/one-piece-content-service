@@ -76,4 +76,17 @@ public interface SagaVersionRepository extends VersionBodyRepository<SagaVersion
 			               where language_code = :languageCode)""", nativeQuery = true)
 	boolean existsByLanguage(String languageCode);
 
+	/**
+	 * The first chapter online of the saga, as published.saga_chapter_span counts it:
+	 * where the manga reader meets it (workflow 3.8); null while it has none.
+	 */
+	@Query(value = "select first_number from published.saga_chapter_span where saga_id = :contentId",
+			nativeQuery = true)
+	Integer firstChapterOnline(UUID contentId);
+
+	/** The same on the anime axis: its first episode online; null while it has none. */
+	@Query(value = "select first_number from published.saga_episode_span where saga_id = :contentId",
+			nativeQuery = true)
+	Integer firstEpisodeOnline(UUID contentId);
+
 }

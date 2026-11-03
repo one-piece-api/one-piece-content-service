@@ -1,5 +1,7 @@
 package dev.onepieceapi.contentservice.domain.devilfruit;
 
+import dev.onepieceapi.contentservice.domain.readertime.RevealedName;
+
 import java.util.Map;
 import java.util.UUID;
 
@@ -12,5 +14,10 @@ import java.util.UUID;
  * @param multipleUsers whether several characters may use it at the same time
  */
 public record DevilFruitReference(UUID id, String romaji, Map<String, String> names, boolean multipleUsers) {
+
+	/** The same fruit called as the reader knows it at some point (3.7.1). */
+	public DevilFruitReference named(RevealedName name) {
+		return new DevilFruitReference(this.id, name.romaji(), name.names(), this.multipleUsers);
+	}
 
 }

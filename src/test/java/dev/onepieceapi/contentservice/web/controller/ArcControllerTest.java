@@ -1,6 +1,7 @@
 package dev.onepieceapi.contentservice.web.controller;
 
 import static dev.onepieceapi.contentservice.domain.readertime.ParagraphFixtures.paragraph;
+import dev.onepieceapi.contentservice.service.story.ArcPreviewer;
 import dev.onepieceapi.contentservice.service.story.FirstAppearanceLinks;
 import dev.onepieceapi.contentservice.domain.security.Permission;
 import dev.onepieceapi.contentservice.domain.security.User;
@@ -24,6 +25,7 @@ import dev.onepieceapi.contentservice.service.exception.VersionActionBlockedExce
 import dev.onepieceapi.contentservice.service.story.ArcLinks;
 import dev.onepieceapi.contentservice.service.story.ArcService;
 import dev.onepieceapi.contentservice.service.story.SagaLinks;
+import dev.onepieceapi.contentservice.web.mapper.ImageResponseMapper;
 import dev.onepieceapi.contentservice.web.security.SecurityConfig;
 import dev.onepieceapi.exception.web.ApplicationExceptionHandler;
 import dev.onepieceapi.exception.web.ConcurrentModificationExceptionHandler;
@@ -90,6 +92,12 @@ class ArcControllerTest {
 
 	@Autowired
 	private MockMvc mockMvc;
+
+	@MockitoBean
+	private ArcPreviewer previewer;
+
+	@MockitoBean
+	private ImageResponseMapper images;
 
 	@MockitoBean
 	private ArcService service;

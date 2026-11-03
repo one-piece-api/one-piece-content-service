@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.service.story;
 
+import dev.onepieceapi.contentservice.service.content.StoryNumbering;
 import dev.onepieceapi.contentservice.service.validation.ParagraphRules;
 import dev.onepieceapi.contentservice.service.content.ReaderAxisRules;
 import dev.onepieceapi.contentservice.config.RulesProperties;
@@ -509,10 +510,12 @@ class StoryItemsDraftIntegrationTest {
 		return new ArcService(this.arcRepository, this.contentVersionRepository, this.contentRepository,
 				new ArcValidator(this.arcRepository, this.languageRepository, this.sagaRepository,
 						new ParagraphRules(new ReaderAxisRules(this.contentRepository, this.chapterRepository,
-								this.episodeRepository))),
+								this.episodeRepository,
+								new StoryNumbering(this.chapterRepository, this.episodeRepository)))),
 				new ArcRules(this.contentRepository, this.sagaRepository, this.chapterRepository,
 						this.episodeRepository,
-						new ReaderAxisRules(this.contentRepository, this.chapterRepository, this.episodeRepository),
+						new ReaderAxisRules(this.contentRepository, this.chapterRepository, this.episodeRepository,
+								new StoryNumbering(this.chapterRepository, this.episodeRepository)),
 						new RulesProperties(5)),
 				new AuditLogService(this.auditLogRepository, clock), clock);
 	}

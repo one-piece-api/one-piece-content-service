@@ -1,5 +1,6 @@
 package dev.onepieceapi.contentservice.service.devilfruittype;
 
+import dev.onepieceapi.contentservice.service.content.StoryNumbering;
 import dev.onepieceapi.contentservice.service.validation.ParagraphRules;
 import dev.onepieceapi.contentservice.service.content.ReaderAxisRules;
 import dev.onepieceapi.contentservice.service.audit.AuditLogService;
@@ -305,7 +306,8 @@ class DevilFruitTypeRaceIntegrationTest {
 		return service(versions, contentVersions,
 				new DevilFruitTypeRules(this.contentRepository, this.fruitRepository, this.chapterRepository,
 						this.episodeRepository,
-						new ReaderAxisRules(this.contentRepository, this.chapterRepository, this.episodeRepository),
+						new ReaderAxisRules(this.contentRepository, this.chapterRepository, this.episodeRepository,
+								new StoryNumbering(this.chapterRepository, this.episodeRepository)),
 						new RulesProperties(5)));
 	}
 
@@ -313,10 +315,11 @@ class DevilFruitTypeRaceIntegrationTest {
 			ContentVersionRepository contentVersions, DevilFruitTypeRules rules) {
 		var clock = Clock.fixed(NOW, ZoneOffset.UTC);
 		var validator = new DevilFruitTypeValidator(this.versionRepository, this.languageRepository,
-				this.chapterRepository, this.episodeRepository, new ParagraphRules(
-						new ReaderAxisRules(this.contentRepository, this.chapterRepository, this.episodeRepository)));
-		return new DevilFruitTypeService(versions, contentVersions, this.contentRepository, validator, rules,
-				new AuditLogService(this.auditLogRepository, clock), clock);
+				this.chapterRepository, this.episodeRepository,
+				new ParagraphRules(new ReaderAxisRules(this.contentRepository, this.chapterRepository,
+						this.episodeRepository, new StoryNumbering(this.chapterRepository, this.episodeRepository))));
+		return new DevilFruitTypeService(new DevilFruitTypeDefinition(versions, validator, rules), contentVersions,
+				this.contentRepository, new AuditLogService(this.auditLogRepository, clock), clock);
 	}
 
 	/** What a caller got: the version, or why it was refused. */
