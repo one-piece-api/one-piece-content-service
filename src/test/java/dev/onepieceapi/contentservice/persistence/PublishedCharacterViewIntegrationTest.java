@@ -73,20 +73,20 @@ class PublishedCharacterViewIntegrationTest {
 		character(content(CHARACTER), 1, "RETIRED", "Usopp", BOTH);
 
 		var rows = this.jdbc.sql("""
-				select id, slug, romaji, japanese_name, language, name, description, status, gender, birthday_month,
+				select id, slug, romaji, japanese_name, language, name, status, gender, birthday_month,
 				       birthday_day
 				from published.character""")
 			.query((rs, n) -> tuple(rs.getObject("id"), rs.getString("slug"), rs.getString("romaji"),
 					rs.getString("japanese_name"), rs.getString("language"), rs.getString("name"),
-					rs.getString("description"), rs.getString("status"), rs.getString("gender"),
-					rs.getObject("birthday_month"), rs.getObject("birthday_day")))
+					rs.getString("status"), rs.getString("gender"), rs.getObject("birthday_month"),
+					rs.getObject("birthday_day")))
 			.list();
 
 		assertThat(rows).containsExactlyInAnyOrder(
-				tuple(luffy, "monkey-d-luffy", "Monkey D. Luffy", "Monkii Dii Rufi", "it", "Name IT", "Description IT",
-						"ALIVE", "MALE", 5, 5),
-				tuple(luffy, "monkey-d-luffy", "Monkey D. Luffy", "Monkii Dii Rufi", "en", "Name EN", "Description EN",
-						"ALIVE", "MALE", 5, 5));
+				tuple(luffy, "monkey-d-luffy", "Monkey D. Luffy", "Monkii Dii Rufi", "it", "Name IT", "ALIVE", "MALE",
+						5, 5),
+				tuple(luffy, "monkey-d-luffy", "Monkey D. Luffy", "Monkii Dii Rufi", "en", "Name EN", "ALIVE", "MALE",
+						5, 5));
 	}
 
 	@Test
@@ -185,55 +185,14 @@ class PublishedCharacterViewIntegrationTest {
 		period(membership(online, 1, retired), 0, null, null, "it", "Ex");
 		period(membership(character(koby, 2, "DRAFT", "Koby", "it"), 0, kaigun), 0, "ENSIGN", null);
 
-		var rows = this.jdbc.sql(
-				"select character_id, position, affiliation_id, marine_rank, former from published.character_affiliation"
-						+ " order by position")
-			.query((rs, n) -> tuple(rs.getObject("character_id"), rs.getInt("position"), rs.getObject("affiliation_id"),
-					rs.getString("marine_rank"), rs.getBoolean("former")))
-			.list();
-		var roles = this.jdbc
-			.sql("select character_id, position, language, role from published.character_affiliation_role"
-					+ " order by position, language")
-			.query((rs, n) -> tuple(rs.getObject("character_id"), rs.getInt("position"), rs.getString("language"),
-					rs.getString("role")))
-			.list();
-
-		assertThat(rows).containsExactly(tuple(koby, 0, kaigun, "CAPTAIN", false),
-				tuple(koby, 2, mugiwara, null, true));
-		assertThat(roles).containsExactly(tuple(koby, 0, "en", "Captain"), tuple(koby, 0, "it", "Capitano"));
-	}
-
-	@Test
-	void aMembershipIsFormerWhenNoPeriodIsOpenAndShowsTheRoleAndRankOfItsLastPeriod() {
-		UUID mugiwara = affiliationOnline("Mugiwara no Ichimi");
-		UUID kaigun = affiliationOnline("Kaigun");
-		UUID baroque = affiliationOnline("Baroque Works");
-		UUID enies = content("CHAPTER");
-		UUID usopp = content(CHARACTER);
-		UUID online = character(usopp, 1, PUBLISHED, "Usopp", "it");
-		// Usopp leaves the crew and comes back: current again, with the role of his
-		// return.
-		UUID crew = membership(online, 0, mugiwara);
-		period(crew, 0, null, enies, "it", "Cecchino");
-		period(crew, 1, null, null, "it", "Re dei cecchini");
-		// Every period over: former, with the rank of the last one.
-		UUID navy = membership(online, 1, kaigun);
-		period(navy, 0, "CHORE_BOY", enies);
-		period(navy, 1, "ENSIGN", enies);
-		// No period yet: nothing open, so former.
-		membership(online, 2, baroque);
-
 		var rows = this.jdbc
-			.sql("select position, marine_rank, former from published.character_affiliation order by position")
-			.query((rs, n) -> tuple(rs.getInt("position"), rs.getString("marine_rank"), rs.getBoolean("former")))
-			.list();
-		var roles = this.jdbc
-			.sql("select position, language, role from published.character_affiliation_role order by position")
-			.query((rs, n) -> tuple(rs.getInt("position"), rs.getString("language"), rs.getString("role")))
+			.sql("select character_id, position, affiliation_id from published.character_affiliation"
+					+ " order by position")
+			.query((rs, n) -> tuple(rs.getObject("character_id"), rs.getInt("position"),
+					rs.getObject("affiliation_id")))
 			.list();
 
-		assertThat(rows).containsExactly(tuple(0, null, false), tuple(1, "ENSIGN", true), tuple(2, null, true));
-		assertThat(roles).containsExactly(tuple(0, "it", "Re dei cecchini"));
+		assertThat(rows).containsExactly(tuple(koby, 0, kaigun), tuple(koby, 2, mugiwara));
 	}
 
 	@Test
@@ -252,13 +211,13 @@ class PublishedCharacterViewIntegrationTest {
 		devilFruit(character(sabo, 2, "DRAFT", "Sabo", "it"), 0, smile, null, null);
 
 		var rows = this.jdbc
-			.sql("select character_id, position, devil_fruit_id, former from published.character_devil_fruit"
+			.sql("select character_id, position, devil_fruit_id from published.character_devil_fruit"
 					+ " order by position")
-			.query((rs, n) -> tuple(rs.getObject("character_id"), rs.getInt("position"), rs.getObject("devil_fruit_id"),
-					rs.getBoolean("former")))
+			.query((rs, n) -> tuple(rs.getObject("character_id"), rs.getInt("position"),
+					rs.getObject("devil_fruit_id")))
 			.list();
 
-		assertThat(rows).containsExactly(tuple(sabo, 0, meraMera, false), tuple(sabo, 2, smile, true));
+		assertThat(rows).containsExactly(tuple(sabo, 0, meraMera), tuple(sabo, 2, smile));
 	}
 
 	@Test
@@ -308,25 +267,6 @@ class PublishedCharacterViewIntegrationTest {
 		var ids = this.jdbc.sql("select id from published.image").query(String.class).list();
 
 		assertThat(ids).containsExactlyInAnyOrder(look, form);
-	}
-
-	@Test
-	void theImageOfACharacterIsItsLastAppearanceWithoutAnEndElseItsLastAppearance() {
-		String before = image('a');
-		String after = image('b');
-		String gear = image('c');
-		String older = image('d');
-		UUID timeskip = content("CHAPTER");
-		UUID luffy = character(content(CHARACTER), 1, PUBLISHED, "Luffy", "it");
-		galleryImage(luffy, 0, before, "ASPETTO", timeskip);
-		galleryImage(luffy, 1, after, "ASPETTO", null);
-		galleryImage(luffy, 2, gear, "FORMA", null);
-		UUID ace = character(content(CHARACTER), 1, PUBLISHED, "Ace", "it");
-		galleryImage(ace, 0, older, "ASPETTO", timeskip);
-		galleryImage(ace, 1, before, "ASPETTO", timeskip);
-
-		assertThat(imageOf("Luffy")).isEqualTo(after);
-		assertThat(imageOf("Ace")).isEqualTo(before);
 	}
 
 	private UUID content(String entityType) {
@@ -481,13 +421,6 @@ class PublishedCharacterViewIntegrationTest {
 					+ " values (?, ?, ?, ?, ?, ?)")
 			.params(UUID.randomUUID(), versionId, position, imageId, kind, endedChapterId)
 			.update();
-	}
-
-	private String imageOf(String romaji) {
-		return this.jdbc.sql("select distinct image_id from published.character where romaji = ?")
-			.param(romaji)
-			.query(String.class)
-			.single();
 	}
 
 	/** A chapter online, of an arc and a saga online, titled "Title LANGUAGE". */

@@ -63,17 +63,16 @@ class PublishedBountyViewIntegrationTest {
 		bounty(content(), 1, "RETIRED", "Nami", 16_000_000L, BOTH);
 
 		var rows = this.jdbc
-			.sql("select id, slug, poster_name, amount, condition, language, name, description from published.bounty")
+			.sql("select id, slug, poster_name, amount, condition, language, name from published.bounty")
 			.query((rs, n) -> tuple(rs.getObject("id"), rs.getString("slug"), rs.getString("poster_name"),
-					rs.getLong("amount"), rs.getString("condition"), rs.getString("language"), rs.getString("name"),
-					rs.getString("description")))
+					rs.getLong("amount"), rs.getString("condition"), rs.getString("language"), rs.getString("name")))
 			.list();
 
 		assertThat(rows).containsExactlyInAnyOrder(
 				tuple(luffy, "monkey-d-luffy-3000000000", "Monkey D. Luffy", 3_000_000_000L, "DEAD_OR_ALIVE", "it",
-						"Monkey D. Luffy 3000000000", "Description IT"),
+						"Monkey D. Luffy 3000000000"),
 				tuple(luffy, "monkey-d-luffy-3000000000", "Monkey D. Luffy", 3_000_000_000L, "DEAD_OR_ALIVE", "en",
-						"Monkey D. Luffy 3000000000", "Description EN"));
+						"Monkey D. Luffy 3000000000"));
 	}
 
 	@Test

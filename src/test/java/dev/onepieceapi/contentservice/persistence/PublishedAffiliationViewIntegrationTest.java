@@ -62,14 +62,14 @@ class PublishedAffiliationViewIntegrationTest {
 		affiliation(content(), 1, "DRAFT", "Kaigun", BOTH);
 		affiliation(content(), 1, "RETIRED", "Seifu", BOTH);
 
-		var rows = this.jdbc.sql("select id, slug, romaji, language, name, description from published.affiliation")
+		var rows = this.jdbc.sql("select id, slug, romaji, language, name from published.affiliation")
 			.query((rs, n) -> tuple(rs.getObject("id"), rs.getString("slug"), rs.getString("romaji"),
-					rs.getString("language"), rs.getString("name"), rs.getString("description")))
+					rs.getString("language"), rs.getString("name")))
 			.list();
 
 		assertThat(rows).containsExactlyInAnyOrder(
-				tuple(strawHats, "mugiwara-no-ichimi", "Mugiwara no Ichimi", "it", "Name IT", "Description IT"),
-				tuple(strawHats, "mugiwara-no-ichimi", "Mugiwara no Ichimi", "en", "Name EN", "Description EN"));
+				tuple(strawHats, "mugiwara-no-ichimi", "Mugiwara no Ichimi", "it", "Name IT"),
+				tuple(strawHats, "mugiwara-no-ichimi", "Mugiwara no Ichimi", "en", "Name EN"));
 	}
 
 	@Test

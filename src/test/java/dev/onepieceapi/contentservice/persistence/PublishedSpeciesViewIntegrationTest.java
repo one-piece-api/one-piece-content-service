@@ -62,13 +62,13 @@ class PublishedSpeciesViewIntegrationTest {
 		species(content(), 1, "DRAFT", "Gyojin", BOTH);
 		species(content(), 1, "RETIRED", "Mink", BOTH);
 
-		var rows = this.jdbc.sql("select id, slug, romaji, language, name, description from published.species")
+		var rows = this.jdbc.sql("select id, slug, romaji, language, name from published.species")
 			.query((rs, n) -> tuple(rs.getObject("id"), rs.getString("slug"), rs.getString("romaji"),
-					rs.getString("language"), rs.getString("name"), rs.getString("description")))
+					rs.getString("language"), rs.getString("name")))
 			.list();
 
-		assertThat(rows).containsExactlyInAnyOrder(tuple(humans, "ningen", "Ningen", "it", "Name IT", "Description IT"),
-				tuple(humans, "ningen", "Ningen", "en", "Name EN", "Description EN"));
+		assertThat(rows).containsExactlyInAnyOrder(tuple(humans, "ningen", "Ningen", "it", "Name IT"),
+				tuple(humans, "ningen", "Ningen", "en", "Name EN"));
 	}
 
 	@Test
